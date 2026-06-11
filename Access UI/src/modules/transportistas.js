@@ -229,7 +229,7 @@ export function renderTransportistas(container) {
     // API Lekérés
     async function loadRealData() {
         try {
-            const response = await fetch('http://localhost:3000/api/v1/shipments');
+            const response = await fetch('/api/v1/shipments');
             if (response.ok) {
                 const apiData = await response.json();
                 // Map the api properties to what the render function expects

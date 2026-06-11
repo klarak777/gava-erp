@@ -271,7 +271,7 @@ export function renderFuvar(container, windowManager) {
             }
 
             try {
-                const res = await fetch('http://localhost:3000/api/v1/shipments/rename', {
+                const res = await fetch('/api/v1/shipments/rename', {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -427,7 +427,7 @@ export function renderFuvar(container, windowManager) {
     // Élő adat lekérése a Backend API-ról
     async function loadRealData() {
         try {
-            const response = await fetch('http://localhost:3000/api/v1/shipment-lines');
+            const response = await fetch('/api/v1/shipment-lines');
             if (response.ok) {
                 tableData = await response.json();
                 filterData();

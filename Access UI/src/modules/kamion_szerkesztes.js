@@ -205,7 +205,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
         const tbody = container.querySelector('#km-lines-tbody');
         const conflictMsg = container.querySelector('#km-order-conflict-msg');
 
-        const API = 'http://localhost:3000/api/v1';
+        const API = '/api/v1';
 
         // ===== API BETÖLTÉS =====
         async function loadTransporters() {
@@ -480,13 +480,13 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
             try {
                 let res;
                 if (isNew) {
-                    res = await fetch('http://localhost:3000/api/v1/shipments', {
+                    res = await fetch('/api/v1/shipments', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
                     });
                 } else {
-                    res = await fetch(`http://localhost:3000/api/v1/shipments/${currentShipmentId}`, {
+                    res = await fetch(`/api/v1/shipments/${currentShipmentId}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)

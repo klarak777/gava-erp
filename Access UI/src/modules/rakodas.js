@@ -169,7 +169,7 @@ export function renderRakodas(container, windowManager) {
                 if (row) {
                     row.loaded = isLoaded;
                     try {
-                        const res = await fetch('http://localhost:3000/api/v1/shipments/' + id + '/loaded', {
+                        const res = await fetch('/api/v1/shipments/' + id + '/loaded', {
                             method: 'PATCH',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ is_loaded: isLoaded })
@@ -389,7 +389,7 @@ export function renderRakodas(container, windowManager) {
             }
 
             try {
-                const res = await fetch('http://localhost:3000/api/v1/shipments/rename', {
+                const res = await fetch('/api/v1/shipments/rename', {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -460,7 +460,7 @@ export function renderRakodas(container, windowManager) {
     async function loadRakData() {
         try {
             tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:15px; color:#666;">Betöltés...</td></tr>';
-            const res = await fetch('http://localhost:3000/api/v1/shipments?limit=10');
+            const res = await fetch('/api/v1/shipments?limit=10');
             if (res.ok) {
                 const data = await res.json();
                 rakData = data.map(function(s) {
