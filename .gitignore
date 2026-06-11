@@ -1,0 +1,51 @@
+# ===== SZERVER OLDALAK =====
+# Node modules
+node_modules/
+npm-debug.log*
+
+# Environment variables - ne ossza meg a tokeneket!
+.env
+.env.local
+.env.production
+
+# ===== FRONTEND =====
+# Az Access UI mappa saját git-meta fájljai
+Access UI/.git
+Access UI/objects/
+Access UI/hooks/
+Access UI/info/
+Access UI/HEAD
+Access UI/config
+Access UI/description
+Access UI/index
+Access UI/refs/
+Access UI/COMMIT_EDITMSG
+
+# Oracle JDK - ne töltsük fel!
+oracleJdk-25/
+Access UI/oracleJdk-25/
+
+# Biztonsági mentés
+Access UI_backup/
+
+# ===== DOKUMENTUMOK (nem kellenek a szerveren) =====
+*.pdf
+*.csv
+*.ods
+*.docx
+*.xlsx
+*.xlsm
+
+# Nyomtatási és régi anyagok
+pdf_content.txt
+woodpecker_v2.txt
+
+# ===== OS ÉS IDE =====
+.DS_Store
+Thumbs.db
+*.tmp
+~$*
+
+# Scratch fájlok
+scratch/
+browser_recordings/

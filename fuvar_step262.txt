@@ -1,0 +1,74 @@
+﻿Created At: 2026-05-29T21:21:32Z
+Completed At: 2026-05-29T21:21:33Z
+File Path: `file:///C:/Users/klara/Documents/Nepelemes%20%C3%BCgyek/Gav%C3%A1/ERP%20Access/Access%20UI/src/modules/fuvar.js`
+Total Lines: 290
+Total Bytes: 17889
+Showing lines 1 to 130
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: export function renderFuvar(container) {
+2:     // A szÃ¼lÅ‘ launcher-wrapper-t mÃ³dosÃ­tjuk, hogy flex oszlop legyen Ã©s ne gÃ¶rdÃ¼ljÃ¶n az oldal
+3:     container.style.overflow = 'hidden';
+4:     container.style.padding = '0';
+5:     container.style.display = 'flex';
+6:     container.style.flexDirection = 'column';
+7:     container.style.height = '100%';
+8: 
+9:     // ============================================================
+10:     // 1. KONTÃ‰NER: FejlÃ©c + SzÅ±rÅ‘k (FIX, nem gÃ¶rdÃ¼l)
+11:     // ============================================================
+12:     const filterPanel = document.createElement('div');
+13:     filterPanel.style.cssText = 'flex-shrink:0; padding:24px 32px 16px 32px; background:var(--bg-light);';
+14:     filterPanel.innerHTML = `
+15:         <div style="margin-bottom:12px;">
+16:             <h2 class="view-title" style="margin:0 0 4px 0;">Fuvarok Ã¶sszesÃ­tÅ‘</h2>
+17:             <p class="view-subtitle" style="margin:0;">Fuvarok adatainak Ã¡ttekintÃ©se Ã©s szÅ±rÃ©se</p>
+18:         </div>
+19: 
+20:         <div class="access-form-view" style="padding:14px 18px;">
+21:             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+22:                 <strong style="font-size:13px;">SzÅ±rÃ©si feltÃ©telek</strong>
+23:                 <button class="secondary-btn btn-dense" id="btn-clear-filters" style="font-size:12px; padding:5px 12px;">SzÅ±rÅ‘k tÃ¶rlÃ©se</button>
+24:             </div>
+25:             <div style="display:gri
+<truncated 4662 bytes>
+
+93:                             <th>NÂ° Euro Palets</th>
+94:                             <th>NÂ° Normal Palets</th>
+95:                             <th>Products</th>
+96:                             <th>Reference</th>
+97:                             <th>Customer</th>
+98:                             <th>Destination</th>
+99:                             <th>Comment</th>
+100:                             <th>Gross weight (kg)</th>
+101:                             <th>Price (EUR)</th>
+102:                             <th>Price BCN (EUR)</th>
+103:                             <th>Unit</th>
+104:                             <th>Reloading/plt</th>
+105:                             <th>Transport BCN/plt</th>
+106:                             <th>AlbarÃ¡n NÂ°</th>
+107:                             <th>Car n.</th>
+108:                             <th>Loading date</th>
+109:                             <th>Loading place</th>
+110:                             <th>Order number</th>
+111:                             <th>Transport company</th>
+112:                             <th>Plate number</th>
+113:                             <th>Transport price</th>
+114:                             <th>Arrival date</th>
+115:                             <th>Transport cost</th>
+116:                             <th>Invoice amount</th>
+117:                             <th>Payment date</th>
+118:                             <th>Open invoices</th>
+119:                             <th>Paid invoices</th>
+120:                             <th>Transport Cost / product</th>
+121:                         </tr>
+122:                     </thead>
+123:                     <tbody id="fuvar-tbody"></tbody>
+124:                 </table>
+125:             </div>
+126:         </div>
+127:     `;
+128:     container.appendChild(tableContainer);
+129: 
+130: 
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+

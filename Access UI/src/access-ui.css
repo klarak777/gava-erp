@@ -1,0 +1,123 @@
+/* Access UI Specific Styles */
+
+.login-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    /* Grid background for login */
+    background-image:
+        linear-gradient(rgba(37, 99, 235, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(37, 99, 235, 0.05) 1px, transparent 1px);
+    background-size: 30px 30px;
+}
+
+.login-box {
+    background: var(--surface);
+    padding: 40px;
+    border-radius: 24px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.login-header {
+    margin-bottom: 24px;
+}
+
+.access-input:focus {
+    outline: none;
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+
+/* Form Styles mimicking MS Access Form views */
+.access-form-view {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    margin-bottom: 24px;
+}
+
+.access-form-header {
+    border-bottom: 2px solid var(--primary);
+    padding-bottom: 12px;
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.access-form-header h3 {
+    font-size: 20px;
+    color: var(--primary);
+}
+
+.access-control-group {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.access-control-label {
+    font-weight: 600;
+    color: var(--text-main);
+    text-align: right;
+}
+
+.access-control-input {
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    width: 100%;
+    transition: all 0.2s;
+}
+
+.access-control-input:focus {
+    background: white;
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.access-subform {
+    margin-top: 32px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.access-subform-header {
+    background: var(--bg-light);
+    padding: 12px 16px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+}
+
+.access-subform-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.access-subform-table th, .access-subform-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+}
+
+.access-subform-table th {
+    background: #f1f5f9;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}

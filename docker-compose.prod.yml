@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  # PostgreSQL adatbázis (Meglévő adatbázis ne zavarjuk, külön porton / hálózaton)
+  gava_db:
+    image: postgres:16-alpine
+    container_name: gava_erp_prod_db
+    restart: always
+    environment:
+      POSTGRES_DB: gava_erp
+      POSTGRES_USER: gava_admin
+      POSTGRES_PASSWORD: adminpassword123
+    ports:
+      - "5432:5432" # Ezt érdemes lehet egy biztonságosabb belső portra tenni később, de most a fejlesztéshez jó.
+    volumes:
+      - gava_pgdata:/var/lib/postgresql/data
+
+  # Node.js Backend API
+  gava_api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: gava_erp_prod_api
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://gava_admin:adminpassword123@gava_db:5432/gava_erp
+      NODE_ENV: production
+      PORT: 3000
+    depends_on:
+      - gava_db
+
+  # Nginx Frontend + Reverse Proxy
+  gava_frontend:
+    image: nginx:alpine
+    container_name: gava_erp_prod_frontend
+    restart: always
+    volumes:
+      - ./Access UI:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "3001:80" # Az ERP a 3001-es porton lesz elérhető!
+    depends_on:
+      - gava_api
+
+volumes:
+  gava_pgdata:

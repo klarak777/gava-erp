@@ -1,0 +1,85 @@
+﻿Created At: 2026-05-29T21:03:34Z
+Completed At: 2026-05-29T21:03:34Z
+File Path: `file:///C:/Users/klara/Documents/Nepelemes%20%C3%BCgyek/Gav%C3%A1/ERP%20Access/Access%20UI/src/modules/fuvar.js`
+Total Lines: 269
+Total Bytes: 15729
+Showing lines 1 to 269
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: export function renderFuvar(container) {
+2:     const view = document.createElement('div');
+3:     view.className = 'module-view fade-in';
+4: 
+5:     view.innerHTML = `
+6:         <div class="view-header" style="margin-bottom: 24px;">
+7:             <h2 class="view-title">Fuvarok Ã¶sszesÃ­tÅ‘</h2>
+8:             <p class="view-subtitle">Fuvarok adatainak Ã¡ttekintÃ©se Ã©s szÅ±rÃ©se</p>
+9:         </div>
+10: 
+11:         <div class="access-form-view">
+12:             <div class="access-form-header">
+13:                 <h3>SzÅ±rÃ©si feltÃ©telek</h3>
+14:                 <button class="secondary-btn btn-dense" id="btn-clear-filters">SzÅ±rÅ‘k tÃ¶rlÃ©se</button>
+15:             </div>
+16:             
+17:             <div style="display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px;">
+18:                 <!-- Textboxes -->
+19:                 <div class="access-control-group">
+20:                     <label class="access-control-label" for="filter-car-n">Kamion szÃ¡m:</label>
+21:                     <input type="text" id="filter-car-n" class="access-control-input" placeholder="KeresÃ©s...">
+22:                 </div>
+23:                 <div class="access-control-group">
+24:                     <label class="access-control-label" for="filter-loading-place">RakodÃ¡si hely:</label>
+25:                     <input type="text" id="filter-loading-place" class="access-control-input" placeholder="KeresÃ©s...">
+26:                 </div>
+27:                 <div class="access-control-group">
+28:         
+<truncated 13447 bytes>
+         <td>${row.transportCostProduct}</td>
+224:             </tr>
+225:         `).join('');
+226:     }
+227: 
+228:     function filterData() {
+229:         const valCarN = filterCarN.value.toLowerCase();
+230:         const valLoadingPlace = filterLoadingPlace.value.toLowerCase();
+231:         const valProducts = filterProducts.value.toLowerCase();
+232:         const valSeason = filterSeason.value;
+233:         const valYear = filterYear.value;
+234:         const valTransportCompany = filterTransportCompany.value;
+235: 
+236:         const filtered = mockData.filter(row =>
+237:             row.carN.toLowerCase().includes(valCarN) &&
+238:             row.loadingPlace.toLowerCase().includes(valLoadingPlace) &&
+239:             row.products.toLowerCase().includes(valProducts) &&
+240:             (valSeason === '' || row.season === valSeason) &&
+241:             (valYear === '' || row.loadingYear === valYear) &&
+242:             (valTransportCompany === '' || row.transportCompany === valTransportCompany)
+243:         );
+244: 
+245:         renderTable(filtered);
+246:     }
+247: 
+248:     // Event listeners
+249:     filterCarN.addEventListener('input', filterData);
+250:     filterLoadingPlace.addEventListener('input', filterData);
+251:     filterProducts.addEventListener('input', filterData);
+252:     filterSeason.addEventListener('change', filterData);
+253:     filterYear.addEventListener('change', filterData);
+254:     filterTransportCompany.addEventListener('change', filterData);
+255: 
+256:     btnClear.addEventListener('click', () => {
+257:         filterCarN.value = '';
+258:         filterLoadingPlace.value = '';
+259:         filterProducts.value = '';
+260:         filterSeason.value = '';
+261:         filterYear.value = '';
+262:         filterTransportCompany.value = '';
+263:         filterData();
+264:     });
+265: 
+266:     // Initial render
+267:     renderTable(mockData);
+268: }
+269: 
+The above content shows the entire, complete file contents of the requested file.
+

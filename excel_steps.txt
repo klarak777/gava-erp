@@ -1,0 +1,129 @@
+=== STEP 250 ===
+Igen, ez a logika **tisztán Excel-képletekkel is tökéletesen megoldható**, ráadásul makrók (VBA) nélkül! 
+
+Mivel a `NormalToEuro` egy egyedi, nemlineáris váltószámos táblázat, a legegyszerűbb és legstabilabb megoldás az, ha létrehozunk egy apró **Segédtáblát (váltótáblát)** az Excelben, és a képletekkel erre hivatkozunk. Ezzel elkerüljük az országonként eltérő Excel szintaktikai hibákat is.
+
+Az alábbiakban bemutatom a megoldást kétféleképpen: **segédoszlopokkal** (így átláthatóbb és könnyebb ellenőrizni az arányokat), illetve **egyetlen összetett képlettel**.
+
+---
+
+### Előkészület: A Váltótábla létrehozása
+Hozz létre egy új munkalapot **Váltótábla** néven (vagy az aktuális lap egy üres szélére, pl. a `P:Q` oszlopokba), és töltsd fel az alábbi értékekkel a `NormalToEuro` logika szerint:
+
+| Normál (A oszlop) | Euro megfelelője (B oszlop) |
+| :--- | :--- |
+| 0 | 0 |
+| 1 | 1 |
+| 2 | 3 |
+| 3 | 4 |
+| 4 | 5 |
+| 5 | 6 |
+| 6 | 8 |
+| 7 | 9 |
+<truncated 3503 bytes>
+
+
+
+=== STEP 256 ===
+Így még sokkal egyszerűbb! Mivel csak egy fuvar adatait kell kezelni, nincs szükség bonyolult csoportosításra (mint a `SZUMHAÓK`). 
+
+A legtisztább, leginkább Excel-szerű megoldás, ha a **teljes fuvar összesített értékeit dedikált összesítő cellákba helyezzük**, és a sorok képleteiben ezekre az összesítő cellákra hivatkozunk vissza (dollárjellel lezárva).
+
+Tegyük fel, hogy a táblázatod a **2. sorban kezdődik és a 16. sorig tart** (ahogy a példádban):
+*   **C oszlop:** `N° Euro Palets` (értékek a C2:C16 tartományban)
+*   **D oszlop:** `N° Normal Palets` (értékek a D2:D16 tartományban)
+*   **E oszlop:** `Total Palets` (ide kerül a számított érték)
+*   Legyen a teljes fuvardíj (pl. 4800 €) a **G1** cellában.
+
+A **Váltótábla** pedig továbbra is a `Váltótábla` munkalap `A2:B28` tartományában található.
+
+---
+
+### Lépésről lépésre a megvalósítás:
+
+#### 1. lépés: Hozd létre az Összesítő cellákat a táblázat alatt (a 17. sorban)
+<truncated 1969 bytes>
+
+
+
+=== STEP 259 ===
+Igen, a legjobb és legbiztonságosabb megoldás az, ha a Váltótábla kap egy **saját, külön munkalapot**. Ez azért nagyszerű, mert így nem zavar bele a fő táblázatodba, később is könnyen átlátható marad, és ha zavar a szemnek, a munkalapot akár el is tudod rejteni (Jobb klikk a fülön -> Elrejtés).
+
+Így csináld meg a frissített, `8-tól 32-ig` tartó sorokra:
+
+### 1. A Váltótábla létrehozása (Új munkalap)
+1. Kattints az Excel alján a **+** ikonra egy új munkalap létrehozásához.
+2. Nevezd el a munkalapot (dupla kattintás a nevén) így: `Váltótábla`
+3. Másold be az **A1** cellába a lenti adatokat (úgy ahogy van, fejléccel együtt), hogy az Excel szépen oszlopokba tegye:
+
+**Normál** | **Euro**
+---|---
+0 | 0
+1 | 1
+2 | 3
+3 | 4
+4 | 5
+5 | 6
+6 | 8
+7 | 9
+8 | 10
+9 | 11
+10 | 13
+11 | 14
+12 | 15
+13 | 16
+14 | 18
+15 | 19
+16 | 20
+17 | 21
+18 | 23
+19 | 24
+20 | 25
+21 | 26
+22 | 28
+23 | 29
+24 | 30
+25 | 31
+26 | 33
+
+*(Így a Váltótábla `A2:B28` tartományában lesznek a számok).*
+
+<truncated 1389 bytes>
+
+
+
+=== STEP 262 ===
+**Szia!** 
+
+Íme egy rövid, lényegretörő összefoglaló az új raklapszámítási (V2) logikáról. Ezt a logikát rögzítettük most az Access VBA-ban, és **ugyanezt az algoritmust fogjuk egy az egyben leprogramozni az új webes ERP frontendünk backendjénél is.**
+
+---
+
+### Miért váltottunk V2-re?
+A régi módszer soronként váltotta át a normál raklapokat euróra. A váltótábla nemlineáris tulajdonságai miatt (pl. 2 normál = 3 euro, de 16 normál = 20 euro) ez a módszer torzította a végeredményt.
+
+### Az új (V2) számítási logika lépései:
+1. **Összesítés:** Első lépésben a fuvarhoz (kamionhoz) tartozó összes Normál és összes Euro raklapot külön-külön összeadjuk a sorokból.
+2. **Egyszeri átváltás:** A kamionon lévő összesített Normál raklapokat **egyetlen alkalommal** váltjuk át Euro megfelelőre a váltótábla alapján (pl. 16 Normál → 20 Euro).
+<truncated 885 bytes>
+
+
+
+=== STEP 265 ===
+Íme az **Excel-alapú megvalósítás** logikája is, szintén röviden és közvetlenül:
+
+---
+
+### Hogyan épül fel az Excel logikája?
+
+A cél itt is ugyanaz: a kamion teljes normál raklapmennyiségét **egyszer** váltjuk át a váltótábla segítségével, majd a sorok között ezt az átváltott értéket a normál raklapjaik arányában osztjuk vissza.
+
+A képletek az alábbi 4 pillérre épülnek:
+
+1. **A Váltótábla (Külön munkalap):** 
+   Egy háttér-adatbázisként szolgáló táblázat (`0`-tól `26`-ig terjedő skálán), ahonnan az Excel ki tudja keresni, hogy a kamion összesített normál raklapja mennyi eurónak felel meg.
+2. **Összesítő sor (a táblázat alatt, pl. a 33. sorban):**
+   * Először egy sima `=SZUM(D8:D32)` képlettel megkeressük a kamionon lévő összes normál raklapot.
+<truncated 896 bytes>
+
+

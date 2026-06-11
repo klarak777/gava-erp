@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="hu">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GAVA Access UI - Prototype</title>
+    <link rel="icon" type="image/x-icon" href="logo.ico">
+    <link rel="stylesheet" href="src/style.css">
+    <link rel="stylesheet" href="src/access-ui.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Bejelentkezési képernyő (Access-szerű logika) -->
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-box premium-glass">
+            <div class="login-header">
+                <img src="logo.ico" alt="Gava Logo" class="logo-img" style="width: 64px; height: 64px; margin-bottom: 16px;">
+                <h2 style="margin-bottom: 8px;">GAVA <span class="logo-accent">Access UI</span></h2>
+                <p style="color: var(--text-muted); margin-bottom: 24px;">Bejelentkezés a rendszerbe</p>
+            </div>
+            <form id="login-form">
+                <div class="input-group" style="margin-bottom: 16px; text-align: left;">
+                    <label for="username" style="display: block; margin-bottom: 8px; font-weight: 500;">Felhasználónév</label>
+                    <input type="text" id="username" class="access-input" placeholder="Pl. admin" required style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-light);">
+                </div>
+                <div class="input-group" style="margin-bottom: 24px; text-align: left;">
+                    <label for="password" style="display: block; margin-bottom: 8px; font-weight: 500;">Jelszó</label>
+                    <input type="password" id="password" class="access-input" placeholder="••••••••" required style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-light);">
+                </div>
+                <button type="button" id="login-btn" class="primary-btn" style="width: 100%; padding: 12px; font-size: 16px;">Belépés</button>
+                <div id="login-error" style="color: #dc2626; margin-top: 16px; display: none; font-size: 14px;">Adj meg egy felhasználónevet!</div>
+            </form>
+        </div>
+    </div>
+
+    <div id="app" style="display: none;">
+        <aside id="sidebar" class="premium-glass">
+            <div class="logo-container">
+                <img src="logo.ico" alt="Gava Logo" class="logo-img" style="width: 32px; height: 32px;">
+                <span class="logo-text">GAVA <span class="logo-accent">Access UI</span></span>
+            </div>
+            <nav id="main-nav">
+                <a href="#" data-module="dashboard" class="nav-item active">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-label">Kezdőképernyő</span>
+                </a>
+
+                <div class="nav-divider"></div>
+                <div id="nav-categories"></div>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="avatar">BH</div>
+                    <div class="user-info">
+                        <span class="user-name" id="logged-user-name">Gava User</span>
+                        <span class="user-role" id="logged-user-role">Administrator</span>
+                    </div>
+                </div>
+                <button id="logout-btn" class="secondary-btn" style="padding: 8px 16px;">Kijelentkezés</button>
+            </div>
+        </aside>
+
+        <main id="main-container">
+            <header id="top-bar">
+                <div class="search-bar">
+                    <input type="text" placeholder="Gyorskeresés a modulokban...">
+                </div>
+                <div class="top-actions">
+                    <button class="icon-btn">🔔</button>
+                    <button class="icon-btn">⚙️</button>
+
+                </div>
+            </header>
+
+            <section id="content-view" class="fade-in">
+                <!-- Module content will be injected here -->
+            </section>
+        </main>
+    </div>
+    <script type="module" src="src/main.js"></script>
+    <script>
+        // Inline fallback login handler - runs independently of ES modules
+        // This ensures login works even if main.js module loading fails
+        (function() {
+            function attachLogin() {
+                var loginBtn = document.getElementById('login-btn');
+                var loginForm = document.getElementById('login-form');
+                var loginOverlay = document.getElementById('login-overlay');
+                var appContainer = document.getElementById('app');
+                var loginError = document.getElementById('login-error');
+                var logoutBtn = document.getElementById('logout-btn');
+
+                // Check if already logged in
+                var currentUser = sessionStorage.getItem('gava_user');
+                if (currentUser) {
+                    if (loginOverlay) loginOverlay.style.display = 'none';
+                    if (appContainer) appContainer.style.display = 'flex';
+                    var userNameEl = document.getElementById('logged-user-name');
+                    if (userNameEl) userNameEl.textContent = currentUser;
+                    // Dispatch event so main.js module can pick up
+                    window.dispatchEvent(new CustomEvent('app:login-success'));
+                    return;
+                }
+
+                function doLogin() {
+                    var username = document.getElementById('username').value.trim();
+                    if (username.length > 0) {
+                        sessionStorage.setItem('gava_user', username);
+                        if (loginError) loginError.style.display = 'none';
+                        if (loginOverlay) loginOverlay.style.display = 'none';
+                        if (appContainer) appContainer.style.display = 'flex';
+                        var userNameEl = document.getElementById('logged-user-name');
+                        if (userNameEl) userNameEl.textContent = username;
+                        // Dispatch event so main.js module can pick up and navigate
+                        window.dispatchEvent(new CustomEvent('app:login-success'));
+                    } else {
+                        if (loginError) loginError.style.display = 'block';
+                    }
+                }
+
+                if (loginBtn) {
+                    loginBtn.addEventListener('click', doLogin);
+                }
+                if (loginForm) {
+                    loginForm.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        doLogin();
+                    });
+                    loginForm.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            doLogin();
+                        }
+                    });
+                }
+                if (logoutBtn) {
+                    logoutBtn.addEventListener('click', function() {
+                        sessionStorage.removeItem('gava_user');
+                        if (loginOverlay) loginOverlay.style.display = 'flex';
+                        if (appContainer) appContainer.style.display = 'none';
+                        var pwEl = document.getElementById('password');
+                        var unEl = document.getElementById('username');
+                        if (pwEl) pwEl.value = '';
+                        if (unEl) unEl.value = '';
+                    });
+                }
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', attachLogin);
+            } else {
+                attachLogin();
+            }
+        })();
+    </script>
+</body>
+
+</html>
