@@ -28,9 +28,8 @@ Access UI/oracleJdk-25/
 # Biztonsági mentés
 Access UI_backup/
 
-# ===== DOKUMENTUMOK (nem kellenek a szerveren) =====
+# Dokumentumok (nem kellenek a szerveren)
 *.pdf
-*.csv
 *.ods
 *.docx
 *.xlsx
