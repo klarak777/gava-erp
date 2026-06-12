@@ -22,9 +22,9 @@ router.get('/order-numbers', async (req, res) => {
     // Regex térkép – minden típushoz
     const regexMap = {
       'GHU': /^GHU\s+(\d+)$/i,
-      'H':   /^H(\d+)$/i,
+      'H': /^H(\d+)$/i,
       'BEL': /^BEL[-\s]*(\d+)$/i,
-      'EX':  /^EX[-\s]*(\d+)$/i,
+      'EX': /^EX[-\s]*(\d+)$/i,
       'LOG': /^LOG[-\s]*(\d+)$/i,
     };
 
@@ -65,29 +65,63 @@ router.get('/order-numbers', async (req, res) => {
 
 // GET /api/v1/shipments/by-order/:orderNumber
 // Visszaadja a kamion adatait és a hozzá tartozó tételeket
+// Az összes szezonban keres, nem csak a legfrissebbben
 router.get('/by-order/:orderNumber', async (req, res) => {
   try {
     const { orderNumber } = req.params;
-    const season = await db('seasons').orderBy('start_date', 'desc').first();
-    if (!season) return res.status(404).json({ error: 'Nincs aktív szezon' });
 
+    // Normalizált order_number alapján keres az ÖSSZES szezonban
     const shipment = await db('shipments')
-      .where('season_id', season.id)
       .whereRaw('LOWER(REPLACE(order_number, \' \', \'\')) = ?', [
         orderNumber.toLowerCase().replace(/\s+/g, '')
       ])
+      .orderBy('id', 'desc')  // Ha több szezonban is van ilyen szám, a legújabbat veszi
       .first();
 
-    if (!shipment) return res.status(404).json({ error: 'Kamion nem található ebben a szezonban.' });
+    if (!shipment) return res.status(404).json({ error: 'Kamion nem található: ' + orderNumber });
 
     const lines = await db('shipment_lines')
-      .select('shipment_lines.*', 'products.name as productName')
+      .select(
+        'shipment_lines.*',
+        'products.name as productName'
+      )
       .leftJoin('products', 'shipment_lines.product_id', 'products.id')
-      .where('shipment_id', shipment.id);
+      .where('shipment_id', shipment.id)
+      .orderBy('shipment_lines.id', 'asc');
 
     res.json({ shipment, lines });
   } catch (err) {
     console.error('Hiba a by-order lekérdezéskor:', err);
+    res.status(500).json({ error: 'Belső szerverhiba' });
+  }
+});
+
+// GET /api/v1/shipments/:id
+// Visszaadja a kamion adatait és a hozzá tartozó tételeket ID alapján
+router.get('/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!/^\d+$/.test(id)) {
+      return next();
+    }
+    const shipment = await db('shipments')
+      .where('id', id)
+      .first();
+
+    if (!shipment) return res.status(404).json({ error: 'Kamion nem található: id=' + id });
+
+    const lines = await db('shipment_lines')
+      .select(
+        'shipment_lines.*',
+        'products.name as productName'
+      )
+      .leftJoin('products', 'shipment_lines.product_id', 'products.id')
+      .where('shipment_id', shipment.id)
+      .orderBy('shipment_lines.id', 'asc');
+
+    res.json({ shipment, lines });
+  } catch (err) {
+    console.error('Hiba a shipment lekérdezéskor:', err);
     res.status(500).json({ error: 'Belső szerverhiba' });
   }
 });
@@ -123,7 +157,7 @@ router.patch('/:id/loaded', async (req, res) => {
     await db('shipments')
       .where('id', id)
       .update({ is_loaded: is_loaded ? true : false });
-    
+
     res.json({ success: true });
   } catch (err) {
     console.error('Hiba a rakodási státusz frissítésekor:', err);
@@ -131,10 +165,13 @@ router.patch('/:id/loaded', async (req, res) => {
   }
 });
 
-// GET /api/v1/shipments[?limit=N]
+// GET /api/v1/shipments[?limit=N&season_code=XX-XX&search=xxx&has_lines=true]
 router.get('/', async (req, res) => {
   try {
-    const limit = req.query.limit ? parseInt(req.query.limit) : null;
+    const limit = req.query.limit ? parseInt(req.query.limit) : 50;
+    const seasonCode = req.query.season_code || null;
+    const search = req.query.search || null;
+    const hasLines = req.query.has_lines === 'true';
 
     let query = db('shipments')
       .select('shipments.*', 'seasons.code as season_code', 'transporters.name as transporter_name')
@@ -142,9 +179,25 @@ router.get('/', async (req, res) => {
       .leftJoin('transporters', 'shipments.transporter_id', 'transporters.id')
       .orderBy('shipments.id', 'desc');
 
-    if (limit && limit > 0) {
-      query = query.limit(limit);
+    if (seasonCode) {
+      query = query.where('seasons.code', seasonCode);
     }
+
+    if (search) {
+      // Kereséskor nincs limit, az összes egyező rekordot visszaadjuk
+      query = query.whereRaw("LOWER(REPLACE(shipments.order_number, ' ', '')) LIKE ?", [`%${search.toLowerCase().replace(/\s+/g, '')}%`]);
+      const shipments = await query;
+      return res.json(shipments);
+    }
+
+    if (hasLines) {
+      // Csak azok a fuvarok, amelyekhez van legalább 1 tétel
+      query = query.whereExists(
+        db('shipment_lines').whereRaw('shipment_lines.shipment_id = shipments.id').select(db.raw('1'))
+      );
+    }
+
+    query = query.limit(limit);
 
     const shipments = await query;
     res.json(shipments);
@@ -207,7 +260,7 @@ router.post('/', async (req, res) => {
           convertedNormal = sumNormal * (33.0 / 26.0); // Extrapoláció 26 felett
         }
       }
-      
+
       const grandTotal = sumEuro + convertedNormal;
       const tPrice = parseFloat(transport_price) || 0;
 
@@ -215,7 +268,7 @@ router.post('/', async (req, res) => {
       const linesToInsert = lines.map(line => {
         const lineEuro = parseFloat(line.euro_palets) || 0;
         const lineNorm = parseFloat(line.normal_palets) || 0;
-        
+
         let lineTotal = lineEuro;
         if (sumNormal > 0 && lineNorm > 0) {
           lineTotal += convertedNormal * (lineNorm / sumNormal);
@@ -308,14 +361,14 @@ router.put('/:id', async (req, res) => {
           convertedNormal = sumNormal * (33.0 / 26.0);
         }
       }
-      
+
       const grandTotal = sumEuro + convertedNormal;
       const tPrice = parseFloat(transport_price) || 0;
 
       const linesToInsert = lines.map(line => {
         const lineEuro = parseFloat(line.euro_palets) || 0;
         const lineNorm = parseFloat(line.normal_palets) || 0;
-        
+
         let lineTotal = lineEuro;
         if (sumNormal > 0 && lineNorm > 0) {
           lineTotal += convertedNormal * (lineNorm / sumNormal);
@@ -375,7 +428,7 @@ router.patch('/rename', async (req, res) => {
     const shipmentToRename = await db('shipments')
       .where('order_number', oldOrderNumber)
       .first();
-      
+
     if (!shipmentToRename) {
       return res.status(404).json({ error: 'Nem található kamion ezzel a számmal: ' + oldOrderNumber });
     }

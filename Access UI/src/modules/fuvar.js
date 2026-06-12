@@ -136,6 +136,7 @@ export function renderFuvar(container, windowManager) {
     container.appendChild(menuContainer);
 
     let currentKamionNumber = null;
+    let currentKamionId = null;
 
     function parseKamionNumber(tour) {
         if (!tour) return { tip: '', num: 0 };
@@ -301,8 +302,8 @@ export function renderFuvar(container, windowManager) {
 
     container.querySelector('#btn-fuv-szerkesztes').addEventListener('click', () => {
         container.querySelector('#modal-fuvar-menu').style.display = 'none';
-        if (currentKamionNumber) {
-            openKamionSzerkesztesWindow(windowManager, currentKamionNumber);
+        if (currentKamionId) {
+            openKamionSzerkesztesWindow(windowManager, currentKamionId);
         }
     });
 
@@ -354,7 +355,7 @@ export function renderFuvar(container, windowManager) {
                 <td style="text-align:right;">${fmtNum(r.reloading_per_plt)}</td>
                 <td style="text-align:right;">${fmtNum(r.transport_bcn_per_plt)}</td>
                 <td>${fmt(r.albaran_number)}</td>
-                <td><span class="fuv-open-link" data-tour="${fmt(r.order_number)}" style="cursor:pointer; color:#2563eb; text-decoration:underline; font-weight:600;">${fmt(r.order_number)}</span></td>
+                <td><span class="fuv-open-link" data-id="${r.shipment_id}" data-tour="${fmt(r.order_number)}" style="cursor:pointer; color:#2563eb; text-decoration:underline; font-weight:600;">${fmt(r.order_number)}</span></td>
                 <td>${fmtDate(r.loading_date)}</td>
                 <td>${fmt(r.loading_place)}</td>
                 <td>${fmt(r.order_number)}</td>
@@ -377,6 +378,7 @@ export function renderFuvar(container, windowManager) {
 
         tbody.querySelectorAll('.fuv-open-link').forEach(el => {
             el.addEventListener('click', e => {
+                currentKamionId = e.currentTarget.getAttribute('data-id');
                 currentKamionNumber = e.currentTarget.getAttribute('data-tour');
                 container.querySelector('#fuv-menu-tour').textContent = currentKamionNumber;
                 container.querySelector('#modal-fuvar-menu').style.display = 'flex';

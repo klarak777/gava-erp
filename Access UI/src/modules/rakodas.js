@@ -9,16 +9,16 @@ export function renderRakodas(container, windowManager) {
     // --- Mock adatbázis: foglalt kamionszámok szezon szerint ---
     var usedNumbers = {
         'BEL': { 'Season 25-26': [1, 2, 3] },
-        'EX':  { 'Season 25-26': [1] },
+        'EX': { 'Season 25-26': [1] },
         'GHU': { 'Season 25-26': [265, 266, 267, 268] },
-        'H':   { 'Season 25-26': [121, 122, 123] },
+        'H': { 'Season 25-26': [121, 122, 123] },
         'LOG': { 'Season 25-26': [1, 2] }
     };
 
     function getNextNumber(tip, szezon) {
         var list = (usedNumbers[tip] && usedNumbers[tip][szezon]) ? usedNumbers[tip][szezon] : [];
         if (list.length === 0) return 1;
-        var max = list.reduce(function(a, b) { return a > b ? a : b; });
+        var max = list.reduce(function (a, b) { return a > b ? a : b; });
         return max + 1;
     }
 
@@ -31,69 +31,73 @@ export function renderRakodas(container, windowManager) {
     // HTML
     view.innerHTML =
         '<div class="view-header" style="margin-bottom:16px;">' +
-            '<h2 class="view-title">Rakodás</h2>' +
-            '<p class="view-subtitle">Rakodások és áru igények kezelése</p>' +
+        '<h2 class="view-title">Rakodás</h2>' +
+        '<p class="view-subtitle">Rakodások és áru igények kezelése</p>' +
         '</div>' +
 
         // Filter strip
         '<div class="access-form-view" style="margin-bottom:16px; padding:12px 16px;">' +
-            '<div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">' +
-                '<div style="display:flex; align-items:center; gap:8px;">' +
-                    '<label class="access-control-label" for="rak-kamisz" style="white-space:nowrap;">Kamionszám:</label>' +
-                    '<input type="text" id="rak-kamisz" class="access-control-input" placeholder="Keresés..." style="width:150px;">' +
-                '</div>' +
-                '<div style="display:flex; align-items:center; gap:8px;">' +
-                    '<label class="access-control-label" for="rak-fuvarozo" style="white-space:nowrap;">Fuvarozó:</label>' +
-                    '<select id="rak-fuvarozo" class="access-control-input" style="width:170px;">' +
-                        '<option value="">-- Összes --</option>' +
-                        '<option value="Waberers">Waberers</option>' +
-                        '<option value="Gartner">Gartner</option>' +
-                    '</select>' +
-                '</div>' +
-                '<div style="display:flex; align-items:center; gap:6px;">' +
-                    '<input type="checkbox" id="rak-open-only">' +
-                    '<label for="rak-open-only" style="white-space:nowrap; font-size:13px;">Csak nyitott rakodások</label>' +
-                '</div>' +
-                '<button class="secondary-btn btn-dense" id="btn-clear-rak">Szűrők törlése</button>' +
-                '<button class="primary-btn btn-dense" id="btn-new-truck">+ Új kamion</button>' +
-            '</div>' +
+        '<div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">' +
+        '<div style="display:flex; align-items:center; gap:8px;">' +
+        '<label class="access-control-label" for="rak-kamisz" style="white-space:nowrap;">Kamionszám:</label>' +
+        '<input type="text" id="rak-kamisz" class="access-control-input" placeholder="Keresés..." style="width:150px;">' +
+        '</div>' +
+        '<div style="display:flex; align-items:center; gap:8px;">' +
+        '<label class="access-control-label" for="rak-fuvarozo" style="white-space:nowrap;">Fuvarozó:</label>' +
+        '<select id="rak-fuvarozo" class="access-control-input" style="width:170px;">' +
+        '<option value="">-- Összes --</option>' +
+        '</select>' +
+        '</div>' +
+        '<div style="display:flex; align-items:center; gap:8px;">' +
+        '<label class="access-control-label" style="white-space:nowrap;">Rakodás (tól-ig):</label>' +
+        '<input type="date" id="rak-date-from" class="access-control-input" style="width:160px;">' +
+        '<span>-</span>' +
+        '<input type="date" id="rak-date-to" class="access-control-input" style="width:160px;">' +
+        '</div>' +
+        '<div style="display:flex; align-items:center; gap:6px;">' +
+        '<input type="checkbox" id="rak-open-only">' +
+        '<label for="rak-open-only" style="white-space:nowrap; font-size:13px;">Csak nyitott rakodások</label>' +
+        '</div>' +
+        '<button class="secondary-btn btn-dense" id="btn-clear-rak">Szűrők törlése</button>' +
+        '<button class="primary-btn btn-dense" id="btn-new-truck">+ Új kamion</button>' +
+        '</div>' +
         '</div>' +
 
         // Két tábla egymás mellett
         '<div style="display:flex; gap:12px; align-items:flex-start; overflow-x:auto;">' +
 
-            // BAL TÁBLA: Rakodások
-            '<div class="access-subform" style="flex:3; min-width:0;">' +
-                '<div class="access-subform-header">Rakodások</div>' +
-                '<div style="overflow-x:auto;">' +
-                    '<table class="access-subform-table" id="rak-left-table">' +
-                        '<thead><tr>' +
-                            '<th style="min-width:120px;">Kamionszám</th>' +
-                            '<th style="min-width:110px;">Rakodás nap</th>' +
-                            '<th style="min-width:120px;">Fuvarozó</th>' +
-                            '<th style="min-width:80px; text-align:center;">Rakodva</th>' +
-                        '</tr></thead>' +
-                        '<tbody id="rak-tbody"></tbody>' +
-                    '</table>' +
-                '</div>' +
-            '</div>' +
+        // BAL TÁBLA: Rakodások
+        '<div class="access-subform" style="flex:3; min-width:0;">' +
+        '<div class="access-subform-header">Rakodások</div>' +
+        '<div style="overflow-x:auto;">' +
+        '<table class="access-subform-table" id="rak-left-table">' +
+        '<thead><tr>' +
+        '<th style="min-width:120px;">Kamionszám</th>' +
+        '<th style="min-width:110px;">Rakodás nap</th>' +
+        '<th style="min-width:120px;">Fuvarozó</th>' +
+        '<th style="min-width:80px; text-align:center;">Rakodva</th>' +
+        '</tr></thead>' +
+        '<tbody id="rak-tbody"></tbody>' +
+        '</table>' +
+        '</div>' +
+        '</div>' +
 
-            // JOBB TÁBLA: Áru igény
-            '<div class="access-subform" style="flex:2; min-width:0; background:linear-gradient(135deg, #f0f7ff, #e8f4fd); border:1px solid #bde0fa;">' +
-                '<div class="access-subform-header" style="background:linear-gradient(90deg,#0ea5e9,#2563eb); color:#fff;">Áru igény</div>' +
-                '<div style="overflow-x:auto;">' +
-                    '<table class="access-subform-table" id="rak-right-table" style="background:transparent;">' +
-                        '<thead><tr>' +
-                            '<th style="min-width:60px; background:rgba(14,165,233,0.1); text-align:center;">Raklap</th>' +
-                            '<th style="min-width:160px; background:rgba(14,165,233,0.1);">Termék</th>' +
-                            '<th style="min-width:100px; background:rgba(14,165,233,0.1);">Partner</th>' +
-                            '<th style="min-width:100px; background:rgba(14,165,233,0.1);">Vevő</th>' +
-                            '<th style="min-width:90px; text-align:center; background:rgba(14,165,233,0.1);">Küldés kamionra</th>' +
-                        '</tr></thead>' +
-                        '<tbody id="aru-tbody"></tbody>' +
-                    '</table>' +
-                '</div>' +
-            '</div>' +
+        // JOBB TÁBLA: Áru igény
+        '<div class="access-subform" style="flex:2; min-width:0; background:linear-gradient(135deg, #f0f7ff, #e8f4fd); border:1px solid #bde0fa;">' +
+        '<div class="access-subform-header" style="background:linear-gradient(90deg,#0ea5e9,#2563eb); color:#fff;">Áru igény</div>' +
+        '<div style="overflow-x:auto;">' +
+        '<table class="access-subform-table" id="rak-right-table" style="background:transparent;">' +
+        '<thead><tr>' +
+        '<th style="min-width:60px; background:rgba(14,165,233,0.1); text-align:center;">Raklap</th>' +
+        '<th style="min-width:160px; background:rgba(14,165,233,0.1);">Termék</th>' +
+        '<th style="min-width:100px; background:rgba(14,165,233,0.1);">Partner</th>' +
+        '<th style="min-width:100px; background:rgba(14,165,233,0.1);">Vevő</th>' +
+        '<th style="min-width:90px; text-align:center; background:rgba(14,165,233,0.1);">Küldés kamionra</th>' +
+        '</tr></thead>' +
+        '<tbody id="aru-tbody"></tbody>' +
+        '</table>' +
+        '</div>' +
+        '</div>' +
 
         '</div>' +
 
@@ -101,35 +105,60 @@ export function renderRakodas(container, windowManager) {
 
         // 1. Kamionszám kattintás menü (Szerkesztés / Dokumentum megnyitás / Mégsem)
         '<div id="modal-kamisz-menu" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.45); z-index:2000; align-items:center; justify-content:center;">' +
-            '<div style="background:#fff; padding:28px; border-radius:12px; width:340px; box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
-                '<h3 style="margin-bottom:6px; color:#1e293b;">Kamion: <span id="km-menu-tour"></span></h3>' +
-                '<p style="color:#64748b; font-size:13px; margin-bottom:20px;">Válasszon műveletet:</p>' +
-                '<div style="display:flex; flex-direction:column; gap:10px;">' +
-                    '<button class="primary-btn" id="btn-km-szerkesztes">✏️ Szerkesztés</button>' +
-                    '<button class="primary-btn" id="btn-km-doc" style="background:#0ea5e9; border-color:#0284c7;">📄 Dokumentum megnyitás</button>' +
-                    '<button class="primary-btn" id="btn-km-rename" style="background:#f59e0b; border-color:#d97706;">Kamionszám változtatás</button>' +
-                    '<button class="secondary-btn btn-close-modal" data-modal="modal-kamisz-menu">Mégsem</button>' +
-                '</div>' +
-            '</div>' +
+        '<div style="background:#fff; padding:28px; border-radius:12px; width:340px; box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
+        '<h3 style="margin-bottom:6px; color:#1e293b;">Kamion: <span id="km-menu-tour"></span></h3>' +
+        '<p style="color:#64748b; font-size:13px; margin-bottom:20px;">Válasszon műveletet:</p>' +
+        '<div style="display:flex; flex-direction:column; gap:10px;">' +
+        '<button class="primary-btn" id="btn-km-szerkesztes">✏️ Szerkesztés</button>' +
+        '<button class="primary-btn" id="btn-km-doc" style="background:#0ea5e9; border-color:#0284c7;">📄 Dokumentum megnyitás</button>' +
+        '<button class="primary-btn" id="btn-km-rename" style="background:#f59e0b; border-color:#d97706;">Kamionszám változtatás</button>' +
+        '<button class="secondary-btn btn-close-modal" data-modal="modal-kamisz-menu">Mégsem</button>' +
+        '</div>' +
+        '</div>' +
         '</div>' +
 
         ''; // A régi modal-km-szerk és modal-uj-kamion kódok eltávolítva, mert a WindowManager kezeli őket
 
     container.appendChild(view);
 
+    // A modalt a body-ba szervezzük ki, hogy a CSS transform ne rontsa el a position:fixed pozícionálást
+    // Ha már létezik egy korábbi verzió (mert a user többször nyitotta meg a modult), töröljük
+    var oldModal = document.getElementById('modal-kamisz-menu');
+    if (oldModal) {
+        oldModal.remove();
+    }
+    var modalEl = document.createElement('div');
+    modalEl.id = 'modal-kamisz-menu';
+    modalEl.innerHTML =
+        '<div style="background:#fff; padding:28px; border-radius:12px; width:340px; box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
+        '<h3 style="margin-bottom:6px; color:#1e293b;">Kamion: <span id="km-menu-tour"></span></h3>' +
+        '<p style="color:#64748b; font-size:13px; margin-bottom:20px;">Válasszon műveletet:</p>' +
+        '<div style="display:flex; flex-direction:column; gap:10px;">' +
+        '<button class="primary-btn" id="btn-km-szerkesztes">✏️ Szerkesztés</button>' +
+        '<button class="primary-btn" id="btn-km-doc" style="background:#0ea5e9; border-color:#0284c7;">📄 Dokumentum megnyitás</button>' +
+        '<button class="primary-btn" id="btn-km-rename" style="background:#f59e0b; border-color:#d97706;">Kamionszám változtatás</button>' +
+        '<button class="secondary-btn" id="btn-km-cancel">Mégsem</button>' +
+        '</div>' +
+        '</div>';
+    document.body.appendChild(modalEl);
+    
+    modalEl.style.cssText = 'display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.45); z-index:9999; align-items:center; justify-content:center;';
+
     // ============= ÉLŐ ADATOK (Kamionok) ÉS MOCK ADATOK (Áru) =============
     var rakData = [];
 
 
     var aruData = [
-        { id: 1, raklap: 2,  termek: 'NECTARIN YELLOW 10*500GR', partner: 'KOPSALAT',  vevo: 'ALDI',           sent: false },
-        { id: 2, raklap: 10, termek: 'CELERY 6*500GR IFCO',      partner: 'HISPA',     vevo: 'ALDI',           sent: false },
-        { id: 3, raklap: 4,  termek: 'APRICOT LOOSE 5KG',        partner: 'FRUBALMED', vevo: 'Zsolti / Barna', sent: false }
+        { id: 1, raklap: 2, termek: 'NECTARIN YELLOW 10*500GR', partner: 'KOPSALAT', vevo: 'ALDI', sent: false },
+        { id: 2, raklap: 10, termek: 'CELERY 6*500GR IFCO', partner: 'HISPA', vevo: 'ALDI', sent: false },
+        { id: 3, raklap: 4, termek: 'APRICOT LOOSE 5KG', partner: 'FRUBALMED', vevo: 'Zsolti / Barna', sent: false }
     ];
 
     // ============= ELEMEK =============
     var inputKamisz = view.querySelector('#rak-kamisz');
     var inputFuvarozo = view.querySelector('#rak-fuvarozo');
+    var inputDateFrom = view.querySelector('#rak-date-from');
+    var inputDateTo = view.querySelector('#rak-date-to');
     var chkOpenOnly = view.querySelector('#rak-open-only');
     var btnClear = view.querySelector('#btn-clear-rak');
     var tbody = view.querySelector('#rak-tbody');
@@ -139,19 +168,23 @@ export function renderRakodas(container, windowManager) {
 
     // ============= SZŰRŐ + BAL TÁBLA =============
     function filter() {
-        var t = inputKamisz.value.toUpperCase();
+        var t = inputKamisz.value.toUpperCase().replace(/\s+/g, '');
         var f = inputFuvarozo.value;
+        var dFrom = inputDateFrom.value;
+        var dTo = inputDateTo.value;
         var open = chkOpenOnly.checked;
-        var filtered = rakData.filter(function(r) {
-            return r.tour.toUpperCase().indexOf(t) !== -1 &&
+        var filtered = rakData.filter(function (r) {
+            return (r.tour || '').toUpperCase().replace(/\s+/g, '').indexOf(t) !== -1 &&
                 (f === '' || r.transporter === f) &&
+                (dFrom === '' || r.date >= dFrom) &&
+                (dTo === '' || r.date <= dTo) &&
                 (!open || !r.loaded);
         });
         renderLeft(filtered);
     }
 
     function renderLeft(data) {
-        tbody.innerHTML = data.map(function(r) {
+        tbody.innerHTML = data.map(function (r) {
             return '<tr>' +
                 '<td><span class="rak-open-link" data-id="' + r.id + '" style="cursor:pointer; color:#2563eb; text-decoration:underline; font-weight:600;" title="Kattints a műveletekhez">' + r.tour + '</span></td>' +
                 '<td>' + r.date + '</td>' +
@@ -161,11 +194,11 @@ export function renderRakodas(container, windowManager) {
         }).join('');
 
         // Checkbox trigger
-        tbody.querySelectorAll('.rak-loaded-chk').forEach(function(chk) {
-            chk.addEventListener('change', async function(e) {
+        tbody.querySelectorAll('.rak-loaded-chk').forEach(function (chk) {
+            chk.addEventListener('change', async function (e) {
                 var id = parseInt(e.target.getAttribute('data-id'));
                 var isLoaded = e.target.checked;
-                var row = rakData.find(function(x) { return x.id === id; });
+                var row = rakData.find(function (x) { return x.id === id; });
                 if (row) {
                     row.loaded = isLoaded;
                     try {
@@ -191,15 +224,15 @@ export function renderRakodas(container, windowManager) {
             el.addEventListener('click', function(e) {
                 var id = parseInt(e.currentTarget.getAttribute('data-id'));
                 currentKamionForMenu = rakData.find(function(x) { return x.id === id; });
-                view.querySelector('#km-menu-tour').textContent = currentKamionForMenu.tour;
-                showModal('modal-kamisz-menu');
+                document.getElementById('km-menu-tour').textContent = currentKamionForMenu ? currentKamionForMenu.tour : '';
+                showModal();
             });
         });
     }
 
     // ============= JOBB TÁBLA: ÁRU IGÉNY =============
     function renderRight() {
-        aruTbody.innerHTML = aruData.map(function(r) {
+        aruTbody.innerHTML = aruData.map(function (r) {
             var btnStyle = r.sent
                 ? 'background:#22c55e; color:#fff; border:1px solid #16a34a;'
                 : 'background:#ef4444; color:#fff; border:1px solid #dc2626;';
@@ -209,16 +242,16 @@ export function renderRakodas(container, windowManager) {
                 '<td>' + r.partner + '</td>' +
                 '<td>' + r.vevo + '</td>' +
                 '<td style="text-align:center;">' +
-                    '<button class="btn-send-aru" data-id="' + r.id + '" title="Küldés kamionra" ' +
-                        'style="' + btnStyle + ' border-radius:6px; padding:5px 12px; font-size:16px; cursor:pointer; transition:all 0.2s;">➡</button>' +
+                '<button class="btn-send-aru" data-id="' + r.id + '" title="Küldés kamionra" ' +
+                'style="' + btnStyle + ' border-radius:6px; padding:5px 12px; font-size:16px; cursor:pointer; transition:all 0.2s;">➡</button>' +
                 '</td>' +
                 '</tr>';
         }).join('');
 
-        aruTbody.querySelectorAll('.btn-send-aru').forEach(function(btn) {
-            btn.addEventListener('click', function(e) {
+        aruTbody.querySelectorAll('.btn-send-aru').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
                 var id = parseInt(e.currentTarget.getAttribute('data-id'));
-                var row = aruData.find(function(x) { return x.id === id; });
+                var row = aruData.find(function (x) { return x.id === id; });
                 if (!row) return;
                 row.sent = !row.sent;
                 var btn = e.currentTarget;
@@ -232,31 +265,24 @@ export function renderRakodas(container, windowManager) {
     }
 
     // ============= MODAL HELPERS =============
-    function showModal(id) {
-        var m = view.querySelector('#' + id);
-        if (m) m.style.display = 'flex';
+    function showModal() {
+        modalEl.style.display = 'flex';
     }
-    function hideModal(id) {
-        var m = view.querySelector('#' + id);
-        if (m) m.style.display = 'none';
+    function hideModal() {
+        modalEl.style.display = 'none';
     }
 
-    view.querySelectorAll('.btn-close-modal').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            hideModal(e.currentTarget.getAttribute('data-modal'));
-        });
-    });
+    document.getElementById('btn-km-cancel').addEventListener('click', function() { hideModal(); });
+    modalEl.addEventListener('click', function(e) { if (e.target === modalEl) hideModal(); });
 
-    // ============= KAMIONSZÁM MENÜ GOMBOK =============
-    view.querySelector('#btn-km-szerkesztes').addEventListener('click', function() {
-        hideModal('modal-kamisz-menu');
+    document.getElementById('btn-km-szerkesztes').addEventListener('click', function() {
+        hideModal();
         if (!currentKamionForMenu) return;
-        // Új ablak megnyitása a szerkesztésre
-        openKamionSzerkesztesWindow(windowManager, currentKamionForMenu.tour);
+        openKamionSzerkesztesWindow(windowManager, currentKamionForMenu.id);
     });
 
-    view.querySelector('#btn-km-doc').addEventListener('click', function() {
-        hideModal('modal-kamisz-menu');
+    document.getElementById('btn-km-doc').addEventListener('click', function() {
+        hideModal();
         if (!currentKamionForMenu) return;
         alert('Dokumentum megnyitás (backend):\n' + currentKamionForMenu.path);
     });
@@ -291,12 +317,6 @@ export function renderRakodas(container, windowManager) {
         return { tip: '', num: 0 };
     }
 
-    function formatKamisz(tip, num) {
-        if (tip === 'GHU') return 'GHU ' + num;
-        if (tip === 'H') return 'H' + String(num).padStart(3, '0');
-        return tip + String(num).padStart(3, '0');
-    }
-
     function getNextAutoNumberForTip(tip) {
         if (!tip) return '';
         const numbers = [];
@@ -313,7 +333,7 @@ export function renderRakodas(container, windowManager) {
     function openRenameModal(tour) {
         const currentParsed = parseKamionNumber(tour);
         const currentTip = currentParsed.tip;
-        
+
         const nextAuto = getNextAutoNumberForTip(currentTip);
 
         const modalContent = `
@@ -379,7 +399,7 @@ export function renderRakodas(container, windowManager) {
             }
 
             // Helyi egyediség ellenőrzése
-            const duplicate = rakData.find(row => 
+            const duplicate = rakData.find(row =>
                 row.tour.toLowerCase().replace(/\s+/g, '') === finalVal.toLowerCase().replace(/\s+/g, '') &&
                 row.tour !== tour
             );
@@ -410,7 +430,7 @@ export function renderRakodas(container, windowManager) {
                     const data = await res.json();
                     alert('Kamionszám frissítve (lokálisan): ' + finalVal + '\n(API válasz: ' + (data.error || 'Nincs ilyen rekord az adatbázisban') + ')');
                 }
-                
+
                 modal.close();
                 filter();
             } catch (err) {
@@ -427,47 +447,73 @@ export function renderRakodas(container, windowManager) {
         });
     }
 
-    view.querySelector('#btn-km-rename').addEventListener('click', function() {
-        hideModal('modal-kamisz-menu');
+    document.getElementById('btn-km-rename').addEventListener('click', function() {
+        hideModal();
         if (!currentKamionForMenu) return;
         openRenameModal(currentKamionForMenu.tour);
     });
 
     // ============= ÚJ KAMION GOMB =============
-    view.querySelector('#btn-new-truck').addEventListener('click', function() {
+    view.querySelector('#btn-new-truck').addEventListener('click', function () {
         openKamionSzerkesztesWindow(windowManager, null);
     });
 
     // ============= SZŰRŐ EVENTS =============
-    inputKamisz.addEventListener('input', function(e) {
+    var searchTimer = null;
+    inputKamisz.addEventListener('input', function (e) {
         if (e.target.value !== e.target.value.toUpperCase()) {
             var pos = e.target.selectionStart;
             e.target.value = e.target.value.toUpperCase();
-            try { e.target.setSelectionRange(pos, pos); } catch(err) {}
+            try { e.target.setSelectionRange(pos, pos); } catch (err) { }
         }
-        filter();
+        var term = inputKamisz.value.trim();
+        if (term.length >= 2) {
+            // Kereséskor az API-tól kérjük a teljes egyező listát (minden szezon)
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(function() { loadRakData(term); }, 350);
+        } else if (term.length === 0) {
+            loadRakData(null);
+        } else {
+            filter();
+        }
     });
     inputFuvarozo.addEventListener('change', filter);
+    inputDateFrom.addEventListener('change', filter);
+    inputDateTo.addEventListener('change', filter);
     chkOpenOnly.addEventListener('change', filter);
-    btnClear.addEventListener('click', function() {
+    btnClear.addEventListener('click', function () {
         inputKamisz.value = '';
         inputFuvarozo.value = '';
+        inputDateFrom.value = '';
+        inputDateTo.value = '';
         chkOpenOnly.checked = false;
-        filter();
+        loadRakData(null);
     });
 
     // ============= API BETÖLTÉS =============
-    async function loadRakData() {
+    // searchTerm: null = 50 legfrissebb tételt tartalmazó fuvar
+    //             string = összes egyező (minden szezon)
+    async function loadRakData(searchTerm) {
         try {
             tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:15px; color:#666;">Betöltés...</td></tr>';
-            const res = await fetch('/api/v1/shipments?limit=10');
+            var url = searchTerm
+                ? '/api/v1/shipments?search=' + encodeURIComponent(searchTerm)
+                : '/api/v1/shipments?limit=50&has_lines=true';
+            const res = await fetch(url);
             if (res.ok) {
                 const data = await res.json();
-                rakData = data.map(function(s) {
+                rakData = data.map(function (s) {
                     let d = s.loading_date;
                     if (d) {
-                        // date format yyyy-mm-dd
-                        d = new Date(d).toISOString().split('T')[0];
+                        const dateObj = new Date(d);
+                        if (!isNaN(dateObj)) {
+                            const year = dateObj.getFullYear();
+                            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                            const day = String(dateObj.getDate()).padStart(2, '0');
+                            d = year + '-' + month + '-' + day;
+                        } else {
+                            d = '-';
+                        }
                     } else {
                         d = '-';
                     }
@@ -478,7 +524,7 @@ export function renderRakodas(container, windowManager) {
                         date: d,
                         transporter: s.transporter_name || '-',
                         loaded: s.is_loaded ? true : false,
-                        path: '' // Path can be constructed if needed
+                        path: ''
                     };
                 });
                 filter();
@@ -491,7 +537,23 @@ export function renderRakodas(container, windowManager) {
         }
     }
 
+    async function loadTransporters() {
+        try {
+            const res = await fetch('/api/v1/transporters');
+            if (res.ok) {
+                const transporters = await res.json();
+                inputFuvarozo.innerHTML = '<option value="">-- Összes --</option>' +
+                    transporters.map(function(t) {
+                        return '<option value="' + t.name + '">' + t.name + '</option>';
+                    }).join('');
+            }
+        } catch (err) {
+            console.error('Hiba a fuvarozók betöltésekor:', err);
+        }
+    }
+
     // Inicializálás
-    loadRakData();
+    loadTransporters();
+    loadRakData(null);
     renderRight();
 }

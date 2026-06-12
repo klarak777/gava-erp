@@ -6,8 +6,7 @@ export function renderTransportistas(container) {
     container.style.flexDirection = 'column';
     container.style.height = '100%';
 
-    // Egyedi fuvarozók a legördülőhöz
-    const transporterOptions = ['BILEK', 'BOGNÁR', 'HANKA', 'KÁDÁR', 'KERMOR', 'KÓNYA', 'KUSEK', 'MK FRESH', 'RONI', 'STI'];
+
 
     // ============================================================
     // 1. KONTÉNER: Fejléc + Szűrők (FIX, nem gördül, flex-shrink:0)
@@ -53,15 +52,14 @@ export function renderTransportistas(container) {
                     <select id="filter-szezon" class="access-control-input" style="width:100%;box-sizing:border-box;">
                         <option value="">-- Összes --</option>
                         <option value="23-24">Season 23-24</option>
-                        <option value="24-25" selected>Season 24-25</option>
-                        <option value="25-26">Season 25-26</option>
+                        <option value="24-25">Season 24-25</option>
+                        <option value="25-26" selected>Season 25-26</option>
                     </select>
                 </div>
                 <div>
                     <label class="access-control-label" for="filter-fuvarozo" style="display:block;font-size:11px;margin-bottom:4px;">Fuvarozó</label>
                     <select id="filter-fuvarozo" class="access-control-input" style="width:100%;box-sizing:border-box;">
                         <option value="">-- Összes --</option>
-                        ${transporterOptions.map(t => `<option value="${t}">${t}</option>`).join('')}
                     </select>
                 </div>
                 <div>
@@ -70,8 +68,8 @@ export function renderTransportistas(container) {
                         <option value="">-- Összes --</option>
                         <option value="2023">2023</option>
                         <option value="2024">2024</option>
-                        <option value="2025" selected>2025</option>
-                        <option value="2026">2026</option>
+                        <option value="2025">2025</option>
+                        <option value="2026" selected>2026</option>
                     </select>
                 </div>
             </div>
@@ -216,8 +214,8 @@ export function renderTransportistas(container) {
         inpKamion.value   = '';
         inpHely.value     = '';
         selFuvarozo.value = '';
-        selSzezon.value   = '24-25';
-        selEv.value       = '2025';
+        selSzezon.value   = '';
+        selEv.value       = '';
         chkBevVar.checked = false;
         chkHiany.checked  = false;
         filterData();
@@ -229,7 +227,7 @@ export function renderTransportistas(container) {
     // API Lekérés
     async function loadRealData() {
         try {
-            const response = await fetch('/api/v1/shipments');
+            const response = await fetch('/api/v1/shipments?limit=10000');
             if (response.ok) {
                 const apiData = await response.json();
                 // Map the api properties to what the render function expects
@@ -257,5 +255,21 @@ export function renderTransportistas(container) {
         }
     }
 
+    async function loadTransporters() {
+        try {
+            const res = await fetch('/api/v1/transporters');
+            if (res.ok) {
+                const transporters = await res.json();
+                selFuvarozo.innerHTML = '<option value="">-- Összes --</option>' +
+                    transporters.map(function(t) {
+                        return '<option value="' + t.name + '">' + t.name + '</option>';
+                    }).join('');
+            }
+        } catch (err) {
+            console.error('Hiba a fuvarozók betöltésekor:', err);
+        }
+    }
+
+    loadTransporters();
     loadRealData();
 }

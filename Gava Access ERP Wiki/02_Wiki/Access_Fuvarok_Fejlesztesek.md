@@ -77,3 +77,32 @@ Az alábbi változtatások kerültek bevezetésre az ERP felhasználói felület
 - Teszt adatok bekerültek: PEACH 7KG / VERMION FRESH / GHU ALDI, NECTARIN sorok, SPAR HU ÜLLŐ/BICSKE (FRUBALMED, WEDNESDAY NIGHT), 2 NECTARIN YELLOW LOOSE (KOPFSALAT)
 
 > **Deploy:** `erp-ui-beta` Netlify projekt – Deploy ID: `6a1cdd834233b25b54845cfb`
+
+---
+
+## Módosítási napló – 2026-06-12
+
+### UI és Adatbázis javítások (Rakodás, Transportistas, Ékezetek)
+
+#### 1. Dátumszűrő szélesítése (Rakodás)
+- **Fájl:** [rakodas.js](file:///c:/Users/klara/Documents/Nepelemes%20%C3%BCgyek/Gav%C3%A1/ERP%20Access/Access%20UI/src/modules/rakodas.js)
+- A Rakodás almenüben nemrégiben bevezetett tól-ig dátumszűrő mezők (`rak-date-from` és `rak-date-to`) szélességét `130px`-ről `150px`-re növeltük.
+- Indoklás: A korábbi méret miatt egyes böngészőkben a dátumformátum utolsó karaktere levágásra került.
+
+#### 2. Dinamikus Fuvarozó szűrés
+- **Fájlok:** [rakodas.js](file:///c:/Users/klara/Documents/Nepelemes%20%C3%BCgyek/Gav%C3%A1/ERP%20Access/Access%20UI/src/modules/rakodas.js), [transportistas.js](file:///c:/Users/klara/Documents/Nepelemes%20%C3%BCgyek/Gav%C3%A1/ERP%20Access/Access%20UI/src/modules/transportistas.js)
+- Mindkét modulban megszüntettük a statikusan beégetett fuvarozó szűrőket (korábban "Waberers", "Gartner" illetve a 10 darabos keménykódolt lista).
+- Új funkció: Bevezettük a `loadTransporters()` funkciót, amely a backend `/api/v1/transporters` API végpontjáról dinamikusan tölti le a teljes, aktív fuvarozói listát és jeleníti meg a dropdown-okban.
+
+#### 3. Hibás fuvarozó adatok törlése és importőr normalizáció
+- **Fájlok:** [import_csv.js](file:///c:/Users/klara/Documents/Nepelemes%20%C3%BCgyek/Gav%C3%A1/ERP%20Access/server/import_csv.js), [import_new_lines.js](file:///c:/Users/klara/Documents/Nepelemes%20%C3%BCgyek/Gav%C3%A1/ERP%20Access/server/import_new_lines.js), [import_updates.js](file:///c:/Users/klara/Documents/Nepelemes%20%C3%BCgyek/Gav%C3%A1/ERP%20Access/server/import_updates.js)
+- Az adatbázisból végleg töröltük a hibás `"2"` elnevezésű fuvarozót, a hozzá tartozó shipment rekordnál a fuvarozó kapcsolatot `NULL`-ra állítottuk.
+- A `"2 TWINS TRANS"` fuvarozót átneveztük `"TWINS TRANS"`-ra (kódja: `"TWI"`).
+- Az import scriptek `getTransporterId` függvényét kiegészítettük: ha a CSV-ben szereplő fuvarozó pontosan `"2"`, azt figyelmen kívül hagyja; ha pedig `"2 "` prefixszel kezdődik (pl. `"2 TWINS TRANS"`), a prefixet automatikusan levágja, megelőzve a későbbi duplikációt.
+
+#### 4. Kérdőjeles karakterek javítása az adatbázisban és az importőrben
+- **Fájlok:** [import_csv.js](file:///c:/Users/klara/Documents/Nepelemes%20%C3%BCgyek/Gav%C3%A1/ERP%20Access/server/import_csv.js), [import_new_lines.js](file:///c:/Users/klara/Documents/Nepelemes%20%C3%BCgyek/Gav%C3%A1/ERP%20Access/server/import_new_lines.js), [import_updates.js](file:///c:/Users/klara/Documents/Nepelemes%20%C3%BCgyek/Gav%C3%A1/ERP%20Access/server/import_updates.js)
+- **Hiba oka:** A hibás CSV export miatt a hosszú magyar ékezetek (**ő**, **Ő**, **ű**, **Ű**) kérdőjelekké (**?**) alakultak a forrásfájlokban.
+- **Javítás:** Futtattunk egy adatbázis-tisztító scriptet, amely több mint 1000 rekordban helyreállította a sérült szövegeket (pl. `FELS?PAKONY` $\rightarrow$ `FELSŐPAKONY`, `SPAR HU ÜLL?` $\rightarrow$ `SPAR HU ÜLLŐ`, `F?SZEREK` $\rightarrow$ `FŰSZEREK`, `M?hely` $\rightarrow$ `Műhely`).
+- **Megelőzés:** Az összes importőr scriptben a `findCol` függvényt kiegészítettük a `fixHungarianAccents` metódussal, amely beolvasás közben automatikusan kijavítja ezeket a kérdőjeles mintákat a magyar helyesírásnak megfelelően.
+
