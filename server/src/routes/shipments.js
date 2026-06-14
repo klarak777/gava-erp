@@ -165,6 +165,22 @@ router.patch('/:id/loaded', async (req, res) => {
   }
 });
 
+// GET /api/v1/shipments/unloaded
+// Csak azok a kamionok, ahol is_loaded = false (ezek jelennek meg az áthelyezés/küldés felugróban)
+router.get('/unloaded', async (req, res) => {
+  try {
+    const shipments = await db('shipments')
+      .select('shipments.id', 'shipments.order_number', 'shipments.loading_date', 'transporters.name as transporter_name')
+      .leftJoin('transporters', 'shipments.transporter_id', 'transporters.id')
+      .where('shipments.is_loaded', false)
+      .orderBy('shipments.order_number', 'asc');
+    res.json(shipments);
+  } catch (err) {
+    console.error('Hiba az unloaded shipments lekérdezésekor:', err);
+    res.status(500).json({ error: 'Belső szerverhiba' });
+  }
+});
+
 // GET /api/v1/shipments[?limit=N&season_code=XX-XX&search=xxx&has_lines=true]
 router.get('/', async (req, res) => {
   try {

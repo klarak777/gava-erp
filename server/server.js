@@ -20,6 +20,7 @@ const shipmentLinesRouter = require('./src/routes/shipment_lines');
 const transportersRouter = require('./src/routes/transporters');
 const productsRouter = require('./src/routes/products');
 const partnersRouter = require('./src/routes/partners');
+const cargoDemandsRouter = require('./src/routes/cargo_demands');
 
 // Egyszerű teszt végpont
 app.get('/api/v1/status', (req, res) => {
@@ -37,6 +38,7 @@ app.use('/api/v1/shipment-lines', shipmentLinesRouter);
 app.use('/api/v1/transporters', transportersRouter);
 app.use('/api/v1/products', productsRouter);
 app.use('/api/v1/partners', partnersRouter);
+app.use('/api/v1/cargo-demands', cargoDemandsRouter);
 
 // Szerver indítása
 app.listen(PORT, () => {

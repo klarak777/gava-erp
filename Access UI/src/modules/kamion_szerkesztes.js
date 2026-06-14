@@ -201,7 +201,45 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                     </div>
                     <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
                         <button class="secondary-btn" id="btn-line-cancel">Mégse</button>
+                        <button class="primary-btn" id="btn-transfer-line"
+                            style="background:#f59e0b; border-color:#d97706; display:none;"
+                            title="Tétel áthelyezése másik fuvarra">🔀 Tétel áthelyezése</button>
                         <button class="primary-btn" id="btn-line-save">Mentés</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TÉTEL ÁTHELYEZÉSE POPUP (az overlay fölé) -->
+            <div id="transfer-overlay" style="display:none; position:absolute; inset:0; background:rgba(0,0,0,0.6); z-index:600; align-items:center; justify-content:center;">
+                <div style="background:#fff; border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,0.3); padding:24px; width:460px; max-width:95%; position:relative;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+                        <h3 style="margin:0; font-size:14px; font-weight:700; color:#1e293b;">🔀 Tétel áthelyezése másik fuvarra</h3>
+                        <button id="btn-transfer-close" style="background:none; border:none; font-size:20px; cursor:pointer; color:#64748b; padding:2px 6px;">×</button>
+                    </div>
+                    <div id="transfer-source-info" style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:6px; padding:10px 12px; margin-bottom:14px; font-size:12px; color:#0369a1;"></div>
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        <div style="display:flex; flex-direction:column; gap:3px;">
+                            <label style="font-size:11px; font-weight:600; color:#334155;">Célkamion (csak nem-rakodott kamionok):</label>
+                            <select id="transfer-target-shipment" class="access-control-input" style="font-size:12px; height:32px;">
+                                <option value="">-- Betöltés... --</option>
+                            </select>
+                        </div>
+                        <div style="display:flex; gap:10px;">
+                            <div style="display:flex; flex-direction:column; gap:3px; flex:1;">
+                                <label style="font-size:11px; font-weight:600; color:#334155;">N° Euro Palets áthelyezve:</label>
+                                <input type="number" id="transfer-euro" class="access-control-input" style="font-size:12px; height:32px;" value="0" min="0">
+                                <small id="transfer-euro-max" style="color:#64748b; font-size:10px;">Max: 0</small>
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:3px; flex:1;">
+                                <label style="font-size:11px; font-weight:600; color:#334155;">N° Normal Palets áthelyezve:</label>
+                                <input type="number" id="transfer-normal" class="access-control-input" style="font-size:12px; height:32px;" value="0" min="0">
+                                <small id="transfer-normal-max" style="color:#64748b; font-size:10px;">Max: 0</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:18px;">
+                        <button class="secondary-btn" id="btn-transfer-cancel">Mégse</button>
+                        <button class="primary-btn" id="btn-transfer-confirm" style="background:#f59e0b; border-color:#d97706;">🔀 Áthelyezés</button>
                     </div>
                 </div>
             </div>
@@ -213,6 +251,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
         let transporters = [];
         let currentShipmentId = null;
         let editingLineIndex = null; // null = new, szám = meglévő sor indexe
+        let originalLinesSnapshot = {}; // { lineIndex: { euro_palets, normal_palets } } – a betöltéskori értékek
+        let editingLineDbId = null;     // az éppen szerkesztett sor adatbázis-ID-ja (áthelyezéshez)
 
         // ===== ELEMEK =====
         const kmTip          = container.querySelector('#km-tip');
@@ -343,7 +383,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 if (s.arrival_date)  try { container.querySelector('#km-arr-date').value  = extractLocalDate(s.arrival_date);  } catch(e){}
 
                 if (data.lines && data.lines.length > 0) {
-                    lines = data.lines.map(l => ({
+                    lines = data.lines.map((l, idx) => ({
+                        _dbId: l.id,  // adatbázis ID az áthelyezéshez
                         product_id:            l.product_id,
                         productName:           l.productName || '',
                         albaran_number:        l.albaran_number || '',
@@ -361,6 +402,17 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                         transport_bcn_per_plt: l.transport_bcn_per_plt || 0,
                         truck_number_per:      l.truck_number_per || 0
                     }));
+                    // Snapshot az eredeti értékekről (raklap-csökkentés figyelőhöz)
+                    originalLinesSnapshot = {};
+                    lines.forEach((l, idx) => {
+                        if (!l._empty) {
+                            originalLinesSnapshot[idx] = {
+                                euro_palets: l.euro_palets,
+                                normal_palets: l.normal_palets,
+                                dbId: l._dbId
+                            };
+                        }
+                    });
                 }
                 normalizeLines(); // ① feltölt 25 sorra
                 try { renderTable(); } catch (e) { console.error('Táblázat renderelési hiba:', e); }
@@ -594,6 +646,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
             const l = lines[lineIndex];
             const isEmpty = l && l._empty;
 
+            const transferBtn = container.querySelector('#btn-transfer-line');
             if (isEmpty || lineIndex === null) {
                 overlayTitle.textContent = '+ Termék hozzáadása';
                 container.querySelector('#le-euro').value = '0';
@@ -607,6 +660,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                     container.querySelector(id).value = '0';
                 });
                 container.querySelector('#le-truck-num').value = '0';
+                transferBtn.style.display = 'none'; // Új sornál nem kell áthelyezés gomb
+                editingLineDbId = null;
             } else {
                 overlayTitle.textContent = `✏️ Termék szerkesztése (${lineIndex + 1}. sor)`;
                 container.querySelector('#le-euro').value        = l.euro_palets;
@@ -625,6 +680,13 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 container.querySelector('#le-transport-bcn').value = l.transport_bcn_per_plt;
                 container.querySelector('#le-custorder').value   = l.customer_order_no || '';
                 container.querySelector('#le-truck-num').value   = parseInt(l.truck_number_per) || 0;
+                // Meglévő sorhoz Áthelyezés gomb – csak akkor, ha az adatbázisban már rögzített sor
+                editingLineDbId = l._dbId || null;
+                if (editingLineDbId && !isNew) {
+                    transferBtn.style.display = 'inline-flex';
+                } else {
+                    transferBtn.style.display = 'none';
+                }
             }
             overlay.style.display = 'flex';
             leProduct.focus();
@@ -679,6 +741,93 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
 
             closeLineOverlay();
             renderTable();
+        });
+
+        // ===== TÉTEL ÁTHELYEZÉSE GOMB =====
+        const transferOverlay = container.querySelector('#transfer-overlay');
+        const transferTargetSelect = container.querySelector('#transfer-target-shipment');
+        const transferEuroInput = container.querySelector('#transfer-euro');
+        const transferNormalInput = container.querySelector('#transfer-normal');
+        const transferEuroMax = container.querySelector('#transfer-euro-max');
+        const transferNormalMax = container.querySelector('#transfer-normal-max');
+        const transferSourceInfo = container.querySelector('#transfer-source-info');
+
+        async function openTransferPopup() {
+            if (!editingLineDbId) { alert('Ez a sor még nem lett elmentve az adatbázisba. Előbb mentse a fuvar adatait.'); return; }
+            const l = editingLineIndex !== null ? lines[editingLineIndex] : null;
+            if (!l) return;
+
+            // Adatok megjelenítése
+            transferSourceInfo.innerHTML = `<strong>Tétel:</strong> ${l.productName || '–'} | ` +
+                `<strong>Euro raklap:</strong> ${l.euro_palets} | <strong>Normál raklap:</strong> ${l.normal_palets}`;
+            transferEuroInput.value = 0;
+            transferEuroInput.max = l.euro_palets;
+            transferEuroMax.textContent = 'Max: ' + l.euro_palets;
+            transferNormalInput.value = 0;
+            transferNormalInput.max = l.normal_palets;
+            transferNormalMax.textContent = 'Max: ' + l.normal_palets;
+
+            // Nem-rakodott kamionok betöltése
+            transferTargetSelect.innerHTML = '<option value="">-- Betöltés... --</option>';
+            try {
+                const res = await fetch('/api/v1/shipments/unloaded');
+                const unloaded = await res.json();
+                if (unloaded.length === 0) {
+                    transferTargetSelect.innerHTML = '<option value="">– Nincs nem-rakodott kamion –</option>';
+                } else {
+                    transferTargetSelect.innerHTML = '<option value="">-- Válasszon kamionszámot --</option>' +
+                        unloaded.map(s => `<option value="${s.id}">${s.order_number}${s.transporter_name ? ' (' + s.transporter_name + ')' : ''}</option>`).join('');
+                }
+            } catch (err) {
+                transferTargetSelect.innerHTML = '<option value="">[Betöltési hiba]</option>';
+            }
+
+            transferOverlay.style.display = 'flex';
+        }
+
+        function closeTransferPopup() { transferOverlay.style.display = 'none'; }
+
+        container.querySelector('#btn-transfer-line').addEventListener('click', openTransferPopup);
+        container.querySelector('#btn-transfer-close').addEventListener('click', closeTransferPopup);
+        container.querySelector('#btn-transfer-cancel').addEventListener('click', closeTransferPopup);
+        transferOverlay.addEventListener('click', e => { if (e.target === transferOverlay) closeTransferPopup(); });
+
+        container.querySelector('#btn-transfer-confirm').addEventListener('click', async () => {
+            const targetId = transferTargetSelect.value;
+            if (!targetId) { alert('Kérlek válassz célkamionszámot!'); return; }
+            const moveEuro = parseInt(transferEuroInput.value) || 0;
+            const moveNormal = parseInt(transferNormalInput.value) || 0;
+            if (moveEuro === 0 && moveNormal === 0) { alert('Legalább 1 raklapot add meg az áthelyezéshez!'); return; }
+
+            const targetLabel = transferTargetSelect.options[transferTargetSelect.selectedIndex]?.text || targetId;
+            const l = editingLineIndex !== null ? lines[editingLineIndex] : null;
+            const confirmMsg = `Biztosan áthelyezi az alábbi tételt?\n\n` +
+                `Termék: ${l?.productName || '–'}\n` +
+                `Euro raklap: ${moveEuro} | Normál raklap: ${moveNormal}\n\n` +
+                `Célkamion: ${targetLabel}`;
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                const res = await fetch(`/api/v1/shipment-lines/${editingLineDbId}/transfer`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ target_shipment_id: parseInt(targetId), euro_palets: moveEuro, normal_palets: moveNormal })
+                });
+                const data = await res.json();
+                if (!res.ok) { alert('Hiba: ' + (data.error || 'Ismeretlen hiba')); return; }
+
+                // Helyi állapot frissítése
+                if (editingLineIndex !== null) {
+                    lines[editingLineIndex].euro_palets -= moveEuro;
+                    lines[editingLineIndex].normal_palets -= moveNormal;
+                }
+                closeTransferPopup();
+                closeLineOverlay();
+                renderTable();
+                alert(`✅ ${data.message}`);
+            } catch (err) {
+                alert('Hálózati hiba: ' + err.message);
+            }
         });
 
         // ===== MENTÉS GOMB =====
@@ -738,7 +887,54 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 }
 
                 if (res.ok) {
-                    alert(isNew ? 'Kamion sikeresen létrehozva: ' + orderNumber : 'Kamion sikeresen frissítve: ' + orderNumber);
+                    // ===== RAKLAP-CSÖKKENTÉS FIGYELŐ (csak szerkesztésnél, PUT esetén) =====
+                    if (!isNew && Object.keys(originalLinesSnapshot).length > 0) {
+                        const decreasedItems = [];
+                        realLines.forEach((line, i) => {
+                            // Az originalLinesSnapshot-ban az index alapján keressük
+                            const snap = originalLinesSnapshot[i];
+                            if (!snap) return; // Új sor, nem csökkentés
+                            const diffEuro   = (snap.euro_palets   || 0) - (parseInt(line.euro_palets)   || 0);
+                            const diffNormal = (snap.normal_palets || 0) - (parseInt(line.normal_palets) || 0);
+                            if (diffEuro > 0 || diffNormal > 0) {
+                                decreasedItems.push({
+                                    productName: line.productName || '(ismeretlen termék)',
+                                    customer: line.customer || '',
+                                    diffEuro: Math.max(0, diffEuro),
+                                    diffNormal: Math.max(0, diffNormal),
+                                    product_id: line.product_id || null
+                                });
+                            }
+                        });
+
+                        if (decreasedItems.length > 0) {
+                            // Automatikusan az Áru igénybe tesszük a különbséget
+                            const demandPromises = decreasedItems.map(item =>
+                                fetch('/api/v1/cargo-demands', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        product_id: item.product_id,
+                                        product_name: item.productName,
+                                        customer_name: item.customer || null,
+                                        euro_palets: item.diffEuro,
+                                        normal_palets: item.diffNormal,
+                                        notes: `Automatikus: raklap csökkentés ${orderNumber} fuvarról`
+                                    })
+                                }).catch(err => console.error('Áru igény mentési hiba:', err))
+                            );
+                            await Promise.all(demandPromises);
+
+                            const itemList = decreasedItems.map(it =>
+                                `• ${it.productName}: ${it.diffEuro > 0 ? it.diffEuro + ' Euró' : ''} ${it.diffNormal > 0 ? it.diffNormal + ' Normál' : ''} raklap`
+                            ).join('\n');
+                            alert(`✅ Kamion sikeresen frissítve: ${orderNumber}\n\n📦 Az alábbi tétel(ek) az Áru igény táblába kerültek (csökkentett mennyiség):\n${itemList}`);
+                        } else {
+                            alert('Kamion sikeresen frissítve: ' + orderNumber);
+                        }
+                    } else {
+                        alert(isNew ? 'Kamion sikeresen létrehozva: ' + orderNumber : 'Kamion sikeresen frissítve: ' + orderNumber);
+                    }
                     const windowId = container.closest('.mdi-window')?.id;
                     if (windowId) windowManager.close(windowId);
                     window.dispatchEvent(new CustomEvent('app:navigate', { detail: { moduleId: 'fuvarok' } }));
