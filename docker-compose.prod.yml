@@ -26,6 +26,9 @@ services:
       DATABASE_URL: postgresql://gava_admin:adminpassword123@gava_db:5432/gava_erp
       NODE_ENV: production
       PORT: 3000
+      RAKTAR_PATH: /mnt/raktar
+    volumes:
+      - /mnt/raktar:/mnt/raktar
     depends_on:
       - gava_db
 

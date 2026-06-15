@@ -625,17 +625,22 @@ router.post('/:id/generate-order', async (req, res) => {
     
     // 7. Render Document
     let templateName = isSpecialKermor ? 'Fuvarmegbízás Kermor.docx' : 'Fuvarmegbízás minta.docx';
-    let templatePath = path.join('\\\\192.168.1.5', 'raktar', 'MI Teszt', 'Minta dokuk', templateName);
+    
+    // Resolve base path for raktar: defaults to \\192.168.1.5\raktar on Windows development,
+    // or can be overridden via RAKTAR_PATH env variable (e.g. /mnt/raktar) in Docker/production.
+    const raktarPath = process.env.RAKTAR_PATH || path.join('\\\\192.168.1.5', 'raktar');
+    
+    let templatePath = path.join(raktarPath, 'MI Teszt', 'Minta dokuk', templateName);
     
     if (!fs.existsSync(templatePath)) {
-      templatePath = path.join('\\\\192.168.1.5', 'raktar', 'MI Teszt', 'Minta dokuk', 'Fuvarmegbízás minta.docx');
+      templatePath = path.join(raktarPath, 'MI Teszt', 'Minta dokuk', 'Fuvarmegbízás minta.docx');
     }
 
     if (!fs.existsSync(templatePath)) {
       return res.status(500).json({ error: `Sablon nem található: ${templatePath}` });
     }
 
-    const targetDir = path.join('\\\\192.168.1.5', 'raktar', 'MI Teszt', 'Fuvarok');
+    const targetDir = path.join(raktarPath, 'MI Teszt', 'Fuvarok');
     const safeOrderNum = (shipment.order_number || '').replace(/\//g, '-').replace(/[\\:*?"<>|]/g, '');
     let outputFilename = `${shortTransporter} ${safeOrderNum}.docx`;
     
