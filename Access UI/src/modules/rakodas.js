@@ -123,7 +123,7 @@ export function renderRakodas(container, windowManager) {
         '<p style="color:#64748b; font-size:13px; margin-bottom:20px;">Válasszon műveletet:</p>' +
         '<div style="display:flex; flex-direction:column; gap:10px;">' +
         '<button class="primary-btn" id="btn-km-szerkesztes">✏️ Szerkesztés</button>' +
-        '<button class="primary-btn" id="btn-km-doc" style="background:#0ea5e9; border-color:#0284c7;">📄 Dokumentum megnyitás</button>' +
+        '<button class="primary-btn" id="btn-km-doc" style="background:#0ea5e9; border-color:#0284c7;">📄 Fuvarmegbízás létrehozása</button>' +
         '<button class="primary-btn" id="btn-km-rename" style="background:#f59e0b; border-color:#d97706;">Kamionszám változtatás</button>' +
         '<button class="secondary-btn" id="btn-km-cancel">Mégsem</button>' +
         '</div>' +
@@ -485,10 +485,30 @@ export function renderRakodas(container, windowManager) {
         openKamionSzerkesztesWindow(windowManager, currentKamionForMenu.id);
     });
 
-    document.getElementById('btn-km-doc').addEventListener('click', function() {
+    document.getElementById('btn-km-doc').addEventListener('click', async function() {
         hideModal();
         if (!currentKamionForMenu) return;
-        alert('Dokumentum megnyitás (backend):\n' + currentKamionForMenu.path);
+        
+        try {
+            const btn = document.getElementById('btn-km-doc');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = 'Készítés...';
+            
+            const res = await fetch(`/api/v1/shipments/${currentKamionForMenu.id}/generate-order`, {
+                method: 'POST'
+            });
+            const data = await res.json();
+            
+            if (res.ok) {
+                alert(`Dokumentum sikeresen létrehozva:\n${data.path}`);
+            } else {
+                alert(`Hiba a generálás során:\n${data.error}`);
+            }
+            btn.innerHTML = originalText;
+        } catch (err) {
+            console.error(err);
+            alert(`Hálózati hiba: ${err.message}`);
+        }
     });
 
     function parseKamionNumber(tour) {

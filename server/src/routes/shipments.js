@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db/db');
+const path = require('path');
+const fs = require('fs');
+const docxService = require('../services/docxService');
 
 // GET /api/v1/shipments/order-numbers?tip=GHU
 // Visszaadja a következő szabad kamionszámot az adott típushoz (összes szezon max értéke alapján)
@@ -480,6 +483,169 @@ router.patch('/rename', async (req, res) => {
     res.json({ message: 'Kamionszám sikeresen frissítve', oldOrderNumber, newOrderNumber });
   } catch (err) {
     console.error('Hiba a kamionszám módosításakor:', err);
+    res.status(500).json({ error: 'Belső szerverhiba: ' + err.message });
+  }
+});
+// POST /api/v1/shipments/:id/generate-order
+router.post('/:id/generate-order', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // 1. Fetch shipment
+    const shipment = await db('shipments')
+      .select('shipments.*', 'transporters.name as transporter_name')
+      .leftJoin('transporters', 'shipments.transporter_id', 'transporters.id')
+      .where('shipments.id', id)
+      .first();
+      
+    if (!shipment) return res.status(404).json({ error: 'Shipment not found' });
+    
+    // 2. Fetch lines
+    const lines = await db('shipment_lines')
+      .select('shipment_lines.*', 'products.name as product_name')
+      .leftJoin('products', 'shipment_lines.product_id', 'products.id')
+      .where('shipment_lines.shipment_id', id);
+      
+    // 3. Folder Map and Company Map logic
+    const folderMap = {
+      "BOGNÁR": "BOGNÁR TRANS", "BVT": "BVT TRANS", "DERBY": "DERBY TRANS",
+      "FER TRANS": "FER TRANS", "FRUCTUS": "FRUCTUS TRADE", "HANKA": "HANKA",
+      "KERMOR": "KERMOR", "KÓNYA": "KÓNYA TRANS", "LOGISTICHOME": "LOGISTICHOME",
+      "MEG-RAK-LAK": "MEG-RAK-LAK", "RENACRIS": "RENACRIS", "RONI": "RONI CARGO",
+      "STI": "STI", "THERMO": "THERMO FRUCHT", "SWISS": "SWISS TEMP", "GAVA POLSKA": "GAVA POLSKA"
+    };
+    
+    const companyMap = {
+      "BOGNÁR": "BOGNÁR TRANSPORT KFT", "BVT": "BVT TRANS KFT", "DERBY": "DERBY TRANS KFT",
+      "FER TRANS": "FER TRANS KFT", "FRUCTUS": "FRUCTUS TRADE", "HANKA": "HANKA SPED KFT",
+      "KERMOR": "KERMOR KFT", "KÓNYA": "KÓNYA TRANS KFT", "LOGISTICHOME": "LOGISTICHOME KFT",
+      "MEG-RAK-LAK": "MEG-RAK-LAK KFT", "RENACRIS": "RENACRIS TRANS", "RONI": "RONI CARGO KFT",
+      "STI": "STI HUNGARY KFT", "KUONI": "KUONI TRADE KFT", "FRIGOSPED": "FRIGOSPED SK",
+      "THERMO": "THERMO FRUCHT", "SWISS": "SWISS TEMP", "GAVA POLSKA": "GAVA POLSKA"
+    };
+
+    const shortTransporter = shipment.transporter_name || '';
+    const fullTransporter = companyMap[shortTransporter.toUpperCase()] || shortTransporter;
+    const folderTransporter = folderMap[shortTransporter.toUpperCase()] || shortTransporter;
+
+    // 4. Calculate destinations
+    const destDict = {};
+    for (const line of lines) {
+      let valB = Number(line.euro_palets) || 0;
+      let valC = Number(line.normal_palets) || 0;
+      let totalVal = valB + valC;
+      let raklapSzam = totalVal === 0 ? 1 : Math.ceil(totalVal);
+      
+      let products = (line.product_name || '').toUpperCase();
+      let customerOrder = (line.customer_order_no || '').toUpperCase();
+      
+      let destination = "GAVA HUNGRIA KFT, FELSOPAKONY";
+      if ((products.includes("SPAR SLO") || products.includes("SPAR CRO")) && customerOrder.includes("DG69")) {
+        destination = "LOGATEC";
+      } else if (products.includes("SPAR SLO") && customerOrder.includes("SPAR")) {
+        destination = "SPAR SLO";
+      } else if (products.includes("SPAR CRO") && customerOrder.includes("SPAR")) {
+        destination = "SPAR CRO";
+      }
+      
+      if (destination !== "GAVA HUNGRIA KFT, FELSOPAKONY") {
+        destDict[destination] = (destDict[destination] || 0) + raklapSzam;
+      } else {
+        destDict[destination] = 0; // Just to ensure it exists
+      }
+    }
+    
+    const priorityOrder = ["LOGATEC", "SPAR CRO", "SPAR SLO", "GAVA HUNGRIA KFT, FELSOPAKONY"];
+    let destListStr = '';
+    let cnt = 0;
+    for (const key of priorityOrder) {
+      if (destDict[key] !== undefined) {
+        cnt++;
+        destListStr += cnt + "., " + key;
+        if (destDict[key] > 0 && key !== "GAVA HUNGRIA KFT, FELSOPAKONY") {
+          destListStr += ", " + destDict[key] + " RAKLAP";
+        }
+        destListStr += "\n";
+      }
+    }
+    destListStr = destListStr.trim();
+    
+    // 5. Build template placeholders data
+    const formatDate = (d) => {
+      if (!d) return '';
+      const date = new Date(d);
+      return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}.`;
+    };
+    
+    let destinationText = shipment.loading_place || '';
+    let isSpecialKermor = false;
+    let loadingPlace = destinationText;
+    let loadingPlace1 = "";
+    let destination1 = "";
+    
+    if (shortTransporter.toUpperCase() === "KERMOR" && destinationText.toUpperCase() === "DUNAHARASZTI") {
+       const destText = lines.length > 0 ? (lines[0].destination || '').toUpperCase() : '';
+       if (destText.includes("ÁPORKA") || destText.includes("KECSKEMÉT")) {
+         isSpecialKermor = true;
+         if (destText.includes("ÁPORKA")) {
+           loadingPlace = "Sylvan Hungária Zrt., HU-2330 Dunaharaszti, Irinyi János u. 1";
+           destinationText = "Bio Fungi Kft., HU-2338 Áporka, Szabadság telep 30";
+         } else if (destText.includes("KECSKEMÉT")) {
+           loadingPlace = "Sylvan Hungária Zrt., HU-2330 Dunaharaszti, Irinyi János u. 1";
+           destinationText = "Pilze-Nagy Kft., HU-6000 Kecskemét, Talfája tanya 47/B";
+         }
+         loadingPlace1 = destinationText;
+         destination1 = loadingPlace;
+       }
+    }
+
+    const data = {
+      "Transport company": fullTransporter,
+      "Arrival date": formatDate(shipment.arrival_date),
+      "Transport price": (shipment.transport_price ? Number(shipment.transport_price).toLocaleString('hu-HU') : '0') + " €",
+      "Plate number": shipment.plate_number || '',
+      "Order number": shipment.order_number || '',
+      "Loading date": formatDate(shipment.loading_date),
+      "createDate": formatDate(new Date()),
+      "Temp": shipment.temperature || '',
+      "Loading Place": loadingPlace,
+      "Destination": destListStr,
+      "Loading Place1": loadingPlace1,
+      "Destination1": destination1
+    };
+    
+    // 6. Build lines data for table
+    const tableLines = lines.map(l => ({
+      euroPallets: l.euro_palets || '',
+      normalPallets: l.normal_palets || '',
+      products: l.product_name || '',
+      reference: l.albaran_number || l.comment || '', 
+      customerOrder: l.customer_order_no || ''
+    }));
+    
+    // 7. Render Document
+    let templateName = isSpecialKermor ? 'Fuvarmegbízás Kermor.docx' : 'Fuvarmegbízás minta.docx';
+    let templatePath = path.join('\\\\192.168.1.5', 'raktar', 'MI Teszt', 'Minta dokuk', templateName);
+    
+    if (!fs.existsSync(templatePath)) {
+      templatePath = path.join('\\\\192.168.1.5', 'raktar', 'MI Teszt', 'Minta dokuk', 'Fuvarmegbízás minta.docx');
+    }
+
+    if (!fs.existsSync(templatePath)) {
+      return res.status(500).json({ error: `Sablon nem található: ${templatePath}` });
+    }
+
+    const targetDir = path.join('\\\\192.168.1.5', 'raktar', 'MI Teszt', 'Fuvarok');
+    const safeOrderNum = (shipment.order_number || '').replace(/\//g, '-').replace(/[\\:*?"<>|]/g, '');
+    let outputFilename = `${shortTransporter} ${safeOrderNum}.docx`;
+    
+    const outputPath = path.join(targetDir, outputFilename);
+    
+    docxService.generateOrderDocx(templatePath, outputPath, data, tableLines);
+    
+    res.json({ message: 'Dokumentum sikeresen legenerálva', path: outputPath });
+  } catch (err) {
+    console.error('Hiba a dokumentum generálásakor:', err);
     res.status(500).json({ error: 'Belső szerverhiba: ' + err.message });
   }
 });
