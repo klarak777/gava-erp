@@ -599,10 +599,13 @@ router.post('/:id/generate-order', async (req, res) => {
        }
     }
 
+    const formattedPrice = shipment.transport_price ? Number(shipment.transport_price).toLocaleString('hu-HU') : '0';
+    
     const data = {
+      // English keys (Old template)
       "Transport company": fullTransporter,
       "Arrival date": formatDate(shipment.arrival_date),
-      "Transport price": (shipment.transport_price ? Number(shipment.transport_price).toLocaleString('hu-HU') : '0') + " €",
+      "Transport price": formattedPrice + " €",
       "Plate number": shipment.plate_number || '',
       "Order number": shipment.order_number || '',
       "Loading date": formatDate(shipment.loading_date),
@@ -611,7 +614,17 @@ router.post('/:id/generate-order', async (req, res) => {
       "Loading Place": loadingPlace,
       "Destination": destListStr,
       "Loading Place1": loadingPlace1,
-      "Destination1": destination1
+      "Destination1": destination1,
+      
+      // Hungarian keys (New template V2.0)
+      "Rendszám": shipment.plate_number || '',
+      "Rakodási hely": loadingPlace,
+      "Lerakóhely": destListStr,
+      "Rakodás dátuma": formatDate(shipment.loading_date),
+      "Lerakodás dátuma": formatDate(shipment.arrival_date),
+      "Szállítási hőmérséklet": shipment.temperature || '',
+      "Fuvardíj": formattedPrice + " €",
+      "Dátum": formatDate(new Date())
     };
     
     // 6. Build lines data for table
