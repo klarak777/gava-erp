@@ -40,16 +40,31 @@ export function renderFuvar(container, windowManager) {
                     <label class="access-control-label" for="filter-season">Szezon:</label>
                     <select id="filter-season" class="access-control-input">
                         <option value="">-- Összes --</option>
+                        <option value="26-27">Season 26-27</option>
                         <option value="25-26">Season 25-26</option>
                         <option value="24-25">Season 24-25</option>
+                        <option value="23-24">Season 23-24</option>
+                        <option value="22-23">Season 22-23</option>
+                        <option value="21-22">Season 21-22</option>
+                        <option value="20-21">Season 20-21</option>
+                        <option value="19-20">Season 19-20</option>
+                        <option value="18-19">Season 18-19</option>
                     </select>
                 </div>
                 <div class="access-control-group" style="margin-bottom:0;">
                     <label class="access-control-label" for="filter-year">Év:</label>
                     <select id="filter-year" class="access-control-input">
                         <option value="">-- Összes --</option>
-                        <option value="2025">2025</option>
+                        <option value="2027">2027</option>
                         <option value="2026">2026</option>
+                        <option value="2025">2025</option>
+                        <option value="2024">2024</option>
+                        <option value="2023">2023</option>
+                        <option value="2022">2022</option>
+                        <option value="2021">2021</option>
+                        <option value="2020">2020</option>
+                        <option value="2019">2019</option>
+                        <option value="2018">2018</option>
                     </select>
                 </div>
                 <div class="access-control-group" style="margin-bottom:0;">

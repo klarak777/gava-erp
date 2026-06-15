@@ -77,7 +77,7 @@ router.get('/', async (req, res) => {
       .leftJoin('seasons', 'shipments.season_id', 'seasons.id')
       .leftJoin('transporters', 'shipments.transporter_id', 'transporters.id')
       .orderBy('shipments.loading_date', 'desc')
-      .limit(15000);
+      .limit(100000);
 
     // 4. Javascript alapú Total Palets számítás (V2 logika a Wiki alapján)
     lines.forEach(line => {

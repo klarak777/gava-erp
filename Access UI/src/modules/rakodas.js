@@ -702,7 +702,7 @@ export function renderRakodas(container, windowManager) {
             tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:15px; color:#666;">Betöltés...</td></tr>';
             var url = searchTerm
                 ? '/api/v1/shipments?search=' + encodeURIComponent(searchTerm)
-                : '/api/v1/shipments?limit=150';
+                : '/api/v1/shipments?limit=10000';
             const res = await fetch(url);
             if (res.ok) {
                 const data = await res.json();

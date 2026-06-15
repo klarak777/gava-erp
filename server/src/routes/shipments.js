@@ -193,7 +193,7 @@ router.get('/', async (req, res) => {
       .select('shipments.*', 'seasons.code as season_code', 'transporters.name as transporter_name')
       .leftJoin('seasons', 'shipments.season_id', 'seasons.id')
       .leftJoin('transporters', 'shipments.transporter_id', 'transporters.id')
-      .orderBy('shipments.id', 'desc');
+      .orderByRaw('shipments.loading_date DESC NULLS LAST, shipments.id DESC');
 
     if (seasonCode) {
       query = query.where('seasons.code', seasonCode);
