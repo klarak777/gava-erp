@@ -34,6 +34,7 @@ Access UI_backup/
 *.docx
 *.xlsx
 *.xlsm
+*.csv
 
 # Nyomtatási és régi anyagok
 pdf_content.txt
