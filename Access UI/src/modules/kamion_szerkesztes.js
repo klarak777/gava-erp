@@ -130,8 +130,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
 
             <!-- TERMÉK SZERKESZTŐ / HOZZÁADÓ POPUP OVERLAY -->
             <div id="line-edit-overlay" style="display:none; position:absolute; inset:0; background:rgba(0,0,0,0.45); z-index:500; align-items:center; justify-content:center;">
-                <div style="background:#fff; border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,0.2); padding:20px 24px; width:920px; max-width:96%; max-height:90vh; overflow-y:auto; position:relative;">
-                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+                <div id="line-edit-modal" style="background:#fff; border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,0.2); padding:20px 24px; width:920px; max-width:96%; max-height:90vh; overflow-y:auto; position:relative; transform:translate(0px, 0px); transition:none;">
+                    <div id="line-edit-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; cursor:move; user-select:none;">
                         <h3 id="line-edit-title" style="margin:0; font-size:14px; font-weight:700; color:var(--text);">Termék hozzáadása</h3>
                         <button id="btn-line-overlay-close" style="background:none; border:none; font-size:20px; cursor:pointer; color:#64748b; padding:2px 6px; border-radius:4px; line-height:1;">×</button>
                     </div>
@@ -211,8 +211,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
 
             <!-- TÉTEL ÁTHELYEZÉSE POPUP (az overlay fölé) -->
             <div id="transfer-overlay" style="display:none; position:absolute; inset:0; background:rgba(0,0,0,0.6); z-index:600; align-items:center; justify-content:center;">
-                <div style="background:#fff; border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,0.3); padding:24px; width:460px; max-width:95%; position:relative;">
-                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+                <div id="transfer-modal" style="background:#fff; border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,0.3); padding:24px; width:460px; max-width:95%; position:relative; transform:translate(0px, 0px); transition:none;">
+                    <div id="transfer-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; cursor:move; user-select:none;">
                         <h3 style="margin:0; font-size:14px; font-weight:700; color:#1e293b;">🔀 Tétel áthelyezése másik fuvarra</h3>
                         <button id="btn-transfer-close" style="background:none; border:none; font-size:20px; cursor:pointer; color:#64748b; padding:2px 6px;">×</button>
                     </div>
@@ -253,6 +253,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
         let editingLineIndex = null; // null = new, szám = meglévő sor indexe
         let originalLinesSnapshot = {}; // { lineIndex: { euro_palets, normal_palets } } – a betöltéskori értékek
         let editingLineDbId = null;     // az éppen szerkesztett sor adatbázis-ID-ja (áthelyezéshez)
+        let currentShipmentIsLoaded = false; // RAKODVA státusz
 
         // ===== ELEMEK =====
         const kmTip          = container.querySelector('#km-tip');
@@ -266,6 +267,14 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
         const leProductId    = container.querySelector('#le-product-id');
         const leDropdown     = container.querySelector('#le-product-dropdown');
         const inlineDropdown = container.querySelector('#inline-product-dropdown');
+
+        const lineEditModal   = container.querySelector('#line-edit-modal');
+        const lineEditHeader  = container.querySelector('#line-edit-header');
+        const transferModal   = container.querySelector('#transfer-modal');
+        const transferHeader  = container.querySelector('#transfer-header');
+
+        const resetLineDrag = initDraggable(lineEditModal, lineEditHeader);
+        const resetTransferDrag = initDraggable(transferModal, transferHeader);
 
         const API = '/api/v1';
 
@@ -283,8 +292,13 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
 
         // ① Mindig GRID_ROWS sort biztosít (adat + üres feltöltés)
         function normalizeLines() {
-            // _empty flag törlése az adatokon
-            lines = lines.map(l => { const r = {...l}; delete r._empty; return r; });
+            // A foghíjak elkerülése végett kiszűrjük a teljesen üres sorokat
+            let filled = lines.filter(l => l.product_id || parseFloat(l.euro_palets) > 0 || parseFloat(l.normal_palets) > 0);
+            
+            // _empty flag törlése a kitöltött sorokon
+            filled = filled.map(l => { const r = {...l}; delete r._empty; return r; });
+            
+            lines = filled;
             while (lines.length < GRID_ROWS) lines.push(emptyLine());
             if (lines.length > GRID_ROWS) lines = lines.slice(0, GRID_ROWS);
         }
@@ -350,6 +364,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
 
                 const s = data.shipment;
                 currentShipmentId = s.id;
+                currentShipmentIsLoaded = s.is_loaded === true || s.is_loaded === 1;
 
                 // ④ Ablak fejlécet és taskbar-t is frissítjük a VALÓDI kamionszámra
                 const realTitle = `Kamion szerkesztése: ${s.order_number}`;
@@ -604,7 +619,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                     const idx = parseInt(btn.dataset.index);
                     if (lines[idx]._empty) return;
                     if (!confirm('Biztosan törli a sor adatait?')) return;
-                    lines[idx] = emptyLine();
+                    lines.splice(idx, 1);
+                    normalizeLines();
                     renderTable();
                 });
             });
@@ -642,6 +658,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
 
         // ===== POPUP MEGNYITÁS / ZÁRÁS =====
         function openLineOverlay(lineIndex) {
+            resetLineDrag();
             editingLineIndex = lineIndex;
             const l = lines[lineIndex];
             const isEmpty = l && l._empty;
@@ -682,7 +699,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 container.querySelector('#le-truck-num').value   = parseInt(l.truck_number_per) || 0;
                 // Meglévő sorhoz Áthelyezés gomb – csak akkor, ha az adatbázisban már rögzített sor
                 editingLineDbId = l._dbId || null;
-                if (editingLineDbId && !isNew) {
+                if (editingLineDbId && !isNew && !currentShipmentIsLoaded) {
                     transferBtn.style.display = 'inline-flex';
                 } else {
                     transferBtn.style.display = 'none';
@@ -727,7 +744,12 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
 
             // A célsort mindig felülírjuk (editingLineIndex az adott sor, akár üres volt)
             if (editingLineIndex !== null) {
-                lines[editingLineIndex] = lineData;
+                if (lineData.euro_palets === 0 && lineData.normal_palets === 0) {
+                    lines.splice(editingLineIndex, 1);
+                    normalizeLines();
+                } else {
+                    lines[editingLineIndex] = lineData;
+                }
             } else {
                 // Ha nincs index (nem kellene előfordulni), az első üres sorba tesszük
                 const emptyIdx = lines.findIndex(l => l._empty);
@@ -753,6 +775,11 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
         const transferSourceInfo = container.querySelector('#transfer-source-info');
 
         async function openTransferPopup() {
+            resetTransferDrag();
+            if (currentShipmentIsLoaded) {
+                alert('A tétel nem áthelyezhető, mert ez a kamion már RAKODVA státuszban van!');
+                return;
+            }
             if (!editingLineDbId) { alert('Ez a sor még nem lett elmentve az adatbázisba. Előbb mentse a fuvar adatait.'); return; }
             const l = editingLineIndex !== null ? lines[editingLineIndex] : null;
             if (!l) return;
@@ -828,7 +855,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                     }
 
                     if (lines[editingLineIndex].euro_palets === 0 && lines[editingLineIndex].normal_palets === 0) {
-                        lines[editingLineIndex] = emptyLine();
+                        lines.splice(editingLineIndex, 1);
+                        normalizeLines();
                     }
                 }
                 closeTransferPopup();
@@ -984,3 +1012,50 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
 export function renderKamionSzerkesztes(container, windowManager) {
     openKamionSzerkesztesWindow(windowManager);
 }
+
+function initDraggable(modalEl, headerEl) {
+    let offsetX = 0;
+    let offsetY = 0;
+    let startX = 0;
+    let startY = 0;
+
+    headerEl.addEventListener('mousedown', dragStart);
+
+    function dragStart(e) {
+        if (e.button !== 0) return; // Only left click
+        if (['INPUT', 'BUTTON', 'SELECT', 'OPTION', 'TEXTAREA', 'A'].includes(e.target.tagName)) return;
+        
+        startX = e.clientX;
+        startY = e.clientY;
+        
+        document.addEventListener('mousemove', dragging);
+        document.addEventListener('mouseup', dragEnd);
+        
+        e.preventDefault();
+    }
+
+    function dragging(e) {
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        
+        startX = e.clientX;
+        startY = e.clientY;
+        
+        offsetX += dx;
+        offsetY += dy;
+        
+        modalEl.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+    }
+
+    function dragEnd() {
+        document.removeEventListener('mousemove', dragging);
+        document.removeEventListener('mouseup', dragEnd);
+    }
+
+    return function resetPosition() {
+        offsetX = 0;
+        offsetY = 0;
+        modalEl.style.transform = 'translate(0px, 0px)';
+    };
+}
+

@@ -158,6 +158,11 @@ router.post('/:id/transfer', async (req, res) => {
       return res.status(404).json({ error: 'A forrás tétel nem található.' });
     }
 
+    const sourceShipment = await db('shipments').where('id', sourceLine.shipment_id).first();
+    if (sourceShipment && sourceShipment.is_loaded) {
+      return res.status(400).json({ error: 'A tétel nem áthelyezhető, mert a forrás kamion már RAKODVA státuszban van.' });
+    }
+
     const moveEuro = Math.min(parseInt(euro_palets) || 0, sourceLine.euro_palets);
     const moveNormal = Math.min(parseInt(normal_palets) || 0, sourceLine.normal_palets);
 
