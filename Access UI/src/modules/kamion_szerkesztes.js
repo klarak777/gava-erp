@@ -820,6 +820,16 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 if (editingLineIndex !== null) {
                     lines[editingLineIndex].euro_palets -= moveEuro;
                     lines[editingLineIndex].normal_palets -= moveNormal;
+
+                    const snap = originalLinesSnapshot[editingLineIndex];
+                    if (snap) {
+                        snap.euro_palets = Math.max(0, snap.euro_palets - moveEuro);
+                        snap.normal_palets = Math.max(0, snap.normal_palets - moveNormal);
+                    }
+
+                    if (lines[editingLineIndex].euro_palets === 0 && lines[editingLineIndex].normal_palets === 0) {
+                        lines[editingLineIndex] = emptyLine();
+                    }
                 }
                 closeTransferPopup();
                 closeLineOverlay();
@@ -867,7 +877,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 loading_place:    container.querySelector('#km-load-place').value,
                 transport_price:  parseFloat(container.querySelector('#km-price').value) || 0,
                 temperature:      container.querySelector('#km-temperature').value.trim() || null,
-                lines: realLines
+                lines: realLines.filter(l => (parseFloat(l.euro_palets) || 0) > 0 || (parseFloat(l.normal_palets) || 0) > 0)
             };
 
             try {
@@ -890,19 +900,26 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                     // ===== RAKLAP-CSÖKKENTÉS FIGYELŐ (csak szerkesztésnél, PUT esetén) =====
                     if (!isNew && Object.keys(originalLinesSnapshot).length > 0) {
                         const decreasedItems = [];
-                        realLines.forEach((line, i) => {
-                            // Az originalLinesSnapshot-ban az index alapján keressük
-                            const snap = originalLinesSnapshot[i];
-                            if (!snap) return; // Új sor, nem csökkentés
-                            const diffEuro   = (snap.euro_palets   || 0) - (parseInt(line.euro_palets)   || 0);
-                            const diffNormal = (snap.normal_palets || 0) - (parseInt(line.normal_palets) || 0);
+                        Object.values(originalLinesSnapshot).forEach(snap => {
+                            if (!snap.dbId) return;
+                            // Keressük a hozzá tartozó jelenlegi sort dbId alapján a teljes lines tömbben
+                            const currentLine = lines.find(l => l._dbId === snap.dbId);
+                            
+                            // Ha a sor üres/törölt, akkor 0 raklappal számolunk
+                            const currentEuro = (currentLine && !currentLine._empty) ? (parseInt(currentLine.euro_palets) || 0) : 0;
+                            const currentNormal = (currentLine && !currentLine._empty) ? (parseInt(currentLine.normal_palets) || 0) : 0;
+
+                            const diffEuro   = (snap.euro_palets   || 0) - currentEuro;
+                            const diffNormal = (snap.normal_palets || 0) - currentNormal;
+
                             if (diffEuro > 0 || diffNormal > 0) {
+                                const refLine = currentLine || lines.find(l => l._dbId === snap.dbId);
                                 decreasedItems.push({
-                                    productName: line.productName || '(ismeretlen termék)',
-                                    customer: line.customer || '',
+                                    productName: (refLine && refLine.productName) || '(ismeretlen termék)',
+                                    customer: (refLine && refLine.customer) || '',
                                     diffEuro: Math.max(0, diffEuro),
                                     diffNormal: Math.max(0, diffNormal),
-                                    product_id: line.product_id || null
+                                    product_id: (refLine && refLine.product_id) || null
                                 });
                             }
                         });

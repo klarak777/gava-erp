@@ -258,68 +258,73 @@ router.post('/', async (req, res) => {
     const sId = typeof shipmentId === 'object' ? shipmentId.id : shipmentId;
 
     if (lines && lines.length > 0) {
-      // 3. Raklapváltó tábla betöltése
-      const conversions = await trx('pallet_conversion').select('normal_count', 'euro_equivalent');
-      const conversionMap = {};
-      conversions.forEach(c => { conversionMap[c.normal_count] = c.euro_equivalent; });
+      // Csak azokat a sorokat szúrjuk be, amiknek legalább az egyik raklapja nem 0
+      const activeLines = lines.filter(line => (parseFloat(line.euro_palets) || 0) > 0 || (parseFloat(line.normal_palets) || 0) > 0);
 
-      // 4. Kalkuláció a teljes fuvarra
-      const sumNormal = lines.reduce((sum, l) => sum + (parseFloat(l.normal_palets) || 0), 0);
-      const sumEuro = lines.reduce((sum, l) => sum + (parseFloat(l.euro_palets) || 0), 0);
+      if (activeLines.length > 0) {
+        // 3. Raklapváltó tábla betöltése
+        const conversions = await trx('pallet_conversion').select('normal_count', 'euro_equivalent');
+        const conversionMap = {};
+        conversions.forEach(c => { conversionMap[c.normal_count] = c.euro_equivalent; });
 
-      let convertedNormal = 0;
-      if (sumNormal > 0) {
-        const roundedNormal = Math.round(sumNormal);
-        if (conversionMap[roundedNormal] !== undefined) {
-          convertedNormal = conversionMap[roundedNormal];
-        } else {
-          convertedNormal = sumNormal * (33.0 / 26.0); // Extrapoláció 26 felett
+        // 4. Kalkuláció a teljes fuvarra
+        const sumNormal = activeLines.reduce((sum, l) => sum + (parseFloat(l.normal_palets) || 0), 0);
+        const sumEuro = activeLines.reduce((sum, l) => sum + (parseFloat(l.euro_palets) || 0), 0);
+
+        let convertedNormal = 0;
+        if (sumNormal > 0) {
+          const roundedNormal = Math.round(sumNormal);
+          if (conversionMap[roundedNormal] !== undefined) {
+            convertedNormal = conversionMap[roundedNormal];
+          } else {
+            convertedNormal = sumNormal * (33.0 / 26.0); // Extrapoláció 26 felett
+          }
         }
+
+        const grandTotal = sumEuro + convertedNormal;
+        const tPrice = parseFloat(transport_price) || 0;
+
+        // 5. Tételek előkészítése és mentése
+        const linesToInsert = activeLines.map(line => {
+          const lineEuro = parseFloat(line.euro_palets) || 0;
+          const lineNorm = parseFloat(line.normal_palets) || 0;
+
+          let lineTotal = lineEuro;
+          if (sumNormal > 0 && lineNorm > 0) {
+            lineTotal += convertedNormal * (lineNorm / sumNormal);
+          }
+
+          let calcTransportCost = 0;
+          if (grandTotal > 0 && tPrice > 0) {
+            calcTransportCost = tPrice * (lineTotal / grandTotal);
+          }
+
+          return {
+            shipment_id: sId,
+            product_id: line.product_id || null,
+            partner_id: line.partner_id || null,
+            customer: line.customer || '',
+            destination: line.destination || '',
+            euro_palets: lineEuro,
+            normal_palets: lineNorm,
+            total_palets: lineTotal.toFixed(2),
+            gross_weight_kg: parseFloat(line.gross_weight_kg) || 0,
+            price_eur: parseFloat(line.price_eur) || 0,
+            price_bcn_eur: parseFloat(line.price_bcn_eur) || 0,
+            unit: line.unit || '',
+            reloading_per_plt: parseFloat(line.reloading_per_plt) || 0,
+            transport_bcn_per_plt: parseFloat(line.transport_bcn_per_plt) || 0,
+            albaran_number: line.albaran_number || '',
+            customer_order_no: line.customer_order_no || '',
+            comment: line.comment || '',
+            truck_number_per: parseFloat(line.truck_number_per) || 0,
+            transport_cost_product: calcTransportCost.toFixed(2),
+            transport_cost: calcTransportCost.toFixed(2)
+          };
+        });
+
+        await trx('shipment_lines').insert(linesToInsert);
       }
-
-      const grandTotal = sumEuro + convertedNormal;
-      const tPrice = parseFloat(transport_price) || 0;
-
-      // 5. Tételek előkészítése és mentése
-      const linesToInsert = lines.map(line => {
-        const lineEuro = parseFloat(line.euro_palets) || 0;
-        const lineNorm = parseFloat(line.normal_palets) || 0;
-
-        let lineTotal = lineEuro;
-        if (sumNormal > 0 && lineNorm > 0) {
-          lineTotal += convertedNormal * (lineNorm / sumNormal);
-        }
-
-        let calcTransportCost = 0;
-        if (grandTotal > 0 && tPrice > 0) {
-          calcTransportCost = tPrice * (lineTotal / grandTotal);
-        }
-
-        return {
-          shipment_id: sId,
-          product_id: line.product_id || null,
-          partner_id: line.partner_id || null,
-          customer: line.customer || '',
-          destination: line.destination || '',
-          euro_palets: lineEuro,
-          normal_palets: lineNorm,
-          total_palets: lineTotal.toFixed(2),
-          gross_weight_kg: parseFloat(line.gross_weight_kg) || 0,
-          price_eur: parseFloat(line.price_eur) || 0,
-          price_bcn_eur: parseFloat(line.price_bcn_eur) || 0,
-          unit: line.unit || '',
-          reloading_per_plt: parseFloat(line.reloading_per_plt) || 0,
-          transport_bcn_per_plt: parseFloat(line.transport_bcn_per_plt) || 0,
-          albaran_number: line.albaran_number || '',
-          customer_order_no: line.customer_order_no || '',
-          comment: line.comment || '',
-          truck_number_per: parseFloat(line.truck_number_per) || 0,
-          transport_cost_product: calcTransportCost.toFixed(2),
-          transport_cost: calcTransportCost.toFixed(2)
-        };
-      });
-
-      await trx('shipment_lines').insert(linesToInsert);
     }
 
     await trx.commit();
@@ -361,65 +366,70 @@ router.put('/:id', async (req, res) => {
 
     // 3. Új tételek beszúrása
     if (lines && lines.length > 0) {
-      const conversions = await trx('pallet_conversion').select('normal_count', 'euro_equivalent');
-      const conversionMap = {};
-      conversions.forEach(c => { conversionMap[c.normal_count] = c.euro_equivalent; });
+      // Csak azokat a sorokat szúrjuk be, amiknek legalább az egyik raklapja nem 0
+      const activeLines = lines.filter(line => (parseFloat(line.euro_palets) || 0) > 0 || (parseFloat(line.normal_palets) || 0) > 0);
 
-      const sumNormal = lines.reduce((sum, l) => sum + (parseFloat(l.normal_palets) || 0), 0);
-      const sumEuro = lines.reduce((sum, l) => sum + (parseFloat(l.euro_palets) || 0), 0);
+      if (activeLines.length > 0) {
+        const conversions = await trx('pallet_conversion').select('normal_count', 'euro_equivalent');
+        const conversionMap = {};
+        conversions.forEach(c => { conversionMap[c.normal_count] = c.euro_equivalent; });
 
-      let convertedNormal = 0;
-      if (sumNormal > 0) {
-        const roundedNormal = Math.round(sumNormal);
-        if (conversionMap[roundedNormal] !== undefined) {
-          convertedNormal = conversionMap[roundedNormal];
-        } else {
-          convertedNormal = sumNormal * (33.0 / 26.0);
+        const sumNormal = activeLines.reduce((sum, l) => sum + (parseFloat(l.normal_palets) || 0), 0);
+        const sumEuro = activeLines.reduce((sum, l) => sum + (parseFloat(l.euro_palets) || 0), 0);
+
+        let convertedNormal = 0;
+        if (sumNormal > 0) {
+          const roundedNormal = Math.round(sumNormal);
+          if (conversionMap[roundedNormal] !== undefined) {
+            convertedNormal = conversionMap[roundedNormal];
+          } else {
+            convertedNormal = sumNormal * (33.0 / 26.0);
+          }
         }
+
+        const grandTotal = sumEuro + convertedNormal;
+        const tPrice = parseFloat(transport_price) || 0;
+
+        const linesToInsert = activeLines.map(line => {
+          const lineEuro = parseFloat(line.euro_palets) || 0;
+          const lineNorm = parseFloat(line.normal_palets) || 0;
+
+          let lineTotal = lineEuro;
+          if (sumNormal > 0 && lineNorm > 0) {
+            lineTotal += convertedNormal * (lineNorm / sumNormal);
+          }
+
+          let calcTransportCost = 0;
+          if (grandTotal > 0 && tPrice > 0) {
+            calcTransportCost = tPrice * (lineTotal / grandTotal);
+          }
+
+          return {
+            shipment_id: id,
+            product_id: line.product_id || null,
+            partner_id: line.partner_id || null,
+            customer: line.customer || '',
+            destination: line.destination || '',
+            euro_palets: lineEuro,
+            normal_palets: lineNorm,
+            total_palets: lineTotal.toFixed(2),
+            gross_weight_kg: parseFloat(line.gross_weight_kg) || 0,
+            price_eur: parseFloat(line.price_eur) || 0,
+            price_bcn_eur: parseFloat(line.price_bcn_eur) || 0,
+            unit: line.unit || '',
+            reloading_per_plt: parseFloat(line.reloading_per_plt) || 0,
+            transport_bcn_per_plt: parseFloat(line.transport_bcn_per_plt) || 0,
+            albaran_number: line.albaran_number || '',
+            customer_order_no: line.customer_order_no || '',
+            comment: line.comment || '',
+            truck_number_per: parseFloat(line.truck_number_per) || 0,
+            transport_cost_product: calcTransportCost.toFixed(2),
+            transport_cost: calcTransportCost.toFixed(2)
+          };
+        });
+
+        await trx('shipment_lines').insert(linesToInsert);
       }
-
-      const grandTotal = sumEuro + convertedNormal;
-      const tPrice = parseFloat(transport_price) || 0;
-
-      const linesToInsert = lines.map(line => {
-        const lineEuro = parseFloat(line.euro_palets) || 0;
-        const lineNorm = parseFloat(line.normal_palets) || 0;
-
-        let lineTotal = lineEuro;
-        if (sumNormal > 0 && lineNorm > 0) {
-          lineTotal += convertedNormal * (lineNorm / sumNormal);
-        }
-
-        let calcTransportCost = 0;
-        if (grandTotal > 0 && tPrice > 0) {
-          calcTransportCost = tPrice * (lineTotal / grandTotal);
-        }
-
-        return {
-          shipment_id: id,
-          product_id: line.product_id || null,
-          partner_id: line.partner_id || null,
-          customer: line.customer || '',
-          destination: line.destination || '',
-          euro_palets: lineEuro,
-          normal_palets: lineNorm,
-          total_palets: lineTotal.toFixed(2),
-          gross_weight_kg: parseFloat(line.gross_weight_kg) || 0,
-          price_eur: parseFloat(line.price_eur) || 0,
-          price_bcn_eur: parseFloat(line.price_bcn_eur) || 0,
-          unit: line.unit || '',
-          reloading_per_plt: parseFloat(line.reloading_per_plt) || 0,
-          transport_bcn_per_plt: parseFloat(line.transport_bcn_per_plt) || 0,
-          albaran_number: line.albaran_number || '',
-          customer_order_no: line.customer_order_no || '',
-          comment: line.comment || '',
-          truck_number_per: parseFloat(line.truck_number_per) || 0,
-          transport_cost_product: calcTransportCost.toFixed(2),
-          transport_cost: calcTransportCost.toFixed(2)
-        };
-      });
-
-      await trx('shipment_lines').insert(linesToInsert);
     }
 
     await trx.commit();

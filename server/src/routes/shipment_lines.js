@@ -175,12 +175,17 @@ router.post('/:id/transfer', async (req, res) => {
       const newEuro = sourceLine.euro_palets - moveEuro;
       const newNormal = sourceLine.normal_palets - moveNormal;
 
-      // 1. Eredeti sor frissítése (csökkentett raklapok)
-      await trx('shipment_lines').where('id', id).update({
-        euro_palets: newEuro,
-        normal_palets: newNormal,
-        total_palets: newEuro + newNormal
-      });
+      // 1. Eredeti sor frissítése (csökkentett raklapok) vagy törlése, ha 0
+      if (newEuro === 0 && newNormal === 0) {
+        await trx('shipment_lines').where('id', id).del();
+      } else {
+        await trx('shipment_lines').where('id', id).update({
+          euro_palets: newEuro,
+          normal_palets: newNormal,
+          total_palets: newEuro + newNormal
+        });
+      }
+
 
       // 2. Új sor hozzáadása a célkamionhoz az áthelyezett adatokkal
       await trx('shipment_lines').insert({
