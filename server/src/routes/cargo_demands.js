@@ -27,7 +27,17 @@ router.post('/', async (req, res) => {
       euro_palets,
       normal_palets,
       notes,
-      source_shipment_line_id
+      source_shipment_line_id,
+      albaran_number,
+      destination,
+      gross_weight_kg,
+      price_eur,
+      price_bcn_eur,
+      unit,
+      reloading_per_plt,
+      transport_bcn_per_plt,
+      customer_order_no,
+      comment
     } = req.body;
 
     if (!product_name || product_name.trim() === '') {
@@ -46,7 +56,17 @@ router.post('/', async (req, res) => {
       normal_palets: parseInt(normal_palets) || 0,
       notes: notes ? notes.trim() : null,
       is_fulfilled: false,
-      source_shipment_line_id: source_shipment_line_id || null
+      source_shipment_line_id: source_shipment_line_id || null,
+      albaran_number: albaran_number ? albaran_number.trim() : null,
+      destination: destination ? destination.trim() : null,
+      gross_weight_kg: parseFloat(gross_weight_kg) || 0,
+      price_eur: parseFloat(price_eur) || 0,
+      price_bcn_eur: parseFloat(price_bcn_eur) || 0,
+      unit: unit ? unit.trim() : null,
+      reloading_per_plt: parseFloat(reloading_per_plt) || 0,
+      transport_bcn_per_plt: parseFloat(transport_bcn_per_plt) || 0,
+      customer_order_no: customer_order_no ? customer_order_no.trim() : null,
+      comment: comment ? comment.trim() : (notes ? notes.trim() : null)
     }).returning('id');
 
     const id = typeof newId === 'object' ? newId.id : newId;
@@ -100,15 +120,15 @@ router.patch('/:id/fulfill', async (req, res) => {
         euro_palets: sendEuro,
         normal_palets: sendNormal,
         total_palets: sendEuro + sendNormal,
-        gross_weight_kg: 0,
-        price_eur: 0,
-        price_bcn_eur: 0,
-        unit: '',
-        reloading_per_plt: 0,
-        transport_bcn_per_plt: 0,
-        albaran_number: '',
-        customer_order_no: '',
-        comment: demand.notes || '',
+        gross_weight_kg: demand.gross_weight_kg || 0,
+        price_eur: demand.price_eur || 0,
+        price_bcn_eur: demand.price_bcn_eur || 0,
+        unit: demand.unit || '',
+        reloading_per_plt: demand.reloading_per_plt || 0,
+        transport_bcn_per_plt: demand.transport_bcn_per_plt || 0,
+        albaran_number: demand.albaran_number || '',
+        customer_order_no: demand.customer_order_no || '',
+        comment: demand.comment || demand.notes || '',
         truck_number_per: 0,
         transport_cost_product: 0,
         transport_cost: 0

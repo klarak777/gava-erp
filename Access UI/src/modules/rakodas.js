@@ -384,37 +384,69 @@ export function renderRakodas(container, windowManager) {
         }
 
         const modalContent = `
-            <div style="padding:20px; display:flex; flex-direction:column; gap:12px;">
-                <div style="display:flex; flex-direction:column; gap:4px; position:relative;">
-                    <label style="font-size:11px; font-weight:600; color:#334155;">Termék neve: <span style="color:red;">*</span></label>
-                    <input type="text" id="aru-add-product" class="access-control-input" style="font-size:12px; height:32px;" placeholder="Gépeljen a kereséshez...">
-                    <input type="hidden" id="aru-add-product-id">
-                    <div id="aru-add-product-dropdown" style="display:none; position:absolute; top:56px; left:0; right:0; background:#fff; border:1px solid #ccc; border-radius:4px; max-height:130px; overflow-y:auto; z-index:10; box-shadow:0 4px 6px rgba(0,0,0,0.1);"></div>
-                </div>
-                <div style="display:flex; flex-direction:column; gap:4px;">
-                    <label style="font-size:11px; font-weight:600; color:#334155;">Partner neve:</label>
-                    <input type="text" id="aru-add-partner" class="access-control-input" style="font-size:12px; height:32px;" placeholder="Opcionális">
-                </div>
-                <div style="display:flex; flex-direction:column; gap:4px;">
-                    <label style="font-size:11px; font-weight:600; color:#334155;">Vevő neve:</label>
-                    <input type="text" id="aru-add-customer" class="access-control-input" style="font-size:12px; height:32px;" placeholder="Opcionális">
-                </div>
-                <div style="display:flex; gap:10px;">
-                    <div style="display:flex; flex-direction:column; gap:4px; flex:1;">
-                        <label style="font-size:11px; font-weight:600; color:#334155;">N° Euro Palets: <span style="color:red;">*</span></label>
-                        <input type="number" id="aru-add-euro" class="access-control-input" style="font-size:12px; height:32px;" value="0" min="0">
+            <div style="padding:20px 24px; display:flex; flex-direction:column; gap:12px;">
+                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+                    <div style="display:flex; flex-direction:column; gap:3px; width:95px;">
+                        <label style="font-size:11px; font-weight:600; color:var(--text-main);">N° Euro Palets: <span style="color:red;">*</span></label>
+                        <input type="number" id="aru-add-euro" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0">
                     </div>
-                    <div style="display:flex; flex-direction:column; gap:4px; flex:1;">
-                        <label style="font-size:11px; font-weight:600; color:#334155;">N° Normal Palets: <span style="color:red;">*</span></label>
-                        <input type="number" id="aru-add-normal" class="access-control-input" style="font-size:12px; height:32px;" value="0" min="0">
+                    <div style="display:flex; flex-direction:column; gap:3px; width:95px;">
+                        <label style="font-size:11px; font-weight:600; color:var(--text-main);">N° Normal Palets: <span style="color:red;">*</span></label>
+                        <input type="number" id="aru-add-normal" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0">
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:3px; flex:3; min-width:180px; position:relative;">
+                        <label style="font-size:11px; font-weight:600; color:var(--text-main);">Products: <span style="color:red;">*</span></label>
+                        <input type="text" id="aru-add-product" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Gépeljen...">
+                        <input type="hidden" id="aru-add-product-id">
+                        <div id="aru-add-product-dropdown" style="display:none; position:absolute; background:#fff; border:1px solid #ccc; z-index:200; width:100%; max-height:150px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); top:52px; border-radius:4px;"></div>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:110px;">
+                        <label style="font-size:11px; font-weight:600; color:var(--text-main);">Reference:</label>
+                        <input type="text" id="aru-add-reference" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Albarán N°">
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:110px;">
+                        <label style="font-size:11px; font-weight:600; color:var(--text-main);">Customer:</label>
+                        <input type="text" id="aru-add-customer" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Vevő neve">
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:110px;">
+                        <label style="font-size:11px; font-weight:600; color:var(--text-main);">Destination:</label>
+                        <input type="text" id="aru-add-destination" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Célállomás">
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:3px; flex:3; min-width:130px;">
+                        <label style="font-size:11px; font-weight:600; color:var(--text-main);">Comment:</label>
+                        <input type="text" id="aru-add-notes" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Megjegyzés">
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:3px; width:105px;">
+                        <label style="font-size:11px; font-weight:600; color:var(--text-main);">Gross weight (kg):</label>
+                        <input type="number" id="aru-add-weight" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0">
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:3px; width:90px;">
+                        <label style="font-size:11px; font-weight:600; color:var(--text-main);">Price (EUR):</label>
+                        <input type="number" id="aru-add-price-eur" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="0.01">
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:3px; width:105px;">
+                        <label style="font-size:11px; font-weight:600; color:var(--text-main);">Price BCN (EUR):</label>
+                        <input type="number" id="aru-add-price-bcn" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="0.01">
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:3px; width:68px;">
+                        <label style="font-size:11px; font-weight:600; color:var(--text-main);">Unit:</label>
+                        <input type="text" id="aru-add-unit" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" placeholder="KG">
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:3px; width:95px;">
+                        <label style="font-size:11px; font-weight:600; color:var(--text-main);">Reloading/plt:</label>
+                        <input type="number" id="aru-add-reloading" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="0.01">
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:3px; width:115px;">
+                        <label style="font-size:11px; font-weight:600; color:var(--text-main);">Transport BCN/plt:</label>
+                        <input type="number" id="aru-add-transport-bcn" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="0.01">
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:120px;">
+                        <label style="font-size:11px; font-weight:600; color:var(--text-main);">Customer order N°:</label>
+                        <input type="text" id="aru-add-custorder" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Megrendelőszám">
                     </div>
                 </div>
-                <div style="display:flex; flex-direction:column; gap:4px;">
-                    <label style="font-size:11px; font-weight:600; color:#334155;">Megjegyzés:</label>
-                    <input type="text" id="aru-add-notes" class="access-control-input" style="font-size:12px; height:32px;" placeholder="Opcionális">
-                </div>
-                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px;">
-                    <button class="secondary-btn btn-aru-cancel">Mégsem</button>
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+                    <button class="secondary-btn btn-aru-cancel">Mégse</button>
                     <button class="primary-btn btn-aru-save">+ Hozzáadás</button>
                 </div>
             </div>
@@ -422,8 +454,8 @@ export function renderRakodas(container, windowManager) {
 
         const modal = windowManager.createModal({
             title: '+ Áru igény hozzáadása',
-            width: 440,
-            height: 520,
+            width: 820,
+            height: 380,
             content: modalContent
         });
 
@@ -477,11 +509,20 @@ export function renderRakodas(container, windowManager) {
                     body: JSON.stringify({
                         product_id: prodIdInput.value ? parseInt(prodIdInput.value) : null,
                         product_name: pName,
-                        partner_name: modalEl.querySelector('#aru-add-partner').value.trim() || null,
+                        partner_name: null,
                         customer_name: modalEl.querySelector('#aru-add-customer').value.trim() || null,
                         euro_palets: euro,
                         normal_palets: normal,
-                        notes: modalEl.querySelector('#aru-add-notes').value.trim() || null
+                        notes: modalEl.querySelector('#aru-add-notes').value.trim() || null,
+                        albaran_number: modalEl.querySelector('#aru-add-reference').value.trim() || null,
+                        destination: modalEl.querySelector('#aru-add-destination').value.trim() || null,
+                        gross_weight_kg: parseFloat(modalEl.querySelector('#aru-add-weight').value) || 0,
+                        price_eur: parseFloat(modalEl.querySelector('#aru-add-price-eur').value) || 0,
+                        price_bcn_eur: parseFloat(modalEl.querySelector('#aru-add-price-bcn').value) || 0,
+                        unit: modalEl.querySelector('#aru-add-unit').value.trim() || null,
+                        reloading_per_plt: parseFloat(modalEl.querySelector('#aru-add-reloading').value) || 0,
+                        transport_bcn_per_plt: parseFloat(modalEl.querySelector('#aru-add-transport-bcn').value) || 0,
+                        customer_order_no: modalEl.querySelector('#aru-add-custorder').value.trim() || null
                     })
                 });
                 const data = await res.json();
