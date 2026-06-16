@@ -874,4 +874,13 @@ export function renderRakodas(container, windowManager) {
     loadRakData(null);
     loadCargoDemandsData();
     loadProducts();
+
+    const handleCargoUpdate = () => {
+        if (document.body.contains(view)) {
+            loadCargoDemandsData();
+        } else {
+            document.removeEventListener('cargoDemandsUpdated', handleCargoUpdate);
+        }
+    };
+    document.addEventListener('cargoDemandsUpdated', handleCargoUpdate);
 }

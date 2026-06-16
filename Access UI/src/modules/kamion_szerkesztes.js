@@ -11,9 +11,23 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
         const winEl = container.closest('.mdi-window');
 
         if (winEl) {
-            winEl.style.width  = '1250px';
-            winEl.style.height = '720px';
+            winEl.style.width = '1100px';
+            winEl.style.height = '650px';
             winEl.style.maxHeight = '92vh';
+
+            // Középre pozicionálás (setTimeout, hogy a WindowManager alapértelmezett pozícióját felülírjuk)
+            setTimeout(() => {
+                const containerWidth = window.innerWidth;
+                const containerHeight = window.innerHeight;
+                const winWidth = winEl.offsetWidth || 1100;
+                const winHeight = winEl.offsetHeight || 650;
+
+                const left = Math.max(20, (containerWidth - winWidth) / 2);
+                const top = Math.max(0, ((containerHeight - winHeight) / 2) - 40);
+
+                winEl.style.left = `${left}px`;
+                winEl.style.top = `${top}px`;
+            }, 10);
         }
         container.style.padding = '0';
         container.style.backgroundColor = 'var(--bg-light)';
@@ -256,22 +270,22 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
         let currentShipmentIsLoaded = false; // RAKODVA státusz
 
         // ===== ELEMEK =====
-        const kmTip          = container.querySelector('#km-tip');
-        const kmOrder        = container.querySelector('#km-order');
+        const kmTip = container.querySelector('#km-tip');
+        const kmOrder = container.querySelector('#km-order');
         const cmbTransporter = container.querySelector('#km-transporter');
-        const tbody          = container.querySelector('#km-lines-tbody');
-        const conflictMsg    = container.querySelector('#km-order-conflict-msg');
-        const overlay        = container.querySelector('#line-edit-overlay');
-        const overlayTitle   = container.querySelector('#line-edit-title');
-        const leProduct      = container.querySelector('#le-product');
-        const leProductId    = container.querySelector('#le-product-id');
-        const leDropdown     = container.querySelector('#le-product-dropdown');
+        const tbody = container.querySelector('#km-lines-tbody');
+        const conflictMsg = container.querySelector('#km-order-conflict-msg');
+        const overlay = container.querySelector('#line-edit-overlay');
+        const overlayTitle = container.querySelector('#line-edit-title');
+        const leProduct = container.querySelector('#le-product');
+        const leProductId = container.querySelector('#le-product-id');
+        const leDropdown = container.querySelector('#le-product-dropdown');
         const inlineDropdown = container.querySelector('#inline-product-dropdown');
 
-        const lineEditModal   = container.querySelector('#line-edit-modal');
-        const lineEditHeader  = container.querySelector('#line-edit-header');
-        const transferModal   = container.querySelector('#transfer-modal');
-        const transferHeader  = container.querySelector('#transfer-header');
+        const lineEditModal = container.querySelector('#line-edit-modal');
+        const lineEditHeader = container.querySelector('#line-edit-header');
+        const transferModal = container.querySelector('#transfer-modal');
+        const transferHeader = container.querySelector('#transfer-header');
 
         const resetLineDrag = initDraggable(lineEditModal, lineEditHeader);
         const resetTransferDrag = initDraggable(transferModal, transferHeader);
@@ -294,10 +308,10 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
         function normalizeLines() {
             // A foghíjak elkerülése végett kiszűrjük a teljesen üres sorokat
             let filled = lines.filter(l => l.product_id || parseFloat(l.euro_palets) > 0 || parseFloat(l.normal_palets) > 0);
-            
+
             // _empty flag törlése a kitöltött sorokon
-            filled = filled.map(l => { const r = {...l}; delete r._empty; return r; });
-            
+            filled = filled.map(l => { const r = { ...l }; delete r._empty; return r; });
+
             lines = filled;
             while (lines.length < GRID_ROWS) lines.push(emptyLine());
             if (lines.length > GRID_ROWS) lines = lines.slice(0, GRID_ROWS);
@@ -381,41 +395,41 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 kmTip.value = s.truck_type || '';
                 kmOrder.value = s.order_number || '';
                 cmbTransporter.value = s.transporter_id || '';
-                try { container.querySelector('#km-plate').value     = s.plate_number    || ''; } catch(e){}
-                try { container.querySelector('#km-load-place').value = s.loading_place  || ''; } catch(e){}
-                try { container.querySelector('#km-price').value      = s.transport_price || ''; } catch(e){}
-                try { container.querySelector('#km-temperature').value = s.temperature   || ''; } catch(e){}
+                try { container.querySelector('#km-plate').value = s.plate_number || ''; } catch (e) { }
+                try { container.querySelector('#km-load-place').value = s.loading_place || ''; } catch (e) { }
+                try { container.querySelector('#km-price').value = s.transport_price || ''; } catch (e) { }
+                try { container.querySelector('#km-temperature').value = s.temperature || ''; } catch (e) { }
 
                 function extractLocalDate(d) {
                     if (!d) return '';
                     const dt = new Date(d);
                     if (isNaN(dt)) return '';
                     return dt.getFullYear() + '-' +
-                        String(dt.getMonth() + 1).padStart(2,'0') + '-' +
-                        String(dt.getDate()).padStart(2,'0');
+                        String(dt.getMonth() + 1).padStart(2, '0') + '-' +
+                        String(dt.getDate()).padStart(2, '0');
                 }
-                if (s.loading_date) try { container.querySelector('#km-load-date').value = extractLocalDate(s.loading_date); } catch(e){}
-                if (s.arrival_date)  try { container.querySelector('#km-arr-date').value  = extractLocalDate(s.arrival_date);  } catch(e){}
+                if (s.loading_date) try { container.querySelector('#km-load-date').value = extractLocalDate(s.loading_date); } catch (e) { }
+                if (s.arrival_date) try { container.querySelector('#km-arr-date').value = extractLocalDate(s.arrival_date); } catch (e) { }
 
                 if (data.lines && data.lines.length > 0) {
                     lines = data.lines.map((l, idx) => ({
                         _dbId: l.id,  // adatbázis ID az áthelyezéshez
-                        product_id:            l.product_id,
-                        productName:           l.productName || '',
-                        albaran_number:        l.albaran_number || '',
-                        customer:              l.customer || '',
-                        destination:           l.destination || '',
-                        customer_order_no:     l.customer_order_no || '',
-                        comment:               l.comment || '',
-                        euro_palets:           l.euro_palets || 0,
-                        normal_palets:         l.normal_palets || 0,
-                        gross_weight_kg:       l.gross_weight_kg || 0,
-                        price_eur:             l.price_eur || 0,
-                        price_bcn_eur:         l.price_bcn_eur || 0,
-                        unit:                  l.unit || '',
-                        reloading_per_plt:     l.reloading_per_plt || 0,
+                        product_id: l.product_id,
+                        productName: l.productName || '',
+                        albaran_number: l.albaran_number || '',
+                        customer: l.customer || '',
+                        destination: l.destination || '',
+                        customer_order_no: l.customer_order_no || '',
+                        comment: l.comment || '',
+                        euro_palets: l.euro_palets || 0,
+                        normal_palets: l.normal_palets || 0,
+                        gross_weight_kg: l.gross_weight_kg || 0,
+                        price_eur: l.price_eur || 0,
+                        price_bcn_eur: l.price_bcn_eur || 0,
+                        unit: l.unit || '',
+                        reloading_per_plt: l.reloading_per_plt || 0,
                         transport_bcn_per_plt: l.transport_bcn_per_plt || 0,
-                        truck_number_per:      l.truck_number_per || 0
+                        truck_number_per: l.truck_number_per || 0
                     }));
                     // Snapshot az eredeti értékekről (raklap-csökkentés figyelőhöz)
                     originalLinesSnapshot = {};
@@ -480,11 +494,11 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
         }
 
         // ===== TÁBLÁZAT RENDERELÉS =====
-        const cellStyle    = 'border:none; background:transparent; font-size:11px; width:100%; padding:1px 3px; font-family:inherit; outline:none;';
+        const cellStyle = 'border:none; background:transparent; font-size:11px; width:100%; padding:1px 3px; font-family:inherit; outline:none;';
         const numCellStyle = cellStyle + ' text-align:right;';
 
         function escHtml(s) {
-            return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+            return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
 
         function renderTable() {
@@ -539,14 +553,14 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
             // Inline cell edit – szinkron az állapotba
             tbody.querySelectorAll('.cell-edit').forEach(inp => {
                 inp.addEventListener('change', () => {
-                    const idx   = parseInt(inp.dataset.index);
+                    const idx = parseInt(inp.dataset.index);
                     const field = inp.dataset.field;
                     // Ha üres sor volt és most adatot kap, töröljük az _empty flag-et
                     if (lines[idx]._empty && inp.value.trim() !== '' && inp.value.trim() !== '0') {
                         delete lines[idx]._empty;
                     }
-                    const numFields = ['euro_palets','normal_palets','gross_weight_kg','price_eur',
-                                       'price_bcn_eur','reloading_per_plt','transport_bcn_per_plt'];
+                    const numFields = ['euro_palets', 'normal_palets', 'gross_weight_kg', 'price_eur',
+                        'price_bcn_eur', 'reloading_per_plt', 'transport_bcn_per_plt'];
                     const intFields = ['truck_number_per'];
                     if (intFields.includes(field)) {
                         lines[idx][field] = parseInt(inp.value) || 0;
@@ -594,7 +608,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                                 inp.dispatchEvent(ev);
                             };
                             div.onmouseover = () => div.style.backgroundColor = '#f1f5f9';
-                            div.onmouseout  = () => div.style.backgroundColor = 'transparent';
+                            div.onmouseout = () => div.style.backgroundColor = 'transparent';
                             inlineDropdown.appendChild(div);
                         });
                         const rect = inp.getBoundingClientRect();
@@ -647,7 +661,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                         leDropdown.style.display = 'none';
                     };
                     div.onmouseover = () => div.style.backgroundColor = '#f1f5f9';
-                    div.onmouseout  = () => div.style.backgroundColor = 'transparent';
+                    div.onmouseout = () => div.style.backgroundColor = 'transparent';
                     leDropdown.appendChild(div);
                 });
                 leDropdown.style.display = 'block';
@@ -673,10 +687,10 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 container.querySelector('#le-norm').value = '0';
                 leProduct.value = '';
                 leProductId.value = '';
-                ['#le-reference','#le-customer','#le-destination','#le-comment','#le-unit','#le-custorder'].forEach(id => {
+                ['#le-reference', '#le-customer', '#le-destination', '#le-comment', '#le-unit', '#le-custorder'].forEach(id => {
                     container.querySelector(id).value = '';
                 });
-                ['#le-weight','#le-price-eur','#le-price-bcn','#le-reloading','#le-transport-bcn'].forEach(id => {
+                ['#le-weight', '#le-price-eur', '#le-price-bcn', '#le-reloading', '#le-transport-bcn'].forEach(id => {
                     container.querySelector(id).value = '0';
                 });
                 container.querySelector('#le-truck-num').value = '0';
@@ -684,22 +698,22 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 editingLineDbId = null;
             } else {
                 overlayTitle.textContent = `✏️ Termék szerkesztése (${lineIndex + 1}. sor)`;
-                container.querySelector('#le-euro').value        = l.euro_palets;
-                container.querySelector('#le-norm').value        = l.normal_palets;
-                leProduct.value                                  = l.productName || '';
-                leProductId.value                                = l.product_id || '';
-                container.querySelector('#le-reference').value   = l.albaran_number || '';
-                container.querySelector('#le-customer').value    = l.customer || '';
+                container.querySelector('#le-euro').value = l.euro_palets;
+                container.querySelector('#le-norm').value = l.normal_palets;
+                leProduct.value = l.productName || '';
+                leProductId.value = l.product_id || '';
+                container.querySelector('#le-reference').value = l.albaran_number || '';
+                container.querySelector('#le-customer').value = l.customer || '';
                 container.querySelector('#le-destination').value = l.destination || '';
-                container.querySelector('#le-comment').value     = l.comment || '';
-                container.querySelector('#le-weight').value      = l.gross_weight_kg;
-                container.querySelector('#le-price-eur').value   = l.price_eur;
-                container.querySelector('#le-price-bcn').value   = l.price_bcn_eur;
-                container.querySelector('#le-unit').value        = l.unit || '';
-                container.querySelector('#le-reloading').value   = l.reloading_per_plt;
+                container.querySelector('#le-comment').value = l.comment || '';
+                container.querySelector('#le-weight').value = l.gross_weight_kg;
+                container.querySelector('#le-price-eur').value = l.price_eur;
+                container.querySelector('#le-price-bcn').value = l.price_bcn_eur;
+                container.querySelector('#le-unit').value = l.unit || '';
+                container.querySelector('#le-reloading').value = l.reloading_per_plt;
                 container.querySelector('#le-transport-bcn').value = l.transport_bcn_per_plt;
-                container.querySelector('#le-custorder').value   = l.customer_order_no || '';
-                container.querySelector('#le-truck-num').value   = parseInt(l.truck_number_per) || 0;
+                container.querySelector('#le-custorder').value = l.customer_order_no || '';
+                container.querySelector('#le-truck-num').value = parseInt(l.truck_number_per) || 0;
                 // Meglévő sorhoz Áthelyezés gomb – csak akkor, ha az adatbázisban már rögzített sor
                 editingLineDbId = l._dbId || null;
                 if (editingLineDbId && !isNew && !currentShipmentIsLoaded) {
@@ -727,22 +741,22 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
             if (!pName) { alert('A Products (termék) mező megadása kötelező!'); return; }
 
             const lineData = {
-                product_id:            leProductId.value || null,
-                productName:           pName,
-                euro_palets:           parseFloat(container.querySelector('#le-euro').value) || 0,
-                normal_palets:         parseFloat(container.querySelector('#le-norm').value) || 0,
-                albaran_number:        container.querySelector('#le-reference').value.trim(),
-                customer:              container.querySelector('#le-customer').value.trim(),
-                destination:           container.querySelector('#le-destination').value.trim(),
-                comment:               container.querySelector('#le-comment').value.trim(),
-                gross_weight_kg:       parseFloat(container.querySelector('#le-weight').value) || 0,
-                price_eur:             parseFloat(container.querySelector('#le-price-eur').value) || 0,
-                price_bcn_eur:         parseFloat(container.querySelector('#le-price-bcn').value) || 0,
-                unit:                  container.querySelector('#le-unit').value.trim(),
-                reloading_per_plt:     parseFloat(container.querySelector('#le-reloading').value) || 0,
+                product_id: leProductId.value || null,
+                productName: pName,
+                euro_palets: parseFloat(container.querySelector('#le-euro').value) || 0,
+                normal_palets: parseFloat(container.querySelector('#le-norm').value) || 0,
+                albaran_number: container.querySelector('#le-reference').value.trim(),
+                customer: container.querySelector('#le-customer').value.trim(),
+                destination: container.querySelector('#le-destination').value.trim(),
+                comment: container.querySelector('#le-comment').value.trim(),
+                gross_weight_kg: parseFloat(container.querySelector('#le-weight').value) || 0,
+                price_eur: parseFloat(container.querySelector('#le-price-eur').value) || 0,
+                price_bcn_eur: parseFloat(container.querySelector('#le-price-bcn').value) || 0,
+                unit: container.querySelector('#le-unit').value.trim(),
+                reloading_per_plt: parseFloat(container.querySelector('#le-reloading').value) || 0,
                 transport_bcn_per_plt: parseFloat(container.querySelector('#le-transport-bcn').value) || 0,
-                customer_order_no:     container.querySelector('#le-custorder').value.trim(),
-                truck_number_per:      parseInt(container.querySelector('#le-truck-num').value) || 0
+                customer_order_no: container.querySelector('#le-custorder').value.trim(),
+                truck_number_per: parseInt(container.querySelector('#le-truck-num').value) || 0
             };
 
             // A célsort mindig felülírjuk (editingLineIndex az adott sor, akár üres volt)
@@ -900,16 +914,16 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
             const realLines = lines.filter(l => !l._empty);
 
             const payload = {
-                order_number:     orderNumber,
-                truck_type:       kmTip.value,
+                order_number: orderNumber,
+                truck_type: kmTip.value,
                 truck_seq_number: parseInt(orderNumber.replace(/[^0-9]/g, '')) || 0,
-                transporter_id:   parseInt(cmbTransporter.value) || null,
-                plate_number:     container.querySelector('#km-plate').value,
-                loading_date:     container.querySelector('#km-load-date').value || null,
-                arrival_date:     container.querySelector('#km-arr-date').value || null,
-                loading_place:    container.querySelector('#km-load-place').value,
-                transport_price:  parseFloat(container.querySelector('#km-price').value) || 0,
-                temperature:      container.querySelector('#km-temperature').value.trim() || null,
+                transporter_id: parseInt(cmbTransporter.value) || null,
+                plate_number: container.querySelector('#km-plate').value,
+                loading_date: container.querySelector('#km-load-date').value || null,
+                arrival_date: container.querySelector('#km-arr-date').value || null,
+                loading_place: container.querySelector('#km-load-place').value,
+                transport_price: parseFloat(container.querySelector('#km-price').value) || 0,
+                temperature: container.querySelector('#km-temperature').value.trim() || null,
                 lines: realLines.filter(l => (parseFloat(l.euro_palets) || 0) > 0 || (parseFloat(l.normal_palets) || 0) > 0)
             };
 
@@ -938,12 +952,12 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                             if (!snap.dbId) return;
                             // Keressük a hozzá tartozó jelenlegi sort dbId alapján a teljes lines tömbben
                             const currentLine = lines.find(l => l._dbId === snap.dbId);
-                            
+
                             // Ha a sor üres/törölt, akkor 0 raklappal számolunk
                             const currentEuro = (currentLine && !currentLine._empty) ? (parseInt(currentLine.euro_palets) || 0) : 0;
                             const currentNormal = (currentLine && !currentLine._empty) ? (parseInt(currentLine.normal_palets) || 0) : 0;
 
-                            const diffEuro   = (snap.euro_palets   || 0) - currentEuro;
+                            const diffEuro = (snap.euro_palets || 0) - currentEuro;
                             const diffNormal = (snap.normal_palets || 0) - currentNormal;
 
                             if (diffEuro > 0 || diffNormal > 0) {
@@ -976,6 +990,9 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                             );
                             await Promise.all(demandPromises);
 
+                            // Értesítjük a többi modult (pl. rakodas.js), hogy frissítsék a listájukat
+                            document.dispatchEvent(new CustomEvent('cargoDemandsUpdated'));
+
                             const itemList = decreasedItems.map(it =>
                                 `• ${it.productName}: ${it.diffEuro > 0 ? it.diffEuro + ' Euró' : ''} ${it.diffNormal > 0 ? it.diffNormal + ' Normál' : ''} raklap`
                             ).join('\n');
@@ -986,16 +1003,16 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                     } else {
                         alert(isNew ? 'Kamion sikeresen létrehozva: ' + orderNumber : 'Kamion sikeresen frissítve: ' + orderNumber);
                     }
-                    
+
                     if (isNew) {
                         isNew = false;
                         currentShipmentId = data.id;
                     }
-                    
+
                     if (currentShipmentId) {
                         await loadExistingShipment(currentShipmentId);
                     }
-                    
+
                 } else {
                     const err = await res.json();
                     if (err.error && err.error.toLowerCase().includes('foglalt')) conflictMsg.style.display = 'inline';
@@ -1037,26 +1054,26 @@ function initDraggable(modalEl, headerEl) {
     function dragStart(e) {
         if (e.button !== 0) return; // Only left click
         if (['INPUT', 'BUTTON', 'SELECT', 'OPTION', 'TEXTAREA', 'A'].includes(e.target.tagName)) return;
-        
+
         startX = e.clientX;
         startY = e.clientY;
-        
+
         document.addEventListener('mousemove', dragging);
         document.addEventListener('mouseup', dragEnd);
-        
+
         e.preventDefault();
     }
 
     function dragging(e) {
         const dx = e.clientX - startX;
         const dy = e.clientY - startY;
-        
+
         startX = e.clientX;
         startY = e.clientY;
-        
+
         offsetX += dx;
         offsetY += dy;
-        
+
         modalEl.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
     }
 
