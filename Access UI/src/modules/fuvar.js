@@ -353,7 +353,10 @@ export function renderFuvar(container, windowManager) {
     function fmtDate(val) { return val ? val.substring(0, 10) : ''; }
 
     function renderTable(data) {
-        tbody.innerHTML = data.map(r => `
+        const MAX_RENDER = 200;
+        const renderData = data.slice(0, MAX_RENDER);
+        
+        tbody.innerHTML = renderData.map(r => `
             <tr>
                 <td style="text-align:center;">${fmtNum(r.tot)}</td>
                 <td style="text-align:center; background:#bfdbfe;">${fmtNum(r.euro)}</td>
@@ -389,7 +392,12 @@ export function renderFuvar(container, windowManager) {
                 <td style="text-align:right;">${fmtNum(r.transport_cost_product)}</td>
             </tr>
         `).join('');
-        recordCount.textContent = `(${data.length} rekord)`;
+        
+        let countText = `(${data.length} rekord)`;
+        if (data.length > MAX_RENDER) {
+            countText = `(Megjelenítve: ${MAX_RENDER} / Összesen: ${data.length} rekord)`;
+        }
+        recordCount.textContent = countText;
 
         tbody.querySelectorAll('.fuv-open-link').forEach(el => {
             el.addEventListener('click', e => {

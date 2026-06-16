@@ -228,9 +228,11 @@ export function renderRakodas(container, windowManager) {
                 '<td style="padding:3px 4px; font-size:10px;">' + escHtml(r.product_name || '') + '</td>' +
                 '<td style="padding:3px 4px; font-size:10px; color:#64748b;">' + escHtml(r.partner_name || '') + '</td>' +
                 '<td style="padding:3px 4px; font-size:10px; color:#64748b;">' + escHtml(r.customer_name || '') + '</td>' +
-                '<td style="text-align:center; padding:3px 4px;">' +
+                '<td style="text-align:center; padding:3px 4px; display:flex; gap:4px; justify-content:center;">' +
                 '<button class="btn-send-aru" data-id="' + r.id + '" title="Küldés kamionra" ' +
                 'style="background:#ef4444; color:#fff; border:1px solid #dc2626; border-radius:4px; padding:2px 7px; font-size:11px; cursor:pointer; transition:all 0.2s;">➡</button>' +
+                '<button class="btn-del-aru" data-id="' + r.id + '" title="Törlés" ' +
+                'style="background:#f1f5f9; color:#ef4444; border:1px solid #cbd5e1; border-radius:4px; padding:2px 5px; font-size:11px; cursor:pointer; transition:all 0.2s;">✕</button>' +
                 '</td>' +
                 '</tr>';
         }).join('');
@@ -241,6 +243,31 @@ export function renderRakodas(container, windowManager) {
                 var row = aruData.find(function (x) { return x.id === id; });
                 if (!row) return;
                 openSendToTruckModal(row);
+            });
+        });
+
+        aruTbody.querySelectorAll('.btn-del-aru').forEach(function (btn) {
+            btn.addEventListener('click', async function (e) {
+                var id = parseInt(e.currentTarget.getAttribute('data-id'));
+                var row = aruData.find(function (x) { return x.id === id; });
+                if (!row) return;
+                
+                if (!confirm(`Biztosan törölni szeretnéd ezt a tételt az Áru igényből?\n\nTermék: ${row.product_name || 'ismeretlen'}\nEuro: ${row.euro_palets || 0} | Normál: ${row.normal_palets || 0}`)) return;
+                
+                try {
+                    const res = await fetch(`/api/v1/cargo-demands/${id}`, { method: 'DELETE' });
+                    if (!res.ok) {
+                        let errMsg = 'Hiba a törlés során';
+                        try {
+                            const errData = await res.json();
+                            if (errData && errData.error) errMsg += ': ' + errData.error;
+                        } catch (e) {}
+                        throw new Error(errMsg + ' (Státusz: ' + res.status + ')');
+                    }
+                    loadCargoDemandsData(); // frissítés
+                } catch (err) {
+                    alert('Hálózati hiba: ' + err.message);
+                }
             });
         });
     }

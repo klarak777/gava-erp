@@ -424,7 +424,10 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                             originalLinesSnapshot[idx] = {
                                 euro_palets: l.euro_palets,
                                 normal_palets: l.normal_palets,
-                                dbId: l._dbId
+                                dbId: l._dbId,
+                                productName: l.productName || '',
+                                product_id: l.product_id || null,
+                                customer: l.customer || ''
                             };
                         }
                     });
@@ -495,15 +498,15 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 <tr data-index="${index}" style="${isEmpty ? 'background:#fafafa;' : ''}">
                     <td style="text-align:center; white-space:nowrap; padding:1px 2px;">
                         <button class="edit-line" data-index="${index}" title="Szerkesztés"
-                            style="background:none; border:none; cursor:pointer; font-size:14px; padding:1px 3px; color:#2563eb;">✏️</button>
+                            style="background:none; border:none; cursor:pointer; font-size:14px; padding:1px 3px; color:${currentShipmentIsLoaded ? '#94a3b8' : '#2563eb'};" ${currentShipmentIsLoaded ? 'disabled' : ''}>✏️</button>
                         <button class="clear-line" data-index="${index}" title="Sor törlése (adatok törlése)"
-                            style="background:none; border:none; cursor:pointer; font-size:13px; padding:1px 3px; color:${isEmpty ? '#ccc' : '#dc2626'};" ${isEmpty ? 'disabled' : ''}>✕</button>
+                            style="background:none; border:none; cursor:pointer; font-size:13px; padding:1px 3px; color:${(isEmpty || currentShipmentIsLoaded) ? '#ccc' : '#dc2626'};" ${(isEmpty || currentShipmentIsLoaded) ? 'disabled' : ''}>✕</button>
                     </td>
                     <td style="text-align:center; font-weight:bold; padding:1px 4px; color:${tv ? '#1e40af' : '#ccc'};">${tv}</td>
                     <td><input type="number" class="cell-edit" data-field="euro_palets" data-index="${index}"
-                        style="${numCellStyle} width:70px;" value="${isEmpty ? '' : escHtml(l.euro_palets)}" min="0" placeholder="0"></td>
+                        style="${numCellStyle} width:70px;" value="${isEmpty ? '' : escHtml(l.euro_palets)}" min="0" placeholder="0" ${currentShipmentIsLoaded ? 'disabled' : ''}></td>
                     <td><input type="number" class="cell-edit" data-field="normal_palets" data-index="${index}"
-                        style="${numCellStyle} width:70px;" value="${isEmpty ? '' : escHtml(l.normal_palets)}" min="0" placeholder="0"></td>
+                        style="${numCellStyle} width:70px;" value="${isEmpty ? '' : escHtml(l.normal_palets)}" min="0" placeholder="0" ${currentShipmentIsLoaded ? 'disabled' : ''}></td>
                     <td><input type="text" class="cell-edit" data-field="productName" data-index="${index}"
                         style="${cellStyle} min-width:170px;" value="${isEmpty ? '' : escHtml(l.productName)}"></td>
                     <td><input type="text" class="cell-edit" data-field="albaran_number" data-index="${index}"
@@ -748,7 +751,9 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                     lines.splice(editingLineIndex, 1);
                     normalizeLines();
                 } else {
-                    lines[editingLineIndex] = lineData;
+                    const oldLine = lines[editingLineIndex] || {};
+                    lines[editingLineIndex] = { ...oldLine, ...lineData };
+                    delete lines[editingLineIndex]._empty;
                 }
             } else {
                 // Ha nincs index (nem kellene előfordulni), az első üres sorba tesszük
@@ -925,6 +930,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 }
 
                 if (res.ok) {
+                    const data = await res.json();
                     // ===== RAKLAP-CSÖKKENTÉS FIGYELŐ (csak szerkesztésnél, PUT esetén) =====
                     if (!isNew && Object.keys(originalLinesSnapshot).length > 0) {
                         const decreasedItems = [];
@@ -943,11 +949,11 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                             if (diffEuro > 0 || diffNormal > 0) {
                                 const refLine = currentLine || lines.find(l => l._dbId === snap.dbId);
                                 decreasedItems.push({
-                                    productName: (refLine && refLine.productName) || '(ismeretlen termék)',
-                                    customer: (refLine && refLine.customer) || '',
+                                    productName: (refLine && refLine.productName) || snap.productName || '(ismeretlen termék)',
+                                    customer: (refLine && refLine.customer) || snap.customer || '',
                                     diffEuro: Math.max(0, diffEuro),
                                     diffNormal: Math.max(0, diffNormal),
-                                    product_id: (refLine && refLine.product_id) || null
+                                    product_id: (refLine && refLine.product_id) || snap.product_id || null
                                 });
                             }
                         });
@@ -980,9 +986,16 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                     } else {
                         alert(isNew ? 'Kamion sikeresen létrehozva: ' + orderNumber : 'Kamion sikeresen frissítve: ' + orderNumber);
                     }
-                    const windowId = container.closest('.mdi-window')?.id;
-                    if (windowId) windowManager.close(windowId);
-                    window.dispatchEvent(new CustomEvent('app:navigate', { detail: { moduleId: 'fuvarok' } }));
+                    
+                    if (isNew) {
+                        isNew = false;
+                        currentShipmentId = data.id;
+                    }
+                    
+                    if (currentShipmentId) {
+                        await loadExistingShipment(currentShipmentId);
+                    }
+                    
                 } else {
                     const err = await res.json();
                     if (err.error && err.error.toLowerCase().includes('foglalt')) conflictMsg.style.display = 'inline';
