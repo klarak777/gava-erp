@@ -986,7 +986,16 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                                         normal_palets: item.diffNormal,
                                         notes: `Automatikus: raklap csökkentés ${orderNumber} fuvarról`
                                     })
-                                }).catch(err => console.error('Áru igény mentési hiba:', err))
+                                }).then(async res => {
+                                    if (!res.ok) {
+                                        const errText = await res.text();
+                                        throw new Error(`Szerver hiba (${res.status}): ${errText}`);
+                                    }
+                                    return res.json();
+                                }).catch(err => {
+                                    console.error('Áru igény mentési hiba:', err);
+                                    alert('Hiba történt az Áru igény automatikus mentésekor: ' + err.message);
+                                })
                             );
                             await Promise.all(demandPromises);
 
