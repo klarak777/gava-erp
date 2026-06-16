@@ -635,7 +635,17 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 btn.addEventListener('click', () => {
                     const idx = parseInt(btn.dataset.index);
                     if (lines[idx]._empty) return;
-                    if (!confirm('Biztosan törli a sor adatait?')) return;
+                    if (!confirm('Biztosan törli a tételt? A tétel véglegesen törlésre kerül és NEM kerül át az Áru igények közé!')) return;
+                    
+                    const dbId = lines[idx]._dbId;
+                    if (dbId) {
+                        for (let snapIdx in originalLinesSnapshot) {
+                            if (originalLinesSnapshot[snapIdx].dbId === dbId) {
+                                delete originalLinesSnapshot[snapIdx];
+                            }
+                        }
+                    }
+
                     lines.splice(idx, 1);
                     normalizeLines();
                     renderTable();
@@ -818,11 +828,13 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
             try {
                 const res = await fetch('/api/v1/shipments/unloaded');
                 const unloaded = await res.json();
-                if (unloaded.length === 0) {
-                    transferTargetSelect.innerHTML = '<option value="">– Nincs nem-rakodott kamion –</option>';
+                const filteredUnloaded = unloaded.filter(s => s.id !== currentShipmentId);
+                
+                if (filteredUnloaded.length === 0) {
+                    transferTargetSelect.innerHTML = '<option value="">– Nincs másik nem-rakodott kamion –</option>';
                 } else {
                     transferTargetSelect.innerHTML = '<option value="">-- Válasszon kamionszámot --</option>' +
-                        unloaded.map(s => `<option value="${s.id}">${s.order_number}${s.transporter_name ? ' (' + s.transporter_name + ')' : ''}</option>`).join('');
+                        filteredUnloaded.map(s => `<option value="${s.id}">${s.order_number}${s.transporter_name ? ' (' + s.transporter_name + ')' : ''}</option>`).join('');
                 }
             } catch (err) {
                 transferTargetSelect.innerHTML = '<option value="">[Betöltési hiba]</option>';
