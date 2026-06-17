@@ -38,9 +38,13 @@ export function renderTransportistas(container) {
             </div>
 
             <!-- Sor 2: Szövegdobozok + Legördülők -->
-            <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:10px; align-items:end;">
+            <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:10px; align-items:end;">
                 <div>
-                    <label class="access-control-label" for="filter-kamion" style="display:block;font-size:11px;margin-bottom:4px;">Kamion szám</label>
+                    <label class="access-control-label" for="filter-order-num" style="display:block;font-size:11px;margin-bottom:4px;">Order Number (Kamion szám)</label>
+                    <input type="text" id="filter-order-num" class="access-control-input" placeholder="LOG356, GHU 382..." style="width:100%;box-sizing:border-box;">
+                </div>
+                <div>
+                    <label class="access-control-label" for="filter-kamion" style="display:block;font-size:11px;margin-bottom:4px;">Rendszám</label>
                     <input type="text" id="filter-kamion" class="access-control-input" placeholder="Rendszám..." style="width:100%;box-sizing:border-box;">
                 </div>
                 <div>
@@ -130,6 +134,7 @@ export function renderTransportistas(container) {
     const recordCount  = tableContainer.querySelector('#record-count');
     const chkBevVar    = filterPanel.querySelector('#chk-bev-var');
     const chkHiany     = filterPanel.querySelector('#chk-hianyzo-szla');
+    const inpOrderNum  = filterPanel.querySelector('#filter-order-num');
     const inpKamion    = filterPanel.querySelector('#filter-kamion');
     const inpHely      = filterPanel.querySelector('#filter-hely');
     const selSzezon    = filterPanel.querySelector('#filter-szezon');
@@ -181,6 +186,7 @@ export function renderTransportistas(container) {
     }
 
     function filterData() {
+        const valOrderNum  = (inpOrderNum.value || '').toLowerCase().replace(/\s+/g, '');
         const valKamion   = inpKamion.value.toLowerCase();
         const valHely     = inpHely.value.toLowerCase();
         const valFuvarozo = selFuvarozo.value;
@@ -189,19 +195,23 @@ export function renderTransportistas(container) {
         const hiany       = chkHiany.checked;
 
         const filtered = tableData.filter(row => {
-            const mKamion    = (row.plateNumber || '').toLowerCase().includes(valKamion);
-            const mHely      = (row.loadingPlace || '').toLowerCase().includes(valHely);
+            // Order number szűrő: szóköz nélkül hasonlít
+            const orderNorm = (row.orderNumber || '').toLowerCase().replace(/\s+/g, '');
+            const mOrderNum  = !valOrderNum || orderNorm.includes(valOrderNum);
+            const mKamion    = !valKamion || (row.plateNumber || '').toLowerCase().includes(valKamion);
+            const mHely      = !valHely || (row.loadingPlace || '').toLowerCase().includes(valHely);
             const mFuvarozo  = !valFuvarozo || row.transporter === valFuvarozo;
             const mEv        = !valEv || getYear(row.loadingDate) === valEv;
             const mBevVar    = !bevVar || !row.bevetelezve;
             const mHiany     = !hiany || row.invoiceNumber === '';
-            return mKamion && mHely && mFuvarozo && mEv && mBevVar && mHiany;
+            return mOrderNum && mKamion && mHely && mFuvarozo && mEv && mBevVar && mHiany;
         });
 
         renderTable(filtered);
     }
 
     // Eseményfigyelők
+    inpOrderNum.addEventListener('input', filterData);
     inpKamion.addEventListener('input', filterData);
     inpHely.addEventListener('input', filterData);
     selFuvarozo.addEventListener('change', filterData);
@@ -211,6 +221,7 @@ export function renderTransportistas(container) {
     chkHiany.addEventListener('change', filterData);
 
     btnClear.addEventListener('click', () => {
+        inpOrderNum.value = '';
         inpKamion.value   = '';
         inpHely.value     = '';
         selFuvarozo.value = '';
