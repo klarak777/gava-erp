@@ -55,7 +55,7 @@ export function renderRakodas(container, windowManager) {
         '<input type="date" id="rak-date-to" class="access-control-input" style="width:160px;">' +
         '</div>' +
         '<div style="display:flex; align-items:center; gap:6px;">' +
-        '<input type="checkbox" id="rak-open-only">' +
+        '<input type="checkbox" id="rak-open-only" checked>' +
         '<label for="rak-open-only" style="white-space:nowrap; font-size:13px;">Csak nyitott rakodások</label>' +
         '</div>' +
         '<button class="secondary-btn btn-dense" id="btn-clear-rak">Szűrők törlése</button>' +
@@ -827,7 +827,7 @@ export function renderRakodas(container, windowManager) {
         inputFuvarozo.value = '';
         inputDateFrom.value = '';
         inputDateTo.value = '';
-        chkOpenOnly.checked = false;
+        chkOpenOnly.checked = true;
         loadRakData(null);
     });
 

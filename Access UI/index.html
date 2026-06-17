@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GAVA Access UI â€“ V0.3.5</title>
+    <title>GAVA Access UI – V0.3.5</title>
     <link rel="icon" type="image/x-icon" href="logo.ico">
     <link rel="stylesheet" href="src/style.css">
     <link rel="stylesheet" href="src/access-ui.css">
@@ -14,25 +14,25 @@
 </head>
 
 <body>
-    <!-- BejelentkezÃ©si kÃ©pernyÅ‘ (Access-szerÅ± logika) -->
+    <!-- Bejelentkezési képernyő (Access-szerű logika) -->
     <div id="login-overlay" class="login-overlay">
         <div class="login-box premium-glass">
             <div class="login-header">
                 <img src="logo.ico" alt="Gava Logo" class="logo-img" style="width: 64px; height: 64px; margin-bottom: 16px;">
                 <h2 style="margin-bottom: 8px;">GAVA <span class="logo-accent">Access UI</span> <span style="font-size:13px; font-weight:400; color:var(--text-muted); vertical-align:middle; margin-left:6px;">V0.3.5</span></h2>
-                <p style="color: var(--text-muted); margin-bottom: 24px;">BejelentkezÃ©s a rendszerbe</p>
+                <p style="color: var(--text-muted); margin-bottom: 24px;">Bejelentkezés a rendszerbe</p>
             </div>
             <form id="login-form">
                 <div class="input-group" style="margin-bottom: 16px; text-align: left;">
-                    <label for="username" style="display: block; margin-bottom: 8px; font-weight: 500;">FelhasznÃ¡lÃ³nÃ©v</label>
+                    <label for="username" style="display: block; margin-bottom: 8px; font-weight: 500;">Felhasználónév</label>
                     <input type="text" id="username" class="access-input" placeholder="Pl. admin" required style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-light);">
                 </div>
                 <div class="input-group" style="margin-bottom: 24px; text-align: left;">
-                    <label for="password" style="display: block; margin-bottom: 8px; font-weight: 500;">JelszÃ³</label>
-                    <input type="password" id="password" class="access-input" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" required style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-light);">
+                    <label for="password" style="display: block; margin-bottom: 8px; font-weight: 500;">Jelszó</label>
+                    <input type="password" id="password" class="access-input" placeholder="••••••••" required style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-light);">
                 </div>
-                <button type="button" id="login-btn" class="primary-btn" style="width: 100%; padding: 12px; font-size: 16px;">BelÃ©pÃ©s</button>
-                <div id="login-error" style="color: #dc2626; margin-top: 16px; display: none; font-size: 14px;">Adj meg egy felhasznÃ¡lÃ³nevet!</div>
+                <button type="button" id="login-btn" class="primary-btn" style="width: 100%; padding: 12px; font-size: 16px;">Belépés</button>
+                <div id="login-error" style="color: #dc2626; margin-top: 16px; display: none; font-size: 14px;">Adj meg egy felhasználónevet!</div>
             </form>
         </div>
     </div>
@@ -45,8 +45,8 @@
             </div>
             <nav id="main-nav">
                 <a href="#" data-module="dashboard" class="nav-item active">
-                    <span class="nav-icon">ðŸ“Š</span>
-                    <span class="nav-label">KezdÅ‘kÃ©pernyÅ‘</span>
+                    <span class="nav-icon">&#128202;</span>
+                    <span class="nav-label">Kezd&#337;k&eacute;perny&#337;</span>
                 </a>
 
                 <div class="nav-divider"></div>
@@ -60,18 +60,18 @@
                         <span class="user-role" id="logged-user-role">Administrator</span>
                     </div>
                 </div>
-                <button id="logout-btn" class="secondary-btn" style="padding: 8px 16px;">KijelentkezÃ©s</button>
+                <button id="logout-btn" class="secondary-btn" style="padding: 8px 16px;">Kijelentkezés</button>
             </div>
         </aside>
 
         <main id="main-container">
             <header id="top-bar">
                 <div class="search-bar">
-                    <input type="text" placeholder="GyorskeresÃ©s a modulokban...">
+                    <input type="text" placeholder="Gyorskeresés a modulokban...">
                 </div>
                 <div class="top-actions">
-                    <button class="icon-btn">ðŸ””</button>
-                    <button class="icon-btn">âš™ï¸</button>
+                    <button class="icon-btn">🔔</button>
+                    <button class="icon-btn">⚙️</button>
 
                 </div>
             </header>
