@@ -152,7 +152,8 @@ router.get('/check-order-number/:orderNumber', async (req, res) => {
 });
 
 // PATCH /api/v1/shipments/:id/loaded
-// Frissíti a kamion rakodási státuszát (is_loaded)
+// Frissíti a kamion rakodási státuszát (is_loaded).
+// Ha is_loaded=true-ra vált, automatikusan EKAER dokumentumot generál.
 router.patch('/:id/loaded', async (req, res) => {
   try {
     const { id } = req.params;
@@ -161,12 +162,108 @@ router.patch('/:id/loaded', async (req, res) => {
       .where('id', id)
       .update({ is_loaded: is_loaded ? true : false });
 
-    res.json({ success: true });
+    let ekaerResult = null;
+    if (is_loaded) {
+      // EKAER dokumentum automatikus generálása
+      try {
+        ekaerResult = await generateEkaerForShipment(id);
+      } catch (ekaerErr) {
+        console.error('[EKAER] Generálási hiba (a rakodva státusz sikeresen mentve):', ekaerErr.message);
+        ekaerResult = { error: ekaerErr.message };
+      }
+    }
+
+    res.json({ success: true, ekaer: ekaerResult });
   } catch (err) {
     console.error('Hiba a rakodási státusz frissítésekor:', err);
     res.status(500).json({ error: 'Belső szerverhiba' });
   }
 });
+
+// POST /api/v1/shipments/:id/generate-ekaer
+// Manuálisan generál EKAER dokumentumot egy meglévő fuvarhoz
+router.post('/:id/generate-ekaer', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await generateEkaerForShipment(id);
+    res.json({ message: 'EKAER dokumentum sikeresen generálva', path: result.path });
+  } catch (err) {
+    console.error('Hiba az EKAER generálásakor:', err);
+    res.status(500).json({ error: 'Belső szerverhiba: ' + err.message });
+  }
+});
+
+// Helper: EKAER dokumentum generálása egy shipment ID-hoz
+async function generateEkaerForShipment(shipmentId) {
+  const shipment = await db('shipments')
+    .select('shipments.*', 'transporters.name as transporter_name')
+    .leftJoin('transporters', 'shipments.transporter_id', 'transporters.id')
+    .where('shipments.id', shipmentId)
+    .first();
+
+  if (!shipment) throw new Error('Fuvar nem található: id=' + shipmentId);
+
+  const lines = await db('shipment_lines')
+    .select('shipment_lines.*', 'products.name as product_name', 'partners.name as partner_name')
+    .leftJoin('products', 'shipment_lines.product_id', 'products.id')
+    .leftJoin('partners', 'shipment_lines.partner_id', 'partners.id')
+    .where('shipment_lines.shipment_id', shipmentId);
+
+  // Referencia lista összeállítása az albaran számokból (VBA ProcessReferences logika)
+  const references = lines
+    .map(l => l.albaran_number || l.partner_name || '')
+    .filter(r => r && r.trim() !== '')
+    .join('\n');
+
+  // Sablon és kimeneti útvonalak
+  const raktarPath = process.env.RAKTAR_PATH || path.join('\\\\192.168.1.5', 'raktar');
+  const templatePath = path.join(raktarPath, 'MI Teszt', 'Minta dokuk', 'EKAER minta.docx');
+
+  if (!fs.existsSync(templatePath)) {
+    throw new Error('EKAER sablon nem található: ' + templatePath);
+  }
+
+  // Kimeneti mappa: \raktar\MI Teszt\Fuvarok\{tourNumber}\
+  const safeOrderNum = (shipment.order_number || '').replace(/\//g, '-').replace(/[\\:*?"<>|]/g, '');
+  const safePlateNum = (shipment.plate_number || '').replace(/\//g, '-').replace(/[\\:*?"<>|]/g, '');
+  const targetDir = path.join(raktarPath, 'MI Teszt', 'Fuvarok', safeOrderNum);
+
+  // Duplikátum-kezelés (ha a fájl már létezik, számot fűzünk hozzá)
+  let outputPath = path.join(targetDir, safePlateNum + '.docx');
+  let counter = 0;
+  while (fs.existsSync(outputPath)) {
+    counter++;
+    outputPath = path.join(targetDir, safePlateNum + '(' + counter + ')' + '.docx');
+  }
+
+  // Placeholder adatok kitöltése (VBA ReplacePlaceholders logika)
+  const data = {
+    'Plate number': shipment.plate_number || '',
+    'Tour number': shipment.order_number || '',
+    'Reference': references
+  };
+
+  // Generálás a meglévő docxService-szel (csak placeholder csere, nincs tábla)
+  docxService.generateOrderDocx(templatePath, outputPath, data, []);
+
+  // Rögzítés az ekaer_records táblában
+  try {
+    const season = await db('seasons').where('id', shipment.season_id).first();
+    await db('ekaer_records').insert({
+      shipment_id: shipmentId,
+      season_id: shipment.season_id || null,
+      transporter_id: shipment.transporter_id || null,
+      ekaer_file_name: path.basename(outputPath),
+      file_path: outputPath,
+      load_date: shipment.loading_date,
+      is_sent: false
+    });
+  } catch (dbErr) {
+    console.error('[EKAER] DB mentési hiba (fájl létrejött):', dbErr.message);
+  }
+
+  return { path: outputPath, fileName: path.basename(outputPath) };
+}
 
 // GET /api/v1/shipments/unloaded
 // Csak azok a kamionok, ahol is_loaded = false (ezek jelennek meg az áthelyezés/küldés felugróban)
@@ -184,13 +281,14 @@ router.get('/unloaded', async (req, res) => {
   }
 });
 
-// GET /api/v1/shipments[?limit=N&season_code=XX-XX&search=xxx&has_lines=true]
+// GET /api/v1/shipments[?limit=N&season_code=XX-XX&search=xxx&has_lines=true&is_loaded=true/false]
 router.get('/', async (req, res) => {
   try {
     const limit = req.query.limit ? parseInt(req.query.limit) : 50;
     const seasonCode = req.query.season_code || null;
     const search = req.query.search || null;
     const hasLines = req.query.has_lines === 'true';
+    const isLoadedFilter = req.query.is_loaded; // 'true', 'false', or undefined (no filter)
 
     let query = db('shipments')
       .select('shipments.*', 'seasons.code as season_code', 'transporters.name as transporter_name')
@@ -200,6 +298,13 @@ router.get('/', async (req, res) => {
 
     if (seasonCode) {
       query = query.where('seasons.code', seasonCode);
+    }
+
+    // is_loaded szűrő: ?is_loaded=true (Transportistas), ?is_loaded=false (Rakodás)
+    if (isLoadedFilter === 'true') {
+      query = query.where('shipments.is_loaded', true);
+    } else if (isLoadedFilter === 'false') {
+      query = query.where('shipments.is_loaded', false);
     }
 
     if (search) {

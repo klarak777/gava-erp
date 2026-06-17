@@ -183,21 +183,70 @@ export function renderRakodas(container, windowManager) {
                 var id = parseInt(e.target.getAttribute('data-id'));
                 var isLoaded = e.target.checked;
                 var row = rakData.find(function (x) { return x.id === id; });
-                if (row) {
-                    row.loaded = isLoaded;
+
+                if (isLoaded) {
+                    // Visszaváltjuk, amíg a felhasználó megerősít
+                    e.target.checked = false;
+
+                    var tourName = row ? row.tour : 'ismeretlen';
+                    var confirmed = confirm(
+                        '✅ RAKODVA megerősítés\n\n' +
+                        'Kamion: ' + tourName + '\n\n' +
+                        'Biztosan megjelölöd rakodottként?\n' +
+                        'Az EKAER dokumentum automatikusan elkészül,\n' +
+                        'és a kamion eltűnik a Rakodás modulból.'
+                    );
+
+                    if (!confirmed) return; // visszavonja, a pipa marad kódólva
+
+                    e.target.checked = true; // visszaállítjuk a pipát
+                    e.target.disabled = true; // megakadályozzuk a kétszeres kattintást
+
                     try {
                         const res = await fetch('/api/v1/shipments/' + id + '/loaded', {
                             method: 'PATCH',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ is_loaded: isLoaded })
+                            body: JSON.stringify({ is_loaded: true })
                         });
-                        if (!res.ok) throw new Error('Hiba a mentésnél');
-                        console.log('Rakodva trigger:', row.tour, '=>', row.loaded);
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || 'Hiba a mentésnél');
+
+                        // Sor eltávolítása a listából
+                        rakData = rakData.filter(function (x) { return x.id !== id; });
+                        filter();
+
+                        // EKAER eredmény jelzése
+                        if (data.ekaer && data.ekaer.path) {
+                            alert('✅ ' + tourName + ' sikeresen RAKODVA jelölték!\n\nEKAER dokumentum létrehozva:\n' + data.ekaer.path);
+                        } else if (data.ekaer && data.ekaer.error) {
+                            alert('✅ ' + tourName + ' RAKODVA\n\n⚠️ EKAER hiba (a státusz mentve):\n' + data.ekaer.error);
+                        } else {
+                            alert('✅ ' + tourName + ' sikeresen RAKODVA jelölték!');
+                        }
                     } catch (err) {
                         console.error('Hiba:', err);
-                        e.target.checked = !isLoaded; // revert if fails
-                        row.loaded = !isLoaded;
-                        alert('Nem sikerült elmenteni a rakodási státuszt!');
+                        e.target.checked = false;
+                        e.target.disabled = false;
+                        alert('Nem sikerült elmenteni a rakodási státuszt: ' + err.message);
+                    }
+                } else {
+                    // Pipa levevése (visszavonja a RAKODVA státuszt)
+                    if (!confirm('Biztosan visszavonod a RAKODVA jelölést a(z) ' + (row ? row.tour : '') + ' komiontól?')) {
+                        e.target.checked = true;
+                        return;
+                    }
+                    try {
+                        const res = await fetch('/api/v1/shipments/' + id + '/loaded', {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ is_loaded: false })
+                        });
+                        if (!res.ok) throw new Error('Hiba a mentésnél');
+                        if (row) row.loaded = false;
+                    } catch (err) {
+                        console.error('Hiba:', err);
+                        e.target.checked = true;
+                        alert('Nem sikerült elmenteni a státuszt!');
                     }
                 }
             });
@@ -783,14 +832,19 @@ export function renderRakodas(container, windowManager) {
     });
 
     // ============= API BETÖLTÉS =============
-    // searchTerm: null = 50 legfrissebb tételt tartalmazó fuvar
-    //             string = összes egyező (minden szezon)
+    // searchTerm: null = csak RAKODVA=false fuvarok (Rakodás modul alapnézete)
+    //             string = összes egyező (minden szezon, minden is_loaded)
     async function loadRakData(searchTerm) {
         try {
             tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:15px; color:#666;">Betöltés...</td></tr>';
-            var url = searchTerm
-                ? '/api/v1/shipments?search=' + encodeURIComponent(searchTerm)
-                : '/api/v1/shipments?limit=10000';
+            var url;
+            if (searchTerm) {
+                // Kereséskor minden szezont és minden állapotot mutatunk
+                url = '/api/v1/shipments?search=' + encodeURIComponent(searchTerm);
+            } else {
+                // Alap nézetben csak a nem-rakodott fuvarok
+                url = '/api/v1/shipments?limit=10000&is_loaded=false';
+            }
             const res = await fetch(url);
             if (res.ok) {
                 const data = await res.json();

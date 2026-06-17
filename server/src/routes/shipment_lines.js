@@ -27,7 +27,7 @@ router.get('/', async (req, res) => {
       };
     });
 
-    // 3. Sorok lekérdezése - ÖSSZES mező
+    // 3. Sorok lekérdezése - ÖSSZES mező (csak rakodott fuvarok tételei)
     const lines = await db('shipment_lines')
       .select(
         'shipment_lines.id as line_id',
@@ -76,6 +76,7 @@ router.get('/', async (req, res) => {
       .leftJoin('partners', 'shipment_lines.partner_id', 'partners.id')
       .leftJoin('seasons', 'shipments.season_id', 'seasons.id')
       .leftJoin('transporters', 'shipments.transporter_id', 'transporters.id')
+      .where('shipments.is_loaded', true)  // Csak RAKODVA fuvarok tételei jelennek meg (Fuvarok összesítő)
       .orderBy('shipments.loading_date', 'desc')
       .limit(100000);
 
