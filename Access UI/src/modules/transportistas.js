@@ -199,7 +199,7 @@ export function renderTransportistas(container) {
         // Törlés gombok eseménykezelője
         tbody.querySelectorAll('.delete-fuvar-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                const id = e.target.dataset.id;
+                const id = e.currentTarget.dataset.id;
                 if (confirm('Biztosan törölni szeretnéd a fuvart és minden hozzá tartozó tételt?')) {
                     try {
                         const res = await fetch('/api/v1/shipments/' + id, { method: 'DELETE' });

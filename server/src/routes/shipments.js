@@ -773,8 +773,6 @@ router.post('/:id/generate-order', async (req, res) => {
   }
 });
 
-module.exports = router;
-
 // DELETE /api/v1/shipments/:id
 // Teljes fuvar (fejléc + tételek) törlése
 router.delete('/:id', async (req, res) => {
@@ -800,3 +798,6 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({ error: 'Hiba történt a törlés során: ' + err.message });
   }
 });
+
+module.exports = router;
+
