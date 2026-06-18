@@ -774,3 +774,29 @@ router.post('/:id/generate-order', async (req, res) => {
 });
 
 module.exports = router;
+
+// DELETE /api/v1/shipments/:id
+// Teljes fuvar (fejléc + tételek) törlése
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+  const trx = await db.transaction();
+  try {
+    // 1. Töröljük a fuvarhoz tartozó tételeket
+    await trx('shipment_lines').where('shipment_id', id).del();
+
+    // 2. Töröljük magát a fuvart
+    const deletedCount = await trx('shipments').where('id', id).del();
+
+    if (deletedCount === 0) {
+      await trx.rollback();
+      return res.status(404).json({ error: 'A fuvar nem található.' });
+    }
+
+    await trx.commit();
+    res.json({ message: 'Fuvar és a hozzá tartozó tételek sikeresen törölve.' });
+  } catch (err) {
+    await trx.rollback();
+    console.error('Hiba a fuvar törlésekor:', err);
+    res.status(500).json({ error: 'Hiba történt a törlés során: ' + err.message });
+  }
+});

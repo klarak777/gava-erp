@@ -127,6 +127,7 @@ export function renderTransportistas(container) {
                             <th style="min-width:105px; text-align:right;">Amount HUF</th>
                             <th style="min-width:135px;">Invoice number</th>
                             <th style="min-width:105px; text-align:right;">Amount EUR</th>
+                            <th style="min-width:50px; text-align:center;">Művelet</th>
                         </tr>
                     </thead>
                     <tbody id="transport-tbody"></tbody>
@@ -180,6 +181,9 @@ export function renderTransportistas(container) {
                 <td style="text-align:right;white-space:nowrap;">${row.amountHuf}</td>
                 <td style="white-space:nowrap;">${row.invoiceNumber}</td>
                 <td style="text-align:right;white-space:nowrap;font-weight:600;">${row.amountEur}</td>
+                <td style="text-align:center;">
+                    <button class="delete-fuvar-btn" data-id="${row.id}" title="Törlés" style="background:transparent;border:none;cursor:pointer;font-size:14px;">🗑️</button>
+                </td>
             `;
             tbody.appendChild(tr);
         });
@@ -189,6 +193,28 @@ export function renderTransportistas(container) {
             chk.addEventListener('change', e => {
                 const id = parseInt(e.target.dataset.id);
                 // Később itt API hívással mentjük az állapotot
+            });
+        });
+
+        // Törlés gombok eseménykezelője
+        tbody.querySelectorAll('.delete-fuvar-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const id = e.target.dataset.id;
+                if (confirm('Biztosan törölni szeretnéd a fuvart és minden hozzá tartozó tételt?')) {
+                    try {
+                        const res = await fetch('/api/v1/shipments/' + id, { method: 'DELETE' });
+                        if (res.ok) {
+                            alert('Fuvar sikeresen törölve.');
+                            loadRealData();
+                        } else {
+                            const err = await res.json();
+                            alert('Hiba a törlés során: ' + (err.error || 'Ismeretlen hiba'));
+                        }
+                    } catch (error) {
+                        alert('Hálózati hiba a törlés során.');
+                        console.error(error);
+                    }
+                }
             });
         });
 
