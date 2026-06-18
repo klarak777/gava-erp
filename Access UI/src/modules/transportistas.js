@@ -55,6 +55,11 @@ export function renderTransportistas(container) {
                     <label class="access-control-label" for="filter-szezon" style="display:block;font-size:11px;margin-bottom:4px;">Szezon</label>
                     <select id="filter-szezon" class="access-control-input" style="width:100%;box-sizing:border-box;">
                         <option value="">-- Összes --</option>
+                        <option value="18-19">Season 18-19</option>
+                        <option value="19-20">Season 19-20</option>
+                        <option value="20-21">Season 20-21</option>
+                        <option value="21-22">Season 21-22</option>
+                        <option value="22-23">Season 22-23</option>
                         <option value="23-24">Season 23-24</option>
                         <option value="24-25">Season 24-25</option>
                         <option value="25-26" selected>Season 25-26</option>
@@ -70,6 +75,11 @@ export function renderTransportistas(container) {
                     <label class="access-control-label" for="filter-ev" style="display:block;font-size:11px;margin-bottom:4px;">Rakodási év</label>
                     <select id="filter-ev" class="access-control-input" style="width:100%;box-sizing:border-box;">
                         <option value="">-- Összes --</option>
+                        <option value="2018">2018</option>
+                        <option value="2019">2019</option>
+                        <option value="2020">2020</option>
+                        <option value="2021">2021</option>
+                        <option value="2022">2022</option>
                         <option value="2023">2023</option>
                         <option value="2024">2024</option>
                         <option value="2025">2025</option>
@@ -191,6 +201,7 @@ export function renderTransportistas(container) {
         const valHely     = inpHely.value.toLowerCase();
         const valFuvarozo = selFuvarozo.value;
         const valEv       = selEv.value;
+        const valSzezon   = selSzezon.value;
         const bevVar      = chkBevVar.checked;
         const hiany       = chkHiany.checked;
 
@@ -202,9 +213,10 @@ export function renderTransportistas(container) {
             const mHely      = !valHely || (row.loadingPlace || '').toLowerCase().includes(valHely);
             const mFuvarozo  = !valFuvarozo || row.transporter === valFuvarozo;
             const mEv        = !valEv || getYear(row.loadingDate) === valEv;
+            const mSzezon    = !valSzezon || row.seasonCode === valSzezon;
             const mBevVar    = !bevVar || !row.bevetelezve;
             const mHiany     = !hiany || row.invoiceNumber === '';
-            return mOrderNum && mKamion && mHely && mFuvarozo && mEv && mBevVar && mHiany;
+            return mOrderNum && mKamion && mHely && mFuvarozo && mEv && mSzezon && mBevVar && mHiany;
         });
 
         renderTable(filtered);
@@ -251,6 +263,7 @@ export function renderTransportistas(container) {
                     plateNumber: d.plate_number || '',
                     transportPrice: d.transport_price ? d.transport_price + ' €' : '',
                     arrivalDate: d.arrival_date ? d.arrival_date.substring(0, 10) : '',
+                    seasonCode: d.season_code || '',
                     bevetelezve: false, // Jövőbeli fejlesztés
                     kb: '', b: '', t: '', // Ezek is jövőbeli DB oszlopok/nézetek lesznek
                     comment: d.comment || '',
