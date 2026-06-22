@@ -232,7 +232,7 @@ export function renderRakodas(container, windowManager) {
                 '<td style="text-align:center; padding:3px 4px; font-size:10px; font-weight:600; color:#0369a1;">' + (r.euro_palets || 0) + '</td>' +
                 '<td style="text-align:center; padding:3px 4px; font-size:10px; font-weight:600; color:#7c3aed;">' + (r.normal_palets || 0) + '</td>' +
                 '<td style="padding:3px 4px; font-size:10px;">' + escHtml(r.product_name || '') + '</td>' +
-                '<td style="padding:3px 4px; font-size:10px; color:#64748b;">' + escHtml(r.partner_name || '') + '</td>' +
+                '<td style="padding:3px 4px; font-size:10px; color:#64748b;">' + escHtml(r.albaran_number || '') + '</td>' +
                 '<td style="padding:3px 4px; font-size:10px; color:#64748b;">' + escHtml(r.customer_name || '') + '</td>' +
                 '<td style="text-align:center; padding:3px 4px; display:flex; gap:4px; justify-content:center;">' +
                 '<button class="btn-send-aru" data-id="' + r.id + '" title="Küldés kamionra" ' +
@@ -394,11 +394,11 @@ export function renderRakodas(container, windowManager) {
                 <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
                     <div style="display:flex; flex-direction:column; gap:3px; width:95px;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">N° Euro Palets: <span style="color:red;">*</span></label>
-                        <input type="number" id="aru-add-euro" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="0.1">
+                        <input type="number" id="aru-add-euro" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="any">
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px; width:95px;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">N° Normal Palets: <span style="color:red;">*</span></label>
-                        <input type="number" id="aru-add-normal" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="0.1">
+                        <input type="number" id="aru-add-normal" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="any">
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px; flex:3; min-width:180px; position:relative;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">Products: <span style="color:red;">*</span></label>
@@ -408,7 +408,7 @@ export function renderRakodas(container, windowManager) {
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:110px;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">Reference:</label>
-                        <input type="text" id="aru-add-reference" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Albarán N°">
+                        <input type="text" id="aru-add-reference" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Partner">
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:110px;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">Customer:</label>

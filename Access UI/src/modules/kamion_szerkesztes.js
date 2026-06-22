@@ -443,6 +443,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                                 dbId: l._dbId,
                                 productName: l.productName || '',
                                 product_id: l.product_id || null,
+                                albaran_number: l.albaran_number || '',
                                 customer: l.customer || ''
                             };
                         }
@@ -983,6 +984,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                                 decreasedItems.push({
                                     productName: (refLine && refLine.productName) || snap.productName || '(ismeretlen termék)',
                                     customer: (refLine && refLine.customer) || snap.customer || '',
+                                    albaran_number: (refLine && refLine.albaran_number) || snap.albaran_number || '',
                                     diffEuro: Math.max(0, diffEuro),
                                     diffNormal: Math.max(0, diffNormal),
                                     product_id: (refLine && refLine.product_id) || snap.product_id || null
@@ -999,6 +1001,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                                     body: JSON.stringify({
                                         product_id: item.product_id,
                                         product_name: item.productName,
+                                        albaran_number: item.albaran_number || null,
                                         customer_name: item.customer || null,
                                         euro_palets: item.diffEuro,
                                         normal_palets: item.diffNormal,
