@@ -124,14 +124,16 @@ router.get('/:id/preview', async (req, res) => {
         const safeOrderNum = (shipment.order_number || '').replace(/\//g, '-').replace(/[\\:*?"<>|]/g, '');
         
         let generated = generateEkaerPath(seasonCode, safeOrderNum, shipment.plate_number || 'UNKNOWN', process.env.RAKTAR_PATH);
-        if (generated && !fs.existsSync(generated.filePath)) {
+        let checkPath = resolveFilePath(generated.filePath);
+        if (generated && !fs.existsSync(checkPath)) {
           generated = generateEkaerPath(seasonCode, safeOrderNum, shipment.plate_number || 'UNKNOWN'); // without env override
+          checkPath = resolveFilePath(generated.filePath);
         }
 
         if (generated) {
           // Ha az alapértelmezett (pl. H200) útvonal nem létezik, próbáljuk meg az " OK" (pl. H200 OK) kiegészítéssel
-          let checkPath = generated.filePath;
           let okCheckPath = generated.filePath.replace(`\\${safeOrderNum}\\`, `\\${safeOrderNum} OK\\`).replace(`/${safeOrderNum}/`, `/${safeOrderNum} OK/`);
+          okCheckPath = resolveFilePath(okCheckPath);
           
           if (fs.existsSync(checkPath)) {
             resolvedPath = checkPath;
@@ -198,14 +200,16 @@ router.get('/:id/download', async (req, res) => {
         const safeOrderNum = (shipment.order_number || '').replace(/\//g, '-').replace(/[\\:*?"<>|]/g, '');
         
         let generated = generateEkaerPath(seasonCode, safeOrderNum, shipment.plate_number || 'UNKNOWN', process.env.RAKTAR_PATH);
-        if (generated && !fs.existsSync(generated.filePath)) {
+        let checkPath = resolveFilePath(generated.filePath);
+        if (generated && !fs.existsSync(checkPath)) {
           generated = generateEkaerPath(seasonCode, safeOrderNum, shipment.plate_number || 'UNKNOWN'); // without env override
+          checkPath = resolveFilePath(generated.filePath);
         }
 
         if (generated) {
           // Ha az alapértelmezett (pl. H200) útvonal nem létezik, próbáljuk meg az " OK" (pl. H200 OK) kiegészítéssel
-          let checkPath = generated.filePath;
           let okCheckPath = generated.filePath.replace(`\\${safeOrderNum}\\`, `\\${safeOrderNum} OK\\`).replace(`/${safeOrderNum}/`, `/${safeOrderNum} OK/`);
+          okCheckPath = resolveFilePath(okCheckPath);
           
           if (fs.existsSync(checkPath)) {
             resolvedPath = checkPath;

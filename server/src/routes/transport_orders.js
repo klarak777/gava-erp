@@ -130,12 +130,14 @@ router.get('/:id/preview', async (req, res) => {
         const safeOrderNum = (shipment.order_number || '').replace(/\//g, '-').replace(/[\\:*?"<>|]/g, '');
         
         let generated = generateTransportOrderPath(seasonCode, shipment.transporter_name, safeOrderNum, process.env.RAKTAR_PATH);
-        if (!fs.existsSync(generated.filePath)) {
+        let checkPath = resolveFilePath(generated.filePath);
+        if (!fs.existsSync(checkPath)) {
           generated = generateTransportOrderPath(seasonCode, shipment.transporter_name, safeOrderNum); // without env override
+          checkPath = resolveFilePath(generated.filePath);
         }
 
-        if (fs.existsSync(generated.filePath)) {
-          resolvedPath = generated.filePath;
+        if (fs.existsSync(checkPath)) {
+          resolvedPath = checkPath;
           await db('transport_orders').where({ id }).update({ file_path: resolvedPath });
         }
       }
@@ -221,12 +223,14 @@ router.get('/:id/download', async (req, res) => {
         const safeOrderNum = (shipment.order_number || '').replace(/\//g, '-').replace(/[\\:*?"<>|]/g, '');
         
         let generated = generateTransportOrderPath(seasonCode, shipment.transporter_name, safeOrderNum, process.env.RAKTAR_PATH);
-        if (!fs.existsSync(generated.filePath)) {
+        let checkPath = resolveFilePath(generated.filePath);
+        if (!fs.existsSync(checkPath)) {
           generated = generateTransportOrderPath(seasonCode, shipment.transporter_name, safeOrderNum); // without env override
+          checkPath = resolveFilePath(generated.filePath);
         }
 
-        if (fs.existsSync(generated.filePath)) {
-          resolvedPath = generated.filePath;
+        if (fs.existsSync(checkPath)) {
+          resolvedPath = checkPath;
           await db('transport_orders').where({ id }).update({ file_path: resolvedPath });
         }
       }
