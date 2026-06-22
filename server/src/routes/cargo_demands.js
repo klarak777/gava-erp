@@ -78,6 +78,70 @@ router.post('/', async (req, res) => {
   }
 });
 
+// PUT /api/v1/cargo-demands/:id
+// Áru igény tétel szerkesztése
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      product_id,
+      product_name,
+      partner_name,
+      customer_name,
+      euro_palets,
+      normal_palets,
+      notes,
+      albaran_number,
+      destination,
+      gross_weight_kg,
+      price_eur,
+      price_bcn_eur,
+      unit,
+      reloading_per_plt,
+      transport_bcn_per_plt,
+      customer_order_no,
+      comment
+    } = req.body;
+
+    if (!product_name || product_name.trim() === '') {
+      return res.status(400).json({ error: 'A termék neve kötelező mező.' });
+    }
+    if ((parseFloat(String(euro_palets).replace(',', '.')) || 0) === 0 && (parseFloat(String(normal_palets).replace(',', '.')) || 0) === 0) {
+      return res.status(400).json({ error: 'Legalább egy raklap típusnál 0-nál nagyobb értéket kell megadni.' });
+    }
+
+    const updated = await db('cargo_demands').where('id', id).update({
+      product_id: product_id || null,
+      product_name: product_name.trim(),
+      partner_name: partner_name ? partner_name.trim() : null,
+      customer_name: customer_name ? customer_name.trim() : null,
+      euro_palets: parseFloat(String(euro_palets).replace(',', '.')) || 0,
+      normal_palets: parseFloat(String(normal_palets).replace(',', '.')) || 0,
+      notes: notes ? notes.trim() : null,
+      albaran_number: albaran_number ? albaran_number.trim() : null,
+      destination: destination ? destination.trim() : null,
+      gross_weight_kg: parseFloat(gross_weight_kg) || 0,
+      price_eur: parseFloat(price_eur) || 0,
+      price_bcn_eur: parseFloat(price_bcn_eur) || 0,
+      unit: unit ? unit.trim() : null,
+      reloading_per_plt: parseFloat(reloading_per_plt) || 0,
+      transport_bcn_per_plt: parseFloat(transport_bcn_per_plt) || 0,
+      customer_order_no: customer_order_no ? customer_order_no.trim() : null,
+      comment: comment ? comment.trim() : (notes ? notes.trim() : null)
+    });
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Az áru igény tétel nem található.' });
+    }
+
+    const item = await db('cargo_demands').where('id', id).first();
+    res.json(item);
+  } catch (err) {
+    console.error('Hiba a cargo_demands szerkesztésekor:', err);
+    res.status(500).json({ error: 'Belső szerverhiba: ' + err.message });
+  }
+});
+
 // PATCH /api/v1/cargo-demands/:id/fulfill
 // Áru igény tétel kamionra küldése (részleges vagy teljes)
 // Body: { shipment_id, euro_palets, normal_palets }

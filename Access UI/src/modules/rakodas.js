@@ -66,6 +66,7 @@ export function renderRakodas(container, windowManager) {
         '<div style="overflow-x:auto;">' +
         '<table class="access-subform-table" id="rak-right-table" style="background:transparent; font-size:10px;">' +
         '<thead><tr>' +
+        '<th style="width:30px; background:rgba(14,165,233,0.1); text-align:center;"></th>' +
         '<th style="min-width:40px; background:rgba(14,165,233,0.1); text-align:center; font-size:10px; padding:4px 3px;">Euro plt</th>' +
         '<th style="min-width:40px; background:rgba(14,165,233,0.1); text-align:center; font-size:10px; padding:4px 3px;">Norm plt</th>' +
         '<th style="min-width:140px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 3px;">Termék</th>' +
@@ -229,6 +230,7 @@ export function renderRakodas(container, windowManager) {
         }
         aruTbody.innerHTML = notFulfilled.map(function (r) {
             return '<tr>' +
+                '<td style="text-align:center; padding:3px 4px;"><button class="btn-edit-aru-row" data-id="' + r.id + '" title="Szerkesztés" style="background:none; border:none; cursor:pointer; font-size:14px; padding:1px 3px; color:#2563eb;">✏️</button></td>' +
                 '<td style="text-align:center; padding:3px 4px; font-size:10px; font-weight:600; color:#0369a1;">' + (r.euro_palets || 0) + '</td>' +
                 '<td style="text-align:center; padding:3px 4px; font-size:10px; font-weight:600; color:#7c3aed;">' + (r.normal_palets || 0) + '</td>' +
                 '<td style="padding:3px 4px; font-size:10px;">' + escHtml(r.product_name || '') + '</td>' +
@@ -249,6 +251,15 @@ export function renderRakodas(container, windowManager) {
                 var row = aruData.find(function (x) { return x.id === id; });
                 if (!row) return;
                 openSendToTruckModal(row);
+            });
+        });
+
+        aruTbody.querySelectorAll('.btn-edit-aru-row').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                var id = parseInt(e.currentTarget.getAttribute('data-id'));
+                var row = aruData.find(function (x) { return x.id === id; });
+                if (!row) return;
+                openAruAddEditModal(row);
             });
         });
 
@@ -380,7 +391,9 @@ export function renderRakodas(container, windowManager) {
     }
 
     // ============= ÁRU IGÉNY HOZZÁADÁS MODAL =============
-    view.querySelector('#btn-add-aru').addEventListener('click', async function() {
+    view.querySelector('#btn-add-aru').addEventListener('click', () => openAruAddEditModal(null));
+
+    async function openAruAddEditModal(editRow = null) {
         // Termékek betöltése ha még nincs
         if (productsList.length === 0) {
             try {
@@ -389,77 +402,97 @@ export function renderRakodas(container, windowManager) {
             } catch(e) { productsList = []; }
         }
 
+        const isEdit = !!editRow;
+        const modalTitle = isEdit ? '✏️ Árú igény szerkesztése' : '+ Áru igény hozzáadása';
+        const btnText = isEdit ? 'Mentés' : '+ Hozzáadás';
+
+        const dEuro = editRow ? (editRow.euro_palets || 0) : 0;
+        const dNorm = editRow ? (editRow.normal_palets || 0) : 0;
+        const dProd = editRow ? (editRow.product_name || '') : '';
+        const dProdId = editRow ? (editRow.product_id || '') : '';
+        const dRef = editRow ? (editRow.albaran_number || '') : '';
+        const dCust = editRow ? (editRow.customer_name || '') : '';
+        const dDest = editRow ? (editRow.destination || '') : '';
+        const dNotes = editRow ? (editRow.comment || editRow.notes || '') : '';
+        const dWeight = editRow ? (editRow.gross_weight_kg || 0) : 0;
+        const dPriceE = editRow ? (editRow.price_eur || 0) : 0;
+        const dPriceB = editRow ? (editRow.price_bcn_eur || 0) : 0;
+        const dUnit = editRow ? (editRow.unit || '') : '';
+        const dReload = editRow ? (editRow.reloading_per_plt || 0) : 0;
+        const dTransB = editRow ? (editRow.transport_bcn_per_plt || 0) : 0;
+        const dCustOrd = editRow ? (editRow.customer_order_no || '') : '';
+
         const modalContent = `
             <div style="padding:20px 24px; display:flex; flex-direction:column; gap:12px;">
                 <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
                     <div style="display:flex; flex-direction:column; gap:3px; width:95px;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">N° Euro Palets: <span style="color:red;">*</span></label>
-                        <input type="number" id="aru-add-euro" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="any">
+                        <input type="number" id="aru-add-euro" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="${dEuro}" min="0" step="any">
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px; width:95px;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">N° Normal Palets: <span style="color:red;">*</span></label>
-                        <input type="number" id="aru-add-normal" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="any">
+                        <input type="number" id="aru-add-normal" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="${dNorm}" min="0" step="any">
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px; flex:3; min-width:180px; position:relative;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">Products: <span style="color:red;">*</span></label>
-                        <input type="text" id="aru-add-product" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Gépeljen...">
-                        <input type="hidden" id="aru-add-product-id">
+                        <input type="text" id="aru-add-product" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Gépeljen..." value="${escHtml(dProd)}">
+                        <input type="hidden" id="aru-add-product-id" value="${dProdId}">
                         <div id="aru-add-product-dropdown" style="display:none; position:absolute; background:#fff; border:1px solid #ccc; z-index:200; width:100%; max-height:150px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); top:52px; border-radius:4px;"></div>
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:110px;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">Reference:</label>
-                        <input type="text" id="aru-add-reference" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Partner">
+                        <input type="text" id="aru-add-reference" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Partner" value="${escHtml(dRef)}">
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:110px;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">Customer:</label>
-                        <input type="text" id="aru-add-customer" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Vevő neve">
+                        <input type="text" id="aru-add-customer" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Vevő neve" value="${escHtml(dCust)}">
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:110px;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">Destination:</label>
-                        <input type="text" id="aru-add-destination" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Célállomás">
+                        <input type="text" id="aru-add-destination" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Célállomás" value="${escHtml(dDest)}">
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px; flex:3; min-width:130px;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">Comment:</label>
-                        <input type="text" id="aru-add-notes" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Megjegyzés">
+                        <input type="text" id="aru-add-notes" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Megjegyzés" value="${escHtml(dNotes)}">
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px; width:105px;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">Gross weight (kg):</label>
-                        <input type="number" id="aru-add-weight" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0">
+                        <input type="number" id="aru-add-weight" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="${dWeight}" min="0">
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px; width:90px;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">Price (EUR):</label>
-                        <input type="number" id="aru-add-price-eur" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="0.01">
+                        <input type="number" id="aru-add-price-eur" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="${dPriceE}" min="0" step="0.01">
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px; width:105px;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">Price BCN (EUR):</label>
-                        <input type="number" id="aru-add-price-bcn" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="0.01">
+                        <input type="number" id="aru-add-price-bcn" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="${dPriceB}" min="0" step="0.01">
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px; width:68px;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">Unit:</label>
-                        <input type="text" id="aru-add-unit" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" placeholder="KG">
+                        <input type="text" id="aru-add-unit" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" placeholder="KG" value="${escHtml(dUnit)}">
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px; width:95px;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">Reloading/plt:</label>
-                        <input type="number" id="aru-add-reloading" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="0.01">
+                        <input type="number" id="aru-add-reloading" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="${dReload}" min="0" step="0.01">
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px; width:115px;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">Transport BCN/plt:</label>
-                        <input type="number" id="aru-add-transport-bcn" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="0.01">
+                        <input type="number" id="aru-add-transport-bcn" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="${dTransB}" min="0" step="0.01">
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:120px;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">Customer order N°:</label>
-                        <input type="text" id="aru-add-custorder" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Megrendelőszám">
+                        <input type="text" id="aru-add-custorder" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Megrendelőszám" value="${escHtml(dCustOrd)}">
                     </div>
                 </div>
                 <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
                     <button class="secondary-btn btn-aru-cancel">Mégse</button>
-                    <button class="primary-btn btn-aru-save">+ Hozzáadás</button>
+                    <button class="primary-btn btn-aru-save">${btnText}</button>
                 </div>
             </div>
         `;
 
         const modal = windowManager.createModal({
-            title: '+ Áru igény hozzáadása',
+            title: modalTitle,
             width: 820,
             height: 380,
             content: modalContent
@@ -508,9 +541,12 @@ export function renderRakodas(container, windowManager) {
             if (!pName) { alert('A termék neve kötelező!'); return; }
             if (euro === 0 && normal === 0) { alert('Legalább egy raklap típusnál adj meg 0-nál nagyobb értéket!'); return; }
 
+            const method = isEdit ? 'PUT' : 'POST';
+            const url = isEdit ? '/api/v1/cargo-demands/' + editRow.id : '/api/v1/cargo-demands';
+
             try {
-                const res = await fetch('/api/v1/cargo-demands', {
-                    method: 'POST',
+                const res = await fetch(url, {
+                    method: method,
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         product_id: prodIdInput.value ? parseInt(prodIdInput.value) : null,
@@ -540,7 +576,7 @@ export function renderRakodas(container, windowManager) {
                 alert('Hálózati hiba: ' + err.message);
             }
         });
-    });
+    }
 
     // ============= MODAL HELPERS =============
     function showModal() {
