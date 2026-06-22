@@ -5,6 +5,33 @@ const path = require('path');
 const fs = require('fs');
 const mammoth = require('mammoth');
 
+// Helper: Windows hálózati útvonal → Docker/Linux útvonal feloldása
+function resolveFilePath(filePath) {
+  const raktarPath = process.env.RAKTAR_PATH;
+  if (!raktarPath || !filePath) return filePath;
+
+  const normalizedFilePath = filePath.replace(/\\/g, '/');
+  const raktarPrefixPatterns = [
+    /^\/\/192\.168\.\d+\.\d+\/raktar\//i,
+    /^\\\\192\.168\.\d+\.\d+\\raktar\\/i,
+    /^[A-Z]:\\raktar\\/i,
+  ];
+  for (const pattern of raktarPrefixPatterns) {
+    if (pattern.test(filePath) || pattern.test(normalizedFilePath)) {
+      return path.join(raktarPath, normalizedFilePath.replace(pattern, ''));
+    }
+  }
+  if (normalizedFilePath.includes('/MI Teszt/')) {
+    const idx = normalizedFilePath.indexOf('/MI Teszt/');
+    return path.join(raktarPath, normalizedFilePath.substring(idx));
+  }
+  if (normalizedFilePath.includes('MI Teszt')) {
+    const idx = normalizedFilePath.indexOf('MI Teszt');
+    return path.join(raktarPath, normalizedFilePath.substring(idx));
+  }
+  return filePath;
+}
+
 // GET /api/v1/transport-orders - Lekéri az összes fuvarmegbízást a szükséges csatolt adatokkal
 router.get('/', async (req, res) => {
   try {
