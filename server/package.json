@@ -7,7 +7,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "npm run migrate && node server.js",
     "migrate": "knex migrate:latest --knexfile knexfile.js",
-    "migrate:rollback": "knex migrate:rollback --knexfile knexfile.js"
+    "migrate:rollback": "knex migrate:rollback --knexfile knexfile.js",
+    "seed": "node seed.js",
+    "import-docs": "node import_docs_from_json.js"
   },
   "keywords": [],
   "author": "",
