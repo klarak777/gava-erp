@@ -164,53 +164,55 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                             <input type="hidden" id="le-product-id">
                             <div id="le-product-dropdown" style="display:none; position:absolute; background:#fff; border:1px solid #ccc; z-index:200; width:100%; max-height:150px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); top:52px; border-radius:4px;"></div>
                         </div>
-                        <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:110px;">
-                            <label style="font-size:11px; font-weight:600; color:var(--text-main);">Reference:</label>
-                            <input type="text" id="le-reference" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Albarán N°">
-                        </div>
-                        <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:110px;">
-                            <label style="font-size:11px; font-weight:600; color:var(--text-main);">Customer:</label>
-                            <input type="text" id="le-customer" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Vevő neve">
-                        </div>
-                        <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:110px;">
-                            <label style="font-size:11px; font-weight:600; color:var(--text-main);">Destination:</label>
-                            <input type="text" id="le-destination" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Célállomás">
-                        </div>
-                        <div style="display:flex; flex-direction:column; gap:3px; flex:3; min-width:130px;">
-                            <label style="font-size:11px; font-weight:600; color:var(--text-main);">Comment:</label>
-                            <input type="text" id="le-comment" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Megjegyzés">
-                        </div>
-                        <div style="display:flex; flex-direction:column; gap:3px; width:105px;">
-                            <label style="font-size:11px; font-weight:600; color:var(--text-main);">Gross weight (kg):</label>
-                            <input type="number" id="le-weight" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0">
-                        </div>
-                        <div style="display:flex; flex-direction:column; gap:3px; width:90px;">
-                            <label style="font-size:11px; font-weight:600; color:var(--text-main);">Price (EUR):</label>
-                            <input type="number" id="le-price-eur" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="0.01">
-                        </div>
-                        <div style="display:flex; flex-direction:column; gap:3px; width:105px;">
-                            <label style="font-size:11px; font-weight:600; color:var(--text-main);">Price BCN (EUR):</label>
-                            <input type="number" id="le-price-bcn" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="0.01">
-                        </div>
-                        <div style="display:flex; flex-direction:column; gap:3px; width:68px;">
-                            <label style="font-size:11px; font-weight:600; color:var(--text-main);">Unit:</label>
-                            <input type="text" id="le-unit" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" placeholder="KG">
-                        </div>
-                        <div style="display:flex; flex-direction:column; gap:3px; width:95px;">
-                            <label style="font-size:11px; font-weight:600; color:var(--text-main);">Reloading/plt:</label>
-                            <input type="number" id="le-reloading" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="0.01">
-                        </div>
-                        <div style="display:flex; flex-direction:column; gap:3px; width:115px;">
-                            <label style="font-size:11px; font-weight:600; color:var(--text-main);">Transport BCN/plt:</label>
-                            <input type="number" id="le-transport-bcn" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="0.01">
-                        </div>
-                        <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:120px;">
-                            <label style="font-size:11px; font-weight:600; color:var(--text-main);">Customer order N°:</label>
-                            <input type="text" id="le-custorder" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Megrendelőszám">
-                        </div>
-                        <div style="display:flex; flex-direction:column; gap:3px; width:85px;">
-                            <label style="font-size:11px; font-weight:600; color:var(--text-main);">Truck N°/plt:</label>
-                            <input type="number" id="le-truck-num" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="1">
+                        <div style="display:none;">
+                            <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:110px;">
+                                <label style="font-size:11px; font-weight:600; color:var(--text-main);">Reference:</label>
+                                <input type="text" id="le-reference" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Albarán N°">
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:110px;">
+                                <label style="font-size:11px; font-weight:600; color:var(--text-main);">Customer:</label>
+                                <input type="text" id="le-customer" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Vevő neve">
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:110px;">
+                                <label style="font-size:11px; font-weight:600; color:var(--text-main);">Destination:</label>
+                                <input type="text" id="le-destination" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Célállomás">
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:3px; flex:3; min-width:130px;">
+                                <label style="font-size:11px; font-weight:600; color:var(--text-main);">Comment:</label>
+                                <input type="text" id="le-comment" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Megjegyzés">
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:3px; width:105px;">
+                                <label style="font-size:11px; font-weight:600; color:var(--text-main);">Gross weight (kg):</label>
+                                <input type="number" id="le-weight" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0">
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:3px; width:90px;">
+                                <label style="font-size:11px; font-weight:600; color:var(--text-main);">Price (EUR):</label>
+                                <input type="number" id="le-price-eur" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="0.01">
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:3px; width:105px;">
+                                <label style="font-size:11px; font-weight:600; color:var(--text-main);">Price BCN (EUR):</label>
+                                <input type="number" id="le-price-bcn" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="0.01">
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:3px; width:68px;">
+                                <label style="font-size:11px; font-weight:600; color:var(--text-main);">Unit:</label>
+                                <input type="text" id="le-unit" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" placeholder="KG">
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:3px; width:95px;">
+                                <label style="font-size:11px; font-weight:600; color:var(--text-main);">Reloading/plt:</label>
+                                <input type="number" id="le-reloading" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="0.01">
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:3px; width:115px;">
+                                <label style="font-size:11px; font-weight:600; color:var(--text-main);">Transport BCN/plt:</label>
+                                <input type="number" id="le-transport-bcn" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="0.01">
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:120px;">
+                                <label style="font-size:11px; font-weight:600; color:var(--text-main);">Customer order N°:</label>
+                                <input type="text" id="le-custorder" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Megrendelőszám">
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:3px; width:85px;">
+                                <label style="font-size:11px; font-weight:600; color:var(--text-main);">Truck N°/plt:</label>
+                                <input type="number" id="le-truck-num" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="1">
+                            </div>
                         </div>
                     </div>
                     <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
@@ -307,7 +309,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
         // ① Mindig GRID_ROWS sort biztosít (adat + üres feltöltés)
         function normalizeLines() {
             // A foghíjak elkerülése végett kiszűrjük a teljesen üres sorokat
-            let filled = lines.filter(l => l.product_id || parseFloat(l.euro_palets) > 0 || parseFloat(l.normal_palets) > 0);
+            let filled = lines.filter(l => l.product_id || parseFloat(String(l.euro_palets).replace(',', '.')) > 0 || parseFloat(String(l.normal_palets).replace(',', '.')) > 0);
 
             // _empty flag törlése a kitöltött sorokon
             filled = filled.map(l => { const r = { ...l }; delete r._empty; return r; });
@@ -477,7 +479,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
         function calculateLineTotals(items) {
             // Csak a tényleges adatsorokat vesszük figyelembe (nem üreseket)
             let sumNormal = 0;
-            items.forEach(l => { if (!l._empty) sumNormal += parseFloat(l.normal_palets) || 0; });
+            items.forEach(l => { if (!l._empty) sumNormal += parseFloat(String(l.normal_palets).replace(',', '.')) || 0; });
             let convertedNormal = 0;
             if (sumNormal > 0) {
                 const rounded = Math.round(sumNormal);
@@ -485,8 +487,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
             }
             return items.map(l => {
                 if (l._empty) return { ...l, totalPalets: '' };
-                const lineEuro = parseFloat(l.euro_palets) || 0;
-                const lineNorm = parseFloat(l.normal_palets) || 0;
+                const lineEuro = parseFloat(String(l.euro_palets).replace(',', '.')) || 0;
+                const lineNorm = parseFloat(String(l.normal_palets).replace(',', '.')) || 0;
                 let totalPalets = lineEuro;
                 if (sumNormal > 0 && lineNorm > 0) totalPalets += convertedNormal * (lineNorm / sumNormal);
                 return { ...l, totalPalets: Number(totalPalets.toFixed(2)) };
@@ -518,9 +520,9 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                     </td>
                     <td style="text-align:center; font-weight:bold; padding:1px 4px; color:${tv ? '#1e40af' : '#ccc'};">${tv}</td>
                     <td><input type="number" class="cell-edit" data-field="euro_palets" data-index="${index}"
-                        style="${numCellStyle} width:70px;" value="${isEmpty ? '' : escHtml(l.euro_palets)}" min="0" placeholder="0" ${currentShipmentIsLoaded ? 'disabled' : ''}></td>
+                        style="${numCellStyle} width:70px;" value="${isEmpty ? '' : escHtml(l.euro_palets)}" min="0" step="0.1" placeholder="0" ${currentShipmentIsLoaded ? 'disabled' : ''}></td>
                     <td><input type="number" class="cell-edit" data-field="normal_palets" data-index="${index}"
-                        style="${numCellStyle} width:70px;" value="${isEmpty ? '' : escHtml(l.normal_palets)}" min="0" placeholder="0" ${currentShipmentIsLoaded ? 'disabled' : ''}></td>
+                        style="${numCellStyle} width:70px;" value="${isEmpty ? '' : escHtml(l.normal_palets)}" min="0" step="0.1" placeholder="0" ${currentShipmentIsLoaded ? 'disabled' : ''}></td>
                     <td><input type="text" class="cell-edit" data-field="productName" data-index="${index}"
                         style="${cellStyle} min-width:170px;" value="${isEmpty ? '' : escHtml(l.productName)}"></td>
                     <td><input type="text" class="cell-edit" data-field="albaran_number" data-index="${index}"
@@ -591,7 +593,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                     inlineDropdown.innerHTML = '';
                     if (!val) { inlineDropdown.style.display = 'none'; return; }
 
-                    const filtered = products.filter(p => p.name.toLowerCase().includes(val)).slice(0, 10);
+                    const filtered = products.filter(p => p.name.toLowerCase().startsWith(val)).slice(0, 10);
                     if (filtered.length > 0) {
                         filtered.forEach(p => {
                             const div = document.createElement('div');
@@ -636,7 +638,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                     const idx = parseInt(btn.dataset.index);
                     if (lines[idx]._empty) return;
                     if (!confirm('Biztosan törli a tételt? A tétel véglegesen törlésre kerül és NEM kerül át az Áru igények közé!')) return;
-                    
+
                     const dbId = lines[idx]._dbId;
                     if (dbId) {
                         for (let snapIdx in originalLinesSnapshot) {
@@ -659,7 +661,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
             leDropdown.innerHTML = '';
             leProductId.value = '';
             if (!val) { leDropdown.style.display = 'none'; return; }
-            const filtered = products.filter(p => p.name.toLowerCase().includes(val)).slice(0, 10);
+            const filtered = products.filter(p => p.name.toLowerCase().startsWith(val)).slice(0, 10);
             if (filtered.length > 0) {
                 filtered.forEach(p => {
                     const div = document.createElement('div');
@@ -829,11 +831,13 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 const res = await fetch('/api/v1/shipments/unloaded');
                 const unloaded = await res.json();
                 const filteredUnloaded = unloaded.filter(s => s.id !== currentShipmentId);
-                
                 if (filteredUnloaded.length === 0) {
-                    transferTargetSelect.innerHTML = '<option value="">– Nincs másik nem-rakodott kamion –</option>';
+                    transferTargetSelect.innerHTML = '<option value="">-- Válasszon célpontot --</option>' +
+                        '<option value="DEMAND">📦 Áru igény</option>' +
+                        '<option value="" disabled>– Nincs másik nem-rakodott kamion –</option>';
                 } else {
-                    transferTargetSelect.innerHTML = '<option value="">-- Válasszon kamionszámot --</option>' +
+                    transferTargetSelect.innerHTML = '<option value="">-- Válasszon célpontot --</option>' +
+                        '<option value="DEMAND">📦 Áru igény</option>' +
                         filteredUnloaded.map(s => `<option value="${s.id}">${s.order_number}${s.transporter_name ? ' (' + s.transporter_name + ')' : ''}</option>`).join('');
                 }
             } catch (err) {
@@ -858,6 +862,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
             if (moveEuro === 0 && moveNormal === 0) { alert('Legalább 1 raklapot add meg az áthelyezéshez!'); return; }
 
             const targetLabel = transferTargetSelect.options[transferTargetSelect.selectedIndex]?.text || targetId;
+            const targetPayload = targetId === 'DEMAND' ? 'DEMAND' : parseInt(targetId);
             const l = editingLineIndex !== null ? lines[editingLineIndex] : null;
             const confirmMsg = `Biztosan áthelyezi az alábbi tételt?\n\n` +
                 `Termék: ${l?.productName || '–'}\n` +
@@ -869,7 +874,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 const res = await fetch(`/api/v1/shipment-lines/${editingLineDbId}/transfer`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ target_shipment_id: parseInt(targetId), euro_palets: moveEuro, normal_palets: moveNormal })
+                    body: JSON.stringify({ target_shipment_id: targetPayload, euro_palets: moveEuro, normal_palets: moveNormal })
                 });
                 const data = await res.json();
                 if (!res.ok) { alert('Hiba: ' + (data.error || 'Ismeretlen hiba')); return; }
@@ -893,6 +898,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 closeTransferPopup();
                 closeLineOverlay();
                 renderTable();
+                document.dispatchEvent(new CustomEvent('cargoDemandsUpdated')); // Frissíti a Rakodás nézet Áru igény részét
                 alert(`✅ ${data.message}`);
             } catch (err) {
                 alert('Hálózati hiba: ' + err.message);
@@ -936,7 +942,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 loading_place: container.querySelector('#km-load-place').value,
                 transport_price: parseFloat(container.querySelector('#km-price').value) || 0,
                 temperature: container.querySelector('#km-temperature').value.trim() || null,
-                lines: realLines.filter(l => (parseFloat(l.euro_palets) || 0) > 0 || (parseFloat(l.normal_palets) || 0) > 0)
+                lines: realLines.filter(l => (parseFloat(String(l.euro_palets).replace(',', '.')) || 0) > 0 || (parseFloat(String(l.normal_palets).replace(',', '.')) || 0) > 0)
             };
 
             try {
@@ -966,8 +972,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                             const currentLine = lines.find(l => l._dbId === snap.dbId);
 
                             // Ha a sor üres/törölt, akkor 0 raklappal számolunk
-                            const currentEuro = (currentLine && !currentLine._empty) ? (parseInt(currentLine.euro_palets) || 0) : 0;
-                            const currentNormal = (currentLine && !currentLine._empty) ? (parseInt(currentLine.normal_palets) || 0) : 0;
+                            const currentEuro = (currentLine && !currentLine._empty) ? (parseFloat(String(currentLine.euro_palets).replace(',', '.')) || 0) : 0;
+                            const currentNormal = (currentLine && !currentLine._empty) ? (parseFloat(String(currentLine.normal_palets).replace(',', '.')) || 0) : 0;
 
                             const diffEuro = (snap.euro_palets || 0) - currentEuro;
                             const diffNormal = (snap.normal_palets || 0) - currentNormal;

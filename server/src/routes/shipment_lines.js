@@ -164,16 +164,19 @@ router.post('/:id/transfer', async (req, res) => {
       return res.status(400).json({ error: 'A tétel nem áthelyezhető, mert a forrás kamion már RAKODVA státuszban van.' });
     }
 
-    const moveEuro = Math.min(parseInt(euro_palets) || 0, sourceLine.euro_palets);
-    const moveNormal = Math.min(parseInt(normal_palets) || 0, sourceLine.normal_palets);
+    const moveEuro = Math.min(parseFloat(String(euro_palets).replace(',', '.')) || 0, sourceLine.euro_palets);
+    const moveNormal = Math.min(parseFloat(String(normal_palets).replace(',', '.')) || 0, sourceLine.normal_palets);
 
     if (moveEuro === 0 && moveNormal === 0) {
       return res.status(400).json({ error: 'Legalább 1 raklapot meg kell adni az áthelyezéshez.' });
     }
 
-    const targetShipment = await db('shipments').where('id', target_shipment_id).first();
-    if (!targetShipment) {
-      return res.status(404).json({ error: 'A célkamion nem található.' });
+    let targetShipment = null;
+    if (target_shipment_id !== 'DEMAND') {
+      targetShipment = await db('shipments').where('id', target_shipment_id).first();
+      if (!targetShipment) {
+        return res.status(404).json({ error: 'A célkamion nem található.' });
+      }
     }
 
     const trx = await db.transaction();
@@ -193,29 +196,53 @@ router.post('/:id/transfer', async (req, res) => {
       }
 
 
-      // 2. Új sor hozzáadása a célkamionhoz az áthelyezett adatokkal
-      await trx('shipment_lines').insert({
-        shipment_id: target_shipment_id,
-        product_id: sourceLine.product_id || null,
-        partner_id: sourceLine.partner_id || null,
-        customer: sourceLine.customer || '',
-        destination: sourceLine.destination || '',
-        euro_palets: moveEuro,
-        normal_palets: moveNormal,
-        total_palets: moveEuro + moveNormal,
-        gross_weight_kg: sourceLine.gross_weight_kg || 0,
-        price_eur: sourceLine.price_eur || 0,
-        price_bcn_eur: sourceLine.price_bcn_eur || 0,
-        unit: sourceLine.unit || '',
-        reloading_per_plt: sourceLine.reloading_per_plt || 0,
-        transport_bcn_per_plt: sourceLine.transport_bcn_per_plt || 0,
-        albaran_number: sourceLine.albaran_number || '',
-        customer_order_no: sourceLine.customer_order_no || '',
-        comment: sourceLine.comment || '',
-        truck_number_per: sourceLine.truck_number_per || 0,
-        transport_cost_product: 0,
-        transport_cost: 0
-      });
+      // 2. Új sor hozzáadása a célkamionhoz vagy áru igényhez
+      if (target_shipment_id === 'DEMAND') {
+        await trx('cargo_demands').insert({
+          product_id: sourceLine.product_id || null,
+          product_name: sourceLine.productName || 'Ismeretlen termék',
+          customer_name: sourceLine.customer || null,
+          euro_palets: moveEuro,
+          normal_palets: moveNormal,
+          is_fulfilled: false,
+          source_shipment_line_id: sourceLine.id,
+          albaran_number: sourceLine.albaran_number || null,
+          destination: sourceLine.destination || null,
+          gross_weight_kg: sourceLine.gross_weight_kg || 0,
+          price_eur: sourceLine.price_eur || 0,
+          price_bcn_eur: sourceLine.price_bcn_eur || 0,
+          unit: sourceLine.unit || null,
+          reloading_per_plt: sourceLine.reloading_per_plt || 0,
+          transport_bcn_per_plt: sourceLine.transport_bcn_per_plt || 0,
+          customer_order_no: sourceLine.customer_order_no || null,
+          comment: sourceLine.comment || null
+        });
+      } else {
+        await trx('shipment_lines').insert({
+          shipment_id: target_shipment_id,
+          product_id: sourceLine.product_id || null,
+          partner_id: sourceLine.partner_id || null,
+          customer: sourceLine.customer || '',
+          destination: sourceLine.destination || '',
+          euro_palets: moveEuro,
+          normal_palets: moveNormal,
+          total_palets: moveEuro + moveNormal,
+          gross_weight_kg: sourceLine.gross_weight_kg || 0,
+          price_eur: sourceLine.price_eur || 0,
+          price_bcn_eur: sourceLine.price_bcn_eur || 0,
+          unit: sourceLine.unit || '',
+          reloading_per_plt: sourceLine.reloading_per_plt || 0,
+          transport_bcn_per_plt: sourceLine.transport_bcn_per_plt || 0,
+          albaran_number: sourceLine.albaran_number || '',
+          customer_order_no: sourceLine.customer_order_no || '',
+          comment: sourceLine.comment || '',
+          truck_number_per: sourceLine.truck_number_per || 0,
+          transport_cost_product: 0,
+          transport_cost: 0
+        });
+      }
+
+      const targetName = target_shipment_id === 'DEMAND' ? 'Áru igény' : targetShipment.order_number;
 
       await trx.commit();
       res.json({
@@ -224,8 +251,8 @@ router.post('/:id/transfer', async (req, res) => {
         movedNormal: moveNormal,
         remainEuro: newEuro,
         remainNormal: newNormal,
-        targetShipmentOrderNumber: targetShipment.order_number,
-        message: `${moveEuro} Euró + ${moveNormal} Normál raklap sikeresen áthelyezve: ${targetShipment.order_number}`
+        targetShipmentOrderNumber: targetName,
+        message: `${moveEuro} Euró + ${moveNormal} Normál raklap sikeresen áthelyezve: ${targetName}`
       });
     } catch (err) {
       await trx.rollback();

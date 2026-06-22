@@ -1,0 +1,15 @@
+Text excerpt:
+
+GAVA HUNGRIA KFT1239 BUDAPESTNAGYKŐRÖSI U. 353.Fuvarmegbízás{{ Transport company }} Tour: {{ Order number }}Dátum: {{ createDate }}.Ügyintéző: GÁBOR SZABÓTelefon: +36 (70) 770 4489Email: ghu-transport@gavagrup.comTisztelt Hölgyem / Uram,Rendszám:  {{ Plate number }}Megállapodásunk szerint megbízzuk Önöket az alábbi fuvarfeladat végrehajtásával:Rakodási hely:  {{ Loading Place }}Lerakóhely:  {{ Destination }}                                                                          Rakodás dátum
+
+Placeholders:
+{{ Plate number }
+{{ Transport company }
+{{ Loading date }
+{{ Arrival date }
+{{ createDate }
+{{ Temp }
+{{ Destination }
+{{ Transport price }
+{{ Order number }
+{{ Loading Place }

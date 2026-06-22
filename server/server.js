@@ -21,6 +21,8 @@ const transportersRouter = require('./src/routes/transporters');
 const productsRouter = require('./src/routes/products');
 const partnersRouter = require('./src/routes/partners');
 const cargoDemandsRouter = require('./src/routes/cargo_demands');
+const transportOrdersRouter = require('./src/routes/transport_orders');
+const ekaerRouter = require('./src/routes/ekaer');
 
 // Egyszerű teszt végpont
 app.get('/api/v1/status', (req, res) => {
@@ -39,6 +41,8 @@ app.use('/api/v1/transporters', transportersRouter);
 app.use('/api/v1/products', productsRouter);
 app.use('/api/v1/partners', partnersRouter);
 app.use('/api/v1/cargo-demands', cargoDemandsRouter);
+app.use('/api/v1/transport-orders', transportOrdersRouter);
+app.use('/api/v1/ekaer-records', ekaerRouter);
 
 // Szerver indítása
 app.listen(PORT, () => {

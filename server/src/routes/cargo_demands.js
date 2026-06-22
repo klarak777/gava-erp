@@ -43,7 +43,7 @@ router.post('/', async (req, res) => {
     if (!product_name || product_name.trim() === '') {
       return res.status(400).json({ error: 'A termék neve kötelező mező.' });
     }
-    if ((parseInt(euro_palets) || 0) === 0 && (parseInt(normal_palets) || 0) === 0) {
+    if ((parseFloat(String(euro_palets).replace(',', '.')) || 0) === 0 && (parseFloat(String(normal_palets).replace(',', '.')) || 0) === 0) {
       return res.status(400).json({ error: 'Legalább egy raklap típusnál 0-nál nagyobb értéket kell megadni.' });
     }
 
@@ -52,8 +52,8 @@ router.post('/', async (req, res) => {
       product_name: product_name.trim(),
       partner_name: partner_name ? partner_name.trim() : null,
       customer_name: customer_name ? customer_name.trim() : null,
-      euro_palets: parseInt(euro_palets) || 0,
-      normal_palets: parseInt(normal_palets) || 0,
+      euro_palets: parseFloat(String(euro_palets).replace(',', '.')) || 0,
+      normal_palets: parseFloat(String(normal_palets).replace(',', '.')) || 0,
       notes: notes ? notes.trim() : null,
       is_fulfilled: false,
       source_shipment_line_id: source_shipment_line_id || null,
@@ -95,8 +95,8 @@ router.patch('/:id/fulfill', async (req, res) => {
       return res.status(404).json({ error: 'Az áru igény tétel nem található.' });
     }
 
-    const sendEuro = Math.min(parseInt(euro_palets) || 0, demand.euro_palets);
-    const sendNormal = Math.min(parseInt(normal_palets) || 0, demand.normal_palets);
+    const sendEuro = Math.min(parseFloat(String(euro_palets).replace(',', '.')) || 0, demand.euro_palets);
+    const sendNormal = Math.min(parseFloat(String(normal_palets).replace(',', '.')) || 0, demand.normal_palets);
 
     if (sendEuro === 0 && sendNormal === 0) {
       return res.status(400).json({ error: 'Legalább 1 raklapot meg kell adni.' });

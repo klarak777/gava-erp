@@ -30,37 +30,12 @@ export function renderRakodas(container, windowManager) {
 
     // HTML
     view.innerHTML =
-        '<div class="view-header" style="margin-bottom:16px;">' +
+        '<div class="view-header" style="margin-bottom:16px; display:flex; align-items:center; justify-content:space-between;">' +
+        '<div>' +
         '<h2 class="view-title">Rakodás</h2>' +
         '<p class="view-subtitle">Rakodások és áru igények kezelése</p>' +
         '</div>' +
-
-        // Filter strip
-        '<div class="access-form-view" style="margin-bottom:16px; padding:12px 16px;">' +
-        '<div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">' +
-        '<div style="display:flex; align-items:center; gap:8px;">' +
-        '<label class="access-control-label" for="rak-kamisz" style="white-space:nowrap;">Kamionszám:</label>' +
-        '<input type="text" id="rak-kamisz" class="access-control-input" placeholder="Keresés..." style="width:150px;">' +
-        '</div>' +
-        '<div style="display:flex; align-items:center; gap:8px;">' +
-        '<label class="access-control-label" for="rak-fuvarozo" style="white-space:nowrap;">Fuvarozó:</label>' +
-        '<select id="rak-fuvarozo" class="access-control-input" style="width:170px;">' +
-        '<option value="">-- Összes --</option>' +
-        '</select>' +
-        '</div>' +
-        '<div style="display:flex; align-items:center; gap:8px;">' +
-        '<label class="access-control-label" style="white-space:nowrap;">Rakodás (tól-ig):</label>' +
-        '<input type="date" id="rak-date-from" class="access-control-input" style="width:160px;">' +
-        '<span>-</span>' +
-        '<input type="date" id="rak-date-to" class="access-control-input" style="width:160px;">' +
-        '</div>' +
-        '<div style="display:flex; align-items:center; gap:6px;">' +
-        '<input type="checkbox" id="rak-open-only" checked>' +
-        '<label for="rak-open-only" style="white-space:nowrap; font-size:13px;">Csak nyitott rakodások</label>' +
-        '</div>' +
-        '<button class="secondary-btn btn-dense" id="btn-clear-rak">Szűrők törlése</button>' +
-        '<button class="primary-btn btn-dense" id="btn-new-truck">+ Új kamion</button>' +
-        '</div>' +
+        '<button class="primary-btn" id="btn-new-truck">+ Új kamion</button>' +
         '</div>' +
 
         // Két tábla egymás mellett
@@ -139,12 +114,6 @@ export function renderRakodas(container, windowManager) {
     var unloadedShipments = []; // Nem-rakodott kamionok listája
 
     // ============= ELEMEK =============
-    var inputKamisz = view.querySelector('#rak-kamisz');
-    var inputFuvarozo = view.querySelector('#rak-fuvarozo');
-    var inputDateFrom = view.querySelector('#rak-date-from');
-    var inputDateTo = view.querySelector('#rak-date-to');
-    var chkOpenOnly = view.querySelector('#rak-open-only');
-    var btnClear = view.querySelector('#btn-clear-rak');
     var tbody = view.querySelector('#rak-tbody');
     var aruTbody = view.querySelector('#aru-tbody');
 
@@ -152,19 +121,7 @@ export function renderRakodas(container, windowManager) {
 
     // ============= SZŰRŐ + BAL TÁBLA =============
     function filter() {
-        var t = inputKamisz.value.toUpperCase().replace(/\s+/g, '');
-        var f = inputFuvarozo.value;
-        var dFrom = inputDateFrom.value;
-        var dTo = inputDateTo.value;
-        var open = chkOpenOnly.checked;
-        var filtered = rakData.filter(function (r) {
-            return (r.tour || '').toUpperCase().replace(/\s+/g, '').indexOf(t) !== -1 &&
-                (f === '' || r.transporter === f) &&
-                (dFrom === '' || r.date >= dFrom) &&
-                (dTo === '' || r.date <= dTo) &&
-                (!open || !r.loaded);
-        });
-        renderLeft(filtered);
+        renderLeft(rakData);
     }
 
     function renderLeft(data) {
@@ -343,12 +300,12 @@ export function renderRakodas(container, windowManager) {
                     <div style="display:flex; gap:10px;">
                         <div style="display:flex; flex-direction:column; gap:3px; flex:1;">
                             <label style="font-size:11px; font-weight:600; color:#334155;">N° Euro Palets küldve:</label>
-                            <input type="number" id="send-euro" class="access-control-input" style="font-size:12px; height:32px;" value="0" min="0" max="${demandRow.euro_palets || 0}">
+                            <input type="number" id="send-euro" class="access-control-input" style="font-size:12px; height:32px;" value="0" min="0" step="0.1" max="${demandRow.euro_palets || 0}">
                             <small style="color:#64748b; font-size:10px;">Max: ${demandRow.euro_palets || 0}</small>
                         </div>
                         <div style="display:flex; flex-direction:column; gap:3px; flex:1;">
                             <label style="font-size:11px; font-weight:600; color:#334155;">N° Normal Palets küldve:</label>
-                            <input type="number" id="send-normal" class="access-control-input" style="font-size:12px; height:32px;" value="0" min="0" max="${demandRow.normal_palets || 0}">
+                            <input type="number" id="send-normal" class="access-control-input" style="font-size:12px; height:32px;" value="0" min="0" step="0.1" max="${demandRow.normal_palets || 0}">
                             <small style="color:#64748b; font-size:10px;">Max: ${demandRow.normal_palets || 0}</small>
                         </div>
                     </div>
@@ -390,9 +347,9 @@ export function renderRakodas(container, windowManager) {
         modalEl.querySelector('.btn-send-confirm').addEventListener('click', async () => {
             const targetId = selectTarget.value;
             if (!targetId) { alert('Kérlek válassz célkamionszámot!'); return; }
-            const sendEuro = parseInt(modalEl.querySelector('#send-euro').value) || 0;
-            const sendNormal = parseInt(modalEl.querySelector('#send-normal').value) || 0;
-            if (sendEuro === 0 && sendNormal === 0) { alert('Legalább 1 raklapot adj meg!'); return; }
+            const sendEuro = parseFloat(String(modalEl.querySelector('#send-euro').value).replace(',', '.')) || 0;
+            const sendNormal = parseFloat(String(modalEl.querySelector('#send-normal').value).replace(',', '.')) || 0;
+            if (sendEuro === 0 && sendNormal === 0) { alert('Legalább 0-nál nagyobb raklapot adj meg!'); return; }
 
             const targetLabel = selectTarget.options[selectTarget.selectedIndex]?.text || targetId;
 
@@ -437,11 +394,11 @@ export function renderRakodas(container, windowManager) {
                 <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
                     <div style="display:flex; flex-direction:column; gap:3px; width:95px;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">N° Euro Palets: <span style="color:red;">*</span></label>
-                        <input type="number" id="aru-add-euro" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0">
+                        <input type="number" id="aru-add-euro" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="0.1">
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px; width:95px;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">N° Normal Palets: <span style="color:red;">*</span></label>
-                        <input type="number" id="aru-add-normal" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0">
+                        <input type="number" id="aru-add-normal" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="0.1">
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px; flex:3; min-width:180px; position:relative;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">Products: <span style="color:red;">*</span></label>
@@ -519,7 +476,7 @@ export function renderRakodas(container, windowManager) {
             prodIdInput.value = '';
             prodDropdown.innerHTML = '';
             if (!val) { prodDropdown.style.display = 'none'; return; }
-            const filtered = productsList.filter(p => p.name.toLowerCase().includes(val)).slice(0, 8);
+            const filtered = productsList.filter(p => p.name.toLowerCase().startsWith(val)).slice(0, 8);
             if (filtered.length > 0) {
                 filtered.forEach(p => {
                     const div = document.createElement('div');
@@ -545,8 +502,8 @@ export function renderRakodas(container, windowManager) {
 
         modalEl.querySelector('.btn-aru-save').addEventListener('click', async () => {
             const pName = prodInput.value.trim();
-            const euro = parseInt(modalEl.querySelector('#aru-add-euro').value) || 0;
-            const normal = parseInt(modalEl.querySelector('#aru-add-normal').value) || 0;
+            const euro = parseFloat(String(modalEl.querySelector('#aru-add-euro').value).replace(',', '.')) || 0;
+            const normal = parseFloat(String(modalEl.querySelector('#aru-add-normal').value).replace(',', '.')) || 0;
 
             if (!pName) { alert('A termék neve kötelező!'); return; }
             if (euro === 0 && normal === 0) { alert('Legalább egy raklap típusnál adj meg 0-nál nagyobb értéket!'); return; }
@@ -799,52 +756,11 @@ export function renderRakodas(container, windowManager) {
         openKamionSzerkesztesWindow(windowManager, null);
     });
 
-    // ============= SZŰRŐ EVENTS =============
-    var searchTimer = null;
-    inputKamisz.addEventListener('input', function (e) {
-        if (e.target.value !== e.target.value.toUpperCase()) {
-            var pos = e.target.selectionStart;
-            e.target.value = e.target.value.toUpperCase();
-            try { e.target.setSelectionRange(pos, pos); } catch (err) { }
-        }
-        var term = inputKamisz.value.trim();
-        if (term.length >= 2) {
-            // Kereséskor az API-tól kérjük a teljes egyező listát (minden szezon)
-            clearTimeout(searchTimer);
-            searchTimer = setTimeout(function() { loadRakData(term); }, 350);
-        } else if (term.length === 0) {
-            loadRakData(null);
-        } else {
-            filter();
-        }
-    });
-    inputFuvarozo.addEventListener('change', filter);
-    inputDateFrom.addEventListener('change', filter);
-    inputDateTo.addEventListener('change', filter);
-    chkOpenOnly.addEventListener('change', filter);
-    btnClear.addEventListener('click', function () {
-        inputKamisz.value = '';
-        inputFuvarozo.value = '';
-        inputDateFrom.value = '';
-        inputDateTo.value = '';
-        chkOpenOnly.checked = true;
-        loadRakData(null);
-    });
-
     // ============= API BETÖLTÉS =============
-    // searchTerm: null = csak RAKODVA=false fuvarok (Rakodás modul alapnézete)
-    //             string = összes egyező (minden szezon, minden is_loaded)
-    async function loadRakData(searchTerm) {
+    async function loadRakData() {
         try {
             tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:15px; color:#666;">Betöltés...</td></tr>';
-            var url;
-            if (searchTerm) {
-                // Kereséskor minden szezont és minden állapotot mutatunk
-                url = '/api/v1/shipments?search=' + encodeURIComponent(searchTerm);
-            } else {
-                // Alap nézetben csak a nem-rakodott fuvarok
-                url = '/api/v1/shipments?limit=10000&is_loaded=false';
-            }
+            var url = '/api/v1/shipments?limit=10000&is_loaded=false';
             const res = await fetch(url);
             if (res.ok) {
                 const data = await res.json();
@@ -883,21 +799,6 @@ export function renderRakodas(container, windowManager) {
         }
     }
 
-    async function loadTransporters() {
-        try {
-            const res = await fetch('/api/v1/transporters');
-            if (res.ok) {
-                const transporters = await res.json();
-                inputFuvarozo.innerHTML = '<option value="">-- Összes --</option>' +
-                    transporters.map(function(t) {
-                        return '<option value="' + t.name + '">' + t.name + '</option>';
-                    }).join('');
-            }
-        } catch (err) {
-            console.error('Hiba a fuvarozók betöltésekor:', err);
-        }
-    }
-
     async function loadCargoDemandsData() {
         try {
             aruTbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:10px; color:#666; font-size:10px;">Betöltés...</td></tr>';
@@ -924,8 +825,7 @@ export function renderRakodas(container, windowManager) {
     }
 
     // Inicializálás
-    loadTransporters();
-    loadRakData(null);
+    loadRakData();
     loadCargoDemandsData();
     loadProducts();
 

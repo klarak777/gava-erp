@@ -135,7 +135,7 @@ async function runImport() {
       if (!name || name.trim() === '') return null;
       const key = name.trim().toUpperCase();
       if (prodMap[key]) return prodMap[key];
-      const [newId] = await db('products').insert({ name: name.trim() }).returning('id');
+      const [newId] = await db('products').insert({ name: name.trim(), is_active: false }).returning('id');
       prodMap[key] = newId.id;
       return newId.id;
     }

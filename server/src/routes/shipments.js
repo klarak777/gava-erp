@@ -4,6 +4,7 @@ const db = require('../db/db');
 const path = require('path');
 const fs = require('fs');
 const docxService = require('../services/docxService');
+const { getFolderName, getCompanyName } = require('../config/transporterConfig');
 
 // GET /api/v1/shipments/order-numbers?tip=GHU
 // Visszaadja a következő szabad kamionszámot az adott típushoz (összes szezon max értéke alapján)
@@ -223,17 +224,38 @@ async function generateEkaerForShipment(shipmentId) {
     throw new Error('EKAER sablon nem található: ' + templatePath);
   }
 
-  // Kimeneti mappa: \raktar\MI Teszt\Fuvarok\{tourNumber}\
+  // Kimeneti mappa az éles szerkezet szerint
   const safeOrderNum = (shipment.order_number || '').replace(/\//g, '-').replace(/[\\:*?"<>|]/g, '');
   const safePlateNum = (shipment.plate_number || '').replace(/\//g, '-').replace(/[\\:*?"<>|]/g, '');
-  const targetDir = path.join(raktarPath, 'MI Teszt', 'Fuvarok', safeOrderNum);
+  
+  const season = await db('seasons').where('id', shipment.season_id).first();
+  const seasonCode = season ? season.code : '24-25';
+  
+  const { generateEkaerPath } = require('../config/transporterConfig');
+  const generatedPath = generateEkaerPath(seasonCode, safeOrderNum, shipment.plate_number || 'UNKNOWN', raktarPath);
+  
+  let outputPath;
+  let targetDir;
+  
+  if (generatedPath) {
+    outputPath = generatedPath.filePath;
+    targetDir = path.dirname(outputPath);
+  } else {
+    // Fallback ha a rendszám nem megfelelő
+    targetDir = path.join(raktarPath, 'Fuvarok', 'EKAEREK', `EKAEREK 20${seasonCode.split('-')[0]}-20${seasonCode.split('-')[1]}`, safeOrderNum);
+    outputPath = path.join(targetDir, safePlateNum + '.docx');
+  }
 
-  // Duplikátum-kezelés (ha a fájl már létezik, számot fűzünk hozzá)
-  let outputPath = path.join(targetDir, safePlateNum + '.docx');
+  // Duplikátum-kezelés
   let counter = 0;
+  let baseOutputPath = outputPath.replace(/\.docx$/, '');
   while (fs.existsSync(outputPath)) {
     counter++;
-    outputPath = path.join(targetDir, safePlateNum + '(' + counter + ')' + '.docx');
+    outputPath = `${baseOutputPath}(${counter}).docx`;
+  }
+
+  if (!fs.existsSync(targetDir)) {
+    fs.mkdirSync(targetDir, { recursive: true });
   }
 
   // Placeholder adatok kitöltése (VBA ReplacePlaceholders logika)
@@ -367,7 +389,7 @@ router.post('/', async (req, res) => {
 
     if (lines && lines.length > 0) {
       // Csak azokat a sorokat szúrjuk be, amiknek legalább az egyik raklapja nem 0
-      const activeLines = lines.filter(line => (parseFloat(line.euro_palets) || 0) > 0 || (parseFloat(line.normal_palets) || 0) > 0);
+      const activeLines = lines.filter(line => (parseFloat(String(line.euro_palets).replace(',', '.')) || 0) > 0 || (parseFloat(String(line.normal_palets).replace(',', '.')) || 0) > 0);
 
       if (activeLines.length > 0) {
         // 3. Raklapváltó tábla betöltése
@@ -376,8 +398,8 @@ router.post('/', async (req, res) => {
         conversions.forEach(c => { conversionMap[c.normal_count] = c.euro_equivalent; });
 
         // 4. Kalkuláció a teljes fuvarra
-        const sumNormal = activeLines.reduce((sum, l) => sum + (parseFloat(l.normal_palets) || 0), 0);
-        const sumEuro = activeLines.reduce((sum, l) => sum + (parseFloat(l.euro_palets) || 0), 0);
+        const sumNormal = activeLines.reduce((sum, l) => sum + (parseFloat(String(l.normal_palets).replace(',', '.')) || 0), 0);
+        const sumEuro = activeLines.reduce((sum, l) => sum + (parseFloat(String(l.euro_palets).replace(',', '.')) || 0), 0);
 
         let convertedNormal = 0;
         if (sumNormal > 0) {
@@ -394,8 +416,8 @@ router.post('/', async (req, res) => {
 
         // 5. Tételek előkészítése és mentése
         const linesToInsert = activeLines.map(line => {
-          const lineEuro = parseFloat(line.euro_palets) || 0;
-          const lineNorm = parseFloat(line.normal_palets) || 0;
+          const lineEuro = parseFloat(String(line.euro_palets).replace(',', '.')) || 0;
+          const lineNorm = parseFloat(String(line.normal_palets).replace(',', '.')) || 0;
 
           let lineTotal = lineEuro;
           if (sumNormal > 0 && lineNorm > 0) {
@@ -475,15 +497,15 @@ router.put('/:id', async (req, res) => {
     // 3. Új tételek beszúrása
     if (lines && lines.length > 0) {
       // Csak azokat a sorokat szúrjuk be, amiknek legalább az egyik raklapja nem 0
-      const activeLines = lines.filter(line => (parseFloat(line.euro_palets) || 0) > 0 || (parseFloat(line.normal_palets) || 0) > 0);
+      const activeLines = lines.filter(line => (parseFloat(String(line.euro_palets).replace(',', '.')) || 0) > 0 || (parseFloat(String(line.normal_palets).replace(',', '.')) || 0) > 0);
 
       if (activeLines.length > 0) {
         const conversions = await trx('pallet_conversion').select('normal_count', 'euro_equivalent');
         const conversionMap = {};
         conversions.forEach(c => { conversionMap[c.normal_count] = c.euro_equivalent; });
 
-        const sumNormal = activeLines.reduce((sum, l) => sum + (parseFloat(l.normal_palets) || 0), 0);
-        const sumEuro = activeLines.reduce((sum, l) => sum + (parseFloat(l.euro_palets) || 0), 0);
+        const sumNormal = activeLines.reduce((sum, l) => sum + (parseFloat(String(l.normal_palets).replace(',', '.')) || 0), 0);
+        const sumEuro = activeLines.reduce((sum, l) => sum + (parseFloat(String(l.euro_palets).replace(',', '.')) || 0), 0);
 
         let convertedNormal = 0;
         if (sumNormal > 0) {
@@ -499,8 +521,8 @@ router.put('/:id', async (req, res) => {
         const tPrice = parseFloat(transport_price) || 0;
 
         const linesToInsert = activeLines.map(line => {
-          const lineEuro = parseFloat(line.euro_palets) || 0;
-          const lineNorm = parseFloat(line.normal_palets) || 0;
+          const lineEuro = parseFloat(String(line.euro_palets).replace(',', '.')) || 0;
+          const lineNorm = parseFloat(String(line.normal_palets).replace(',', '.')) || 0;
 
           let lineTotal = lineEuro;
           if (sumNormal > 0 && lineNorm > 0) {
@@ -611,27 +633,10 @@ router.post('/:id/generate-order', async (req, res) => {
       .leftJoin('products', 'shipment_lines.product_id', 'products.id')
       .where('shipment_lines.shipment_id', id);
       
-    // 3. Folder Map and Company Map logic
-    const folderMap = {
-      "BOGNÁR": "BOGNÁR TRANS", "BVT": "BVT TRANS", "DERBY": "DERBY TRANS",
-      "FER TRANS": "FER TRANS", "FRUCTUS": "FRUCTUS TRADE", "HANKA": "HANKA",
-      "KERMOR": "KERMOR", "KÓNYA": "KÓNYA TRANS", "LOGISTICHOME": "LOGISTICHOME",
-      "MEG-RAK-LAK": "MEG-RAK-LAK", "RENACRIS": "RENACRIS", "RONI": "RONI CARGO",
-      "STI": "STI", "THERMO": "THERMO FRUCHT", "SWISS": "SWISS TEMP", "GAVA POLSKA": "GAVA POLSKA"
-    };
-    
-    const companyMap = {
-      "BOGNÁR": "BOGNÁR TRANSPORT KFT", "BVT": "BVT TRANS KFT", "DERBY": "DERBY TRANS KFT",
-      "FER TRANS": "FER TRANS KFT", "FRUCTUS": "FRUCTUS TRADE", "HANKA": "HANKA SPED KFT",
-      "KERMOR": "KERMOR KFT", "KÓNYA": "KÓNYA TRANS KFT", "LOGISTICHOME": "LOGISTICHOME KFT",
-      "MEG-RAK-LAK": "MEG-RAK-LAK KFT", "RENACRIS": "RENACRIS TRANS", "RONI": "RONI CARGO KFT",
-      "STI": "STI HUNGARY KFT", "KUONI": "KUONI TRADE KFT", "FRIGOSPED": "FRIGOSPED SK",
-      "THERMO": "THERMO FRUCHT", "SWISS": "SWISS TEMP", "GAVA POLSKA": "GAVA POLSKA"
-    };
-
+    // 3. Folder Map and Company Map logic (centralized config)
     const shortTransporter = shipment.transporter_name || '';
-    const fullTransporter = companyMap[shortTransporter.toUpperCase()] || shortTransporter;
-    const folderTransporter = folderMap[shortTransporter.toUpperCase()] || shortTransporter;
+    const fullTransporter = getCompanyName(shortTransporter);
+    const folderTransporter = getFolderName(shortTransporter);
 
     // 4. Calculate destinations
     const destDict = {};
@@ -758,11 +763,26 @@ router.post('/:id/generate-order', async (req, res) => {
       return res.status(500).json({ error: `Sablon nem található: ${templatePath}` });
     }
 
-    const targetDir = path.join(raktarPath, 'MI Teszt', 'Fuvarok');
+    const season = await db('seasons').where('id', shipment.season_id).first();
+    const seasonCode = season ? season.code : '24-25';
     const safeOrderNum = (shipment.order_number || '').replace(/\//g, '-').replace(/[\\:*?"<>|]/g, '');
-    let outputFilename = `${shortTransporter} ${safeOrderNum}.docx`;
+    const { generateTransportOrderPath } = require('../config/transporterConfig');
     
-    const outputPath = path.join(targetDir, outputFilename);
+    const generatedTransPath = generateTransportOrderPath(seasonCode, shortTransporter, safeOrderNum, raktarPath);
+    let outputPath = generatedTransPath.filePath;
+    const targetDir = path.dirname(outputPath);
+    
+    // Duplikátum kezelés ha már létezik ugyanazzal a névvel
+    let counter = 0;
+    let baseOutputPath = outputPath.replace(/\.docx$/, '');
+    while (fs.existsSync(outputPath)) {
+      counter++;
+      outputPath = `${baseOutputPath}(${counter}).docx`;
+    }
+    
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
     
     docxService.generateOrderDocx(templatePath, outputPath, data, tableLines);
     
