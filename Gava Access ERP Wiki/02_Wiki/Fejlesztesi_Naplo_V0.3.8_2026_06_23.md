@@ -23,6 +23,19 @@ Ezen fejlesztési ciklusban a **Rakodás (Áru igény)** modul felületét és b
 ### 4. Adatbázis import szkriptek
 - Elkészült a dokumentumok adatainak dump-ja (`server/data/docs_dump.json`) és az ehhez kapcsolódó import szkript (`server/import_docs_from_json.js`), amely dinamikusan kezeli a PostgreSQL adatbázisba való betöltést, megakadályozva az idegen kulcs (foreign key) megsértéseket a DigitalOcean szerveren.
 
+### 5. Rakodás (Áru igény) szűrők és elrendezés igazítása
+- **Destination oszlop:** Az Áru igény táblázat kibővült a **Destination (Célállomás)** oszloppal.
+- **Kereső szűrők:** A táblázatok felett elhelyezésre került három szűrő vezérlő az Áru igények kereséséhez:
+  - **Destination** (célállomásra való szűrés)
+  - **Partner** (a partner reference kódra/nevére való szűrés)
+  - **Customer** (vevő nevére való szűrés)
+  - Valamint egy "Szűrők törlése" gomb.
+- **Egyforma széles táblázatok (Layout):** A két fő táblázat ("Rakodások" és "Áru igény") egyforma szélességet kapott (`flex:1`), és a betűméreteket finomítottuk, hogy a Destination oszlop bevezetése ellenére se csússzanak szét a táblázatok.
+
+### 6. Transportistas (Fuvarozók) modul finomítása
+- **Padding csökkentése:** Csökkentettük a padding-ot és a távolságot a vezérlők és a táblázat között, növelve az információ-sűrűséget.
+- **Felirat javítása:** Eltávolítottuk a zavaró `"frmTransportistas_Sub – "` prefixet a "Szállítmányok listája" elől.
+
 ---
 
 ## Érintett fájlok
@@ -30,7 +43,8 @@ Ezen fejlesztési ciklusban a **Rakodás (Áru igény)** modul felületét és b
 | Fájl | Módosítás típusa | Leírás |
 |------|-----------------|--------|
 | `Access UI/index.html` | MODIFY | Alkalmazás verziójának léptetése **V0.3.8**-ra. |
-| `Access UI/src/modules/rakodas.js` | MODIFY | Áru igény táblázat kibővítése szerkesztés gombbal; modal átalakítása szerkeszthetőre; léptetés és placeholder javítások. |
+| `Access UI/src/modules/rakodas.js` | MODIFY | Áru igény táblázat kibővítése szerkesztés gombbal és Destination oszloppal; kereső szűrők elhelyezése; elrendezés és táblázatszélességek (50-50%) finomítása. |
+| `Access UI/src/modules/transportistas.js` | MODIFY | Padding csökkentése a vezérlők és a táblázat között; a "frmTransportistas_Sub" prefix eltávolítása a címsorból. |
 | `Access UI/src/modules/kamion_szerkesztes.js` | MODIFY | A raklap-csökkentési mentés és fallback logika pontosítása. |
 | `server/src/routes/cargo_demands.js` | MODIFY | Új `PUT /api/v1/cargo-demands/:id` végpont hozzáadása a szerkesztések mentéséhez. |
 | `server/src/routes/transport_orders.js` | MODIFY | `resolveFilePath` definiálása és bevezetése a megtekintés és letöltés útvonalakhoz. |

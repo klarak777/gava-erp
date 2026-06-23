@@ -50,7 +50,7 @@ export function renderRakodas(container, windowManager) {
         '<div style="display:flex; gap:12px; align-items:flex-start; overflow-x:auto;">' +
 
         // BAL TÁBLA: Rakodások
-        '<div class="access-subform" style="flex:1.2; min-width:0; margin-top:0;">' +
+        '<div class="access-subform" style="flex:1; min-width:0; margin-top:0;">' +
         '<div class="access-subform-header" style="font-size:12px; padding:8px 12px;">Rakodások</div>' +
         '<div style="overflow-x:auto;">' +
         '<table class="access-subform-table" id="rak-left-table" style="font-size:11px;">' +
@@ -66,7 +66,7 @@ export function renderRakodas(container, windowManager) {
         '</div>' +
 
         // JOBB TÁBLA: Áru igény
-        '<div class="access-subform" style="flex:3; min-width:0; margin-top:0; background:linear-gradient(135deg, #f0f7ff, #e8f4fd); border:1px solid #bde0fa;">' +
+        '<div class="access-subform" style="flex:1; min-width:0; margin-top:0; background:linear-gradient(135deg, #f0f7ff, #e8f4fd); border:1px solid #bde0fa;">' +
         '<div class="access-subform-header" style="background:linear-gradient(90deg,#0ea5e9,#2563eb); color:#fff; display:flex; align-items:center; justify-content:space-between; padding:7px 14px;">' +
         '<span style="font-size:11px; font-weight:600;">Áru igény</span>' +
         '<button id="btn-add-aru" title="Új áru igény hozzáadása" style="background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.4); color:#fff; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:13px; font-weight:700; line-height:1.4;">+ Hozzáadás</button>' +
