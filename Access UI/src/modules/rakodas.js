@@ -38,11 +38,8 @@ export function renderRakodas(container, windowManager) {
         '<button class="primary-btn" id="btn-new-truck">+ Új kamion</button>' +
         '</div>' +
 
-        // Két tábla egymás mellett
-        '<div style="display:flex; gap:12px; align-items:flex-start; overflow-x:auto;">' +
-
         // Áru igény szűrők
-        '<div class="access-form-view" style="padding:10px 18px; margin-bottom:12px; display:flex; gap:16px; align-items:end; justify-content:flex-end;">' +
+        '<div class="access-form-view" style="padding:10px 18px; margin-bottom:12px; display:flex; gap:16px; align-items:end;">' +
         '<div style="flex:1; max-width:200px;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Destination</label><input type="text" id="filter-aru-dest" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Célállomás..."></div>' +
         '<div style="flex:1; max-width:200px;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Partner</label><input type="text" id="filter-aru-partner" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Partner (Reference)..."></div>' +
         '<div style="flex:1; max-width:200px;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Customer</label><input type="text" id="filter-aru-customer" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Vevő..."></div>' +
