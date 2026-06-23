@@ -49,8 +49,8 @@ export function renderRakodas(container, windowManager) {
         // Két tábla egymás mellett
         '<div style="display:flex; gap:12px; align-items:flex-start; overflow-x:auto;">' +
 
-        // BAL TÁBLA: Rakodások
-        '<div class="access-subform" style="flex:1.5; min-width:0; margin-top:0;">' +
+        // BAL TÁBLA: Rakodások (szélesség csökkentve flex:1.4-re)
+        '<div class="access-subform" style="flex:1.4; min-width:0; margin-top:0;">' +
         '<div class="access-subform-header" style="font-size:12px; padding:8px 12px;">Rakodások</div>' +
         '<div style="overflow-x:auto;">' +
         '<table class="access-subform-table" id="rak-left-table" style="font-size:11px;">' +
@@ -65,8 +65,8 @@ export function renderRakodas(container, windowManager) {
         '</div>' +
         '</div>' +
 
-        // JOBB TÁBLA: Áru igény
-        '<div class="access-subform" style="flex:1; min-width:0; margin-top:0; background:linear-gradient(135deg, #f0f7ff, #e8f4fd); border:1px solid #bde0fa;">' +
+        // JOBB TÁBLA: Áru igény (szélesség növelve flex:1.1-re)
+        '<div class="access-subform" style="flex:1.1; min-width:0; margin-top:0; background:linear-gradient(135deg, #f0f7ff, #e8f4fd); border:1px solid #bde0fa;">' +
         '<div class="access-subform-header" style="background:linear-gradient(90deg,#0ea5e9,#2563eb); color:#fff; display:flex; align-items:center; justify-content:space-between; padding:7px 14px;">' +
         '<span style="font-size:11px; font-weight:600;">Áru igény</span>' +
         '<button id="btn-add-aru" title="Új áru igény hozzáadása" style="background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.4); color:#fff; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:13px; font-weight:700; line-height:1.4;">+ Hozzáadás</button>' +
@@ -114,7 +114,7 @@ export function renderRakodas(container, windowManager) {
         '</div>' +
         '</div>';
     document.body.appendChild(modalEl);
-    
+
     modalEl.style.cssText = 'display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.45); z-index:9999; align-items:center; justify-content:center;';
 
     // ============= ÁLLLAPOT =============
@@ -137,7 +137,7 @@ export function renderRakodas(container, windowManager) {
     inpAruDest.addEventListener('input', renderRight);
     inpAruPartner.addEventListener('input', renderRight);
     inpAruCustomer.addEventListener('input', renderRight);
-    btnAruClearFilters.addEventListener('click', function() {
+    btnAruClearFilters.addEventListener('click', function () {
         inpAruDest.value = '';
         inpAruPartner.value = '';
         inpAruCustomer.value = '';
@@ -235,10 +235,10 @@ export function renderRakodas(container, windowManager) {
         });
 
         // Kamionszám kattintás -> menü modal
-        tbody.querySelectorAll('.rak-open-link').forEach(function(el) {
-            el.addEventListener('click', function(e) {
+        tbody.querySelectorAll('.rak-open-link').forEach(function (el) {
+            el.addEventListener('click', function (e) {
                 var id = parseInt(e.currentTarget.getAttribute('data-id'));
-                currentKamionForMenu = rakData.find(function(x) { return x.id === id; });
+                currentKamionForMenu = rakData.find(function (x) { return x.id === id; });
                 document.getElementById('km-menu-tour').textContent = currentKamionForMenu ? currentKamionForMenu.tour : '';
                 showModal();
             });
@@ -304,9 +304,9 @@ export function renderRakodas(container, windowManager) {
                 var id = parseInt(e.currentTarget.getAttribute('data-id'));
                 var row = aruData.find(function (x) { return x.id === id; });
                 if (!row) return;
-                
+
                 if (!confirm(`Biztosan törölni szeretnéd ezt a tételt az Áru igényből?\n\nTermék: ${row.product_name || 'ismeretlen'}\nEuro: ${row.euro_palets || 0} | Normál: ${row.normal_palets || 0}`)) return;
-                
+
                 try {
                     const res = await fetch(`/api/v1/cargo-demands/${id}`, { method: 'DELETE' });
                     if (!res.ok) {
@@ -314,7 +314,7 @@ export function renderRakodas(container, windowManager) {
                         try {
                             const errData = await res.json();
                             if (errData && errData.error) errMsg += ': ' + errData.error;
-                        } catch (e) {}
+                        } catch (e) { }
                         throw new Error(errMsg + ' (Státusz: ' + res.status + ')');
                     }
                     loadCargoDemandsData(); // frissítés
@@ -326,7 +326,7 @@ export function renderRakodas(container, windowManager) {
     }
 
     function escHtml(s) {
-        return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
     // ============= KÜLDÉS KAMIONRA MODAL =============
@@ -405,7 +405,7 @@ export function renderRakodas(container, windowManager) {
                 `Termék: ${demandRow.product_name || '–'}\n` +
                 `Euro: ${sendEuro} plt | Normál: ${sendNormal} plt\n\n` +
                 `Célkamion: ${targetLabel}\n\n` +
-                `${(sendEuro < (demandRow.euro_palets||0) || sendNormal < (demandRow.normal_palets||0)) ? '⚠️ Részleges küldés – a maradék az Áru igény táblában marad.' : '✅ Teljes mennyiség'}`;
+                `${(sendEuro < (demandRow.euro_palets || 0) || sendNormal < (demandRow.normal_palets || 0)) ? '⚠️ Részleges küldés – a maradék az Áru igény táblában marad.' : '✅ Teljes mennyiség'}`;
             if (!confirm(confirmMsg)) return;
 
             try {
@@ -435,7 +435,7 @@ export function renderRakodas(container, windowManager) {
             try {
                 const r = await fetch('/api/v1/products');
                 productsList = await r.json();
-            } catch(e) { productsList = []; }
+            } catch (e) { productsList = []; }
         }
 
         const isEdit = !!editRow;
@@ -557,7 +557,7 @@ export function renderRakodas(container, windowManager) {
                         prodDropdown.style.display = 'none';
                     };
                     div.onmouseover = () => div.style.backgroundColor = '#f1f5f9';
-                    div.onmouseout  = () => div.style.backgroundColor = 'transparent';
+                    div.onmouseout = () => div.style.backgroundColor = 'transparent';
                     prodDropdown.appendChild(div);
                 });
                 prodDropdown.style.display = 'block';
@@ -622,29 +622,29 @@ export function renderRakodas(container, windowManager) {
         modalEl.style.display = 'none';
     }
 
-    document.getElementById('btn-km-cancel').addEventListener('click', function() { hideModal(); });
-    modalEl.addEventListener('click', function(e) { if (e.target === modalEl) hideModal(); });
+    document.getElementById('btn-km-cancel').addEventListener('click', function () { hideModal(); });
+    modalEl.addEventListener('click', function (e) { if (e.target === modalEl) hideModal(); });
 
-    document.getElementById('btn-km-szerkesztes').addEventListener('click', function() {
+    document.getElementById('btn-km-szerkesztes').addEventListener('click', function () {
         hideModal();
         if (!currentKamionForMenu) return;
         openKamionSzerkesztesWindow(windowManager, currentKamionForMenu.id);
     });
 
-    document.getElementById('btn-km-doc').addEventListener('click', async function() {
+    document.getElementById('btn-km-doc').addEventListener('click', async function () {
         hideModal();
         if (!currentKamionForMenu) return;
-        
+
         try {
             const btn = document.getElementById('btn-km-doc');
             const originalText = btn.innerHTML;
             btn.innerHTML = 'Készítés...';
-            
+
             const res = await fetch(`/api/v1/shipments/${currentKamionForMenu.id}/generate-order`, {
                 method: 'POST'
             });
             const data = await res.json();
-            
+
             if (res.ok) {
                 alert(`Dokumentum sikeresen létrehozva:\n${data.path}`);
             } else {
@@ -817,7 +817,7 @@ export function renderRakodas(container, windowManager) {
         });
     }
 
-    document.getElementById('btn-km-rename').addEventListener('click', function() {
+    document.getElementById('btn-km-rename').addEventListener('click', function () {
         hideModal();
         if (!currentKamionForMenu) return;
         openRenameModal(currentKamionForMenu.tour);
