@@ -50,7 +50,7 @@ export function renderRakodas(container, windowManager) {
         '<div style="display:flex; gap:12px; align-items:flex-start; overflow-x:auto;">' +
 
         // BAL TÁBLA: Rakodások
-        '<div class="access-subform" style="flex:1; min-width:0; margin-top:0;">' +
+        '<div class="access-subform" style="flex:1.5; min-width:0; margin-top:0;">' +
         '<div class="access-subform-header" style="font-size:12px; padding:8px 12px;">Rakodások</div>' +
         '<div style="overflow-x:auto;">' +
         '<table class="access-subform-table" id="rak-left-table" style="font-size:11px;">' +
