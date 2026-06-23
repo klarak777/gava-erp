@@ -25,10 +25,10 @@ Ezen fejlesztési ciklusban a **Rakodás (Áru igény)** modul felületét és b
 
 ### 5. Rakodás szűrők, Destination oszlop és elrendezés igazítása
 - **Destination oszlop:** Az Áru igény táblázat kibővült a **Destination (Célállomás)** oszloppal.
-- **Kereső szűrők:** A táblázatok felett elhelyezésre került három szűrő vezérlő, amelyek a **Rakodások (bal oldali táblázat)** kamionjait szűrik a hozzájuk rendelt tételek részletei alapján:
-  - **Destination** (célállomásra való szűrés a kamion tételeiben)
-  - **Partner** (partner/reference névre és fuvarozóra való szűrés)
-  - **Customer** (vevő nevére való szűrés a kamion tételeiben)
+- **Kereső szűrők (Javítva):** A táblázatok felett elhelyezett három szűrő vezérlő a felhasználói visszajelzések alapján nem a Rakodásokat, hanem az **Áru igény (jobb oldali táblázat)** tételeit szűrik az alábbiak szerint:
+  - **Destination** (célállomásra való szűrés)
+  - **Partner** (partner/reference névre való szűrés)
+  - **Customer** (vevő nevére való szűrés)
   - Valamint egy "Szűrők törlése" gomb.
 - **Elrendezés igazítása (Layout):** A jobb olvashatóság érdekében a **Rakodások** (bal) táblázat nagyobb szélességet kapott (`flex:1.4`), míg az **Áru igény** (jobb) táblázat szélessége `flex:1.1` lett. A betűméreteket is finomítottuk, hogy a Destination oszlop bevezetése ellenére se csússzanak szét a táblázatok.
 

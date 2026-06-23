@@ -134,30 +134,21 @@ export function renderRakodas(container, windowManager) {
     var inpAruCustomer = view.querySelector('#filter-aru-customer');
     var btnAruClearFilters = view.querySelector('#btn-aru-clear-filters');
 
-    inpAruDest.addEventListener('input', filter);
-    inpAruPartner.addEventListener('input', filter);
-    inpAruCustomer.addEventListener('input', filter);
+    inpAruDest.addEventListener('input', renderRight);
+    inpAruPartner.addEventListener('input', renderRight);
+    inpAruCustomer.addEventListener('input', renderRight);
     btnAruClearFilters.addEventListener('click', function () {
         inpAruDest.value = '';
         inpAruPartner.value = '';
         inpAruCustomer.value = '';
-        filter();
+        renderRight();
     });
 
     // ============= SZŰRŐ + BAL TÁBLA =============
+    // ============= SZŰRŐ + BAL TÁBLA =============
     function filter() {
-        const valDest = (inpAruDest.value || '').toLowerCase();
-        const valPartner = (inpAruPartner.value || '').toLowerCase();
-        const valCustomer = (inpAruCustomer.value || '').toLowerCase();
-
-        const filtered = rakData.filter(function (r) {
-            const mDest = !valDest || (r.destinations || '').toLowerCase().includes(valDest) || (r.tour || '').toLowerCase().includes(valDest);
-            const mPartner = !valPartner || (r.partners || '').toLowerCase().includes(valPartner) || (r.transporter || '').toLowerCase().includes(valPartner);
-            const mCustomer = !valCustomer || (r.customers || '').toLowerCase().includes(valCustomer);
-            return mDest && mPartner && mCustomer;
-        });
-
-        renderLeft(filtered);
+        // Bal oldalon most nincs szűrő, csak újra rendereljük az adatokat
+        renderLeft(rakData);
     }
 
     function renderLeft(data) {
@@ -258,7 +249,23 @@ export function renderRakodas(container, windowManager) {
 
     // ============= JOBB TÁBLA: ÁRU IGÉNY (valós adatok) =============
     function renderRight() {
-        const notFulfilled = aruData.filter(r => !r.is_fulfilled);
+        const valDest = (inpAruDest.value || '').toLowerCase();
+        const valPartner = (inpAruPartner.value || '').toLowerCase();
+        const valCustomer = (inpAruCustomer.value || '').toLowerCase();
+
+        const notFulfilled = aruData.filter(r => {
+            if (r.is_fulfilled) return false;
+            
+            const dest = (r.destination || '').toLowerCase();
+            const partner = (r.albaran_number || '').toLowerCase();
+            const cust = (r.customer_name || '').toLowerCase();
+
+            const mDest = !valDest || dest.includes(valDest);
+            const mPartner = !valPartner || partner.includes(valPartner);
+            const mCustomer = !valCustomer || cust.includes(valCustomer);
+
+            return mDest && mPartner && mCustomer;
+        });
 
         if (notFulfilled.length === 0) {
             aruTbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:12px; color:#94a3b8; font-size:10px;">Nincs kielégítetlen áru igény</td></tr>';
