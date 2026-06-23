@@ -38,14 +38,6 @@ export function renderRakodas(container, windowManager) {
         '<button class="primary-btn" id="btn-new-truck">+ Új kamion</button>' +
         '</div>' +
 
-        // Rakodás szűrők
-        '<div class="access-form-view" style="padding:10px 18px; margin-bottom:12px; display:flex; gap:16px; align-items:end;">' +
-        '<div style="flex:1; max-width:200px;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Destination</label><input type="text" id="filter-aru-dest" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Célállomás..."></div>' +
-        '<div style="flex:1; max-width:200px;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Partner</label><input type="text" id="filter-aru-partner" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Partner (Reference)..."></div>' +
-        '<div style="flex:1; max-width:200px;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Customer</label><input type="text" id="filter-aru-customer" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Vevő..."></div>' +
-        '<div style="flex:none;"><button class="secondary-btn btn-dense" id="btn-aru-clear-filters" style="font-size:12px; height:28px; padding:0 12px; line-height:26px;">Szűrők törlése</button></div>' +
-        '</div>' +
-
         // Két tábla egymás mellett
         '<div style="display:flex; gap:12px; align-items:flex-start; overflow-x:auto;">' +
 
@@ -65,8 +57,19 @@ export function renderRakodas(container, windowManager) {
         '</div>' +
         '</div>' +
 
-        // JOBB TÁBLA: Áru igény (szélesség növelve flex:1.1-re)
-        '<div class="access-subform" style="flex:1.1; min-width:0; margin-top:0; background:linear-gradient(135deg, #f0f7ff, #e8f4fd); border:1px solid #bde0fa;">' +
+        // JOBB TÁBLA ÉS SZŰRŐI (szélesség flex:1.1-re)
+        '<div style="flex:1.1; min-width:0; display:flex; flex-direction:column; gap:12px;">' +
+        
+        // Áru igény szűrők
+        '<div class="access-form-view" style="padding:10px 18px; display:flex; gap:16px; align-items:end;">' +
+        '<div style="flex:1; max-width:200px;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Destination</label><input type="text" id="filter-aru-dest" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Célállomás..."></div>' +
+        '<div style="flex:1; max-width:200px;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Partner</label><input type="text" id="filter-aru-partner" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Partner (Reference)..."></div>' +
+        '<div style="flex:1; max-width:200px;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Customer</label><input type="text" id="filter-aru-customer" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Vevő..."></div>' +
+        '<div style="flex:none;"><button class="secondary-btn btn-dense" id="btn-aru-clear-filters" style="font-size:12px; height:28px; padding:0 12px; display:flex; align-items:center; justify-content:center;">Szűrők törlése</button></div>' +
+        '</div>' +
+
+        // JOBB TÁBLA: Áru igény
+        '<div class="access-subform" style="margin-top:0; background:linear-gradient(135deg, #f0f7ff, #e8f4fd); border:1px solid #bde0fa;">' +
         '<div class="access-subform-header" style="background:linear-gradient(90deg,#0ea5e9,#2563eb); color:#fff; display:flex; align-items:center; justify-content:space-between; padding:7px 14px;">' +
         '<span style="font-size:11px; font-weight:600;">Áru igény</span>' +
         '<button id="btn-add-aru" title="Új áru igény hozzáadása" style="background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.4); color:#fff; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:13px; font-weight:700; line-height:1.4;">+ Hozzáadás</button>' +
@@ -88,7 +91,8 @@ export function renderRakodas(container, windowManager) {
         '</div>' +
         '</div>' +
 
-        '</div>' +
+        '</div>' + // Close right wrapper
+        '</div>' + // Close container (Két tábla egymás mellett)
 
         ''; // A régi modal-km-szerk és modal-uj-kamion kódok eltávolítva, mert a WindowManager kezeli őket
 
