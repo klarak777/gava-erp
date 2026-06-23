@@ -16,7 +16,7 @@ export function renderTransportistas(container) {
     filterPanel.innerHTML = `
         <div style="margin-bottom:6px;">
             <h2 class="view-title" style="margin:0 0 2px 0;">Transportistas</h2>
-            <p class="view-subtitle" style="margin:0;">frmTransportistas – Szállítmányozók és kamionok nyilvántartása</p>
+            <p class="view-subtitle" style="margin:0;">Szállítmányozók és kamionok nyilvántartása</p>
         </div>
 
         <div class="access-form-view" style="padding:10px 18px; margin-bottom:10px;">
@@ -112,10 +112,10 @@ export function renderTransportistas(container) {
                 <table class="access-subform-table" id="transport-table" style="min-width:1700px;">
                     <thead style="position:sticky; top:0; background:var(--bg-light); z-index:2;">
                         <tr>
-                            <th style="min-width:105px;">Loading date</th>
+                            <th style="min-width:110px;">Loading date</th>
                             <th style="min-width:120px;">Loading place</th>
-                            <th style="min-width:95px;">Order number</th>
-                            <th style="min-width:90px;">Transporter</th>
+                            <th style="min-width:110px;">Order number</th>
+                            <th style="min-width:110px;">Transporter</th>
                             <th style="min-width:160px;">Plate number</th>
                             <th style="min-width:120px; text-align:right;">Transport price</th>
                             <th style="min-width:105px;">Arrival date</th>
@@ -141,17 +141,17 @@ export function renderTransportistas(container) {
     let tableData = [];
 
     // --- Vezérlők lekérése ---
-    const tbody        = tableContainer.querySelector('#transport-tbody');
-    const recordCount  = tableContainer.querySelector('#record-count');
-    const chkBevVar    = filterPanel.querySelector('#chk-bev-var');
-    const chkHiany     = filterPanel.querySelector('#chk-hianyzo-szla');
-    const inpOrderNum  = filterPanel.querySelector('#filter-order-num');
-    const inpKamion    = filterPanel.querySelector('#filter-kamion');
-    const inpHely      = filterPanel.querySelector('#filter-hely');
-    const selSzezon    = filterPanel.querySelector('#filter-szezon');
-    const selFuvarozo  = filterPanel.querySelector('#filter-fuvarozo');
-    const selEv        = filterPanel.querySelector('#filter-ev');
-    const btnClear     = filterPanel.querySelector('#btn-clear-filters');
+    const tbody = tableContainer.querySelector('#transport-tbody');
+    const recordCount = tableContainer.querySelector('#record-count');
+    const chkBevVar = filterPanel.querySelector('#chk-bev-var');
+    const chkHiany = filterPanel.querySelector('#chk-hianyzo-szla');
+    const inpOrderNum = filterPanel.querySelector('#filter-order-num');
+    const inpKamion = filterPanel.querySelector('#filter-kamion');
+    const inpHely = filterPanel.querySelector('#filter-hely');
+    const selSzezon = filterPanel.querySelector('#filter-szezon');
+    const selFuvarozo = filterPanel.querySelector('#filter-fuvarozo');
+    const selEv = filterPanel.querySelector('#filter-ev');
+    const btnClear = filterPanel.querySelector('#btn-clear-filters');
 
     function getYear(dateStr) {
         const m = (dateStr || '').match(/^\d{4}/);
@@ -222,26 +222,26 @@ export function renderTransportistas(container) {
     }
 
     function filterData() {
-        const valOrderNum  = (inpOrderNum.value || '').toLowerCase().replace(/\s+/g, '');
-        const valKamion   = inpKamion.value.toLowerCase();
-        const valHely     = inpHely.value.toLowerCase();
+        const valOrderNum = (inpOrderNum.value || '').toLowerCase().replace(/\s+/g, '');
+        const valKamion = inpKamion.value.toLowerCase();
+        const valHely = inpHely.value.toLowerCase();
         const valFuvarozo = selFuvarozo.value;
-        const valEv       = selEv.value;
-        const valSzezon   = selSzezon.value;
-        const bevVar      = chkBevVar.checked;
-        const hiany       = chkHiany.checked;
+        const valEv = selEv.value;
+        const valSzezon = selSzezon.value;
+        const bevVar = chkBevVar.checked;
+        const hiany = chkHiany.checked;
 
         const filtered = tableData.filter(row => {
             // Order number szűrő: szóköz nélkül hasonlít
             const orderNorm = (row.orderNumber || '').toLowerCase().replace(/\s+/g, '');
-            const mOrderNum  = !valOrderNum || orderNorm.includes(valOrderNum);
-            const mKamion    = !valKamion || (row.plateNumber || '').toLowerCase().includes(valKamion);
-            const mHely      = !valHely || (row.loadingPlace || '').toLowerCase().includes(valHely);
-            const mFuvarozo  = !valFuvarozo || row.transporter === valFuvarozo;
-            const mEv        = !valEv || getYear(row.loadingDate) === valEv;
-            const mSzezon    = !valSzezon || row.seasonCode === valSzezon;
-            const mBevVar    = !bevVar || !row.bevetelezve;
-            const mHiany     = !hiany || row.invoiceNumber === '';
+            const mOrderNum = !valOrderNum || orderNorm.includes(valOrderNum);
+            const mKamion = !valKamion || (row.plateNumber || '').toLowerCase().includes(valKamion);
+            const mHely = !valHely || (row.loadingPlace || '').toLowerCase().includes(valHely);
+            const mFuvarozo = !valFuvarozo || row.transporter === valFuvarozo;
+            const mEv = !valEv || getYear(row.loadingDate) === valEv;
+            const mSzezon = !valSzezon || row.seasonCode === valSzezon;
+            const mBevVar = !bevVar || !row.bevetelezve;
+            const mHiany = !hiany || row.invoiceNumber === '';
             return mOrderNum && mKamion && mHely && mFuvarozo && mEv && mSzezon && mBevVar && mHiany;
         });
 
@@ -260,13 +260,13 @@ export function renderTransportistas(container) {
 
     btnClear.addEventListener('click', () => {
         inpOrderNum.value = '';
-        inpKamion.value   = '';
-        inpHely.value     = '';
+        inpKamion.value = '';
+        inpHely.value = '';
         selFuvarozo.value = '';
-        selSzezon.value   = '';
-        selEv.value       = '';
+        selSzezon.value = '';
+        selEv.value = '';
         chkBevVar.checked = false;
-        chkHiany.checked  = false;
+        chkHiany.checked = false;
         filterData();
     });
 
@@ -311,7 +311,7 @@ export function renderTransportistas(container) {
             if (res.ok) {
                 const transporters = await res.json();
                 selFuvarozo.innerHTML = '<option value="">-- Összes --</option>' +
-                    transporters.map(function(t) {
+                    transporters.map(function (t) {
                         return '<option value="' + t.name + '">' + t.name + '</option>';
                     }).join('');
             }

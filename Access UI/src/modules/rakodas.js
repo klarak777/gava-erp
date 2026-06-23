@@ -41,16 +41,27 @@ export function renderRakodas(container, windowManager) {
         // Két tábla egymás mellett
         '<div style="display:flex; gap:12px; align-items:flex-start; overflow-x:auto;">' +
 
+        // Áru igény szűrők
+        '<div class="access-form-view" style="padding:10px 18px; margin-bottom:12px; display:flex; gap:16px; align-items:end; justify-content:flex-end;">' +
+        '<div style="flex:1; max-width:200px;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Destination</label><input type="text" id="filter-aru-dest" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Célállomás..."></div>' +
+        '<div style="flex:1; max-width:200px;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Partner</label><input type="text" id="filter-aru-partner" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Partner (Reference)..."></div>' +
+        '<div style="flex:1; max-width:200px;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Customer</label><input type="text" id="filter-aru-customer" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Vevő..."></div>' +
+        '<div style="flex:none;"><button class="secondary-btn btn-dense" id="btn-aru-clear-filters" style="font-size:12px; height:28px; padding:0 12px; line-height:26px;">Szűrők törlése</button></div>' +
+        '</div>' +
+
+        // Két tábla egymás mellett
+        '<div style="display:flex; gap:12px; align-items:flex-start; overflow-x:auto;">' +
+
         // BAL TÁBLA: Rakodások
-        '<div class="access-subform" style="flex:3; min-width:0;">' +
-        '<div class="access-subform-header">Rakodások</div>' +
+        '<div class="access-subform" style="flex:1.2; min-width:0; margin-top:0;">' +
+        '<div class="access-subform-header" style="font-size:12px; padding:8px 12px;">Rakodások</div>' +
         '<div style="overflow-x:auto;">' +
-        '<table class="access-subform-table" id="rak-left-table">' +
+        '<table class="access-subform-table" id="rak-left-table" style="font-size:11px;">' +
         '<thead><tr>' +
-        '<th style="min-width:120px;">Kamionszám</th>' +
-        '<th style="min-width:110px;">Rakodás nap</th>' +
-        '<th style="min-width:120px;">Fuvarozó</th>' +
-        '<th style="min-width:80px; text-align:center;">Rakodva</th>' +
+        '<th style="min-width:100px; padding:6px 4px; font-size:10px;">Kamionszám</th>' +
+        '<th style="min-width:80px; padding:6px 4px; font-size:10px;">Rakodás nap</th>' +
+        '<th style="min-width:100px; padding:6px 4px; font-size:10px;">Fuvarozó</th>' +
+        '<th style="min-width:60px; padding:6px 4px; text-align:center; font-size:10px;">Rakodva</th>' +
         '</tr></thead>' +
         '<tbody id="rak-tbody"></tbody>' +
         '</table>' +
@@ -58,7 +69,7 @@ export function renderRakodas(container, windowManager) {
         '</div>' +
 
         // JOBB TÁBLA: Áru igény
-        '<div class="access-subform" style="flex:2; min-width:0; background:linear-gradient(135deg, #f0f7ff, #e8f4fd); border:1px solid #bde0fa;">' +
+        '<div class="access-subform" style="flex:3; min-width:0; margin-top:0; background:linear-gradient(135deg, #f0f7ff, #e8f4fd); border:1px solid #bde0fa;">' +
         '<div class="access-subform-header" style="background:linear-gradient(90deg,#0ea5e9,#2563eb); color:#fff; display:flex; align-items:center; justify-content:space-between; padding:7px 14px;">' +
         '<span style="font-size:11px; font-weight:600;">Áru igény</span>' +
         '<button id="btn-add-aru" title="Új áru igény hozzáadása" style="background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.4); color:#fff; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:13px; font-weight:700; line-height:1.4;">+ Hozzáadás</button>' +
@@ -69,9 +80,10 @@ export function renderRakodas(container, windowManager) {
         '<th style="width:30px; background:rgba(14,165,233,0.1); text-align:center;"></th>' +
         '<th style="min-width:40px; background:rgba(14,165,233,0.1); text-align:center; font-size:10px; padding:4px 3px;">Euro plt</th>' +
         '<th style="min-width:40px; background:rgba(14,165,233,0.1); text-align:center; font-size:10px; padding:4px 3px;">Norm plt</th>' +
-        '<th style="min-width:140px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 3px;">Termék</th>' +
-        '<th style="min-width:80px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 3px;">Partner</th>' +
-        '<th style="min-width:80px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 3px;">Vevő</th>' +
+        '<th style="min-width:130px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 3px;">Termék</th>' +
+        '<th style="min-width:70px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 3px;">Partner</th>' +
+        '<th style="min-width:70px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 3px;">Vevő</th>' +
+        '<th style="min-width:70px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 3px;">Destination</th>' +
         '<th style="min-width:70px; text-align:center; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 3px;">Kamionra</th>' +
         '</tr></thead>' +
         '<tbody id="aru-tbody"></tbody>' +
@@ -120,6 +132,21 @@ export function renderRakodas(container, windowManager) {
 
     var currentKamionForMenu = null; // a menüből nyitott kamion obj
 
+    var inpAruDest = view.querySelector('#filter-aru-dest');
+    var inpAruPartner = view.querySelector('#filter-aru-partner');
+    var inpAruCustomer = view.querySelector('#filter-aru-customer');
+    var btnAruClearFilters = view.querySelector('#btn-aru-clear-filters');
+
+    inpAruDest.addEventListener('input', renderRight);
+    inpAruPartner.addEventListener('input', renderRight);
+    inpAruCustomer.addEventListener('input', renderRight);
+    btnAruClearFilters.addEventListener('click', function() {
+        inpAruDest.value = '';
+        inpAruPartner.value = '';
+        inpAruCustomer.value = '';
+        renderRight();
+    });
+
     // ============= SZŰRŐ + BAL TÁBLA =============
     function filter() {
         renderLeft(rakData);
@@ -128,10 +155,10 @@ export function renderRakodas(container, windowManager) {
     function renderLeft(data) {
         tbody.innerHTML = data.map(function (r) {
             return '<tr>' +
-                '<td><span class="rak-open-link" data-id="' + r.id + '" style="cursor:pointer; color:#2563eb; text-decoration:underline; font-weight:600;" title="Kattints a műveletekhez">' + r.tour + '</span></td>' +
-                '<td>' + r.date + '</td>' +
-                '<td>' + r.transporter + '</td>' +
-                '<td style="text-align:center;"><input type="checkbox" class="rak-loaded-chk" data-id="' + r.id + '"' + (r.loaded ? ' checked' : '') + '></td>' +
+                '<td style="padding:4px 6px;"><span class="rak-open-link" data-id="' + r.id + '" style="cursor:pointer; color:#2563eb; text-decoration:underline; font-weight:600;" title="Kattints a műveletekhez">' + r.tour + '</span></td>' +
+                '<td style="padding:4px 6px;">' + r.date + '</td>' +
+                '<td style="padding:4px 6px;">' + r.transporter + '</td>' +
+                '<td style="text-align:center; padding:4px 6px;"><input type="checkbox" class="rak-loaded-chk" data-id="' + r.id + '"' + (r.loaded ? ' checked' : '') + '></td>' +
                 '</tr>';
         }).join('');
 
@@ -223,9 +250,20 @@ export function renderRakodas(container, windowManager) {
 
     // ============= JOBB TÁBLA: ÁRU IGÉNY (valós adatok) =============
     function renderRight() {
-        const notFulfilled = aruData.filter(r => !r.is_fulfilled);
+        const valDest = (inpAruDest.value || '').toLowerCase();
+        const valPartner = (inpAruPartner.value || '').toLowerCase();
+        const valCustomer = (inpAruCustomer.value || '').toLowerCase();
+
+        const notFulfilled = aruData.filter(r => {
+            if (r.is_fulfilled) return false;
+            const mDest = !valDest || (r.destination || '').toLowerCase().includes(valDest);
+            const mPartner = !valPartner || (r.albaran_number || '').toLowerCase().includes(valPartner);
+            const mCustomer = !valCustomer || (r.customer_name || '').toLowerCase().includes(valCustomer);
+            return mDest && mPartner && mCustomer;
+        });
+
         if (notFulfilled.length === 0) {
-            aruTbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:12px; color:#94a3b8; font-size:10px;">Nincs áru igény</td></tr>';
+            aruTbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:12px; color:#94a3b8; font-size:10px;">Nincs áru igény a megadott szűrőkkel</td></tr>';
             return;
         }
         aruTbody.innerHTML = notFulfilled.map(function (r) {
@@ -236,6 +274,7 @@ export function renderRakodas(container, windowManager) {
                 '<td style="padding:3px 4px; font-size:10px;">' + escHtml(r.product_name || '') + '</td>' +
                 '<td style="padding:3px 4px; font-size:10px; color:#64748b;">' + escHtml(r.albaran_number || '') + '</td>' +
                 '<td style="padding:3px 4px; font-size:10px; color:#64748b;">' + escHtml(r.customer_name || '') + '</td>' +
+                '<td style="padding:3px 4px; font-size:10px; color:#64748b;">' + escHtml(r.destination || '') + '</td>' +
                 '<td style="text-align:center; padding:3px 4px; display:flex; gap:4px; justify-content:center;">' +
                 '<button class="btn-send-aru" data-id="' + r.id + '" title="Küldés kamionra" ' +
                 'style="background:#ef4444; color:#fff; border:1px solid #dc2626; border-radius:4px; padding:2px 7px; font-size:11px; cursor:pointer; transition:all 0.2s;">➡</button>' +
@@ -837,17 +876,17 @@ export function renderRakodas(container, windowManager) {
 
     async function loadCargoDemandsData() {
         try {
-            aruTbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:10px; color:#666; font-size:10px;">Betöltés...</td></tr>';
+            aruTbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:10px; color:#666; font-size:10px;">Betöltés...</td></tr>';
             const res = await fetch('/api/v1/cargo-demands');
             if (res.ok) {
                 aruData = await res.json();
                 renderRight();
             } else {
-                aruTbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:10px; color:red; font-size:10px;">Hiba!</td></tr>';
+                aruTbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:10px; color:red; font-size:10px;">Hiba!</td></tr>';
             }
         } catch (err) {
             console.error('Áru igény betöltési hiba:', err);
-            aruTbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:10px; color:red; font-size:10px;">Hálózati hiba!</td></tr>';
+            aruTbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:10px; color:red; font-size:10px;">Hálózati hiba!</td></tr>';
         }
     }
 
