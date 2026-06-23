@@ -12,14 +12,14 @@ export function renderTransportistas(container) {
     // 1. KONTÉNER: Fejléc + Szűrők (FIX, nem gördül, flex-shrink:0)
     // ============================================================
     const filterPanel = document.createElement('div');
-    filterPanel.style.cssText = 'flex-shrink:0; padding:16px 32px 8px 32px; background:var(--bg-light);';
+    filterPanel.style.cssText = 'flex-shrink:0; padding:16px 32px 0px 32px; background:var(--bg-light);';
     filterPanel.innerHTML = `
         <div style="margin-bottom:6px;">
             <h2 class="view-title" style="margin:0 0 2px 0;">Transportistas</h2>
             <p class="view-subtitle" style="margin:0;">frmTransportistas – Szállítmányozók és kamionok nyilvántartása</p>
         </div>
 
-        <div class="access-form-view" style="padding:10px 18px;">
+        <div class="access-form-view" style="padding:10px 18px; margin-bottom:10px;">
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
                 <strong style="font-size:13px;">Keresés és Szűrés</strong>
                 <button class="secondary-btn btn-dense" id="btn-clear-filters" style="font-size:12px; padding:5px 12px;">Szűrők törlése</button>
@@ -103,9 +103,9 @@ export function renderTransportistas(container) {
         padding: 0 32px 16px 32px;
     `;
     tableContainer.innerHTML = `
-        <div class="access-subform" style="display:flex; flex-direction:column; flex:1; min-height:0;">
+        <div class="access-subform" style="display:flex; flex-direction:column; flex:1; min-height:0; margin-top:0;">
             <div class="access-subform-header" style="flex-shrink:0; display:flex; align-items:center; justify-content:space-between;">
-                <span>frmTransportistas_Sub – Szállítmányok listája</span>
+                <span>Szállítmányok listája</span>
                 <span id="record-count" style="font-size:12px; font-weight:400; color:var(--text-muted);"></span>
             </div>
             <div id="table-scroll-area" style="overflow:auto; flex:1 1 auto; min-height:0;">
