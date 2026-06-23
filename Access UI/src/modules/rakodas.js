@@ -41,8 +41,8 @@ export function renderRakodas(container, windowManager) {
         // Két tábla egymás mellett
         '<div style="display:flex; gap:12px; align-items:flex-start; overflow-x:auto;">' +
 
-        // BAL TÁBLA: Rakodások (szélesség csökkentve flex:1.4-re)
-        '<div class="access-subform" style="flex:1.4; min-width:0; margin-top:0;">' +
+        // BAL TÁBLA: Rakodások (szélesség csökkentve flex:1.3-re)
+        '<div class="access-subform" style="flex:1.3; min-width:0; margin-top:0;">' +
         '<div class="access-subform-header" style="font-size:12px; padding:8px 12px;">Rakodások</div>' +
         '<div style="overflow-x:auto;">' +
         '<table class="access-subform-table" id="rak-left-table" style="font-size:11px;">' +
@@ -57,8 +57,8 @@ export function renderRakodas(container, windowManager) {
         '</div>' +
         '</div>' +
 
-        // JOBB TÁBLA ÉS SZŰRŐI (szélesség flex:1.1-re)
-        '<div style="flex:1.1; min-width:0; display:flex; flex-direction:column; gap:16px;">' +
+        // JOBB TÁBLA ÉS SZŰRŐI (szélesség növelve flex:1.2-re)
+        '<div style="flex:1.2; min-width:0; display:flex; flex-direction:column; gap:16px;">' +
 
         // Áru igény szűrők
         '<div class="access-form-view" style="padding:10px 18px; margin-bottom:0; display:flex; gap:16px; align-items:end;">' +
@@ -70,7 +70,7 @@ export function renderRakodas(container, windowManager) {
 
         // JOBB TÁBLA: Áru igény
         '<div class="access-subform" style="margin-top:0; background:linear-gradient(135deg, #f0f7ff, #e8f4fd); border:1px solid #bde0fa;">' +
-        '<div class="access-subform-header" style="background:linear-gradient(90deg,#0ea5e9,#2563eb); color:#fff; display:flex; align-items:center; justify-content:space-between; padding:7px 14px;">' +
+        '<div class="access-subform-header" style="background:linear-gradient(90deg,#0ea5e9,#2563eb); color:#fff; display:flex; align-items:center; justify-content:space-between; padding:6px 14px;">' +
         '<span style="font-size:11px; font-weight:600;">Áru igény</span>' +
         '<button id="btn-add-aru" title="Új áru igény hozzáadása" style="background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.4); color:#fff; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:13px; font-weight:700; line-height:1.4;">+ Hozzáadás</button>' +
         '</div>' +
