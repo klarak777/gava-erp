@@ -313,7 +313,14 @@ router.get('/', async (req, res) => {
     const isLoadedFilter = req.query.is_loaded; // 'true', 'false', or undefined (no filter)
 
     let query = db('shipments')
-      .select('shipments.*', 'seasons.code as season_code', 'transporters.name as transporter_name')
+      .select(
+        'shipments.*',
+        'seasons.code as season_code',
+        'transporters.name as transporter_name',
+        db.raw('(SELECT string_agg(DISTINCT destination, \', \') FROM shipment_lines WHERE shipment_lines.shipment_id = shipments.id) as destinations'),
+        db.raw('(SELECT string_agg(DISTINCT albaran_number, \', \') FROM shipment_lines WHERE shipment_lines.shipment_id = shipments.id) as partners'),
+        db.raw('(SELECT string_agg(DISTINCT customer, \', \') FROM shipment_lines WHERE shipment_lines.shipment_id = shipments.id) as customers')
+      )
       .leftJoin('seasons', 'shipments.season_id', 'seasons.id')
       .leftJoin('transporters', 'shipments.transporter_id', 'transporters.id')
       .orderByRaw('shipments.loading_date DESC NULLS LAST, shipments.id DESC');

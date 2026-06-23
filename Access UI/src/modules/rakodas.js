@@ -38,7 +38,7 @@ export function renderRakodas(container, windowManager) {
         '<button class="primary-btn" id="btn-new-truck">+ Új kamion</button>' +
         '</div>' +
 
-        // Áru igény szűrők
+        // Rakodás szűrők
         '<div class="access-form-view" style="padding:10px 18px; margin-bottom:12px; display:flex; gap:16px; align-items:end;">' +
         '<div style="flex:1; max-width:200px;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Destination</label><input type="text" id="filter-aru-dest" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Célállomás..."></div>' +
         '<div style="flex:1; max-width:200px;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Partner</label><input type="text" id="filter-aru-partner" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Partner (Reference)..."></div>' +
@@ -134,19 +134,30 @@ export function renderRakodas(container, windowManager) {
     var inpAruCustomer = view.querySelector('#filter-aru-customer');
     var btnAruClearFilters = view.querySelector('#btn-aru-clear-filters');
 
-    inpAruDest.addEventListener('input', renderRight);
-    inpAruPartner.addEventListener('input', renderRight);
-    inpAruCustomer.addEventListener('input', renderRight);
+    inpAruDest.addEventListener('input', filter);
+    inpAruPartner.addEventListener('input', filter);
+    inpAruCustomer.addEventListener('input', filter);
     btnAruClearFilters.addEventListener('click', function () {
         inpAruDest.value = '';
         inpAruPartner.value = '';
         inpAruCustomer.value = '';
-        renderRight();
+        filter();
     });
 
     // ============= SZŰRŐ + BAL TÁBLA =============
     function filter() {
-        renderLeft(rakData);
+        const valDest = (inpAruDest.value || '').toLowerCase();
+        const valPartner = (inpAruPartner.value || '').toLowerCase();
+        const valCustomer = (inpAruCustomer.value || '').toLowerCase();
+
+        const filtered = rakData.filter(function (r) {
+            const mDest = !valDest || (r.destinations || '').toLowerCase().includes(valDest) || (r.tour || '').toLowerCase().includes(valDest);
+            const mPartner = !valPartner || (r.partners || '').toLowerCase().includes(valPartner) || (r.transporter || '').toLowerCase().includes(valPartner);
+            const mCustomer = !valCustomer || (r.customers || '').toLowerCase().includes(valCustomer);
+            return mDest && mPartner && mCustomer;
+        });
+
+        renderLeft(filtered);
     }
 
     function renderLeft(data) {
@@ -247,20 +258,10 @@ export function renderRakodas(container, windowManager) {
 
     // ============= JOBB TÁBLA: ÁRU IGÉNY (valós adatok) =============
     function renderRight() {
-        const valDest = (inpAruDest.value || '').toLowerCase();
-        const valPartner = (inpAruPartner.value || '').toLowerCase();
-        const valCustomer = (inpAruCustomer.value || '').toLowerCase();
-
-        const notFulfilled = aruData.filter(r => {
-            if (r.is_fulfilled) return false;
-            const mDest = !valDest || (r.destination || '').toLowerCase().includes(valDest);
-            const mPartner = !valPartner || (r.albaran_number || '').toLowerCase().includes(valPartner);
-            const mCustomer = !valCustomer || (r.customer_name || '').toLowerCase().includes(valCustomer);
-            return mDest && mPartner && mCustomer;
-        });
+        const notFulfilled = aruData.filter(r => !r.is_fulfilled);
 
         if (notFulfilled.length === 0) {
-            aruTbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:12px; color:#94a3b8; font-size:10px;">Nincs áru igény a megadott szűrőkkel</td></tr>';
+            aruTbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:12px; color:#94a3b8; font-size:10px;">Nincs kielégítetlen áru igény</td></tr>';
             return;
         }
         aruTbody.innerHTML = notFulfilled.map(function (r) {
@@ -858,6 +859,9 @@ export function renderRakodas(container, windowManager) {
                         date: d,
                         transporter: s.transporter_name || '-',
                         loaded: s.is_loaded ? true : false,
+                        destinations: s.destinations || '',
+                        partners: s.partners || '',
+                        customers: s.customers || '',
                         path: ''
                     };
                 });
