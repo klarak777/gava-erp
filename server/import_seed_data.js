@@ -7,12 +7,16 @@ async function seed() {
     const dataPath = path.join(__dirname, 'data_export.json');
     if (!fs.existsSync(dataPath)) {
       console.log('No data_export.json found.');
-      process.exit(0);
+      return;
     }
     
     const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
     const products = data.products || [];
     const partners = data.partners || [];
+
+    console.log('Deactivating all existing products and partners in database to prepare for seed sync...');
+    await db('products').update({ is_active: false });
+    await db('partners').update({ is_active: false });
 
     console.log(`Seeding ${products.length} products...`);
     for (const p of products) {
@@ -38,28 +42,36 @@ async function seed() {
 
     console.log(`Seeding ${partners.length} partners...`);
     for (const p of partners) {
-      // Upsert partner by name
-      const existing = await db('partners').where('name', p.name).first();
+      // Upsert partner by name and type
+      const existing = await db('partners')
+        .where({ name: p.name, type: p.type })
+        .first();
       if (existing) {
         await db('partners').where('id', existing.id).update({
           is_active: p.is_active,
-          type: p.type
+          address: p.address,
+          contact: p.contact
         });
       } else {
         await db('partners').insert({
           name: p.name,
           is_active: p.is_active,
-          type: p.type
+          type: p.type,
+          address: p.address,
+          contact: p.contact
         });
       }
     }
 
     console.log('Seed completed successfully!');
-    process.exit(0);
   } catch (err) {
     console.error('Error seeding data:', err);
-    process.exit(1);
+    process.exitCode = 1;
+  } finally {
+    await db.destroy();
   }
 }
 
 seed();
+
+
