@@ -303,7 +303,7 @@ router.get('/unloaded', async (req, res) => {
   }
 });
 
-// GET /api/v1/shipments[?limit=N&season_code=XX-XX&search=xxx&has_lines=true&is_loaded=true/false]
+// GET /api/v1/shipments[?limit=N&season_code=XX-XX&search=xxx&has_lines=true&is_loaded=true/false&exclude_aggregates=true]
 router.get('/', async (req, res) => {
   try {
     const limit = req.query.limit ? parseInt(req.query.limit) : 50;
@@ -311,16 +311,24 @@ router.get('/', async (req, res) => {
     const search = req.query.search || null;
     const hasLines = req.query.has_lines === 'true';
     const isLoadedFilter = req.query.is_loaded; // 'true', 'false', or undefined (no filter)
+    const excludeAggregates = req.query.exclude_aggregates === 'true';
 
     let query = db('shipments')
       .select(
         'shipments.*',
         'seasons.code as season_code',
-        'transporters.name as transporter_name',
+        'transporters.name as transporter_name'
+      );
+
+    if (!excludeAggregates) {
+      query = query.select(
         db.raw('(SELECT string_agg(DISTINCT destination, \', \') FROM shipment_lines WHERE shipment_lines.shipment_id = shipments.id) as destinations'),
         db.raw('(SELECT string_agg(DISTINCT albaran_number, \', \') FROM shipment_lines WHERE shipment_lines.shipment_id = shipments.id) as partners'),
         db.raw('(SELECT string_agg(DISTINCT customer, \', \') FROM shipment_lines WHERE shipment_lines.shipment_id = shipments.id) as customers')
-      )
+      );
+    }
+
+    query = query
       .leftJoin('seasons', 'shipments.season_id', 'seasons.id')
       .leftJoin('transporters', 'shipments.transporter_id', 'transporters.id')
       .orderByRaw('shipments.loading_date DESC NULLS LAST, shipments.id DESC');

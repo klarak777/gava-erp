@@ -14,9 +14,8 @@ async function seed() {
     const products = data.products || [];
     const partners = data.partners || [];
 
-    console.log('Deactivating all existing products and partners in database to prepare for seed sync...');
+    console.log('Deactivating all existing products in database to prepare for seed sync...');
     await db('products').update({ is_active: false });
-    await db('partners').update({ is_active: false });
 
     console.log(`Seeding ${products.length} products...`);
     for (const p of products) {
@@ -36,29 +35,6 @@ async function seed() {
           category: p.category,
           reference: p.reference,
           is_active: p.is_active
-        });
-      }
-    }
-
-    console.log(`Seeding ${partners.length} partners...`);
-    for (const p of partners) {
-      // Upsert partner by name and type
-      const existing = await db('partners')
-        .where({ name: p.name, type: p.type })
-        .first();
-      if (existing) {
-        await db('partners').where('id', existing.id).update({
-          is_active: p.is_active,
-          address: p.address,
-          contact: p.contact
-        });
-      } else {
-        await db('partners').insert({
-          name: p.name,
-          is_active: p.is_active,
-          type: p.type,
-          address: p.address,
-          contact: p.contact
         });
       }
     }
