@@ -682,7 +682,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 });
             });
 
-            updateTableTotals(linesWithTotals);
+            updateTableTotals(filteredLines);
 
             // Inline Product Autocomplete
             tbody.querySelectorAll('.cell-edit[data-field="productName"]').forEach(inp => {
