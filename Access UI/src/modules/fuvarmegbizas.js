@@ -32,7 +32,7 @@ export function renderFuvarmegbizas(container, windowManager) {
                     '<input type="text" id="fuvm-kamisz" class="access-control-input" placeholder="Keresés..." style="width:150px;">' +
                 '</div>' +
                 '<div class="access-control-group" style="margin-bottom:0;">' +
-                    '<label class="access-control-label" for="fuvm-fuvarozo">Fuvarozó:</label>' +
+                    '<label class="access-control-label" for="fuvm-fuvarozo">Transport Company:</label>' +
                     '<select id="fuvm-fuvarozo" class="access-control-input" style="width:170px;">' +
                         '<option value="">-- Összes --</option>' +
                     '</select>' +
@@ -59,7 +59,7 @@ export function renderFuvarmegbizas(container, windowManager) {
                         '<th>Dokumentum név</th>' +
                         '<th>Kamion szám</th>' +
                         '<th>Rakodás nap</th>' +
-                        '<th>Fuvarozó</th>' +
+                        '<th>Transport Company</th>' +
                         '<th style="text-align:center;">Kiküldve</th>' +
                     '</tr></thead>' +
                     '<tbody id="fuvm-tbody"></tbody>' +
@@ -201,7 +201,7 @@ export function renderFuvarmegbizas(container, windowManager) {
                     '<div>' +
                         '<div style="font-size:11px; color:rgba(255,255,255,0.7); font-weight:500; letter-spacing:0.5px; text-transform:uppercase;">Fuvarmegbízás dokumentum</div>' +
                         '<div style="font-size:14px; color:#fff; font-weight:700; margin-top:2px;">' + (rowData.docName || 'Dokumentum') + '</div>' +
-                        '<div style="font-size:11px; color:rgba(255,255,255,0.6); margin-top:2px;">Kamion: ' + rowData.tour + ' &nbsp;|&nbsp; Fuvarozó: ' + rowData.transporter + ' &nbsp;|&nbsp; Dátum: ' + rowData.date + '</div>' +
+                        '<div style="font-size:11px; color:rgba(255,255,255,0.6); margin-top:2px;">Kamion: ' + rowData.tour + ' &nbsp;|&nbsp; Transport Company: ' + rowData.transporter + ' &nbsp;|&nbsp; Dátum: ' + rowData.date + '</div>' +
                     '</div>' +
                     '<a id="fuvm-download-btn" href="/api/v1/transport-orders/' + rowData.id + '/download" download ' +
                        'style="display:flex; align-items:center; gap:6px; background:#22c55e; color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer; text-decoration:none; transition:all 0.2s; white-space:nowrap;">' +

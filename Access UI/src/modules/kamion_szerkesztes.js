@@ -61,7 +61,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                             style="font-size:12px; padding:4px 8px; height:30px; width:100%; background:#f0fdf4; color:#166534; font-weight:600;" placeholder="Automatikus">
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:150px;">
-                        <label style="font-size:11px; font-weight:600; color:var(--text-main);">Fuvar vállalat:</label>
+                        <label style="font-size:11px; font-weight:600; color:var(--text-main);">Transport Company:</label>
                         <select id="km-transporter" class="access-control-input" style="font-size:12px; padding:4px 8px; height:30px; width:100%;">
                             <option value="">Betöltés...</option>
                         </select>
@@ -127,6 +127,15 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                                 </tr>
                             </thead>
                             <tbody id="km-lines-tbody"></tbody>
+                            <tfoot style="position:sticky; bottom:0; background:var(--bg-light); z-index:2; border-top:2px solid var(--border); font-weight:bold; font-size:12px;">
+                                <tr>
+                                    <td style="text-align:center; padding:6px 4px; color:var(--text-main);">Össz:</td>
+                                    <td id="km-sum-total" style="text-align:center; padding:6px 4px; color:#1e40af;">0</td>
+                                    <td id="km-sum-euro" style="text-align:center; padding:6px 4px; color:var(--text-main);">0</td>
+                                    <td id="km-sum-normal" style="text-align:center; padding:6px 4px; color:var(--text-main);">0</td>
+                                    <td colspan="13"></td>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
                 </div>
@@ -142,6 +151,12 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
             <!-- INLINE PRODUCT DROPDOWN -->
             <div id="inline-product-dropdown" style="display:none; position:fixed; background:#fff; border:1px solid #ccc; z-index:9999; max-height:150px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); border-radius:4px;"></div>
 
+            <!-- INLINE REFERENCE DROPDOWN -->
+            <div id="inline-reference-dropdown" style="display:none; position:fixed; background:#fff; border:1px solid #ccc; z-index:9999; max-height:150px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); border-radius:4px;"></div>
+
+            <!-- INLINE CUSTOMER DROPDOWN -->
+            <div id="inline-customer-dropdown" style="display:none; position:fixed; background:#fff; border:1px solid #ccc; z-index:9999; max-height:150px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); border-radius:4px;"></div>
+
             <!-- TERMÉK SZERKESZTŐ / HOZZÁADÓ POPUP OVERLAY -->
             <div id="line-edit-overlay" style="display:none; position:absolute; inset:0; background:rgba(0,0,0,0.45); z-index:500; align-items:center; justify-content:center;">
                 <div id="line-edit-modal" style="background:#fff; border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,0.2); padding:20px 24px; width:920px; max-width:96%; max-height:90vh; overflow-y:auto; position:relative; transform:translate(0px, 0px); transition:none;">
@@ -152,11 +167,11 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                     <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
                         <div style="display:flex; flex-direction:column; gap:3px; width:95px;">
                             <label style="font-size:11px; font-weight:600; color:var(--text-main);">N° Euro Palets:</label>
-                            <input type="number" id="le-euro" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0">
+                            <input type="number" id="le-euro" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="any">
                         </div>
                         <div style="display:flex; flex-direction:column; gap:3px; width:95px;">
                             <label style="font-size:11px; font-weight:600; color:var(--text-main);">N° Normal Palets:</label>
-                            <input type="number" id="le-norm" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0">
+                            <input type="number" id="le-norm" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="any">
                         </div>
                         <div style="display:flex; flex-direction:column; gap:3px; flex:3; min-width:180px; position:relative;">
                             <label style="font-size:11px; font-weight:600; color:var(--text-main);">Products:</label>
@@ -243,12 +258,12 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                         <div style="display:flex; gap:10px;">
                             <div style="display:flex; flex-direction:column; gap:3px; flex:1;">
                                 <label style="font-size:11px; font-weight:600; color:#334155;">N° Euro Palets áthelyezve:</label>
-                                <input type="number" id="transfer-euro" class="access-control-input" style="font-size:12px; height:32px;" value="0" min="0">
+                                <input type="number" id="transfer-euro" class="access-control-input" style="font-size:12px; height:32px;" value="0" min="0" step="any">
                                 <small id="transfer-euro-max" style="color:#64748b; font-size:10px;">Max: 0</small>
                             </div>
                             <div style="display:flex; flex-direction:column; gap:3px; flex:1;">
                                 <label style="font-size:11px; font-weight:600; color:#334155;">N° Normal Palets áthelyezve:</label>
-                                <input type="number" id="transfer-normal" class="access-control-input" style="font-size:12px; height:32px;" value="0" min="0">
+                                <input type="number" id="transfer-normal" class="access-control-input" style="font-size:12px; height:32px;" value="0" min="0" step="any">
                                 <small id="transfer-normal-max" style="color:#64748b; font-size:10px;">Max: 0</small>
                             </div>
                         </div>
@@ -264,6 +279,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
         // ===== ÁLLAPOT =====
         let lines = [];           // csak az adatsorokat tároljuk (max GRID_ROWS)
         let products = [];
+        let references = [];
+        let customers = [];
         let transporters = [];
         let currentShipmentId = null;
         let editingLineIndex = null; // null = new, szám = meglévő sor indexe
@@ -283,6 +300,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
         const leProductId = container.querySelector('#le-product-id');
         const leDropdown = container.querySelector('#le-product-dropdown');
         const inlineDropdown = container.querySelector('#inline-product-dropdown');
+        const inlineRefDropdown = container.querySelector('#inline-reference-dropdown');
+        const inlineCustDropdown = container.querySelector('#inline-customer-dropdown');
 
         const lineEditModal = container.querySelector('#line-edit-modal');
         const lineEditHeader = container.querySelector('#line-edit-header');
@@ -340,6 +359,28 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 products = await res.json();
             } catch (err) {
                 console.error('Termékek betöltési hiba:', err);
+            }
+        }
+
+        async function loadReferences() {
+            try {
+                const res = await fetch(`${API}/admin/partners?type=szállító`);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                references = await res.json();
+            } catch (err) {
+                console.error('Referenciák betöltési hiba:', err);
+                references = [];
+            }
+        }
+
+        async function loadCustomers() {
+            try {
+                const res = await fetch(`${API}/admin/partners?type=vevő`);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                customers = await res.json();
+            } catch (err) {
+                console.error('Vevők betöltési hiba:', err);
+                customers = [];
             }
         }
 
@@ -504,6 +545,25 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
             return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
 
+        function updateTableTotals(items) {
+            let sumTotal = 0;
+            let sumEuro = 0;
+            let sumNormal = 0;
+            items.forEach(l => {
+                if (!l._empty) {
+                    sumTotal += parseFloat(l.totalPalets) || 0;
+                    sumEuro += parseFloat(String(l.euro_palets).replace(',', '.')) || 0;
+                    sumNormal += parseFloat(String(l.normal_palets).replace(',', '.')) || 0;
+                }
+            });
+            const tTotal = container.querySelector('#km-sum-total');
+            const tEuro = container.querySelector('#km-sum-euro');
+            const tNormal = container.querySelector('#km-sum-normal');
+            if (tTotal) tTotal.textContent = sumTotal > 0 ? Number(sumTotal.toFixed(2)) : '0';
+            if (tEuro) tEuro.textContent = sumEuro > 0 ? Number(sumEuro.toFixed(1)) : '0';
+            if (tNormal) tNormal.textContent = sumNormal > 0 ? Number(sumNormal.toFixed(1)) : '0';
+        }
+
         function renderTable() {
             const linesWithTotals = calculateLineTotals(lines);
 
@@ -521,9 +581,9 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                     </td>
                     <td style="text-align:center; font-weight:bold; padding:1px 4px; color:${tv ? '#1e40af' : '#ccc'};">${tv}</td>
                     <td><input type="number" class="cell-edit" data-field="euro_palets" data-index="${index}"
-                        style="${numCellStyle} width:70px;" value="${isEmpty ? '' : escHtml(l.euro_palets)}" min="0" step="0.1" placeholder="0" ${currentShipmentIsLoaded ? 'disabled' : ''}></td>
+                        style="${numCellStyle} width:70px;" value="${isEmpty ? '' : escHtml(l.euro_palets)}" min="0" step="any" placeholder="0" ${currentShipmentIsLoaded ? 'disabled' : ''}></td>
                     <td><input type="number" class="cell-edit" data-field="normal_palets" data-index="${index}"
-                        style="${numCellStyle} width:70px;" value="${isEmpty ? '' : escHtml(l.normal_palets)}" min="0" step="0.1" placeholder="0" ${currentShipmentIsLoaded ? 'disabled' : ''}></td>
+                        style="${numCellStyle} width:70px;" value="${isEmpty ? '' : escHtml(l.normal_palets)}" min="0" step="any" placeholder="0" ${currentShipmentIsLoaded ? 'disabled' : ''}></td>
                     <td><input type="text" class="cell-edit" data-field="productName" data-index="${index}"
                         style="${cellStyle} min-width:170px;" value="${isEmpty ? '' : escHtml(l.productName)}"></td>
                     <td><input type="text" class="cell-edit" data-field="albaran_number" data-index="${index}"
@@ -583,8 +643,11 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                             totCell.style.color = tv2 ? '#1e40af' : '#ccc';
                         }
                     }
+                    updateTableTotals(updated);
                 });
             });
+
+            updateTableTotals(linesWithTotals);
 
             // Inline Product Autocomplete
             tbody.querySelectorAll('.cell-edit[data-field="productName"]').forEach(inp => {
@@ -625,6 +688,88 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 });
                 inp.addEventListener('blur', () => {
                     setTimeout(() => { inlineDropdown.style.display = 'none'; }, 200);
+                });
+            });
+
+            // Inline Reference Autocomplete
+            tbody.querySelectorAll('.cell-edit[data-field="albaran_number"]').forEach(inp => {
+                inp.addEventListener('input', () => {
+                    const val = inp.value.toLowerCase();
+                    const idx = parseInt(inp.dataset.index);
+                    inlineRefDropdown.innerHTML = '';
+                    if (!val) { inlineRefDropdown.style.display = 'none'; return; }
+
+                    const filtered = references.filter(p => p.name.toLowerCase().startsWith(val)).slice(0, 10);
+                    if (filtered.length > 0) {
+                        filtered.forEach(p => {
+                            const div = document.createElement('div');
+                            div.style.cssText = 'padding:6px 8px; cursor:pointer; border-bottom:1px solid #eee; font-size:12px;';
+                            div.textContent = p.name;
+                            div.onmousedown = () => {
+                                inp.value = p.name;
+                                lines[idx].albaran_number = p.name;
+                                if (lines[idx]._empty) delete lines[idx]._empty;
+                                inlineRefDropdown.style.display = 'none';
+                                // trigger change visually
+                                const ev = new Event('change');
+                                inp.dispatchEvent(ev);
+                            };
+                            div.onmouseover = () => div.style.backgroundColor = '#f1f5f9';
+                            div.onmouseout = () => div.style.backgroundColor = 'transparent';
+                            inlineRefDropdown.appendChild(div);
+                        });
+                        const rect = inp.getBoundingClientRect();
+                        inlineRefDropdown.style.top = (rect.bottom) + 'px';
+                        inlineRefDropdown.style.left = rect.left + 'px';
+                        inlineRefDropdown.style.width = Math.max(rect.width, 200) + 'px';
+                        inlineRefDropdown.style.display = 'block';
+                    } else {
+                        inlineRefDropdown.style.display = 'none';
+                    }
+                });
+                inp.addEventListener('blur', () => {
+                    setTimeout(() => { inlineRefDropdown.style.display = 'none'; }, 200);
+                });
+            });
+
+            // Inline Customer Autocomplete
+            tbody.querySelectorAll('.cell-edit[data-field="customer"]').forEach(inp => {
+                inp.addEventListener('input', () => {
+                    const val = inp.value.toLowerCase();
+                    const idx = parseInt(inp.dataset.index);
+                    inlineCustDropdown.innerHTML = '';
+                    if (!val) { inlineCustDropdown.style.display = 'none'; return; }
+
+                    const filtered = customers.filter(p => p.name.toLowerCase().startsWith(val)).slice(0, 10);
+                    if (filtered.length > 0) {
+                        filtered.forEach(p => {
+                            const div = document.createElement('div');
+                            div.style.cssText = 'padding:6px 8px; cursor:pointer; border-bottom:1px solid #eee; font-size:12px;';
+                            div.textContent = p.name;
+                            div.onmousedown = () => {
+                                inp.value = p.name;
+                                lines[idx].customer = p.name;
+                                if (lines[idx]._empty) delete lines[idx]._empty;
+                                inlineCustDropdown.style.display = 'none';
+                                // trigger change visually
+                                const ev = new Event('change');
+                                inp.dispatchEvent(ev);
+                            };
+                            div.onmouseover = () => div.style.backgroundColor = '#f1f5f9';
+                            div.onmouseout = () => div.style.backgroundColor = 'transparent';
+                            inlineCustDropdown.appendChild(div);
+                        });
+                        const rect = inp.getBoundingClientRect();
+                        inlineCustDropdown.style.top = (rect.bottom) + 'px';
+                        inlineCustDropdown.style.left = rect.left + 'px';
+                        inlineCustDropdown.style.width = Math.max(rect.width, 200) + 'px';
+                        inlineCustDropdown.style.display = 'block';
+                    } else {
+                        inlineCustDropdown.style.display = 'none';
+                    }
+                });
+                inp.addEventListener('blur', () => {
+                    setTimeout(() => { inlineCustDropdown.style.display = 'none'; }, 200);
                 });
             });
 
@@ -1057,6 +1202,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
         // ===== INIT =====
         await loadTransporters();
         await loadProducts();
+        await loadReferences();
+        await loadCustomers();
         if (kamionId) {
             await loadExistingShipment(kamionId);
             container.querySelector('#btn-save-km').textContent = 'Kamion frissítése';

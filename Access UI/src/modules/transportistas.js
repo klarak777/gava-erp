@@ -64,11 +64,11 @@ export function renderTransportistas(container) {
                         <option value="24-25">Season 24-25</option>
                         <option value="25-26" selected>Season 25-26</option>
                     </select>
-                </div>
-                <div>
-                    <label class="access-control-label" for="filter-fuvarozo" style="display:block;font-size:11px;margin-bottom:4px;">Fuvarozó</label>
-                    <select id="filter-fuvarozo" class="access-control-input" style="width:100%;box-sizing:border-box;">
-                        <option value="">-- Összes --</option>
+                    </div>
+                    <div style="flex:1; min-width:160px; max-width:240px;">
+                        <label class="access-control-label" for="filter-fuvarozo" style="display:block;font-size:11px;margin-bottom:4px;">Transport Company</label>
+                        <select id="filter-fuvarozo" class="access-control-input" style="width:100%;box-sizing:border-box;">
+                            <option value="">Mind</option>
                     </select>
                 </div>
                 <div>

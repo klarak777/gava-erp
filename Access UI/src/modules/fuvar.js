@@ -9,8 +9,13 @@ export function renderFuvar(container, windowManager) {
     container.style.height = '100%';
 
     const filterPanel = document.createElement('div');
-    filterPanel.style.cssText = 'flex-shrink:0; padding:16px 32px 8px 32px; background:var(--bg-light);';
+    filterPanel.style.cssText = 'flex-shrink:0; padding:16px 32px 4px 32px; background:var(--bg-light);';
     filterPanel.innerHTML = `
+        <style>
+            .access-form-view .access-control-label {
+                font-size: 11px !important;
+            }
+        </style>
         <div style="margin-bottom:12px;">
             <h2 class="view-title" style="margin:0 0 4px 0;">Fuvarok összesítő</h2>
             <p class="view-subtitle" style="margin:0;">Fuvarok adatainak áttekintése és szűrése</p>
@@ -68,11 +73,9 @@ export function renderFuvar(container, windowManager) {
                     </select>
                 </div>
                 <div class="access-control-group" style="margin-bottom:0;">
-                    <label class="access-control-label" for="filter-transport-company">Fuvarozó cég:</label>
+                    <label class="access-control-label" for="filter-transport-company">Transport Company:</label>
                     <select id="filter-transport-company" class="access-control-input">
                         <option value="">-- Összes --</option>
-                        <option value="KÓNYA">KÓNYA</option>
-                        <option value="STI">STI</option>
                     </select>
                 </div>
             </div>
@@ -114,7 +117,7 @@ export function renderFuvar(container, windowManager) {
     `;
 
     tableContainer.innerHTML = `
-        <div class="access-subform" style="display:flex; flex-direction:column; flex:1; min-height:0;">
+        <div class="access-subform" style="display:flex; flex-direction:column; flex:1; min-height:0; margin-top:8px;">
             <div class="access-subform-header" style="flex-shrink:0; display:flex; align-items:center; justify-content:space-between;">
                 <span>Fuvarok listája</span>
                 <span id="record-count" style="font-size:12px; font-weight:400; color:var(--text-muted);">(Betöltés folyamatban...)</span>
@@ -465,8 +468,22 @@ export function renderFuvar(container, windowManager) {
         }
     }
 
+    async function loadTransporters() {
+        try {
+            const response = await fetch('/api/v1/transporters');
+            if (response.ok) {
+                const transporters = await response.json();
+                filterTransportCompany.innerHTML = '<option value="">-- Összes --</option>' +
+                    transporters.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
+            }
+        } catch (err) {
+            console.error('Hiba a fuvarozók betöltésekor:', err);
+        }
+    }
+
     // Üres táblázat megjelenítése, amíg tölt
     renderTable([]);
     // Adatlekérés elindítása
+    loadTransporters();
     loadRealData();
 }
