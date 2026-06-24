@@ -66,7 +66,7 @@ export function renderTransportistas(container) {
                     </select>
                     </div>
                     <div style="flex:1; min-width:160px; max-width:240px;">
-                        <label class="access-control-label" for="filter-fuvarozo" style="display:block;font-size:11px;margin-bottom:4px;">Transport Company</label>
+                        <label class="access-control-label" for="filter-fuvarozo" style="display:block;font-size:11px;margin-bottom:4px;">Fuvarozó cég</label>
                         <select id="filter-fuvarozo" class="access-control-input" style="width:100%;box-sizing:border-box;">
                             <option value="">Mind</option>
                     </select>

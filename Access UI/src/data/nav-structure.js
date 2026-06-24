@@ -36,7 +36,7 @@ export const NAV_CATEGORIES = [
                     { id: 'admin-products', label: 'Products', icon: '🍎', desc: 'Angol és Magyar terméknevek' },
                     { id: 'admin-references', label: 'Reference', icon: '🏢', desc: 'Szállítók / Partnerek' },
                     { id: 'admin-customers', label: 'Customer', icon: '🛒', desc: 'Vevők' },
-                    { id: 'admin-transporters', label: 'Transport Company', icon: '🚚', desc: 'Fuvarozók' },
+                    { id: 'admin-transporters', label: 'Fuvarozó cég', icon: '🚚', desc: 'Fuvarozók' },
                 ],
             }
         ],

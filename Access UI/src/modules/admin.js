@@ -20,7 +20,7 @@ export function renderAdmin(container, wm, subModuleId = null) {
             { field: 'address', label: 'Address' },
             { field: 'contact', label: 'Contact' }
         ], { type: 'vevő' }),
-        'admin-transporters': () => openAdminTable(wm, 'Transport Company', 'transporters', [
+        'admin-transporters': () => openAdminTable(wm, 'Fuvarozó cég', 'transporters', [
             { field: 'name', label: 'Name' },
             { field: 'code', label: 'Code' }
         ])

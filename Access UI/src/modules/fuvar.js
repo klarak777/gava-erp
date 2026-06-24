@@ -73,7 +73,7 @@ export function renderFuvar(container, windowManager) {
                     </select>
                 </div>
                 <div class="access-control-group" style="margin-bottom:0;">
-                    <label class="access-control-label" for="filter-transport-company">Transport Company:</label>
+                    <label class="access-control-label" for="filter-transport-company">Fuvarozó cég:</label>
                     <select id="filter-transport-company" class="access-control-input">
                         <option value="">-- Összes --</option>
                     </select>
@@ -95,7 +95,7 @@ export function renderFuvar(container, windowManager) {
 
     const otherCols = [
         'Gross weight (kg)', 'Price (EUR)', 'Price BCN (EUR)', 'Unit', 'Reloading/plt', 'Transport BCN/plt',
-        'Albarán N°', 'Car n.', 'Loading date', 'Loading place', 'Order number', 'Transport company',
+        'Albarán N°', 'Car n.', 'Loading date', 'Loading place', 'Order number', 'Fuvarozó cég',
         'Plate number', 'Transport price', 'Arrival date', 'Transport cost', 'Invoice amount (EUR)',
         'Invoice amount (HUF)', 'Invoice number', 'Payment date', 'K-B', 'B', 'T', 'Transport Cost / product'
     ];
