@@ -61,10 +61,12 @@ export function renderRakodas(container, windowManager) {
         '<div style="flex:1.56; min-width:0; display:flex; flex-direction:column; gap:6px;">' +
 
         // Áru igény szűrők
-        '<div class="access-form-view" style="padding:10px 18px; margin-bottom:0; display:flex; gap:16px; align-items:end;">' +
-        '<div style="flex:1; max-width:200px;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Destination</label><input type="text" id="filter-aru-dest" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Célállomás..."></div>' +
-        '<div style="flex:1; max-width:200px; position:relative;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Partner</label><input type="text" id="filter-aru-partner" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Partner (Reference)..."><div id="filter-aru-partner-dropdown" style="display:none; position:absolute; background:#fff; border:1px solid #ccc; z-index:200; width:100%; max-height:150px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); top:46px; border-radius:4px;"></div></div>' +
-        '<div style="flex:1; max-width:200px; position:relative;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Customer</label><input type="text" id="filter-aru-customer" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Vevő..."><div id="filter-aru-customer-dropdown" style="display:none; position:absolute; background:#fff; border:1px solid #ccc; z-index:200; width:100%; max-height:150px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); top:46px; border-radius:4px;"></div></div>' +
+        '<div class="access-form-view" style="padding:10px 18px; margin-bottom:0; display:flex; flex-wrap:wrap; gap:10px; align-items:end;">' +
+        '<div style="flex:1; min-width:120px; max-width:200px; position:relative;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Product</label><input type="text" id="filter-aru-product" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Product..."><div id="filter-aru-product-dropdown" style="display:none; position:absolute; background:#fff; border:1px solid #ccc; z-index:200; width:100%; max-height:150px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); top:46px; border-radius:4px;"></div></div>' +
+        '<div style="flex:1; min-width:120px; max-width:200px; position:relative;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Reference</label><input type="text" id="filter-aru-partner" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Reference..."><div id="filter-aru-partner-dropdown" style="display:none; position:absolute; background:#fff; border:1px solid #ccc; z-index:200; width:100%; max-height:150px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); top:46px; border-radius:4px;"></div></div>' +
+        '<div style="flex:1; min-width:120px; max-width:200px; position:relative;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Customer</label><input type="text" id="filter-aru-customer" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Customer..."><div id="filter-aru-customer-dropdown" style="display:none; position:absolute; background:#fff; border:1px solid #ccc; z-index:200; width:100%; max-height:150px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); top:46px; border-radius:4px;"></div></div>' +
+        '<div style="flex:1; min-width:120px; max-width:200px;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Destination</label><input type="text" id="filter-aru-dest" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Destination..."></div>' +
+        '<div style="flex:1; min-width:120px; max-width:200px;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Comment</label><input type="text" id="filter-aru-comment" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Comment..."></div>' +
         '<div style="flex:none;"><button class="secondary-btn btn-dense" id="btn-aru-clear-filters" style="font-size:12px; height:28px; line-height:normal; padding:0 12px; box-sizing:border-box;">Szűrők törlése</button></div>' +
         '</div>' +
 
@@ -84,9 +86,9 @@ export function renderRakodas(container, windowManager) {
         '<th style="width:30px; background:rgba(14,165,233,0.1); text-align:center;"></th>' +
         '<th style="min-width:40px; background:rgba(14,165,233,0.1); text-align:center; font-size:10px; padding:4px 3px;">Euro plt</th>' +
         '<th style="min-width:40px; background:rgba(14,165,233,0.1); text-align:center; font-size:10px; padding:4px 3px;">Norm plt</th>' +
-        '<th style="min-width:130px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 3px;">Termék</th>' +
-        '<th style="min-width:70px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 3px;">Partner</th>' +
-        '<th style="min-width:70px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 3px;">Vevő</th>' +
+        '<th style="min-width:130px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 3px;">Product</th>' +
+        '<th style="min-width:70px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 3px;">Reference</th>' +
+        '<th style="min-width:70px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 3px;">Customer</th>' +
         '<th style="min-width:70px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 3px;">Destination</th>' +
         '<th style="min-width:90px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 3px;">Comment</th>' +
         '<th style="min-width:70px; text-align:center; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 3px;">Kamionra</th>' +
@@ -140,18 +142,24 @@ export function renderRakodas(container, windowManager) {
 
     var currentKamionForMenu = null; // a menüből nyitott kamion obj
 
+    var inpAruProduct = view.querySelector('#filter-aru-product');
     var inpAruDest = view.querySelector('#filter-aru-dest');
     var inpAruPartner = view.querySelector('#filter-aru-partner');
     var inpAruCustomer = view.querySelector('#filter-aru-customer');
+    var inpAruComment = view.querySelector('#filter-aru-comment');
     var btnAruClearFilters = view.querySelector('#btn-aru-clear-filters');
 
+    inpAruProduct.addEventListener('input', renderRight);
     inpAruDest.addEventListener('input', renderRight);
     inpAruPartner.addEventListener('input', renderRight);
     inpAruCustomer.addEventListener('input', renderRight);
+    inpAruComment.addEventListener('input', renderRight);
     btnAruClearFilters.addEventListener('click', function () {
+        inpAruProduct.value = '';
         inpAruDest.value = '';
         inpAruPartner.value = '';
         inpAruCustomer.value = '';
+        inpAruComment.value = '';
         renderRight();
     });
 
@@ -205,6 +213,7 @@ export function renderRakodas(container, windowManager) {
             } catch (e) { customersList = []; }
         }
         
+        setupFilterAutocomplete(inpAruProduct, view.querySelector('#filter-aru-product-dropdown'), productsList, 'name');
         setupFilterAutocomplete(inpAruPartner, view.querySelector('#filter-aru-partner-dropdown'), referencesList, 'name');
         setupFilterAutocomplete(inpAruCustomer, view.querySelector('#filter-aru-customer-dropdown'), customersList, 'name');
     }
@@ -316,9 +325,11 @@ export function renderRakodas(container, windowManager) {
 
     // ============= JOBB TÁBLA: ÁRU IGÉNY (valós adatok) =============
     function renderRight() {
+        const valProduct = (inpAruProduct.value || '').toLowerCase();
         const valDest = (inpAruDest.value || '').toLowerCase();
         const valPartner = (inpAruPartner.value || '').toLowerCase();
         const valCustomer = (inpAruCustomer.value || '').toLowerCase();
+        const valComment = (inpAruComment.value || '').toLowerCase();
 
         let sumEuro = 0;
         let sumNormal = 0;
@@ -326,15 +337,19 @@ export function renderRakodas(container, windowManager) {
         const notFulfilled = aruData.filter(r => {
             if (r.is_fulfilled) return false;
 
+            const prod = (r.product_name || '').toLowerCase();
             const dest = (r.destination || '').toLowerCase();
             const partner = (r.albaran_number || '').toLowerCase();
             const cust = (r.customer_name || '').toLowerCase();
+            const comment = (r.comment || r.notes || '').toLowerCase();
 
+            const mProduct = !valProduct || prod.includes(valProduct);
             const mDest = !valDest || dest.includes(valDest);
             const mPartner = !valPartner || partner.includes(valPartner);
             const mCustomer = !valCustomer || cust.includes(valCustomer);
+            const mComment = !valComment || comment.includes(valComment);
 
-            const match = mDest && mPartner && mCustomer;
+            const match = mProduct && mDest && mPartner && mCustomer && mComment;
             if (match) {
                 sumEuro += parseFloat(r.euro_palets) || 0;
                 sumNormal += parseFloat(r.normal_palets) || 0;

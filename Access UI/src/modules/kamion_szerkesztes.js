@@ -108,11 +108,19 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                             <thead style="position:sticky; top:0; background:var(--bg-light); z-index:2;">
                                 <tr>
                                     <th style="width:36px; text-align:center;" title="Szerkesztés / Törlés"></th>
-                                    <th style="min-width:80px; text-align:center;">Total Palets</th>
-                                    <th style="min-width:80px; text-align:center;">N° Euro Palets</th>
-                                    <th style="min-width:80px; text-align:center;">N° Normal Palets</th>
+                                    <th style="min-width:58px; max-width:65px; text-align:center; line-height:1.2; padding:3px 2px;">Total<br><span style='font-weight:normal;'>Palets</span></th>
+                                    <th style="min-width:58px; max-width:65px; text-align:center; line-height:1.2; padding:3px 2px;">N° Euro<br><span style='font-weight:normal;'>Palets</span></th>
+                                    <th style="min-width:58px; max-width:65px; text-align:center; line-height:1.2; padding:3px 2px;">N° Normal<br><span style='font-weight:normal;'>Palets</span></th>
                                     <th style="min-width:180px; white-space:nowrap;">Products</th>
-                                    <th style="min-width:100px;">Reference</th>
+                                    <th style="min-width:110px; padding:2px 4px; vertical-align:top; text-align:center;">
+                                        <div style="font-weight:600; line-height:1.2; margin-bottom:2px;">Reference</div>
+                                        <div style="display:flex; align-items:center; justify-content:center; gap:2px;">
+                                            <select id="km-ref-filter" style="font-size:10px; padding:1px 2px; height:20px; border:1px solid #cbd5e1; border-radius:3px; background:#fff; color:#334155; min-width:0; max-width:85px;">
+                                                <option value="">– mind –</option>
+                                            </select>
+                                            <button id="km-ref-filter-clear" title="Szűrő törlése" style="background:none; border:1px solid #e2e8f0; border-radius:3px; cursor:pointer; font-size:11px; line-height:1; padding:1px 4px; color:#64748b; height:20px; display:none;">✕</button>
+                                        </div>
+                                    </th>
                                     <th style="min-width:100px;">Customer</th>
                                     <th style="min-width:100px;">Destination</th>
                                     <th style="min-width:110px;">Comment</th>
@@ -564,10 +572,37 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
             if (tNormal) tNormal.textContent = sumNormal > 0 ? Number(sumNormal.toFixed(1)) : '0';
         }
 
+        let refFilter = ''; // aktív Reference szűrő
+
         function renderTable() {
             const linesWithTotals = calculateLineTotals(lines);
 
-            tbody.innerHTML = linesWithTotals.map((l, index) => {
+            // --- Szűrő select feltöltése: a 'references' tömbből (autocomplete forrása),
+            //     csak azokat mutatja amelyek ténylegesen szerepelnek a táblázat soraiban ---
+            const refFilterEl = container.querySelector('#km-ref-filter');
+            const refFilterClear = container.querySelector('#km-ref-filter-clear');
+            if (refFilterEl) {
+                // Kizárólag a táblázatban lévő sorok 'albaran_number' értékeit gyűjtjük ki
+                const uniqueRefs = [...new Set(
+                    linesWithTotals
+                        .filter(l => !l._empty && l.albaran_number && l.albaran_number.trim() !== '')
+                        .map(l => l.albaran_number.trim())
+                )].sort();
+
+                const refsToShow = uniqueRefs;
+                const prevVal = refFilter;
+                refFilterEl.innerHTML = '<option value="">– mind –</option>' +
+                    refsToShow.map(r => `<option value="${escHtml(r)}" ${r === prevVal ? 'selected' : ''}>${escHtml(r)}</option>`).join('');
+                if (refFilterClear) refFilterClear.style.display = prevVal ? 'inline-flex' : 'none';
+            }
+
+            // --- Szűrés ---
+            const filteredLines = refFilter
+                ? linesWithTotals.filter(l => !l._empty && (l.albaran_number || '').trim() === refFilter)
+                : linesWithTotals;
+
+            tbody.innerHTML = filteredLines.map((l, filteredIndex) => {
+                const index = linesWithTotals.indexOf(l); // igazi index a lines tömbben
                 const isEmpty = !!l._empty;
                 // üres sorokban a Total Palets cella üres, input-ok üresek (0 helyett)
                 const tv = l.totalPalets !== undefined && l.totalPalets !== '' ? l.totalPalets : '';
@@ -800,6 +835,25 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 });
             });
         }
+
+        // ===== REFERENCE SZŰRŐ ESEMÉNYKEZELŐK (egyszer regisztrálva) =====
+        container.addEventListener('change', (e) => {
+            if (e.target && e.target.id === 'km-ref-filter') {
+                refFilter = e.target.value;
+                const clearBtn = container.querySelector('#km-ref-filter-clear');
+                if (clearBtn) clearBtn.style.display = refFilter ? 'inline-flex' : 'none';
+                renderTable();
+            }
+        });
+        container.addEventListener('click', (e) => {
+            if (e.target && e.target.id === 'km-ref-filter-clear') {
+                refFilter = '';
+                const sel = container.querySelector('#km-ref-filter');
+                if (sel) sel.value = '';
+                e.target.style.display = 'none';
+                renderTable();
+            }
+        });
 
         // ===== TERMÉK AUTOCOMPLETE =====
         leProduct.addEventListener('input', () => {
