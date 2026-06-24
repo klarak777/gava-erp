@@ -6,6 +6,9 @@
 
 #### 1. Adatbázis és Háttérrendszer (Backend)
 - **Transport Company Adatok Tisztítása:** A `transporters` táblában található adatok frissítése a legújabb tisztított listára. A hiányzó/felesleges tételek inaktiválásra kerültek (`is_active = false`), elkerülve az adatok végleges törlését, így a korábban rájuk hivatkozó adatok (pl. korábbi fuvarok) nem sérülnek.
+- **Termékek és Partnerek szinkronizáció javítása (`import_seed_data.js`):**
+  - A szkript mostantól **első lépésként inaktiválja az összes meglévő terméket és partnert** az adatbázisban, majd a lokális exportból (`data_export.json`) újra beolvassa és aktiválja őket a megfelelő státusszal. Ez garantálja, hogy a korábbi importsérülésekből vagy manuális szerkesztésekből adódó régi/szemét adatok ne maradjanak aktívak a DO szerveren.
+  - A partnerek frissítése és beszúrása mostantól **név és típus (vevő/szállító) együttes egyezése alapján** történik (mivel egy azonos nevű cég létezhet egyszerre vevőként és szállítóként is), valamint az `address` és `contact` mezők szinkronizációja is bekerült.
 - **Admin felület API végpontok módosítása:** Az Admin modul API végpontjai (különösen a `DELETE`) mostantól "soft-delete" (puha törlés) logikával működnek a Partnerek és Szállítmányozók esetében, vagyis `is_active = false` értékre állítják a rekordot a tényleges törlés helyett.
 - A lekérdezések módosításra kerültek, így a felületeken már csak az aktív (`is_active = true`) elemek jelennek meg.
 
