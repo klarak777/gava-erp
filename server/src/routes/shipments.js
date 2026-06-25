@@ -800,13 +800,37 @@ router.post('/:id/generate-order', async (req, res) => {
     }
     
     docxService.generateOrderDocx(templatePath, outputPath, data, tableLines);
-    
+
+    // Rögzítés a transport_orders táblában (is_sent=false – még nem lett kiküldve)
+    try {
+      const existingOrder = await db('transport_orders')
+        .where('shipment_id', id)
+        .where('file_path', outputPath)
+        .first();
+
+      if (!existingOrder) {
+        await db('transport_orders').insert({
+          shipment_id: id,
+          season_id: shipment.season_id || null,
+          transporter_id: shipment.transporter_id || null,
+          document_name: path.basename(outputPath),
+          file_path: outputPath,
+          file_date: new Date(),
+          loading_date: shipment.loading_date || null,
+          is_sent: false
+        });
+      }
+    } catch (dbErr) {
+      console.error('[generate-order] DB mentési hiba (fájl létrejött):', dbErr.message);
+    }
+
     res.json({ message: 'Dokumentum sikeresen legenerálva', path: outputPath });
   } catch (err) {
     console.error('Hiba a dokumentum generálásakor:', err);
     res.status(500).json({ error: 'Belső szerverhiba: ' + err.message });
   }
 });
+
 
 // DELETE /api/v1/shipments/:id
 // Teljes fuvar (fejléc + tételek) törlése

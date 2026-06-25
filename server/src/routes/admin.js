@@ -39,12 +39,33 @@ router.post('/:table', async (req, res) => {
     const payload = req.body;
     const [insertedId] = await db(table).insert(payload).returning('id');
     const newRecord = await db(table).where('id', insertedId?.id || insertedId).first();
+
+    // Ha új fuvarozót adunk hozzá, automatikusan létrehozzuk a 25-26-os ERP Fuvarm almappát
+    if (table === 'transporters' && newRecord && newRecord.name) {
+      try {
+        const path = require('path');
+        const fs = require('fs');
+        const { getFolderName } = require('../config/transporterConfig');
+        const raktarPath = process.env.RAKTAR_PATH || '\\\\192.168.1.5\\raktar';
+        const folderName = getFolderName(newRecord.name, '25-26') || newRecord.name;
+        const newFolderPath = path.join(raktarPath, 'MI Teszt', 'ERP Fuvarm', '25-26', folderName);
+        if (!fs.existsSync(newFolderPath)) {
+          fs.mkdirSync(newFolderPath, { recursive: true });
+          console.log(`[Admin] Új fuvarozó mappa létrehozva: ${newFolderPath}`);
+        }
+      } catch (folderErr) {
+        // Mappa létrehozási hiba nem akadályozza meg a sikeres választ
+        console.error('[Admin] Fuvarozó mappa létrehozási hiba:', folderErr.message);
+      }
+    }
+
     res.status(201).json(newRecord);
   } catch (err) {
     console.error(`Hiba a(z) ${table} beszúrásakor:`, err);
     res.status(500).json({ error: 'Belső szerverhiba' });
   }
 });
+
 
 // PUT /api/v1/admin/:table/:id
 router.put('/:table/:id', async (req, res) => {

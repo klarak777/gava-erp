@@ -358,9 +358,15 @@ function getEkaerSeasonFolder(seasonCode) {
 
 /**
  * Fuvarmegbízás teljes fájl elérési útvonalat generál.
- * Minta: \\192.168.1.5\raktar\Fuvarok\Fuvarmegbízás\{seasonCode}\{folderName}\{docName}
- * @param {string} seasonCode - pl. "24-25"
- * @param {string} transporterName - pl. "KONYA"
+ *
+ * 25-26-os szezon (2026-06-26-tól):
+ *   \\192.168.1.5\raktar\MI Teszt\ERP Fuvarm\25-26\{folderName}\{docName}
+ *
+ * Régebbi szezonok:
+ *   \\192.168.1.5\raktar\Fuvarok\Fuvarmegbízás\{seasonCode}\{folderName}\{docName}
+ *
+ * @param {string} seasonCode - pl. "24-25" vagy "25-26"
+ * @param {string} transporterName - pl. "KONYA" vagy "KÓNYA TRANS"
  * @param {string} orderNumber - pl. "GHU 238"
  * @param {string} [raktarPath] - opcionális alap útvonal
  * @returns {{ fileName: string, filePath: string }}
@@ -370,16 +376,31 @@ function generateTransportOrderPath(seasonCode, transporterName, orderNumber, ra
   const folder = getFolderName(transporterName, seasonCode);
   const docPrefix = getDocNamePrefix(transporterName);
   const fileName = `${docPrefix} ${orderNumber}.docx`;
-  const filePath = `${basePath}\\Fuvarok\\Fuvarmegbízás\\${seasonCode}\\${folder}\\${fileName}`;
+
+  let filePath;
+  if (seasonCode === '25-26') {
+    // 2026-06-26-tól az új MI Teszt mappa struktúra
+    filePath = `${basePath}\\MI Teszt\\ERP Fuvarm\\25-26\\${folder}\\${fileName}`;
+  } else {
+    // Korábbi szezonok: régi elérési út
+    filePath = `${basePath}\\Fuvarok\\Fuvarmegbízás\\${seasonCode}\\${folder}\\${fileName}`;
+  }
   return { fileName, filePath };
 }
 
 /**
  * EKAER teljes fájl elérési útvonalat generál.
- * Minta: \\192.168.1.5\raktar\Fuvarok\EKAEREK\EKAEREK 2024-2025\{orderNumber}\{ekaerFileName}
+ *
+ * 25-26-os szezon (2026-06-26-tól):
+ *   \\192.168.1.5\raktar\MI Teszt\ERP EKAER\EKAEREK 2025-2026\{orderNumber}\{ekaerFileName}
+ *   Pl. BEL 001 → BEL001 almappa
+ *
+ * Régebbi szezonok:
+ *   \\192.168.1.5\raktar\Fuvarok\EKAEREK\EKAEREK 2024-2025\{orderNumber}\{ekaerFileName}
+ *
  * Az "OK" postfixet NEM adjuk hozzá az útvonalhoz (a fájl keresése majd fallback-kel oldja meg).
- * @param {string} seasonCode - pl. "24-25"
- * @param {string} orderNumber - pl. "LOG149"
+ * @param {string} seasonCode - pl. "24-25" vagy "25-26"
+ * @param {string} orderNumber - pl. "LOG149" vagy "BEL001"
  * @param {string} plateNumber - pl. "AA LE 051 / WFC 666"
  * @param {string} [raktarPath] - opcionális alap útvonal
  * @returns {{ fileName: string, filePath: string }|null}
@@ -387,10 +408,20 @@ function generateTransportOrderPath(seasonCode, transporterName, orderNumber, ra
 function generateEkaerPath(seasonCode, orderNumber, plateNumber, raktarPath) {
   const fileName = generateEkaerFileName(plateNumber);
   if (!fileName) return null;
-  
+
   const basePath = raktarPath || '\\\\192.168.1.5\\raktar';
-  const ekaerSeasonFolder = getEkaerSeasonFolder(seasonCode);
-  const filePath = `${basePath}\\Fuvarok\\EKAEREK\\${ekaerSeasonFolder}\\${orderNumber}\\${fileName}`;
+
+  let filePath;
+  if (seasonCode === '25-26') {
+    // 2026-06-26-tól az új MI Teszt mappa struktúra
+    // orderNumber-t biztonságossá tesszük (szóközök eltávolítása)
+    const safeOrderNum = orderNumber.replace(/\s+/g, '');
+    filePath = `${basePath}\\MI Teszt\\ERP EKAER\\EKAEREK 2025-2026\\${safeOrderNum}\\${fileName}`;
+  } else {
+    // Korábbi szezonok: régi elérési út
+    const ekaerSeasonFolder = getEkaerSeasonFolder(seasonCode);
+    filePath = `${basePath}\\Fuvarok\\EKAEREK\\${ekaerSeasonFolder}\\${orderNumber}\\${fileName}`;
+  }
   return { fileName, filePath };
 }
 
