@@ -47,10 +47,11 @@ export function renderRakodas(container, windowManager) {
         '<div style="overflow-x:auto;">' +
         '<table class="access-subform-table" id="rak-left-table" style="font-size:11px; table-layout:fixed; width:100%;">' +
         '<thead><tr>' +
-        '<th style="width:75px; padding:6px 4px; font-size:10px;">Kamionszám</th>' +
-        '<th style="width:65px; padding:6px 4px; font-size:10px;">Rakodás nap</th>' +
-        '<th style="width:85px; padding:6px 4px; font-size:10px;">Transport Company</th>' +
-        '<th style="width:50px; padding:6px 4px; text-align:center; font-size:10px;" title="Rakodva">Rakodva</th>' +
+        '<th style="width:80px; padding:6px 4px; font-size:10px;">Kamionszám</th>' +
+        '<th style="width:70px; padding:6px 4px; font-size:10px;">Rakodás nap</th>' +
+        '<th style="width:95px; padding:6px 4px; font-size:10px;">Transport Company</th>' +
+        '<th style="width:55px; padding:6px 4px; text-align:center; font-size:10px;" title="Rakodva">Rakodva</th>' +
+        '<th style="width:45px; padding:6px 4px; text-align:center; font-size:10px;" title="Törlés">TÖRLÉS</th>' +
         '</tr></thead>' +
         '<tbody id="rak-tbody"></tbody>' +
         '</table>' +
