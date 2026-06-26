@@ -431,8 +431,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 currentShipmentId = s.id;
                 currentShipmentIsLoaded = s.is_loaded === true || s.is_loaded === 1;
 
-                // ④ Ablak fejlécet és taskbar-t is frissítjük a VALÓDI kamionszámra
-                const realTitle = `Kamion szerkesztése: ${s.order_number}`;
+                // 🟢 Ablak fejléce és taskbar-t is frissítjük a VALÓDI kamionszámra
+                const realTitle = s.order_number || 'Ismeretlen';
                 const winEl2 = container.closest('.mdi-window');
                 if (winEl2) {
                     const titleEl = winEl2.querySelector('.window-title');
