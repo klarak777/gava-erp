@@ -230,10 +230,11 @@ export function renderRakodas(container, windowManager) {
     function renderLeft(data) {
         tbody.innerHTML = data.map(function (r) {
             return '<tr>' +
-                '<td style="padding:4px 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:75px;" title="' + r.tour + '"><span class="rak-open-link" data-id="' + r.id + '" style="cursor:pointer; color:#2563eb; text-decoration:underline; font-weight:600;" title="Kattints a műveletekhez">' + r.tour + '</span></td>' +
+                '<td style="padding:4px 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:75px;" title="' + r.tour + '"><span class="rak-open-link" data-id="' + r.id + '" style="cursor:pointer; color:#2563eb; text-decoration:underline; font-weight:600;" title="Kattints a m\u0171veletekhez">' + r.tour + '</span></td>' +
                 '<td style="padding:4px 6px; white-space:nowrap;">' + r.date + '</td>' +
                 '<td style="padding:4px 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:85px;" title="' + r.transporter + '">' + r.transporter + '</td>' +
                 '<td style="text-align:center; padding:4px 6px;"><input type="checkbox" class="rak-loaded-chk" data-id="' + r.id + '"' + (r.loaded ? ' checked' : '') + '></td>' +
+                '<td style="text-align:center; padding:2px 4px;"><button class="rak-del-btn" data-id="' + r.id + '" title="Kamion t\u00f6rl\u00e9se" style="background:none; border:none; cursor:pointer; font-size:13px; color:#dc2626; padding:1px 3px; opacity:0.6;" onmouseover="this.style.opacity=\'1\'" onmouseout="this.style.opacity=\'0.6\'">\u2715</button></td>' +
                 '</tr>';
         }).join('');
 
@@ -308,6 +309,36 @@ export function renderRakodas(container, windowManager) {
                         e.target.checked = true;
                         alert('Nem sikerült elmenteni a státuszt!');
                     }
+                }
+            });
+        });
+
+        // Törlés gomb a bal táblában
+        tbody.querySelectorAll('.rak-del-btn').forEach(function (btn) {
+            btn.addEventListener('click', async function (e) {
+                e.stopPropagation();
+                var id = parseInt(e.currentTarget.getAttribute('data-id'));
+                var row = rakData.find(function (x) { return x.id === id; });
+                if (!row) return;
+                var tourName = row.tour;
+                var confirmed = confirm(
+                    '\u26a0\ufe0f Kamion t\u00f6rl\u00e9se\n\n' +
+                    'Kamionszám: ' + tourName + '\nFuvarozó: ' + row.transporter + '\n\n' +
+                    'Ez a m\u0171velet véglegesen t\u00f6rli a kamiont és a hozz\u00e1 tartozó összes tételt!\n' +
+                    'Biztosan folytatod?'
+                );
+                if (!confirmed) return;
+                try {
+                    const res = await fetch('/api/v1/shipments/' + id, { method: 'DELETE' });
+                    if (!res.ok) {
+                        const d = await res.json();
+                        throw new Error(d.error || 'Törlési hiba');
+                    }
+                    rakData = rakData.filter(function (x) { return x.id !== id; });
+                    filter();
+                    alert('\u2705 ' + tourName + ' sikeresen törölve!');
+                } catch (err) {
+                    alert('Hiba a törlés során: ' + err.message);
                 }
             });
         });
@@ -812,10 +843,40 @@ export function renderRakodas(container, windowManager) {
         hideModal();
         if (!currentKamionForMenu) return;
 
+        // Ellenőrzés: van-e már Fuvarmegbízás ehhez a kamionhoz?
+        try {
+            const checkRes = await fetch('/api/v1/transport-orders?shipment_id=' + currentKamionForMenu.id);
+            if (checkRes.ok) {
+                const checkData = await checkRes.json();
+                const existingOrders = (checkData.data && checkData.data.transport_orders)
+                    ? checkData.data.transport_orders.filter(o => String(o.shipmentId || o.shipment_id || '') === String(currentKamionForMenu.id) || true)
+                    : [];
+                // Szűrjük az aktuális kamionhoz tartozókat a document_name alapján
+                const tourSafe = (currentKamionForMenu.tour || '').replace(/[\s/]/g, '');
+                const matchingOrders = (checkData.data && checkData.data.transport_orders)
+                    ? checkData.data.transport_orders.filter(o => o.tour === currentKamionForMenu.tour)
+                    : [];
+                if (matchingOrders.length > 0) {
+                    const existing = matchingOrders[0];
+                    const existDate = existing.date || '–';
+                    const proceed = confirm(
+                        '\u26a0\ufe0f Fuvarmegbízás már létezik!\n\n' +
+                        'Kamion: ' + currentKamionForMenu.tour + '\n' +
+                        'Létrehozva: ' + existDate + '\n' +
+                        'Dokumentum: ' + (existing.docName || '–') + '\n\n' +
+                        'Szeretnéd újra létrehozni? (A régit nem törli – duplikátum keletkezhet!)'
+                    );
+                    if (!proceed) return;
+                }
+            }
+        } catch (checkErr) {
+            console.warn('[doc-check] Nem sikerült ellenőrizni a meglévő megbízást:', checkErr.message);
+        }
+
         try {
             const btn = document.getElementById('btn-km-doc');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = 'Készítés...';
+            const originalText = btn ? btn.innerHTML : '';
+            if (btn) btn.innerHTML = 'Készítés...';
 
             const res = await fetch(`/api/v1/shipments/${currentKamionForMenu.id}/generate-order`, {
                 method: 'POST'
@@ -827,7 +888,7 @@ export function renderRakodas(container, windowManager) {
             } else {
                 alert(`Hiba a generálás során:\n${data.error}`);
             }
-            btn.innerHTML = originalText;
+            if (btn) btn.innerHTML = originalText;
         } catch (err) {
             console.error(err);
             alert(`Hálózati hiba: ${err.message}`);
@@ -1004,6 +1065,16 @@ export function renderRakodas(container, windowManager) {
     view.querySelector('#btn-new-truck').addEventListener('click', function () {
         openKamionSzerkesztesWindow(windowManager, null);
     });
+
+    // Auto-frissítés: ha a kamion szerkesztés ablak ment, frissíti a Rakodások táblát
+    const handleShipmentSaved = () => {
+        if (document.body.contains(view)) {
+            loadRakData();
+        } else {
+            document.removeEventListener('shipmentSaved', handleShipmentSaved);
+        }
+    };
+    document.addEventListener('shipmentSaved', handleShipmentSaved);
 
     // ============= API BETÖLTÉS =============
     async function loadRakData() {

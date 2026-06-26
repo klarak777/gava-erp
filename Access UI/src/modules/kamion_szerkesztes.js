@@ -1238,6 +1238,9 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                         currentShipmentId = data.id;
                     }
 
+                    // Értesítjük a Rakodás modult (és másokat) a sikeres mentésről/létrehozásról
+                    document.dispatchEvent(new CustomEvent('shipmentSaved'));
+
                     if (currentShipmentId) {
                         await loadExistingShipment(currentShipmentId);
                     }
