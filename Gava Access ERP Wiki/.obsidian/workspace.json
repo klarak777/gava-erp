@@ -11,10 +11,14 @@
             "id": "56bf05af766280cc",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Gráf nézet"
+              "type": "markdown",
+              "state": {
+                "file": "02_Wiki/Fejlesztesi_Naplo_V0.3.8_2026_06_23.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Fejlesztesi_Naplo_V0.3.8_2026_06_23"
             }
           }
         ]
@@ -179,11 +183,13 @@
   },
   "active": "56bf05af766280cc",
   "lastOpenFiles": [
-    "02_Wiki/Fejlesztesi_Naplo_V0.3.2_2026_06_16.md",
-    "02_Wiki/Fejlesztesi_Naplo_Aru_Igeny_Partner_Fix_2026_06_22.md",
+    "02_Wiki/Fejlesztesi_Naplo_V0.4.0_2026_06_20.md",
+    "02_Wiki/Access_Fuvarok_Fejlesztesek.md",
     "02_Wiki/Fejlesztesi_Naplo_V0.3.7_2026_06_22.md",
     "02_Wiki/Fejlesztesi_Naplo_V0.3.8_2026_06_23.md",
-    "02_Wiki/Fejlesztesi_Naplo_V0.4.0_2026_06_20.md",
+    "02_Wiki/UI_Hibajavitas_2026_06_12.md",
+    "02_Wiki/Fejlesztesi_Naplo_V0.3.2_2026_06_16.md",
+    "02_Wiki/Fejlesztesi_Naplo_Aru_Igeny_Partner_Fix_2026_06_22.md",
     "02_Wiki/Fejlesztesi_Naplo_V0.3.6_2026_06_18.md",
     "02_Wiki/Fejlesztesi_Naplo_V0.3.5_2026_06_18.md",
     "02_Wiki/Fejlesztesi_Naplo_V0.3.4_2026_06_16.md",
@@ -192,8 +198,6 @@
     "Névtelen 1.base",
     "02_Wiki/Deployment_Utmutato.md",
     "02_Wiki/Fejlesztesi_Naplo_V0.2.0_2026_06_12.md",
-    "02_Wiki/UI_Hibajavitas_2026_06_12.md",
-    "02_Wiki/Access_Fuvarok_Fejlesztesek.md",
     "02_Wiki/ES_Module_Hibaelharitas.md",
     "02_Wiki/Access_VBA_Kodok_Attekintese.md",
     "02_Wiki/Backend_Architektura.md",

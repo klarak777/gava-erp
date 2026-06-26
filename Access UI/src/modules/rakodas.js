@@ -76,8 +76,6 @@ export function renderRakodas(container, windowManager) {
         '<div class="access-subform-header" style="background:linear-gradient(90deg,#0ea5e9,#2563eb); color:#fff; display:flex; align-items:center; justify-content:space-between; padding:6px 14px;">' +
         '<div style="display:flex; align-items:center; gap:16px;">' +
         '<span style="font-size:11px; font-weight:600;">Áru igény</span>' +
-        '<span id="aru-sum-euro" style="font-size:11px; font-weight:600; color:#fff;">Össz. Euro plt: 0.0</span>' +
-        '<span id="aru-sum-normal" style="font-size:11px; font-weight:600; color:#fff;">Össz. Norm plt: 0.0</span>' +
         '</div>' +
         '<button id="btn-add-aru" title="Új áru igény hozzáadása" style="background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.4); color:#fff; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:13px; font-weight:700; line-height:1.4;">+ Hozzáadás</button>' +
         '</div>' +
@@ -95,6 +93,14 @@ export function renderRakodas(container, windowManager) {
         '<th style="min-width:70px; text-align:center; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 3px;">Kamionra</th>' +
         '</tr></thead>' +
         '<tbody id="aru-tbody"></tbody>' +
+        '<tfoot style="position:sticky; bottom:0; background:#e8f4fd; z-index:2; border-top:2px solid #bde0fa; font-weight:bold; font-size:11px;">' +
+        '<tr>' +
+        '<td style="text-align:center; padding:6px 4px; color:#334155;">Össz:</td>' +
+        '<td id="aru-sum-euro" style="text-align:center; padding:6px 4px; color:#0369a1;" title="Össz. Euro plt">0.0</td>' +
+        '<td id="aru-sum-normal" style="text-align:center; padding:6px 4px; color:#7c3aed;" title="Össz. Norm plt">0.0</td>' +
+        '<td colspan="6"></td>' +
+        '</tr>' +
+        '</tfoot>' +
         '</table>' +
         '</div>' +
         '</div>' +
@@ -391,8 +397,8 @@ export function renderRakodas(container, windowManager) {
 
         const elSumEuro = view.querySelector('#aru-sum-euro') || document.getElementById('aru-sum-euro');
         const elSumNormal = view.querySelector('#aru-sum-normal') || document.getElementById('aru-sum-normal');
-        if (elSumEuro) elSumEuro.textContent = 'Össz. Euro plt: ' + sumEuro.toFixed(1);
-        if (elSumNormal) elSumNormal.textContent = 'Össz. Norm plt: ' + sumNormal.toFixed(1);
+        if (elSumEuro) elSumEuro.textContent = sumEuro.toFixed(1);
+        if (elSumNormal) elSumNormal.textContent = sumNormal.toFixed(1);
 
         if (notFulfilled.length === 0) {
             aruTbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:12px; color:#94a3b8; font-size:10px;">Nincs kielégítetlen áru igény</td></tr>';
@@ -483,12 +489,12 @@ export function renderRakodas(container, windowManager) {
                     <div style="display:flex; gap:10px;">
                         <div style="display:flex; flex-direction:column; gap:3px; flex:1;">
                             <label style="font-size:11px; font-weight:600; color:#334155;">N° Euro Palets küldve:</label>
-                            <input type="number" id="send-euro" class="access-control-input" style="font-size:12px; height:32px;" value="0" min="0" step="0.1" max="${demandRow.euro_palets || 0}">
+                            <input type="number" id="send-euro" class="access-control-input" style="font-size:12px; height:32px;" value="0" min="0" step="1" max="${demandRow.euro_palets || 0}">
                             <small style="color:#64748b; font-size:10px;">Max: ${demandRow.euro_palets || 0}</small>
                         </div>
                         <div style="display:flex; flex-direction:column; gap:3px; flex:1;">
                             <label style="font-size:11px; font-weight:600; color:#334155;">N° Normal Palets küldve:</label>
-                            <input type="number" id="send-normal" class="access-control-input" style="font-size:12px; height:32px;" value="0" min="0" step="0.1" max="${demandRow.normal_palets || 0}">
+                            <input type="number" id="send-normal" class="access-control-input" style="font-size:12px; height:32px;" value="0" min="0" step="1" max="${demandRow.normal_palets || 0}">
                             <small style="color:#64748b; font-size:10px;">Max: ${demandRow.normal_palets || 0}</small>
                         </div>
                     </div>

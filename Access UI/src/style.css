@@ -861,11 +861,11 @@ body {
 }
 
 .mdi-window.maximized {
-    top: 70px !important;
+    top: 0 !important;
     left: 0 !important;
     width: 100% !important;
-    height: calc(100% - 70px) !important;
-    /* Valódi teljes nézet: csak a topbar magasságát vonjuk le */
+    height: 100% !important;
+    /* Valódi teljes nézet: eléri a topbar alját */
     border-radius: 0;
     resize: none;
 }

@@ -43,8 +43,10 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
             <div id="ks-scroll-wrap" style="flex:1; overflow:hidden; padding:12px 14px; display:flex; flex-direction:column; gap:10px;">
 
                 <!-- FEJLÉC ADATOK -->
-                <div style="flex-shrink:0; display:flex; gap:8px; flex-wrap:wrap; padding:12px 14px; background:#fff; border-radius:8px; border:1px solid var(--border); box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-                    <div style="display:flex; flex-direction:column; gap:3px; flex:1; min-width:110px; max-width:140px;">
+                <div style="flex-shrink:0; display:flex; gap:8px; flex-wrap:wrap; padding:12px 14px; background:#fff; border-radius:8px; border:1px solid var(--border); box-shadow:0 1px 3px rgba(0,0,0,0.05); align-items:flex-start;">
+                    
+                    <!-- Kamionszám tip (kicsit keskenyebb, bal felső sarok) -->
+                    <div style="display:flex; flex-direction:column; gap:3px; flex:1; min-width:80px; max-width:100px;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">KamionszámTip.:</label>
                         <select id="km-tip" class="access-control-input" style="font-size:12px; padding:4px 8px; height:30px; width:100%;">
                             <option value="">-- Válasszon --</option>
@@ -55,59 +57,67 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                             <option value="LOG">LOG</option>
                         </select>
                     </div>
-                    <div style="display:flex; flex-direction:column; gap:3px; flex:1; min-width:150px; max-width:200px;">
-                        <label style="font-size:11px; font-weight:600; color:var(--text-main);">Kamionszám (Order N°):</label>
-                        <input type="text" id="km-order" class="access-control-input" readonly
-                            style="font-size:12px; padding:4px 8px; height:30px; width:100%; background:#f0fdf4; color:#166534; font-weight:600;" placeholder="Automatikus">
+
+                    <!-- Kétszer hármas blokk (2 oszlop, 3 sor) a képi elrendezés mintájára, de eredeti vezérlőkkel -->
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px 16px; flex:2; min-width:340px; max-width:420px;">
+                        <div style="display:flex; flex-direction:column; gap:3px;">
+                            <label style="font-size:11px; font-weight:600; color:var(--text-main);">Order number:</label>
+                            <input type="text" id="km-order" class="access-control-input" readonly
+                                style="font-size:12px; padding:4px 8px; height:30px; width:100%; background:#f0fdf4; color:#166534; font-weight:600;" placeholder="Automatikus">
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:3px;">
+                            <label style="font-size:11px; font-weight:600; color:var(--text-main);">Loading date:</label>
+                            <input type="date" id="km-load-date" class="access-control-input"
+                                style="font-size:12px; padding:4px 8px; height:30px; width:100%;">
+                        </div>
+                        
+                        <div style="display:flex; flex-direction:column; gap:3px;">
+                            <label style="font-size:11px; font-weight:600; color:var(--text-main);">Transport company:</label>
+                            <select id="km-transporter" class="access-control-input" style="font-size:12px; padding:4px 8px; height:30px; width:100%;">
+                                <option value="">Betöltés...</option>
+                            </select>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:3px;">
+                            <label style="font-size:11px; font-weight:600; color:var(--text-main);">Loading Place:</label>
+                            <input type="text" id="km-load-place" class="access-control-input"
+                                style="font-size:12px; padding:4px 8px; height:30px; width:100%;" placeholder="Pl. Budapest">
+                        </div>
+                        
+                        <div style="display:flex; flex-direction:column; gap:3px;">
+                            <label style="font-size:11px; font-weight:600; color:var(--text-main);">Plate number:</label>
+                            <input type="text" id="km-plate" class="access-control-input"
+                                style="font-size:12px; padding:4px 8px; height:30px; width:100%;" placeholder="Pl. ABC-123">
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:3px;">
+                            <label style="font-size:11px; font-weight:600; color:var(--text-main);">Temperature:</label>
+                            <input type="text" id="km-temperature" class="access-control-input"
+                                style="font-size:12px; padding:4px 6px; height:30px; width:100%;" placeholder="2-8°C" maxlength="8">
+                        </div>
                     </div>
-                    <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:150px;">
-                        <label style="font-size:11px; font-weight:600; color:var(--text-main);">Transport Company:</label>
-                        <select id="km-transporter" class="access-control-input" style="font-size:12px; padding:4px 8px; height:30px; width:100%;">
-                            <option value="">Betöltés...</option>
-                        </select>
-                    </div>
-                    <div style="display:flex; flex-direction:column; gap:3px; flex:1; min-width:110px; max-width:150px;">
-                        <label style="font-size:11px; font-weight:600; color:var(--text-main);">Rendszám:</label>
-                        <input type="text" id="km-plate" class="access-control-input"
-                            style="font-size:12px; padding:4px 8px; height:30px; width:100%;" placeholder="Pl. ABC-123">
-                    </div>
-                    <div style="display:flex; flex-direction:column; gap:3px; flex:1; min-width:120px; max-width:155px;">
-                        <label style="font-size:11px; font-weight:600; color:var(--text-main);">Rakodási dátum:</label>
-                        <input type="date" id="km-load-date" class="access-control-input"
-                            style="font-size:12px; padding:4px 8px; height:30px; width:100%;">
-                    </div>
-                    <div style="display:flex; flex-direction:column; gap:3px; flex:1; min-width:120px; max-width:155px;">
-                        <label style="font-size:11px; font-weight:600; color:var(--text-main);">Lerakodás dátum:</label>
-                        <input type="date" id="km-arr-date" class="access-control-input"
-                            style="font-size:12px; padding:4px 8px; height:30px; width:100%;">
-                    </div>
-                    <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:150px;">
-                        <label style="font-size:11px; font-weight:600; color:var(--text-main);">Felrakodási hely:</label>
-                        <input type="text" id="km-load-place" class="access-control-input"
-                            style="font-size:12px; padding:4px 8px; height:30px; width:100%;" placeholder="Pl. Budapest">
-                    </div>
-                    <div style="display:flex; flex-direction:column; gap:3px; flex:1; min-width:110px; max-width:145px;">
-                        <label style="font-size:11px; font-weight:600; color:var(--text-main);">Fuvar költség (EUR):</label>
-                        <input type="number" id="km-price" class="access-control-input"
-                            style="font-size:12px; padding:4px 8px; height:30px; width:100%;" placeholder="0.00" step="0.01">
-                    </div>
-                    <!-- ③ Hőmérséklet – rövid mező, max 2 karakter elegendő -->
-                    <div style="display:flex; flex-direction:column; gap:3px; width:90px; flex-shrink:0;">
-                        <label style="font-size:11px; font-weight:600; color:var(--text-main);">Temp. (°C):</label>
-                        <input type="text" id="km-temperature" class="access-control-input"
-                            style="font-size:12px; padding:4px 6px; height:30px; width:90px;" placeholder="2-8°C" maxlength="8">
+
+                    <!-- Többi vezérlő (Lerakodás dátum, Fuvar költség) az eredeti flexbox elrendezéssel -->
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; flex:1; min-width:200px; align-items:flex-start;">
+                        <div style="display:flex; flex-direction:column; gap:3px; flex:1; min-width:120px; max-width:155px;">
+                            <label style="font-size:11px; font-weight:600; color:var(--text-main);">Arrival date:</label>
+                            <input type="date" id="km-arr-date" class="access-control-input"
+                                style="font-size:12px; padding:4px 8px; height:30px; width:100%;">
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:3px; flex:1; min-width:110px; max-width:145px;">
+                            <label style="font-size:11px; font-weight:600; color:var(--text-main);">Transport price:</label>
+                            <input type="number" id="km-price" class="access-control-input"
+                                style="font-size:12px; padding:4px 8px; height:30px; width:100%;" placeholder="0.00" step="0.01">
+                        </div>
                     </div>
                 </div>
 
                 <!-- TÉTELEK TÁBLÁZATA -->
                 <!-- ② overflow-x:scroll → a gördítősáv MINDIG látszik, nem csak az aljára görgetéskor -->
                 <div class="access-subform" style="flex:1; display:flex; flex-direction:column; min-height:0;">
-                    <div class="access-subform-header" style="flex-shrink:0; padding:7px 14px; font-size:12px;">Hozzáadott termékek</div>
                     <div id="km-table-wrap" style="flex:1; overflow:auto; width:100%;">
                         <table class="access-subform-table" id="km-lines-table" style="font-size:11px; min-width:1400px; width:max-content; border-collapse:collapse;">
                             <thead style="position:sticky; top:0; background:var(--bg-light); z-index:2;">
                                 <tr>
-                                    <th style="width:36px; text-align:center;" title="Szerkesztés / Törlés"></th>
+                                    <th style="width:36px; text-align:center;" title="Áthelyezés / Törlés"></th>
                                     <th style="min-width:58px; max-width:65px; text-align:center; line-height:1.2; padding:3px 2px;">Total<br><span style='font-weight:normal;'>Palets</span></th>
                                     <th style="min-width:58px; max-width:65px; text-align:center; line-height:1.2; padding:3px 2px;">N° Euro<br><span style='font-weight:normal;'>Palets</span></th>
                                     <th style="min-width:58px; max-width:65px; text-align:center; line-height:1.2; padding:3px 2px;">N° Normal<br><span style='font-weight:normal;'>Palets</span></th>
@@ -141,7 +151,12 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                                     <td id="km-sum-total" style="text-align:center; padding:6px 4px; color:#1e40af;">0</td>
                                     <td id="km-sum-euro" style="text-align:center; padding:6px 4px; color:var(--text-main);">0</td>
                                     <td id="km-sum-normal" style="text-align:center; padding:6px 4px; color:var(--text-main);">0</td>
-                                    <td colspan="13"></td>
+                                    <td colspan="13">
+                                        <div style="display:flex; justify-content:flex-end; gap:24px; padding-right:20px; color:#166534; font-size:11px;">
+                                            <span>Szabad hely (Euro plt): <span id="km-free-euro" style="font-weight:bold; font-size:13px; color:#15803d;">33</span></span>
+                                            <span>Szabad hely (Normal plt): <span id="km-free-normal" style="font-weight:bold; font-size:13px; color:#15803d;">26</span></span>
+                                        </div>
+                                    </td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -164,89 +179,6 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
 
             <!-- INLINE CUSTOMER DROPDOWN -->
             <div id="inline-customer-dropdown" style="display:none; position:fixed; background:#fff; border:1px solid #ccc; z-index:9999; max-height:150px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); border-radius:4px;"></div>
-
-            <!-- TERMÉK SZERKESZTŐ / HOZZÁADÓ POPUP OVERLAY -->
-            <div id="line-edit-overlay" style="display:none; position:absolute; inset:0; background:rgba(0,0,0,0.45); z-index:500; align-items:center; justify-content:center;">
-                <div id="line-edit-modal" style="background:#fff; border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,0.2); padding:20px 24px; width:920px; max-width:96%; max-height:90vh; overflow-y:auto; position:relative; transform:translate(0px, 0px); transition:none;">
-                    <div id="line-edit-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; cursor:move; user-select:none;">
-                        <h3 id="line-edit-title" style="margin:0; font-size:14px; font-weight:700; color:var(--text);">Termék hozzáadása</h3>
-                        <button id="btn-line-overlay-close" style="background:none; border:none; font-size:20px; cursor:pointer; color:#64748b; padding:2px 6px; border-radius:4px; line-height:1;">×</button>
-                    </div>
-                    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
-                        <div style="display:flex; flex-direction:column; gap:3px; width:95px;">
-                            <label style="font-size:11px; font-weight:600; color:var(--text-main);">N° Euro Palets:</label>
-                            <input type="number" id="le-euro" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="any">
-                        </div>
-                        <div style="display:flex; flex-direction:column; gap:3px; width:95px;">
-                            <label style="font-size:11px; font-weight:600; color:var(--text-main);">N° Normal Palets:</label>
-                            <input type="number" id="le-norm" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="any">
-                        </div>
-                        <div style="display:flex; flex-direction:column; gap:3px; flex:3; min-width:180px; position:relative;">
-                            <label style="font-size:11px; font-weight:600; color:var(--text-main);">Products:</label>
-                            <input type="text" id="le-product" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Gépeljen...">
-                            <input type="hidden" id="le-product-id">
-                            <div id="le-product-dropdown" style="display:none; position:absolute; background:#fff; border:1px solid #ccc; z-index:200; width:100%; max-height:150px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); top:52px; border-radius:4px;"></div>
-                        </div>
-                        <div style="display:none;">
-                            <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:110px;">
-                                <label style="font-size:11px; font-weight:600; color:var(--text-main);">Reference:</label>
-                                <input type="text" id="le-reference" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Albarán N°">
-                            </div>
-                            <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:110px;">
-                                <label style="font-size:11px; font-weight:600; color:var(--text-main);">Customer:</label>
-                                <input type="text" id="le-customer" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Vevő neve">
-                            </div>
-                            <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:110px;">
-                                <label style="font-size:11px; font-weight:600; color:var(--text-main);">Destination:</label>
-                                <input type="text" id="le-destination" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Célállomás">
-                            </div>
-                            <div style="display:flex; flex-direction:column; gap:3px; flex:3; min-width:130px;">
-                                <label style="font-size:11px; font-weight:600; color:var(--text-main);">Comment:</label>
-                                <input type="text" id="le-comment" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Megjegyzés">
-                            </div>
-                            <div style="display:flex; flex-direction:column; gap:3px; width:105px;">
-                                <label style="font-size:11px; font-weight:600; color:var(--text-main);">Gross weight (kg):</label>
-                                <input type="number" id="le-weight" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0">
-                            </div>
-                            <div style="display:flex; flex-direction:column; gap:3px; width:90px;">
-                                <label style="font-size:11px; font-weight:600; color:var(--text-main);">Price (EUR):</label>
-                                <input type="number" id="le-price-eur" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="0.01">
-                            </div>
-                            <div style="display:flex; flex-direction:column; gap:3px; width:105px;">
-                                <label style="font-size:11px; font-weight:600; color:var(--text-main);">Price BCN (EUR):</label>
-                                <input type="number" id="le-price-bcn" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="0.01">
-                            </div>
-                            <div style="display:flex; flex-direction:column; gap:3px; width:68px;">
-                                <label style="font-size:11px; font-weight:600; color:var(--text-main);">Unit:</label>
-                                <input type="text" id="le-unit" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" placeholder="KG">
-                            </div>
-                            <div style="display:flex; flex-direction:column; gap:3px; width:95px;">
-                                <label style="font-size:11px; font-weight:600; color:var(--text-main);">Reloading/plt:</label>
-                                <input type="number" id="le-reloading" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="0.01">
-                            </div>
-                            <div style="display:flex; flex-direction:column; gap:3px; width:115px;">
-                                <label style="font-size:11px; font-weight:600; color:var(--text-main);">Transport BCN/plt:</label>
-                                <input type="number" id="le-transport-bcn" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="0.01">
-                            </div>
-                            <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:120px;">
-                                <label style="font-size:11px; font-weight:600; color:var(--text-main);">Customer order N°:</label>
-                                <input type="text" id="le-custorder" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Megrendelőszám">
-                            </div>
-                            <div style="display:flex; flex-direction:column; gap:3px; width:85px;">
-                                <label style="font-size:11px; font-weight:600; color:var(--text-main);">Truck N°/plt:</label>
-                                <input type="number" id="le-truck-num" class="access-control-input" style="font-size:12px; padding:4px 6px; height:28px; width:100%;" value="0" min="0" step="1">
-                            </div>
-                        </div>
-                    </div>
-                    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
-                        <button class="secondary-btn" id="btn-line-cancel">Mégse</button>
-                        <button class="primary-btn" id="btn-transfer-line"
-                            style="background:#f59e0b; border-color:#d97706; display:none;"
-                            title="Tétel áthelyezése másik fuvarra">🔀 Tétel áthelyezése</button>
-                        <button class="primary-btn" id="btn-line-save">Mentés</button>
-                    </div>
-                </div>
-            </div>
 
             <!-- TÉTEL ÁTHELYEZÉSE POPUP (az overlay fölé) -->
             <div id="transfer-overlay" style="display:none; position:absolute; inset:0; background:rgba(0,0,0,0.6); z-index:600; align-items:center; justify-content:center;">
@@ -302,21 +234,16 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
         const cmbTransporter = container.querySelector('#km-transporter');
         const tbody = container.querySelector('#km-lines-tbody');
         const conflictMsg = container.querySelector('#km-order-conflict-msg');
-        const overlay = container.querySelector('#line-edit-overlay');
-        const overlayTitle = container.querySelector('#line-edit-title');
-        const leProduct = container.querySelector('#le-product');
-        const leProductId = container.querySelector('#le-product-id');
-        const leDropdown = container.querySelector('#le-product-dropdown');
+        // Edit overlay vars removed
         const inlineDropdown = container.querySelector('#inline-product-dropdown');
         const inlineRefDropdown = container.querySelector('#inline-reference-dropdown');
         const inlineCustDropdown = container.querySelector('#inline-customer-dropdown');
 
-        const lineEditModal = container.querySelector('#line-edit-modal');
-        const lineEditHeader = container.querySelector('#line-edit-header');
+
         const transferModal = container.querySelector('#transfer-modal');
         const transferHeader = container.querySelector('#transfer-header');
 
-        const resetLineDrag = initDraggable(lineEditModal, lineEditHeader);
+
         const resetTransferDrag = initDraggable(transferModal, transferHeader);
 
         const API = '/api/v1';
@@ -570,6 +497,25 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
             if (tTotal) tTotal.textContent = sumTotal > 0 ? Number(sumTotal.toFixed(2)) : '0';
             if (tEuro) tEuro.textContent = sumEuro > 0 ? Number(sumEuro.toFixed(1)) : '0';
             if (tNormal) tNormal.textContent = sumNormal > 0 ? Number(sumNormal.toFixed(1)) : '0';
+
+            // Szabad hely számítás
+            const maxTotal = 33.0;
+            let freeTotal = maxTotal - sumTotal;
+            if (freeTotal < 0) freeTotal = 0;
+            
+            const freeEuro = freeTotal; // 1 Total = 1 Euro
+            const freeNormal = freeTotal * (26.0 / 33.0); // 33 Total = 26 Normal
+
+            const tFreeEuro = container.querySelector('#km-free-euro');
+            const tFreeNormal = container.querySelector('#km-free-normal');
+            if (tFreeEuro) {
+                tFreeEuro.textContent = Number(freeEuro.toFixed(1));
+                tFreeEuro.style.color = freeEuro <= 0 ? '#dc2626' : '#15803d';
+            }
+            if (tFreeNormal) {
+                tFreeNormal.textContent = Number(freeNormal.toFixed(1));
+                tFreeNormal.style.color = freeNormal <= 0 ? '#dc2626' : '#15803d';
+            }
         }
 
         let refFilter = ''; // aktív Reference szűrő
@@ -609,8 +555,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 return `
                 <tr data-index="${index}" style="${isEmpty ? 'background:#fafafa;' : ''}">
                     <td style="text-align:center; white-space:nowrap; padding:1px 2px;">
-                        <button class="edit-line" data-index="${index}" title="Szerkesztés"
-                            style="background:none; border:none; cursor:pointer; font-size:14px; padding:1px 3px; color:${currentShipmentIsLoaded ? '#94a3b8' : '#2563eb'};" ${currentShipmentIsLoaded ? 'disabled' : ''}>✏️</button>
+                        <button class="transfer-line" data-index="${index}" title="Tétel áthelyezése másik fuvarra"
+                            style="background:none; border:none; cursor:pointer; font-size:14px; padding:1px 3px; color:${(isEmpty || currentShipmentIsLoaded || !l._dbId) ? '#94a3b8' : '#f59e0b'};" ${(isEmpty || currentShipmentIsLoaded || !l._dbId) ? 'disabled' : ''}>🔀</button>
                         <button class="clear-line" data-index="${index}" title="Sor törlése (adatok törlése)"
                             style="background:none; border:none; cursor:pointer; font-size:13px; padding:1px 3px; color:${(isEmpty || currentShipmentIsLoaded) ? '#ccc' : '#dc2626'};" ${(isEmpty || currentShipmentIsLoaded) ? 'disabled' : ''}>✕</button>
                     </td>
@@ -808,9 +754,14 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 });
             });
 
-            // ✏️ Szerkesztés gombok
-            tbody.querySelectorAll('.edit-line').forEach(btn => {
-                btn.addEventListener('click', () => openLineOverlay(parseInt(btn.dataset.index)));
+            // 🔀 Áthelyezés gombok
+            tbody.querySelectorAll('.transfer-line').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const idx = parseInt(btn.dataset.index);
+                    editingLineIndex = idx;
+                    editingLineDbId = lines[idx]._dbId || null;
+                    openTransferPopup();
+                });
             });
 
             // ✕ Adatok törlése (nem a sort töröljük, hanem visszaállítjuk üres sorra)
@@ -853,147 +804,6 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 e.target.style.display = 'none';
                 renderTable();
             }
-        });
-
-        // ===== TERMÉK AUTOCOMPLETE =====
-        leProduct.addEventListener('input', () => {
-            const val = leProduct.value.toLowerCase();
-            leDropdown.innerHTML = '';
-            leProductId.value = '';
-            if (!val) { leDropdown.style.display = 'none'; return; }
-            const filtered = products.filter(p => p.name.toLowerCase().startsWith(val)).slice(0, 10);
-            if (filtered.length > 0) {
-                filtered.forEach(p => {
-                    const div = document.createElement('div');
-                    div.style.cssText = 'padding:6px 8px; cursor:pointer; border-bottom:1px solid #eee; font-size:12px;';
-                    div.textContent = p.name;
-                    div.onmousedown = () => {
-                        leProduct.value = p.name;
-                        leProductId.value = p.id;
-                        leDropdown.style.display = 'none';
-                    };
-                    div.onmouseover = () => div.style.backgroundColor = '#f1f5f9';
-                    div.onmouseout = () => div.style.backgroundColor = 'transparent';
-                    leDropdown.appendChild(div);
-                });
-                leDropdown.style.display = 'block';
-            } else {
-                leDropdown.style.display = 'none';
-            }
-        });
-        leProduct.addEventListener('blur', () => {
-            setTimeout(() => { leDropdown.style.display = 'none'; }, 200);
-        });
-
-        // ===== POPUP MEGNYITÁS / ZÁRÁS =====
-        function openLineOverlay(lineIndex) {
-            resetLineDrag();
-            editingLineIndex = lineIndex;
-            const l = lines[lineIndex];
-            const isEmpty = l && l._empty;
-
-            const transferBtn = container.querySelector('#btn-transfer-line');
-            if (isEmpty || lineIndex === null) {
-                overlayTitle.textContent = '+ Termék hozzáadása';
-                container.querySelector('#le-euro').value = '0';
-                container.querySelector('#le-norm').value = '0';
-                leProduct.value = '';
-                leProductId.value = '';
-                ['#le-reference', '#le-customer', '#le-destination', '#le-comment', '#le-unit', '#le-custorder'].forEach(id => {
-                    container.querySelector(id).value = '';
-                });
-                ['#le-weight', '#le-price-eur', '#le-price-bcn', '#le-reloading', '#le-transport-bcn'].forEach(id => {
-                    container.querySelector(id).value = '0';
-                });
-                container.querySelector('#le-truck-num').value = '0';
-                transferBtn.style.display = 'none'; // Új sornál nem kell áthelyezés gomb
-                editingLineDbId = null;
-            } else {
-                overlayTitle.textContent = `✏️ Termék szerkesztése (${lineIndex + 1}. sor)`;
-                container.querySelector('#le-euro').value = l.euro_palets;
-                container.querySelector('#le-norm').value = l.normal_palets;
-                leProduct.value = l.productName || '';
-                leProductId.value = l.product_id || '';
-                container.querySelector('#le-reference').value = l.albaran_number || '';
-                container.querySelector('#le-customer').value = l.customer || '';
-                container.querySelector('#le-destination').value = l.destination || '';
-                container.querySelector('#le-comment').value = l.comment || '';
-                container.querySelector('#le-weight').value = l.gross_weight_kg;
-                container.querySelector('#le-price-eur').value = l.price_eur;
-                container.querySelector('#le-price-bcn').value = l.price_bcn_eur;
-                container.querySelector('#le-unit').value = l.unit || '';
-                container.querySelector('#le-reloading').value = l.reloading_per_plt;
-                container.querySelector('#le-transport-bcn').value = l.transport_bcn_per_plt;
-                container.querySelector('#le-custorder').value = l.customer_order_no || '';
-                container.querySelector('#le-truck-num').value = parseInt(l.truck_number_per) || 0;
-                // Meglévő sorhoz Áthelyezés gomb – csak akkor, ha az adatbázisban már rögzített sor
-                editingLineDbId = l._dbId || null;
-                if (editingLineDbId && !isNew && !currentShipmentIsLoaded) {
-                    transferBtn.style.display = 'inline-flex';
-                } else {
-                    transferBtn.style.display = 'none';
-                }
-            }
-            overlay.style.display = 'flex';
-            leProduct.focus();
-        }
-
-        function closeLineOverlay() {
-            overlay.style.display = 'none';
-            editingLineIndex = null;
-        }
-
-        overlay.addEventListener('click', (e) => { if (e.target === overlay) closeLineOverlay(); });
-        container.querySelector('#btn-line-overlay-close').addEventListener('click', closeLineOverlay);
-        container.querySelector('#btn-line-cancel').addEventListener('click', closeLineOverlay);
-
-        // ===== MENTÉS A POPUPBAN =====
-        container.querySelector('#btn-line-save').addEventListener('click', () => {
-            const pName = leProduct.value.trim();
-            if (!pName) { alert('A Products (termék) mező megadása kötelező!'); return; }
-
-            const lineData = {
-                product_id: leProductId.value || null,
-                productName: pName,
-                euro_palets: parseFloat(container.querySelector('#le-euro').value) || 0,
-                normal_palets: parseFloat(container.querySelector('#le-norm').value) || 0,
-                albaran_number: container.querySelector('#le-reference').value.trim(),
-                customer: container.querySelector('#le-customer').value.trim(),
-                destination: container.querySelector('#le-destination').value.trim(),
-                comment: container.querySelector('#le-comment').value.trim(),
-                gross_weight_kg: parseFloat(container.querySelector('#le-weight').value) || 0,
-                price_eur: parseFloat(container.querySelector('#le-price-eur').value) || 0,
-                price_bcn_eur: parseFloat(container.querySelector('#le-price-bcn').value) || 0,
-                unit: container.querySelector('#le-unit').value.trim(),
-                reloading_per_plt: parseFloat(container.querySelector('#le-reloading').value) || 0,
-                transport_bcn_per_plt: parseFloat(container.querySelector('#le-transport-bcn').value) || 0,
-                customer_order_no: container.querySelector('#le-custorder').value.trim(),
-                truck_number_per: parseInt(container.querySelector('#le-truck-num').value) || 0
-            };
-
-            // A célsort mindig felülírjuk (editingLineIndex az adott sor, akár üres volt)
-            if (editingLineIndex !== null) {
-                if (lineData.euro_palets === 0 && lineData.normal_palets === 0) {
-                    lines.splice(editingLineIndex, 1);
-                    normalizeLines();
-                } else {
-                    const oldLine = lines[editingLineIndex] || {};
-                    lines[editingLineIndex] = { ...oldLine, ...lineData };
-                    delete lines[editingLineIndex]._empty;
-                }
-            } else {
-                // Ha nincs index (nem kellene előfordulni), az első üres sorba tesszük
-                const emptyIdx = lines.findIndex(l => l._empty);
-                if (emptyIdx >= 0) {
-                    lines[emptyIdx] = lineData;
-                } else {
-                    lines.push(lineData);
-                    normalizeLines();
-                }
-            }
-
-            closeLineOverlay();
-            renderTable();
         });
 
         // ===== TÉTEL ÁTHELYEZÉSE GOMB =====
@@ -1049,7 +859,6 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
 
         function closeTransferPopup() { transferOverlay.style.display = 'none'; }
 
-        container.querySelector('#btn-transfer-line').addEventListener('click', openTransferPopup);
         container.querySelector('#btn-transfer-close').addEventListener('click', closeTransferPopup);
         container.querySelector('#btn-transfer-cancel').addEventListener('click', closeTransferPopup);
         transferOverlay.addEventListener('click', e => { if (e.target === transferOverlay) closeTransferPopup(); });
