@@ -333,7 +333,7 @@ module.exports = router;
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const db = require('../config/db');
+    const db = require('../db/db');
     const deleted = await db('transport_orders').where({ id }).del();
     if (deleted) { res.json({ status: 'success' }); } else { res.status(404).json({ status: 'error', message: 'Not found' }); }
   } catch (error) {
