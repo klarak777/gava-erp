@@ -334,8 +334,68 @@ router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const db = require('../db/db');
+    const path = require('path');
+    const fs = require('fs');
+
+    // 1. Rekord lekérdezése a file_path miatt
+    const record = await db('transport_orders').where({ id }).first();
+    if (!record) {
+      return res.status(404).json({ status: 'error', message: 'Not found' });
+    }
+
+    // 2. Rekord törlése az adatbázisból
     const deleted = await db('transport_orders').where({ id }).del();
-    if (deleted) { res.json({ status: 'success' }); } else { res.status(404).json({ status: 'error', message: 'Not found' }); }
+    
+    if (deleted) {
+      // 3. Ha sikeres az adatbázis törlés, töröljük a fizikai fájlt is
+      if (record.file_path) {
+        const filePath = record.file_path;
+        const raktarPath = process.env.RAKTAR_PATH;
+        let resolvedPath = filePath;
+        
+        if (raktarPath && filePath) {
+          const normalizedFilePath = filePath.replace(/\\/g, '/');
+          const raktarPrefixPatterns = [
+            /^\/\/192\.168\.\d+\.\d+\/raktar\//i,
+            /^\\\\192\.168\.\d+\.\d+\\raktar\\/i,
+            /^[A-Z]:\\raktar\\/i,
+          ];
+          let replaced = false;
+          for (const pattern of raktarPrefixPatterns) {
+            if (pattern.test(filePath) || pattern.test(normalizedFilePath)) {
+              resolvedPath = path.join(raktarPath, normalizedFilePath.replace(pattern, ''));
+              replaced = true;
+              break;
+            }
+          }
+          if (!replaced && normalizedFilePath.includes('/MI Teszt/')) {
+            const idx = normalizedFilePath.indexOf('/MI Teszt/');
+            resolvedPath = path.join(raktarPath, normalizedFilePath.substring(idx));
+          } else if (!replaced && normalizedFilePath.includes('MI Teszt')) {
+            const idx = normalizedFilePath.indexOf('MI Teszt');
+            resolvedPath = path.join(raktarPath, normalizedFilePath.substring(idx));
+          } else if (!replaced && normalizedFilePath.includes('/Fuvarok/')) {
+            const idx = normalizedFilePath.indexOf('/Fuvarok/');
+            resolvedPath = path.join(raktarPath, normalizedFilePath.substring(idx));
+          }
+        }
+        
+        // Fájl törlése, ha létezik
+        if (fs.existsSync(resolvedPath)) {
+          try {
+            fs.unlinkSync(resolvedPath);
+            console.log(`Fájl fizikailag is törölve lett: ${resolvedPath}`);
+          } catch (fileErr) {
+            console.error(`Nem sikerült törölni a fájlt fizikailag: ${resolvedPath}`, fileErr);
+          }
+        } else {
+          console.log(`Törlés figyelmeztetés: A fájl fizikailag nem található: ${resolvedPath}`);
+        }
+      }
+      res.json({ status: 'success' }); 
+    } else { 
+      res.status(404).json({ status: 'error', message: 'Not found' }); 
+    }
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });
   }
