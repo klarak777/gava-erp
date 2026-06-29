@@ -1,3 +1,5 @@
+const path = require('path');
+
 /**
  * Központi fuvarozó konfiguráció.
  * 
@@ -381,10 +383,10 @@ function generateTransportOrderPath(seasonCode, transporterName, orderNumber, ra
   let filePath;
   if (seasonCode === '25-26') {
     // 2026-06-26-tól az új MI Teszt mappa struktúra
-    filePath = `${basePath}\\MI Teszt\\ERP Fuvarm\\25-26\\${folder}\\${fileName}`;
+    filePath = path.join(basePath, 'MI Teszt', 'ERP Fuvarm', '25-26', folder, fileName);
   } else {
     // Korábbi szezonok: régi elérési út
-    filePath = `${basePath}\\Fuvarok\\Fuvarmegbízás\\${seasonCode}\\${folder}\\${fileName}`;
+    filePath = path.join(basePath, 'Fuvarok', 'Fuvarmegbízás', seasonCode, folder, fileName);
   }
   return { fileName, filePath };
 }
@@ -417,11 +419,11 @@ function generateEkaerPath(seasonCode, orderNumber, plateNumber, raktarPath) {
     // 2026-06-26-tól az új MI Teszt mappa struktúra
     // orderNumber-t biztonságossá tesszük (szóközök eltávolítása)
     const safeOrderNum = orderNumber.replace(/\s+/g, '');
-    filePath = `${basePath}\\MI Teszt\\ERP EKAER\\EKAEREK 2025-2026\\${safeOrderNum}\\${fileName}`;
+    filePath = path.join(basePath, 'MI Teszt', 'ERP EKAER', 'EKAEREK 2025-2026', safeOrderNum, fileName);
   } else {
     // Korábbi szezonok: régi elérési út
     const ekaerSeasonFolder = getEkaerSeasonFolder(seasonCode);
-    filePath = `${basePath}\\Fuvarok\\EKAEREK\\${ekaerSeasonFolder}\\${orderNumber}\\${fileName}`;
+    filePath = path.join(basePath, 'Fuvarok', 'EKAEREK', ekaerSeasonFolder, orderNumber, fileName);
   }
   return { fileName, filePath };
 }
