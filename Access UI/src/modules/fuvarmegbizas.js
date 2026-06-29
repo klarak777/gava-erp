@@ -65,19 +65,6 @@ export function renderFuvarmegbizas(container, windowManager) {
                     '<tbody id="fuvm-tbody"></tbody>' +
                 '</table>' +
             '</div>' +
-        '</div>' +
-
-        // Delete Confirmation Modal
-        '<div id="modal-delete-confirm" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">' +
-            '<div style="background:#fff; padding:28px; border-radius:12px; width:360px; box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
-                '<h3 style="margin-bottom:16px; color:#ef4444;">⚠️ Megbízás törlése</h3>' +
-                '<p style="margin-bottom:24px; color:#1e293b;">Biztosan törölni szeretné a kiválasztott fuvarmegbízást?</p>' +
-                '<p id="del-doc-name" style="font-weight:bold; margin-bottom:24px; color:#475569; word-break:break-all;"></p>' +
-                '<div style="display:flex; justify-content:flex-end; gap:10px;">' +
-                    '<button class="secondary-btn btn-close-modal" data-modal="modal-delete-confirm">Mégsem</button>' +
-                    '<button class="primary-btn" id="btn-confirm-delete" style="background:#ef4444; border-color:#dc2626;">Törlés</button>' +
-                '</div>' +
-            '</div>' +
         '</div>';
 
     container.appendChild(view);
@@ -90,7 +77,6 @@ export function renderFuvarmegbizas(container, windowManager) {
     var tbody = view.querySelector('#fuvm-tbody');
     var btnOpenDoc = view.querySelector('#btn-open-doc');
     var btnDeleteDoc = view.querySelector('#btn-delete-doc');
-    var btnConfirmDelete = view.querySelector('#btn-confirm-delete');
 
     var selectedRowId = null;
 
@@ -309,37 +295,26 @@ export function renderFuvarmegbizas(container, windowManager) {
         }
         var row = appData.find(function(x) { return x.id === selectedRowId; });
         if (!row) return;
-        view.querySelector('#del-doc-name').textContent = row.docName;
-        view.querySelector('#modal-delete-confirm').style.display = 'flex';
-    });
 
-    btnConfirmDelete.addEventListener('click', function() {
-        if (selectedRowId) {
-            var row = appData.find(function(x) { return x.id === selectedRowId; });
-            fetch('/api/v1/transport-orders/' + selectedRowId, { method: 'DELETE' })
-                .then(function(res) { return res.json(); })
-                .then(function(data) {
-                    if (data.status === 'success') {
-                        appData = appData.filter(function(x) { return x.id !== selectedRowId; });
-                        selectedRowId = null;
-                        view.querySelector('#modal-delete-confirm').style.display = 'none';
-                        filter();
-                    } else {
-                        alert('Hiba a törlés során: ' + (data.message || 'Ismeretlen hiba'));
-                    }
-                })
-                .catch(function(err) {
-                    alert('Hálózati hiba a törlés során.');
-                });
+        if (!confirm('Biztosan törölni szeretné a kiválasztott fuvarmegbízást?\n\n' + row.docName)) {
+            return;
         }
-    });
 
-    view.querySelectorAll('.btn-close-modal').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            var modalId = e.currentTarget.getAttribute('data-modal');
-            var m = view.querySelector('#' + modalId);
-            if (m) m.style.display = 'none';
-        });
+        fetch('/api/v1/transport-orders/' + selectedRowId, { method: 'DELETE' })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.status === 'success') {
+                    appData = appData.filter(function(x) { return x.id !== selectedRowId; });
+                    selectedRowId = null;
+                    filter();
+                    alert('Fuvarmegbízás sikeresen törölve.');
+                } else {
+                    alert('Hiba a törlés során: ' + (data.message || 'Ismeretlen hiba'));
+                }
+            })
+            .catch(function(err) {
+                alert('Hálózati hiba a törlés során.');
+            });
     });
 
     // --- INICIALIZÁLÁS ---
