@@ -347,6 +347,10 @@ router.delete('/:id', async (req, res) => {
     const deleted = await db('transport_orders').where({ id }).del();
     
     if (deleted) {
+      let fileDeleted = false;
+      let fileError = null;
+      let usedPath = null;
+
       // 3. Ha sikeres az adatbázis törlés, töröljük a fizikai fájlt is
       if (record.file_path) {
         const filePath = record.file_path;
@@ -380,19 +384,23 @@ router.delete('/:id', async (req, res) => {
           }
         }
         
+        usedPath = resolvedPath;
         // Fájl törlése, ha létezik
         if (fs.existsSync(resolvedPath)) {
           try {
             fs.unlinkSync(resolvedPath);
+            fileDeleted = true;
             console.log(`Fájl fizikailag is törölve lett: ${resolvedPath}`);
           } catch (fileErr) {
+            fileError = fileErr.message;
             console.error(`Nem sikerült törölni a fájlt fizikailag: ${resolvedPath}`, fileErr);
           }
         } else {
+          fileError = 'Fájl fizikailag nem található ezen az útvonalon';
           console.log(`Törlés figyelmeztetés: A fájl fizikailag nem található: ${resolvedPath}`);
         }
       }
-      res.json({ status: 'success' }); 
+      res.json({ status: 'success', file_deleted: fileDeleted, file_error: fileError, resolved_path: usedPath }); 
     } else { 
       res.status(404).json({ status: 'error', message: 'Not found' }); 
     }
