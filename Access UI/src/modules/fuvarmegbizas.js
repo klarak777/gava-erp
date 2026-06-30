@@ -307,7 +307,12 @@ export function renderFuvarmegbizas(container, windowManager) {
                     appData = appData.filter(function(x) { return x.id !== selectedRowId; });
                     selectedRowId = null;
                     filter();
-                    alert('Fuvarmegbízás sikeresen törölve.');
+                    
+                    if (data.file_error) {
+                        alert('Fuvarmegbízás törölve az adatbázisból, DE a fizikai fájlt nem sikerült törölni:\n' + data.file_error);
+                    } else {
+                        alert('Fuvarmegbízás és a fizikai fájl is sikeresen törölve.');
+                    }
                 } else {
                     alert('Hiba a törlés során: ' + (data.message || 'Ismeretlen hiba'));
                 }
