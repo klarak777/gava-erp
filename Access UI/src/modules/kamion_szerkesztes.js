@@ -39,8 +39,9 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
 
         // ===== HTML =====
         container.innerHTML = `
-            <!-- SCROLLOZHATÓ tartalom -->
-            <div id="ks-scroll-wrap" style="flex:1; overflow:hidden; padding:12px 14px; display:flex; flex-direction:column; gap:10px;">
+            <div style="width: 133.333%; height: 133.333%; transform: scale(0.75); transform-origin: top left; display: flex; flex-direction: column;">
+                <!-- SCROLLOZHATÓ tartalom -->
+                <div id="ks-scroll-wrap" style="flex:1; overflow:hidden; padding:12px 14px; display:flex; flex-direction:column; gap:10px;">
 
                 <!-- FEJLÉC ADATOK -->
                 <div style="flex-shrink:0; display:flex; gap:8px; flex-wrap:wrap; padding:12px 14px; background:#fff; border-radius:8px; border:1px solid var(--border); box-shadow:0 1px 3px rgba(0,0,0,0.05); align-items:flex-start;">
@@ -102,7 +103,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                             <input type="date" id="km-arr-date" class="access-control-input"
                                 style="font-size:12px; padding:4px 8px; height:30px; width:100%;">
                         </div>
-                        <div style="display:flex; flex-direction:column; gap:3px; flex:1; min-width:110px; max-width:145px;">
+                        <div style="display:flex; flex-direction:column; gap:3px; flex:1; min-width:110px; max-width:145px; margin-left:auto;">
                             <label style="font-size:11px; font-weight:600; color:var(--text-main);">Transport price:</label>
                             <input type="number" id="km-price" class="access-control-input"
                                 style="font-size:12px; padding:4px 8px; height:30px; width:100%;" placeholder="0.00" step="0.01">
@@ -134,12 +135,12 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                                     <th style="min-width:100px;">Customer</th>
                                     <th style="min-width:100px;">Destination</th>
                                     <th style="min-width:110px;">Comment</th>
-                                    <th style="text-align:right; min-width:80px;">Gross weight (kg)</th>
-                                    <th style="text-align:right; min-width:80px;">Price (EUR)</th>
-                                    <th style="text-align:right; min-width:80px;">Price BCN (EUR)</th>
-                                    <th style="min-width:55px;">Unit</th>
-                                    <th style="text-align:right; min-width:85px;">Reloading/plt</th>
-                                    <th style="text-align:right; min-width:100px;">Transport BCN/plt</th>
+                                    <th style="text-align:right; min-width:55px;">Gross weight (kg)</th>
+                                    <th style="text-align:right; min-width:55px;">Price (EUR)</th>
+                                    <th style="text-align:right; min-width:55px;">Price BCN (EUR)</th>
+                                    <th style="min-width:35px;">Unit</th>
+                                    <th style="text-align:right; min-width:55px;">Reloading/plt</th>
+                                    <th style="text-align:right; min-width:65px;">Transport BCN/plt</th>
                                     <th style="min-width:110px;">Customer order N°</th>
                                     <th style="text-align:center; min-width:70px;">Truck N°/plt</th>
                                 </tr>
@@ -213,6 +214,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                         <button class="primary-btn" id="btn-transfer-confirm" style="background:#f59e0b; border-color:#d97706;">🔀 Áthelyezés</button>
                     </div>
                 </div>
+            </div>
             </div>
         `;
 
@@ -576,17 +578,17 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                     <td><input type="text" class="cell-edit" data-field="comment" data-index="${index}"
                         style="${cellStyle} min-width:100px;" value="${isEmpty ? '' : escHtml(l.comment)}"></td>
                     <td><input type="number" class="cell-edit" data-field="gross_weight_kg" data-index="${index}"
-                        style="${numCellStyle} width:72px;" value="${isEmpty ? '' : escHtml(l.gross_weight_kg)}" min="0" placeholder="0"></td>
+                        style="${numCellStyle} width:50px;" value="${isEmpty ? '' : escHtml(l.gross_weight_kg)}" min="0" placeholder="0"></td>
                     <td><input type="number" class="cell-edit" data-field="price_eur" data-index="${index}"
-                        style="${numCellStyle} width:72px;" value="${isEmpty ? '' : escHtml(l.price_eur)}" min="0" step="0.01" placeholder="0"></td>
+                        style="${numCellStyle} width:50px;" value="${isEmpty ? '' : escHtml(l.price_eur)}" min="0" step="0.01" placeholder="0"></td>
                     <td><input type="number" class="cell-edit" data-field="price_bcn_eur" data-index="${index}"
-                        style="${numCellStyle} width:72px;" value="${isEmpty ? '' : escHtml(l.price_bcn_eur)}" min="0" step="0.01" placeholder="0"></td>
+                        style="${numCellStyle} width:50px;" value="${isEmpty ? '' : escHtml(l.price_bcn_eur)}" min="0" step="0.01" placeholder="0"></td>
                     <td><input type="text" class="cell-edit" data-field="unit" data-index="${index}"
-                        style="${cellStyle} width:48px;" value="${isEmpty ? '' : escHtml(l.unit)}"></td>
+                        style="${cellStyle} width:30px;" value="${isEmpty ? '' : escHtml(l.unit)}"></td>
                     <td><input type="number" class="cell-edit" data-field="reloading_per_plt" data-index="${index}"
-                        style="${numCellStyle} width:72px;" value="${isEmpty ? '' : escHtml(l.reloading_per_plt)}" min="0" step="0.01" placeholder="0"></td>
+                        style="${numCellStyle} width:50px;" value="${isEmpty ? '' : escHtml(l.reloading_per_plt)}" min="0" step="0.01" placeholder="0"></td>
                     <td><input type="number" class="cell-edit" data-field="transport_bcn_per_plt" data-index="${index}"
-                        style="${numCellStyle} width:80px;" value="${isEmpty ? '' : escHtml(l.transport_bcn_per_plt)}" min="0" step="0.01" placeholder="0"></td>
+                        style="${numCellStyle} width:60px;" value="${isEmpty ? '' : escHtml(l.transport_bcn_per_plt)}" min="0" step="0.01" placeholder="0"></td>
                     <td><input type="text" class="cell-edit" data-field="customer_order_no" data-index="${index}"
                         style="${cellStyle} min-width:100px;" value="${isEmpty ? '' : escHtml(l.customer_order_no)}"></td>
                     <td><input type="number" class="cell-edit" data-field="truck_number_per" data-index="${index}"

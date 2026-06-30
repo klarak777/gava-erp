@@ -63,11 +63,11 @@ export function renderRakodas(container, windowManager) {
 
         // Áru igény szűrők
         '<div class="access-form-view" style="padding:10px 18px; margin-bottom:0; display:flex; flex-wrap:wrap; gap:10px; align-items:end;">' +
-        '<div style="flex:1; min-width:120px; max-width:200px; position:relative;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Product</label><input type="text" id="filter-aru-product" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Product..."><div id="filter-aru-product-dropdown" style="display:none; position:absolute; background:#fff; border:1px solid #ccc; z-index:200; width:100%; max-height:150px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); top:46px; border-radius:4px;"></div></div>' +
-        '<div style="flex:1; min-width:120px; max-width:200px; position:relative;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Reference</label><input type="text" id="filter-aru-partner" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Reference..."><div id="filter-aru-partner-dropdown" style="display:none; position:absolute; background:#fff; border:1px solid #ccc; z-index:200; width:100%; max-height:150px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); top:46px; border-radius:4px;"></div></div>' +
-        '<div style="flex:1; min-width:120px; max-width:200px; position:relative;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Customer</label><input type="text" id="filter-aru-customer" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Customer..."><div id="filter-aru-customer-dropdown" style="display:none; position:absolute; background:#fff; border:1px solid #ccc; z-index:200; width:100%; max-height:150px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); top:46px; border-radius:4px;"></div></div>' +
-        '<div style="flex:1; min-width:120px; max-width:200px;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Destination</label><input type="text" id="filter-aru-dest" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Destination..."></div>' +
-        '<div style="flex:1; min-width:120px; max-width:200px;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Comment</label><input type="text" id="filter-aru-comment" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Comment..."></div>' +
+        '<div style="flex:1; min-width:120px; max-width:200px;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Product</label><input type="text" id="filter-aru-product" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Product..." autocomplete="off"></div>' +
+        '<div style="flex:1; min-width:120px; max-width:200px;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Reference</label><input type="text" id="filter-aru-partner" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Reference..." autocomplete="off"></div>' +
+        '<div style="flex:1; min-width:120px; max-width:200px;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Customer</label><input type="text" id="filter-aru-customer" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Customer..." autocomplete="off"></div>' +
+        '<div style="flex:1; min-width:120px; max-width:200px;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Destination</label><input type="text" id="filter-aru-dest" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Destination..." autocomplete="off"></div>' +
+        '<div style="flex:1; min-width:120px; max-width:200px;"><label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Comment</label><input type="text" id="filter-aru-comment" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Comment..." autocomplete="off"></div>' +
         '<div style="flex:none;"><button class="secondary-btn btn-dense" id="btn-aru-clear-filters" style="font-size:12px; height:28px; line-height:normal; padding:0 12px; box-sizing:border-box;">Szűrők törlése</button></div>' +
         '</div>' +
 
@@ -98,7 +98,7 @@ export function renderRakodas(container, windowManager) {
         '<td style="text-align:center; padding:6px 4px; color:#334155;">Össz:</td>' +
         '<td id="aru-sum-euro" style="text-align:center; padding:6px 4px; color:#0369a1;" title="Össz. Euro plt">0.0</td>' +
         '<td id="aru-sum-normal" style="text-align:center; padding:6px 4px; color:#7c3aed;" title="Össz. Norm plt">0.0</td>' +
-        '<td colspan="6"></td>' +
+        '<td colspan="6" id="aru-sum-trucks" style="text-align:right; padding:6px 14px; color:#ea580c; font-size:11px;">Szükséges kamion: 0.00</td>' +
         '</tr>' +
         '</tfoot>' +
         '</table>' +
@@ -220,9 +220,7 @@ export function renderRakodas(container, windowManager) {
             } catch (e) { customersList = []; }
         }
         
-        setupFilterAutocomplete(inpAruProduct, view.querySelector('#filter-aru-product-dropdown'), productsList, 'name');
-        setupFilterAutocomplete(inpAruPartner, view.querySelector('#filter-aru-partner-dropdown'), referencesList, 'name');
-        setupFilterAutocomplete(inpAruCustomer, view.querySelector('#filter-aru-customer-dropdown'), customersList, 'name');
+        // No autocomplete dropdown setup needed, user prefers plain typing search
     }
     
     initLists();
@@ -397,8 +395,14 @@ export function renderRakodas(container, windowManager) {
 
         const elSumEuro = view.querySelector('#aru-sum-euro') || document.getElementById('aru-sum-euro');
         const elSumNormal = view.querySelector('#aru-sum-normal') || document.getElementById('aru-sum-normal');
+        const elSumTrucks = view.querySelector('#aru-sum-trucks') || document.getElementById('aru-sum-trucks');
         if (elSumEuro) elSumEuro.textContent = sumEuro.toFixed(1);
         if (elSumNormal) elSumNormal.textContent = sumNormal.toFixed(1);
+        if (elSumTrucks) {
+            const totalPallets = sumEuro + sumNormal;
+            const requiredTrucks = Math.ceil(totalPallets / 33);
+            elSumTrucks.textContent = 'Szükséges kamion: ' + requiredTrucks + ' db';
+        }
 
         if (notFulfilled.length === 0) {
             aruTbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:12px; color:#94a3b8; font-size:10px;">Nincs kielégítetlen áru igény</td></tr>';

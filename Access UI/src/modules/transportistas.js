@@ -22,7 +22,10 @@ export function renderTransportistas(container) {
         <div class="access-form-view" style="padding:10px 18px; margin-bottom:10px;">
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
                 <strong style="font-size:13px;">Keresés és Szűrés</strong>
-                <button class="secondary-btn btn-dense" id="btn-clear-filters" style="font-size:12px; padding:5px 12px;">Szűrők törlése</button>
+                <div style="display:flex; gap:10px;">
+                    <button class="primary-btn btn-dense" id="btn-save-transportistas" style="font-size:12px; padding:5px 12px;" disabled>💾 Mentés</button>
+                    <button class="secondary-btn btn-dense" id="btn-clear-filters" style="font-size:12px; padding:5px 12px;">Szűrők törlése</button>
+                </div>
             </div>
 
             <!-- Sor 1: Jelölőkapcsolók -->
@@ -89,7 +92,10 @@ export function renderTransportistas(container) {
             </div>
         </div>
     `;
-    container.appendChild(filterPanel);
+    
+    const scaleWrapper = document.createElement('div');
+    scaleWrapper.style.cssText = 'width: 133.333%; height: 133.333%; transform: scale(0.75); transform-origin: top left; display: flex; flex-direction: column;';
+    scaleWrapper.appendChild(filterPanel);
 
     // ============================================================
     // 2. KONTÉNER: Táblázat (flex:1, SAJÁT vízszintes+függőleges gördítés)
@@ -120,9 +126,9 @@ export function renderTransportistas(container) {
                             <th style="min-width:120px; text-align:right;">Transport price</th>
                             <th style="min-width:105px;">Arrival date</th>
                             <th style="min-width:85px; text-align:center;">Bevételezve</th>
-                            <th style="min-width:55px; text-align:right;">K-B</th>
-                            <th style="min-width:55px; text-align:right;">B</th>
-                            <th style="min-width:55px; text-align:right;">T</th>
+                            <th style="min-width:110px; text-align:right;">K-B</th>
+                            <th style="min-width:110px; text-align:right;">B</th>
+                            <th style="min-width:110px; text-align:right;">T</th>
                             <th style="min-width:190px;">Comment</th>
                             <th style="min-width:105px; text-align:right;">Amount HUF</th>
                             <th style="min-width:135px;">Invoice number</th>
@@ -135,10 +141,13 @@ export function renderTransportistas(container) {
             </div>
         </div>
     `;
-    container.appendChild(tableContainer);
+    scaleWrapper.appendChild(tableContainer);
+    container.appendChild(scaleWrapper);
 
     // --- Élő Adatok helye ---
     let tableData = [];
+    let dirtyRows = {};
+    let isDirty = false;
 
     // --- Vezérlők lekérése ---
     const tbody = tableContainer.querySelector('#transport-tbody');
@@ -152,14 +161,28 @@ export function renderTransportistas(container) {
     const selFuvarozo = filterPanel.querySelector('#filter-fuvarozo');
     const selEv = filterPanel.querySelector('#filter-ev');
     const btnClear = filterPanel.querySelector('#btn-clear-filters');
+    const btnSave = filterPanel.querySelector('#btn-save-transportistas');
 
     function getYear(dateStr) {
         const m = (dateStr || '').match(/^\d{4}/);
         return m ? m[0] : '';
     }
 
+    function escHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
     function renderTable(data) {
         tbody.innerHTML = '';
+        const inputStyle = 'width:100%; box-sizing:border-box; border:1px solid transparent; background:transparent; font-family:inherit; font-size:inherit; padding:2px; text-align:inherit;';
+        const inputFocusStyle = 'outline:none; border-bottom:1px solid var(--primary); background:rgba(255,255,255,0.8);';
+
         data.forEach(row => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -167,20 +190,20 @@ export function renderTransportistas(container) {
                 <td style="white-space:nowrap;">${row.loadingPlace}</td>
                 <td><span class="badge" style="background:var(--bg-main);color:var(--text-main);border:1px solid var(--border);font-size:11px;">${row.orderNumber}</span></td>
                 <td style="white-space:nowrap;font-weight:600;">${row.transporter}</td>
-                <td style="white-space:nowrap;font-family:monospace;font-size:12px;">${row.plateNumber}</td>
+                <td style="white-space:nowrap;font-family:monospace;font-size:14px;">${row.plateNumber}</td>
                 <td style="text-align:right;white-space:nowrap;">${row.transportPrice}</td>
                 <td style="white-space:nowrap;">${row.arrivalDate}</td>
                 <td style="text-align:center;">
                     <input type="checkbox" class="bev-chk" data-id="${row.id}" ${row.bevetelezve ? 'checked' : ''}
                         style="width:15px;height:15px;cursor:pointer;accent-color:var(--primary);">
                 </td>
-                <td style="text-align:right;white-space:nowrap;">${row.kb}</td>
-                <td style="text-align:right;white-space:nowrap;">${row.b}</td>
-                <td style="text-align:right;white-space:nowrap;">${row.t}</td>
-                <td style="font-size:12px;color:var(--text-muted);max-width:190px;overflow:hidden;text-overflow:ellipsis;">${row.comment}</td>
-                <td style="text-align:right;white-space:nowrap;">${row.amountHuf}</td>
-                <td style="white-space:nowrap;">${row.invoiceNumber}</td>
-                <td style="text-align:right;white-space:nowrap;font-weight:600;">${row.amountEur}</td>
+                <td style="text-align:right;white-space:nowrap;"><input type="number" step="any" class="edit-input" data-field="kb" data-id="${row.id}" style="${inputStyle} text-align:right;" value="${escHtml(row.kb)}"></td>
+                <td style="text-align:right;white-space:nowrap;"><input type="number" step="any" class="edit-input" data-field="b" data-id="${row.id}" style="${inputStyle} text-align:right;" value="${escHtml(row.b)}"></td>
+                <td style="text-align:right;white-space:nowrap;"><input type="number" step="any" class="edit-input" data-field="t" data-id="${row.id}" style="${inputStyle} text-align:right;" value="${escHtml(row.t)}"></td>
+                <td style="font-size:12px;color:var(--text-muted);"><input type="text" class="edit-input" data-field="comment" data-id="${row.id}" style="${inputStyle}" value="${escHtml(row.comment)}"></td>
+                <td style="text-align:right;white-space:nowrap;"><input type="number" step="any" class="edit-input" data-field="invoice_amount_huf" data-id="${row.id}" style="${inputStyle} text-align:right;" value="${escHtml(row.amountHuf)}"></td>
+                <td style="white-space:nowrap;"><input type="text" class="edit-input" data-field="invoice_number" data-id="${row.id}" style="${inputStyle}" value="${escHtml(row.invoiceNumber)}"></td>
+                <td style="text-align:right;white-space:nowrap;font-weight:600;"><input type="number" step="any" class="edit-input" data-field="invoice_amount_eur" data-id="${row.id}" style="${inputStyle} text-align:right;" value="${escHtml(row.amountEur)}"></td>
                 <td style="text-align:center;">
                     <button class="delete-fuvar-btn" data-id="${row.id}" title="Törlés" style="background:transparent;border:none;cursor:pointer;font-size:14px;">🗑️</button>
                 </td>
@@ -193,6 +216,26 @@ export function renderTransportistas(container) {
             chk.addEventListener('change', e => {
                 const id = parseInt(e.target.dataset.id);
                 // Később itt API hívással mentjük az állapotot
+            });
+        });
+
+        // Input hover/focus stílus és változás figyelés
+        tbody.querySelectorAll('.edit-input').forEach(input => {
+            input.addEventListener('focus', () => {
+                input.style.borderBottom = '1px solid var(--primary)';
+                input.style.background = 'rgba(255,255,255,0.8)';
+            });
+            input.addEventListener('blur', () => {
+                input.style.borderBottom = '1px solid transparent';
+                input.style.background = 'transparent';
+            });
+            input.addEventListener('input', (e) => {
+                const id = e.target.dataset.id;
+                const field = e.target.dataset.field;
+                if (!dirtyRows[id]) dirtyRows[id] = { id: id };
+                dirtyRows[id][field] = e.target.value;
+                isDirty = true;
+                btnSave.disabled = false;
             });
         });
 
@@ -258,6 +301,39 @@ export function renderTransportistas(container) {
     chkBevVar.addEventListener('change', filterData);
     chkHiany.addEventListener('change', filterData);
 
+    btnSave.addEventListener('click', async () => {
+        if (!isDirty) return;
+        const updates = Object.values(dirtyRows);
+        
+        btnSave.disabled = true;
+        btnSave.textContent = 'Mentés...';
+
+        try {
+            const res = await fetch('/api/v1/shipments/bulk-update', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates)
+            });
+
+            if (res.ok) {
+                alert('Sikeres mentés!');
+                dirtyRows = {};
+                isDirty = false;
+                await loadRealData();
+            } else {
+                const err = await res.json();
+                alert('Mentés hiba: ' + (err.error || 'Ismeretlen hiba'));
+                btnSave.disabled = false;
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Hálózati hiba mentéskor!');
+            btnSave.disabled = false;
+        } finally {
+            btnSave.textContent = '💾 Mentés';
+        }
+    });
+
     btnClear.addEventListener('click', () => {
         inpOrderNum.value = '';
         inpKamion.value = '';
@@ -322,4 +398,42 @@ export function renderTransportistas(container) {
 
     loadTransporters();
     loadRealData();
+
+    // --- Navigáció védelem ---
+    function unsavedWarningHandler(e) {
+        if (isDirty) {
+            // Ellenőrizzük, hogy dock/menü ikonra kattintott-e
+            const isNav = e.target.closest('.nav-item, .nav-group-button, .nav-category-header, .mdi-close-btn');
+            if (isNav) {
+                const conf = confirm('A változásokat szeretné menteni mielőtt kilép?');
+                if (conf) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    btnSave.click(); // Mentés indítása
+                } else {
+                    // Mégse mentünk, de elvetjük a módosításokat
+                    isDirty = false;
+                    dirtyRows = {};
+                }
+            }
+        }
+    }
+    
+    // Elkapjuk a kattintásokat a "capture" fázisban
+    document.addEventListener('click', unsavedWarningHandler, true);
+
+    // Külön cleanup funkció, ha a container megsemmisülne
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.removedNodes) {
+                mutation.removedNodes.forEach((node) => {
+                    if (node === container || node.contains(container)) {
+                        document.removeEventListener('click', unsavedWarningHandler, true);
+                        observer.disconnect();
+                    }
+                });
+            }
+        });
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
 }

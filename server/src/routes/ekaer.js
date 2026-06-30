@@ -7,10 +7,16 @@ const mammoth = require('mammoth');
 
 // Helper: Windows hálózati útvonal → Docker/Linux útvonal feloldása
 function resolveFilePath(filePath) {
-  const raktarPath = process.env.RAKTAR_PATH;
-  if (!raktarPath || !filePath) return filePath;
+  const raktarPath = process.env.RAKTAR_PATH || '\\\\192.168.1.5\\raktar';
+  if (!filePath) return filePath;
 
   const normalizedFilePath = filePath.replace(/\\/g, '/');
+
+  // Ha a Docker/Linux útvonal van az adatbázisban (/mnt/raktar), de mi Windows-on futunk
+  if (normalizedFilePath.startsWith('/mnt/raktar/')) {
+    return path.join(raktarPath, normalizedFilePath.replace('/mnt/raktar/', ''));
+  }
+
   const raktarPrefixPatterns = [
     /^\/\/192\.168\.\d+\.\d+\/raktar\//i,
     /^\\\\192\.168\.\d+\.\d+\\raktar\\/i,
@@ -111,6 +117,44 @@ router.get('/:id/preview', async (req, res) => {
     let resolvedPath = resolveFilePath(filePath);
 
     if (!fs.existsSync(resolvedPath)) {
+      // 1. Fallback: Hátha csak egy " OK" utótag lett utólag hozzáfűzve a mappához, VAGY a fájlnévben lettek szóközök
+      const pathInfo = path.parse(resolvedPath);
+      const parentDir = path.dirname(resolvedPath);
+      const parentDirName = path.basename(parentDir);
+      
+      let foundAlternative = false;
+
+      const checkDirectoryForDocx = async (dirPath) => {
+        if (fs.existsSync(dirPath)) {
+          const files = fs.readdirSync(dirPath);
+          const docxFiles = files.filter(f => f.endsWith('.docx') && !f.startsWith('~$'));
+          if (docxFiles.length === 1) {
+            resolvedPath = path.join(dirPath, docxFiles[0]);
+            await db('ekaer_records').where({ id }).update({ file_path: resolvedPath });
+            return true;
+          }
+        }
+        return false;
+      };
+
+      if (fs.existsSync(parentDir)) {
+        foundAlternative = await checkDirectoryForDocx(parentDir);
+      }
+      
+      if (!foundAlternative && !parentDirName.endsWith(' OK')) {
+        const okDir = path.join(path.dirname(parentDir), parentDirName + ' OK');
+        const okResolvedPath = path.join(okDir, pathInfo.base);
+        if (fs.existsSync(okResolvedPath)) {
+          resolvedPath = okResolvedPath;
+          await db('ekaer_records').where({ id }).update({ file_path: resolvedPath });
+          foundAlternative = true;
+        } else {
+          foundAlternative = await checkDirectoryForDocx(okDir);
+        }
+      }
+    }
+
+    if (!fs.existsSync(resolvedPath)) {
       // Fallback: próbáljuk meg dinamikusan generálni a helyes útvonalat
       const shipment = await db('shipments')
         .leftJoin('seasons', 'shipments.season_id', 'seasons.id')
@@ -187,7 +231,61 @@ router.get('/:id/download', async (req, res) => {
     let resolvedPath = resolveFilePath(filePath);
 
     if (!fs.existsSync(resolvedPath)) {
-      // Fallback: próbáljuk meg dinamikusan generálni a helyes útvonalat
+      // 1. Fallback: Hátha csak egy " OK" utótag lett utólag hozzáfűzve a mappához, VAGY a fájlnévben lettek szóközök
+      const pathInfo = path.parse(resolvedPath);
+      const parentDir = path.dirname(resolvedPath);
+      const parentDirName = path.basename(parentDir);
+      
+      let foundAlternative = false;
+
+      // Segédfüggvény a mappa tartalmának ellenőrzésére
+      const checkDirectoryForDocx = async (dirPath) => {
+        console.log('[EKAER DOWNLOAD] checkDirectoryForDocx hívva erre:', dirPath);
+        if (fs.existsSync(dirPath)) {
+          const files = fs.readdirSync(dirPath);
+          console.log('[EKAER DOWNLOAD] Mappa tartalma:', files);
+          const docxFiles = files.filter(f => f.endsWith('.docx') && !f.startsWith('~$')); // Ignoráljuk a temp fájlokat
+          console.log('[EKAER DOWNLOAD] Szűrt docx fájlok:', docxFiles);
+          if (docxFiles.length === 1) {
+            resolvedPath = path.join(dirPath, docxFiles[0]);
+            console.log('[EKAER DOWNLOAD] resolvedPath frissítve:', resolvedPath);
+            await db('ekaer_records').where({ id }).update({ file_path: resolvedPath });
+            return true;
+          }
+        } else {
+          console.log('[EKAER DOWNLOAD] Mappa NEM létezik:', dirPath);
+        }
+        return false;
+      };
+
+      // Először megnézzük az eredeti mappában, hátha csak a fájlnév változott
+      console.log('[EKAER DOWNLOAD] Eredeti mappa ellenőrzése:', parentDir);
+      if (fs.existsSync(parentDir)) {
+        foundAlternative = await checkDirectoryForDocx(parentDir);
+      }
+      
+      // Ha nem találtuk az eredeti mappában, és az eredeti mappa nem " OK"-ra végződik, akkor megnézzük az " OK"-s mappát
+      if (!foundAlternative && !parentDirName.endsWith(' OK')) {
+        const okDir = path.join(path.dirname(parentDir), parentDirName + ' OK');
+        console.log('[EKAER DOWNLOAD] OK mappa ellenőrzése:', okDir);
+        // Itt is először a pontos fájlnévvel próbálkozunk
+        const okResolvedPath = path.join(okDir, pathInfo.base);
+        if (fs.existsSync(okResolvedPath)) {
+          console.log('[EKAER DOWNLOAD] Pontos fájl megtalálva OK mappában:', okResolvedPath);
+          resolvedPath = okResolvedPath;
+          await db('ekaer_records').where({ id }).update({ file_path: resolvedPath });
+          foundAlternative = true;
+        } else {
+          // Ha pontos névvel nem lett meg, megnézzük van-e benne .docx
+          console.log('[EKAER DOWNLOAD] Pontos fájl nincs az OK mappában, megnézzük a tartalmat...');
+          foundAlternative = await checkDirectoryForDocx(okDir);
+        }
+      }
+      console.log('[EKAER DOWNLOAD] Fallback 1 eredmény:', foundAlternative, ' Új resolvedPath:', resolvedPath);
+    }
+
+    if (!fs.existsSync(resolvedPath)) {
+      // 2. Fallback: próbáljuk meg dinamikusan generálni a helyes útvonalat
       const shipment = await db('shipments')
         .leftJoin('seasons', 'shipments.season_id', 'seasons.id')
         .where('shipments.id', record.shipment_id)
@@ -207,7 +305,6 @@ router.get('/:id/download', async (req, res) => {
         }
 
         if (generated) {
-          // Ha az alapértelmezett (pl. H200) útvonal nem létezik, próbáljuk meg az " OK" (pl. H200 OK) kiegészítéssel
           let okCheckPath = generated.filePath.replace(`\\${safeOrderNum}\\`, `\\${safeOrderNum} OK\\`).replace(`/${safeOrderNum}/`, `/${safeOrderNum} OK/`);
           okCheckPath = resolveFilePath(okCheckPath);
           

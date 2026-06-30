@@ -481,6 +481,42 @@ router.post('/', async (req, res) => {
   }
 });
 
+// PUT /api/v1/shipments/bulk-update
+// Tömeges frissítés (Transportistas modulhoz)
+router.put('/bulk-update', async (req, res) => {
+  const trx = await db.transaction();
+  try {
+    const updates = req.body;
+    if (!Array.isArray(updates)) {
+      return res.status(400).json({ error: 'A kérés törzsének egy tömbnek kell lennie.' });
+    }
+
+    for (const update of updates) {
+      const { id, kb, b, t, comment, invoice_amount_huf, invoice_number, invoice_amount_eur } = update;
+      
+      const updateData = {};
+      if (kb !== undefined) updateData.kb = parseFloat(kb) || null;
+      if (b !== undefined) updateData.b = parseFloat(b) || null;
+      if (t !== undefined) updateData.t = parseFloat(t) || null;
+      if (comment !== undefined) updateData.comment = comment;
+      if (invoice_amount_huf !== undefined) updateData.invoice_amount_huf = parseFloat(invoice_amount_huf) || null;
+      if (invoice_number !== undefined) updateData.invoice_number = invoice_number;
+      if (invoice_amount_eur !== undefined) updateData.invoice_amount_eur = parseFloat(invoice_amount_eur) || null;
+
+      if (Object.keys(updateData).length > 0) {
+        await trx('shipments').where('id', id).update(updateData);
+      }
+    }
+
+    await trx.commit();
+    res.json({ message: 'Tömeges frissítés sikeres', count: updates.length });
+  } catch (err) {
+    await trx.rollback();
+    console.error('Hiba a tömeges frissítés során:', err);
+    res.status(500).json({ error: 'Hiba történt a tömeges frissítés során: ' + err.message });
+  }
+});
+
 // PUT /api/v1/shipments/:id
 // Teljes fuvar (fejléc + tételek) frissítése
 router.put('/:id', async (req, res) => {

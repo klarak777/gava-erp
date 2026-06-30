@@ -108,37 +108,74 @@ router.get('/:id/preview', async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Ehhez a fuvarmegbízáshoz nincs fájl elérési út rögzítve.' });
     }
 
-    // Docker-ben a RAKTAR_PATH env. változóval lehet felülírni a Windows hálózati útvonalat
-    const raktarPath = process.env.RAKTAR_PATH;
+    const raktarPath = process.env.RAKTAR_PATH || '\\\\192.168.1.5\\raktar';
     let resolvedPath = filePath;
 
-    // Ha a fájl elérési útja Windows hálózati meghajtóra mutat (\\192.168.1.5\raktar\...)
-    // és a Docker-konténerben RAKTAR_PATH van beállítva (/mnt/raktar), akkor cseréljük le
-    if (raktarPath && filePath) {
-      // Normalizáljuk a path szeparátorokat
+    if (filePath) {
       const normalizedFilePath = filePath.replace(/\\/g, '/');
-      // Keresünk egy tipikus raktar prefix-et a pathban
-      const raktarPrefixPatterns = [
-        /^\/\/192\.168\.\d+\.\d+\/raktar\//i,
-        /^\\\\192\.168\.\d+\.\d+\\raktar\\/i,
-        /^[A-Z]:\\raktar\\/i,
-      ];
-      let replaced = false;
-      for (const pattern of raktarPrefixPatterns) {
-        if (pattern.test(filePath) || pattern.test(normalizedFilePath)) {
-          resolvedPath = path.join(raktarPath, normalizedFilePath.replace(pattern, ''));
-          replaced = true;
-          break;
+
+      // Ha a Docker/Linux útvonal van az adatbázisban (/mnt/raktar), de mi Windows-on futunk
+      if (normalizedFilePath.startsWith('/mnt/raktar/')) {
+        resolvedPath = path.join(raktarPath, normalizedFilePath.replace('/mnt/raktar/', ''));
+      } else {
+        const raktarPrefixPatterns = [
+          /^\/\/192\.168\.\d+\.\d+\/raktar\//i,
+          /^\\\\192\.168\.\d+\.\d+\\raktar\\/i,
+          /^[A-Z]:\\raktar\\/i,
+        ];
+        let replaced = false;
+        for (const pattern of raktarPrefixPatterns) {
+          if (pattern.test(filePath) || pattern.test(normalizedFilePath)) {
+            resolvedPath = path.join(raktarPath, normalizedFilePath.replace(pattern, ''));
+            replaced = true;
+            break;
+          }
+        }
+        if (!replaced && normalizedFilePath.includes('/MI Teszt/')) {
+          const idx = normalizedFilePath.indexOf('/MI Teszt/');
+          resolvedPath = path.join(raktarPath, normalizedFilePath.substring(idx));
+        } else if (!replaced && normalizedFilePath.includes('MI Teszt')) {
+          const idx = normalizedFilePath.indexOf('MI Teszt');
+          resolvedPath = path.join(raktarPath, normalizedFilePath.substring(idx));
         }
       }
-      // Ha nem sikerült prefix-alapon cserélni, de a RAKTAR_PATH be van állítva,
-      // próbálkozzunk azzal, hogy kivágunk minden "/MI Teszt/" előtti részt
-      if (!replaced && normalizedFilePath.includes('/MI Teszt/')) {
-        const idx = normalizedFilePath.indexOf('/MI Teszt/');
-        resolvedPath = path.join(raktarPath, normalizedFilePath.substring(idx));
-      } else if (!replaced && normalizedFilePath.includes('MI Teszt')) {
-        const idx = normalizedFilePath.indexOf('MI Teszt');
-        resolvedPath = path.join(raktarPath, normalizedFilePath.substring(idx));
+    }
+
+    if (!fs.existsSync(resolvedPath)) {
+      // 1. Fallback: Hátha csak egy " OK" utótag lett utólag hozzáfűzve a mappához, VAGY a fájlnévben lettek szóközök
+      const pathInfo = path.parse(resolvedPath);
+      const parentDir = path.dirname(resolvedPath);
+      const parentDirName = path.basename(parentDir);
+      
+      let foundAlternative = false;
+
+      const checkDirectoryForDocx = async (dirPath) => {
+        if (fs.existsSync(dirPath)) {
+          const files = fs.readdirSync(dirPath);
+          const docxFiles = files.filter(f => f.endsWith('.docx') && !f.startsWith('~$'));
+          if (docxFiles.length === 1) {
+            resolvedPath = path.join(dirPath, docxFiles[0]);
+            await db('transport_orders').where({ id }).update({ file_path: resolvedPath });
+            return true;
+          }
+        }
+        return false;
+      };
+
+      if (fs.existsSync(parentDir)) {
+        foundAlternative = await checkDirectoryForDocx(parentDir);
+      }
+      
+      if (!foundAlternative && !parentDirName.endsWith(' OK')) {
+        const okDir = path.join(path.dirname(parentDir), parentDirName + ' OK');
+        const okResolvedPath = path.join(okDir, pathInfo.base);
+        if (fs.existsSync(okResolvedPath)) {
+          resolvedPath = okResolvedPath;
+          await db('transport_orders').where({ id }).update({ file_path: resolvedPath });
+          foundAlternative = true;
+        } else {
+          foundAlternative = await checkDirectoryForDocx(okDir);
+        }
       }
     }
 
@@ -208,16 +245,21 @@ router.get('/:id/download', async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Ehhez a fuvarmegbízáshoz nincs fájl elérési út rögzítve.' });
     }
 
-    const raktarPath = process.env.RAKTAR_PATH;
+    const raktarPath = process.env.RAKTAR_PATH || '\\\\192.168.1.5\\raktar';
     let resolvedPath = filePath;
 
-    if (raktarPath && filePath) {
+    if (filePath) {
       const normalizedFilePath = filePath.replace(/\\/g, '/');
-      const raktarPrefixPatterns = [
-        /^\/\/192\.168\.\d+\.\d+\/raktar\//i,
-        /^\\\\192\.168\.\d+\.\d+\\raktar\\/i,
-        /^[A-Z]:\\raktar\\/i,
-      ];
+
+      // Ha a Docker/Linux útvonal van az adatbázisban (/mnt/raktar), de mi Windows-on futunk
+      if (normalizedFilePath.startsWith('/mnt/raktar/')) {
+        resolvedPath = path.join(raktarPath, normalizedFilePath.replace('/mnt/raktar/', ''));
+      } else {
+        const raktarPrefixPatterns = [
+          /^\/\/192\.168\.\d+\.\d+\/raktar\//i,
+          /^\\\\192\.168\.\d+\.\d+\\raktar\\/i,
+          /^[A-Z]:\\raktar\\/i,
+        ];
       let replaced = false;
       for (const pattern of raktarPrefixPatterns) {
         if (pattern.test(filePath) || pattern.test(normalizedFilePath)) {
@@ -229,14 +271,58 @@ router.get('/:id/download', async (req, res) => {
       if (!replaced && normalizedFilePath.includes('/MI Teszt/')) {
         const idx = normalizedFilePath.indexOf('/MI Teszt/');
         resolvedPath = path.join(raktarPath, normalizedFilePath.substring(idx));
-      } else if (!replaced && normalizedFilePath.includes('MI Teszt')) {
-        const idx = normalizedFilePath.indexOf('MI Teszt');
-        resolvedPath = path.join(raktarPath, normalizedFilePath.substring(idx));
+        } else if (!replaced && normalizedFilePath.includes('MI Teszt')) {
+          const idx = normalizedFilePath.indexOf('MI Teszt');
+          resolvedPath = path.join(raktarPath, normalizedFilePath.substring(idx));
+        }
       }
     }
 
     if (!fs.existsSync(resolvedPath)) {
-      // Fallback: próbáljuk meg dinamikusan generálni a helyes útvonalat
+      // 1. Fallback: Hátha csak egy " OK" utótag lett utólag hozzáfűzve a mappához, VAGY a fájlnévben lettek szóközök
+      const pathInfo = path.parse(resolvedPath);
+      const parentDir = path.dirname(resolvedPath);
+      const parentDirName = path.basename(parentDir);
+      
+      let foundAlternative = false;
+
+      // Segédfüggvény a mappa tartalmának ellenőrzésére
+      const checkDirectoryForDocx = async (dirPath) => {
+        if (fs.existsSync(dirPath)) {
+          const files = fs.readdirSync(dirPath);
+          const docxFiles = files.filter(f => f.endsWith('.docx') && !f.startsWith('~$')); // Ignoráljuk a temp fájlokat
+          if (docxFiles.length === 1) {
+            resolvedPath = path.join(dirPath, docxFiles[0]);
+            await db('transport_orders').where({ id }).update({ file_path: resolvedPath });
+            return true;
+          }
+        }
+        return false;
+      };
+
+      // Először megnézzük az eredeti mappában, hátha csak a fájlnév változott
+      if (fs.existsSync(parentDir)) {
+        foundAlternative = await checkDirectoryForDocx(parentDir);
+      }
+      
+      // Ha nem találtuk az eredeti mappában, és az eredeti mappa nem " OK"-ra végződik, akkor megnézzük az " OK"-s mappát
+      if (!foundAlternative && !parentDirName.endsWith(' OK')) {
+        const okDir = path.join(path.dirname(parentDir), parentDirName + ' OK');
+        // Itt is először a pontos fájlnévvel próbálkozunk
+        const okResolvedPath = path.join(okDir, pathInfo.base);
+        if (fs.existsSync(okResolvedPath)) {
+          resolvedPath = okResolvedPath;
+          await db('transport_orders').where({ id }).update({ file_path: resolvedPath });
+          foundAlternative = true;
+        } else {
+          // Ha pontos névvel nem lett meg, megnézzük van-e benne .docx
+          foundAlternative = await checkDirectoryForDocx(okDir);
+        }
+      }
+    }
+
+    if (!fs.existsSync(resolvedPath)) {
+      // 2. Fallback: próbáljuk meg dinamikusan generálni a helyes útvonalat
       const shipment = await db('shipments')
         .leftJoin('seasons', 'shipments.season_id', 'seasons.id')
         .leftJoin('transporters', 'shipments.transporter_id', 'transporters.id')

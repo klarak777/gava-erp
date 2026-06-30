@@ -56,7 +56,6 @@ export function renderFuvarmegbizas(container, windowManager) {
                 '<table class="access-subform-table" id="fuvm-table">' +
                     '<thead><tr>' +
                         '<th style="width:40px;"></th>' +
-                        '<th>Dokumentum név</th>' +
                         '<th>Kamion szám</th>' +
                         '<th>Rakodás nap</th>' +
                         '<th>Fuvarozó cég</th>' +
@@ -127,7 +126,6 @@ export function renderFuvarmegbizas(container, windowManager) {
             var trStyle = isSelected ? 'background-color: #e0f2fe;' : '';
             return '<tr class="fuvm-row" data-id="' + r.id + '" style="cursor:pointer; ' + trStyle + '">' +
                 '<td style="text-align:center;"><input type="radio" name="fuvm_select" ' + (isSelected ? 'checked' : '') + ' style="cursor:pointer; pointer-events:none;"></td>' +
-                '<td class="bold">' + r.docName + '</td>' +
                 '<td>' + r.tour + '</td>' +
                 '<td>' + r.date + '</td>' +
                 '<td>' + r.transporter + '</td>' +
