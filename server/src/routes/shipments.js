@@ -494,14 +494,16 @@ router.put('/bulk-update', async (req, res) => {
     for (const update of updates) {
       const { id, kb, b, t, comment, invoice_amount_huf, invoice_number, invoice_amount_eur } = update;
       
+      const parseNum = (v) => (v === '' || v === null || v === undefined) ? null : (isNaN(parseFloat(v)) ? null : parseFloat(v));
+
       const updateData = {};
-      if (kb !== undefined) updateData.kb = parseFloat(kb) || null;
-      if (b !== undefined) updateData.b = parseFloat(b) || null;
-      if (t !== undefined) updateData.t = parseFloat(t) || null;
+      if (kb !== undefined) updateData.kb = parseNum(kb);
+      if (b !== undefined) updateData.b = parseNum(b);
+      if (t !== undefined) updateData.t = parseNum(t);
       if (comment !== undefined) updateData.comment = comment;
-      if (invoice_amount_huf !== undefined) updateData.invoice_amount_huf = parseFloat(invoice_amount_huf) || null;
+      if (invoice_amount_huf !== undefined) updateData.invoice_amount_huf = parseNum(invoice_amount_huf);
       if (invoice_number !== undefined) updateData.invoice_number = invoice_number;
-      if (invoice_amount_eur !== undefined) updateData.invoice_amount_eur = parseFloat(invoice_amount_eur) || null;
+      if (invoice_amount_eur !== undefined) updateData.invoice_amount_eur = parseNum(invoice_amount_eur);
 
       if (Object.keys(updateData).length > 0) {
         await trx('shipments').where('id', id).update(updateData);

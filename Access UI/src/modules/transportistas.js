@@ -305,6 +305,8 @@ export function renderTransportistas(container) {
         if (!isDirty) return;
         const updates = Object.values(dirtyRows);
         
+        // DEBUG log (ideiglenesen hozzáadva a hiba diagnosztikájához - eltávolítható)
+        // console.log('[TRANSPORTISTAS MENTÉS] Elküldött dirtyRows:', JSON.stringify(updates));
         btnSave.disabled = true;
         btnSave.textContent = 'Mentés...';
 
@@ -356,6 +358,11 @@ export function renderTransportistas(container) {
             if (response.ok) {
                 const apiData = await response.json();
                 // Map the api properties to what the render function expects
+                // FONTOS: Minden szerkeszthető mező értékét be kell tölteni az API válaszból.
+                // Korábban kb, b, t, amountHuf, invoiceNumber, amountEur mindig üres string volt
+                // ('jövőbeli fejlesztés' komment miatt), ami miatt mentés után eltűntek az adatok.
+                // Az adatbázis sikeresen mentette az értékeket, de a loadRealData visszatöltéskor
+                // mindig felülírta őket üres stringgel. Javítva: 2026-07-02
                 tableData = apiData.map(d => ({
                     id: d.id,
                     loadingDate: d.loading_date ? d.loading_date.substring(0, 10) : '',
@@ -366,10 +373,14 @@ export function renderTransportistas(container) {
                     transportPrice: d.transport_price ? d.transport_price + ' €' : '',
                     arrivalDate: d.arrival_date ? d.arrival_date.substring(0, 10) : '',
                     seasonCode: d.season_code || '',
-                    bevetelezve: false, // Jövőbeli fejlesztés
-                    kb: '', b: '', t: '', // Ezek is jövőbeli DB oszlopok/nézetek lesznek
+                    bevetelezve: false,
+                    kb: d.kb != null ? d.kb : '',
+                    b: d.b != null ? d.b : '',
+                    t: d.t != null ? d.t : '',
                     comment: d.comment || '',
-                    amountHuf: '', invoiceNumber: '', amountEur: ''
+                    amountHuf: d.invoice_amount_huf != null ? d.invoice_amount_huf : '',
+                    invoiceNumber: d.invoice_number || '',
+                    amountEur: d.invoice_amount_eur != null ? d.invoice_amount_eur : ''
                 }));
                 filterData();
             } else {
