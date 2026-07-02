@@ -26,7 +26,32 @@ exports.up = async function (knex) {
       is_sent_log: true
     });
 
-  // Opcionálisan később törölhető a régi is_sent mező, de egyelőre meghagyjuk a biztonság kedvéért.
+  // 4. Május 31-ig visszamenőleg minden beállítása true-ra
+  await knex('transport_orders')
+    .whereIn('id', function() {
+      this.select('transport_orders.id')
+        .from('transport_orders')
+        .join('shipments', 'transport_orders.shipment_id', 'shipments.id')
+        .where('shipments.loading_date', '<=', '2026-05-31')
+        .orWhere('transport_orders.loading_date', '<=', '2026-05-31');
+    })
+    .update({
+      is_sent_ghu: true,
+      is_sent_log: true
+    });
+
+  await knex('ekaer_records')
+    .whereIn('id', function() {
+      this.select('ekaer_records.id')
+        .from('ekaer_records')
+        .join('shipments', 'ekaer_records.shipment_id', 'shipments.id')
+        .where('shipments.loading_date', '<=', '2026-05-31')
+        .orWhere('ekaer_records.load_date', '<=', '2026-05-31');
+    })
+    .update({
+      is_sent_ghu: true,
+      is_sent_log: true
+    });
 };
 
 exports.down = async function (knex) {
