@@ -255,6 +255,16 @@ export function renderRakodas(container, windowManager) {
                     e.target.checked = false;
 
                     var tourName = row ? row.tour : 'ismeretlen';
+                    
+                    // Ellenőrzés: vannak-e tételek a fuvaron?
+                    if (row && !row.destinations && !row.customers && !row.partners) {
+                        var proceedEmpty = confirm(
+                            '⚠️ Nincsenek tételek (áru) rögzítve ezen a kamion fuvaron!\n\n' +
+                            'Biztosan megjelölöd rakodottként és létrehozod az EKAER-t üresen?'
+                        );
+                        if (!proceedEmpty) return;
+                    }
+
                     var confirmed = confirm(
                         '✅ RAKODVA megerősítés\n\n' +
                         'Kamion: ' + tourName + '\n\n' +
@@ -853,6 +863,12 @@ export function renderRakodas(container, windowManager) {
     document.getElementById('btn-km-doc').addEventListener('click', async function () {
         hideModal();
         if (!currentKamionForMenu) return;
+
+        // Ellenőrzés: vannak-e tételek a fuvaron?
+        if (!currentKamionForMenu.destinations && !currentKamionForMenu.customers && !currentKamionForMenu.partners) {
+            const proceedEmpty = confirm('⚠️ Nincsenek tételek (áru) rögzítve ezen a kamion fuvaron!\n\nBiztosan létre akarja hozni a fuvarmegbízást üresen?');
+            if (!proceedEmpty) return;
+        }
 
         // Ellenőrzés: van-e már Fuvarmegbízás ehhez a kamionhoz?
         try {

@@ -49,7 +49,10 @@ router.get('/', async (req, res) => {
         'shipments.order_number',
         'seasons.code as season_code',
         'transporters.name as transporter_name',
-        'transport_orders.is_sent'
+        'transport_orders.is_sent_ghu',
+        'transport_orders.is_sent_log',
+        db.raw(`EXISTS (SELECT 1 FROM shipment_lines sl WHERE sl.shipment_id = shipments.id AND sl.customer ILIKE '%GHU%') AS has_ghu`),
+        db.raw(`EXISTS (SELECT 1 FROM shipment_lines sl WHERE sl.shipment_id = shipments.id AND (sl.customer NOT ILIKE '%GHU%' OR sl.customer IS NULL)) AS has_log`)
       )
       .orderBy('transport_orders.id', 'desc');
 
@@ -72,8 +75,11 @@ router.get('/', async (req, res) => {
         date: formattedDate || '-',
         tour: order.order_number || '-',
         transporter: order.transporter_name || '-',
-        sent: !!order.is_sent,
-        season: order.season_code || '-'
+        season: order.season_code || '-',
+        sent_ghu: !!order.is_sent_ghu,
+        sent_log: !!order.is_sent_log,
+        has_ghu: !!order.has_ghu,
+        has_log: !!order.has_log
       };
     });
 
@@ -378,10 +384,11 @@ router.get('/:id/download', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const id = req.params.id;
-    const { is_sent } = req.body;
+    const { is_sent_ghu, is_sent_log } = req.body;
 
     const updateData = {};
-    if (is_sent !== undefined) updateData.is_sent = is_sent;
+    if (is_sent_ghu !== undefined) updateData.is_sent_ghu = is_sent_ghu;
+    if (is_sent_log !== undefined) updateData.is_sent_log = is_sent_log;
     updateData.updated_at = db.fn.now();
 
     const affected = await db('transport_orders')
