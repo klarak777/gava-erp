@@ -1,4 +1,6 @@
-export function renderTransportistas(container) {
+import { openKamionSzerkesztesWindow } from './kamion_szerkesztes.js';
+
+export function renderTransportistas(container, windowManager) {
     // --- A szülő launcher-wrapper-t felülírjuk, hogy NE legyen overflow:hidden ---
     container.style.overflow = 'hidden';
     container.style.padding = '0';
@@ -188,7 +190,7 @@ export function renderTransportistas(container) {
             tr.innerHTML = `
                 <td style="white-space:nowrap;">${row.loadingDate}</td>
                 <td style="white-space:nowrap;">${row.loadingPlace}</td>
-                <td><span class="badge" style="background:var(--bg-main);color:var(--text-main);border:1px solid var(--border);font-size:11px;">${row.orderNumber}</span></td>
+                <td><span class="badge order-number-badge" data-id="${row.id}" style="background:var(--bg-main);color:var(--primary);border:1px solid var(--border);font-size:11px;cursor:pointer;text-decoration:underline;" title="Kattints a kamion szerkesztéséhez">${row.orderNumber}</span></td>
                 <td style="white-space:nowrap;font-weight:600;">${row.transporter}</td>
                 <td style="white-space:nowrap;font-family:monospace;font-size:14px;">${row.plateNumber}</td>
                 <td style="text-align:right;white-space:nowrap;">${row.transportPrice}</td>
@@ -216,6 +218,16 @@ export function renderTransportistas(container) {
             chk.addEventListener('change', e => {
                 const id = parseInt(e.target.dataset.id);
                 // Később itt API hívással mentjük az állapotot
+            });
+        });
+        
+        // Add click listener for Order Number badge
+        tbody.querySelectorAll('.order-number-badge').forEach(badge => {
+            badge.addEventListener('click', function(e) {
+                const id = this.getAttribute('data-id');
+                if (id) {
+                    openKamionSzerkesztesWindow(windowManager, id);
+                }
             });
         });
 
@@ -370,7 +382,7 @@ export function renderTransportistas(container) {
                     orderNumber: d.order_number || '',
                     transporter: d.transporter_name || '',
                     plateNumber: d.plate_number || '',
-                    transportPrice: d.transport_price ? d.transport_price + ' €' : '',
+                    transportPrice: d.transport_price ? d.transport_price + (d.transport_currency === 'HUF' ? ' Ft' : ' €') : '',
                     arrivalDate: d.arrival_date ? d.arrival_date.substring(0, 10) : '',
                     seasonCode: d.season_code || '',
                     bevetelezve: false,

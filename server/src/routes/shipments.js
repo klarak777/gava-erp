@@ -375,7 +375,7 @@ router.post('/', async (req, res) => {
   try {
     const {
       order_number, truck_type, truck_seq_number, transporter_id, plate_number,
-      loading_place, loading_date, arrival_date, transport_price, temperature, lines
+      loading_place, loading_date, arrival_date, transport_price, transport_currency, temperature, lines
     } = req.body;
 
     // 1. Kikeresi a legfrissebb szezont
@@ -396,7 +396,7 @@ router.post('/', async (req, res) => {
       loading_date: loading_date || null,
       arrival_date: arrival_date || null,
       transport_price: parseFloat(transport_price) || 0,
-      transport_currency: 'EUR',
+      transport_currency: transport_currency || 'EUR',
       temperature: temperature || null
     }).returning('id');
 
@@ -527,7 +527,7 @@ router.put('/:id', async (req, res) => {
     const { id } = req.params;
     const {
       truck_type, transporter_id, plate_number,
-      loading_place, loading_date, arrival_date, transport_price, temperature, lines
+      loading_place, loading_date, arrival_date, transport_price, transport_currency, temperature, lines
     } = req.body;
 
     // 1. Fejléc frissítése (az order_number és season_id nem változik itt)
@@ -541,6 +541,7 @@ router.put('/:id', async (req, res) => {
         loading_date: loading_date || null,
         arrival_date: arrival_date || null,
         transport_price: parseFloat(transport_price) || 0,
+        transport_currency: transport_currency || 'EUR',
         temperature: temperature || null
       });
 

@@ -103,10 +103,16 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                             <input type="date" id="km-arr-date" class="access-control-input"
                                 style="font-size:12px; padding:4px 8px; height:30px; width:100%;">
                         </div>
-                        <div style="display:flex; flex-direction:column; gap:3px; flex:1; min-width:110px; max-width:145px; margin-left:auto;">
+                        <div style="display:flex; flex-direction:column; gap:3px; flex:1; min-width:145px; max-width:180px; margin-left:auto;">
                             <label style="font-size:11px; font-weight:600; color:var(--text-main);">Transport price:</label>
-                            <input type="number" id="km-price" class="access-control-input"
-                                style="font-size:12px; padding:4px 8px; height:30px; width:100%;" placeholder="0.00" step="0.01">
+                            <div style="display:flex; gap:4px;">
+                                <input type="number" id="km-price" class="access-control-input"
+                                    style="font-size:12px; padding:4px 8px; height:30px; flex:1; min-width:0;" placeholder="0.00" step="0.01">
+                                <select id="km-currency" class="access-control-input" style="font-size:12px; padding:4px; height:30px; width:55px; flex-shrink:0;">
+                                    <option value="EUR">EUR</option>
+                                    <option value="HUF">HUF</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -378,6 +384,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 try { container.querySelector('#km-plate').value = s.plate_number || ''; } catch (e) { }
                 try { container.querySelector('#km-load-place').value = s.loading_place || ''; } catch (e) { }
                 try { container.querySelector('#km-price').value = s.transport_price || ''; } catch (e) { }
+                try { container.querySelector('#km-currency').value = s.transport_currency || 'EUR'; } catch (e) { }
                 try { container.querySelector('#km-temperature').value = s.temperature || ''; } catch (e) { }
 
                 function extractLocalDate(d) {
@@ -952,6 +959,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 arrival_date: container.querySelector('#km-arr-date').value || null,
                 loading_place: container.querySelector('#km-load-place').value,
                 transport_price: parseFloat(container.querySelector('#km-price').value) || 0,
+                transport_currency: container.querySelector('#km-currency').value || 'EUR',
                 temperature: container.querySelector('#km-temperature').value.trim() || null,
                 lines: realLines.filter(l => (parseFloat(String(l.euro_palets).replace(',', '.')) || 0) > 0 || (parseFloat(String(l.normal_palets).replace(',', '.')) || 0) > 0)
             };

@@ -21,3 +21,7 @@ A Fuvarmegbízások és EKAEREK táblázatok funkcionalitása és felhasználói
 - Fuvarmegbízás (dokumentum) készítésekor, illetve a kamion "RAKODVA" állapotba helyezésekor (amikor az EKAER is automatikusan generálódna) a rendszer először ellenőrzi, hogy vannak-e tételek az adott kamionhoz rendelve.
 - Ha a fuvar "üres" (nincs célállomás, áru), akkor egy figyelmeztető ablak ugrik fel: *"⚠️ Nincsenek tételek (áru) rögzítve ezen a kamion fuvaron! Biztosan létre akarja hozni..."*
 - Ha a felhasználó igennel válaszol, a fuvar üresen is elkészül, és a Fuvarmegbízások/EKAEREK listában **mindkét** (GHU és LOG) jelölőnégyzet aktív lesz, hogy kézzel le tudják zárni.
+
+### 4. Egy�b Finom�t�sok
+- **Rakod�s:** Kamion r�gz�t�sn�l a fuvard�j (Transport price) mellett megjelent egy p�nznem v�laszt� (EUR/HUF), ami ment�sre is ker�l az adatb�zisban.
+- **Transportistas:** A kamionsz�mra (Order number) kattintva mostant�l felugrik az adott kamion szerkeszt�si ablaka.
