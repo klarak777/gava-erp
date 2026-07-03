@@ -39,12 +39,8 @@ export function renderEkaerek(container, windowManager) {
                 '</div>' +
                 '<div style="display:flex; align-items:center; gap:16px; margin-left:10px;">' +
                     '<label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--text-main); cursor:pointer;">' +
-                        '<input type="checkbox" id="ek-show-sent-ghu" style="cursor:pointer; width:16px; height:16px; accent-color:var(--primary);">' +
-                        'Mutassa a kiküldött GHU fuvarokat' +
-                    '</label>' +
-                    '<label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--text-main); cursor:pointer;">' +
-                        '<input type="checkbox" id="ek-show-sent-log" style="cursor:pointer; width:16px; height:16px; accent-color:var(--primary);">' +
-                        'Mutassa a kiküldött LOG fuvarokat' +
+                        '<input type="checkbox" id="ek-show-sent" style="cursor:pointer; width:16px; height:16px; accent-color:var(--primary);">' +
+                        'Mutassa a kiküldött EKAER-eket' +
                     '</label>' +
                 '</div>' +
                 '<div style="display:flex; gap:8px; padding-bottom: 2px;">' +
@@ -70,8 +66,7 @@ export function renderEkaerek(container, windowManager) {
                         '<th>EKAER_FileName</th>' +
                         '<th>Load_Date</th>' +
                         '<th>Fuvarozó cég</th>' +
-                        '<th style="text-align:center; width:110px;">Kiküldve GHU</th>' +
-                        '<th style="text-align:center; width:110px;">Kiküldve LOG</th>' +
+                        '<th style="text-align:center; width:100px;">Kiküldve</th>' +
                     '</tr></thead>' +
                     '<tbody id="ek-tbody"></tbody>' +
                 '</table>' +
@@ -97,8 +92,7 @@ export function renderEkaerek(container, windowManager) {
     var selSzezon = view.querySelector('#ek-szezon');
     var inputKamisz = view.querySelector('#ek-kamisz');
     var selFuvarozo = view.querySelector('#ek-fuvarozo');
-    var chkShowSentGhu = view.querySelector('#ek-show-sent-ghu');
-    var chkShowSentLog = view.querySelector('#ek-show-sent-log');
+    var chkShowSent = view.querySelector('#ek-show-sent');
     var btnClear = view.querySelector('#btn-clear-ek');
     var tbody = view.querySelector('#ek-tbody');
     var btnOpenDoc = view.querySelector('#btn-open-ek-doc');
@@ -133,30 +127,14 @@ export function renderEkaerek(container, windowManager) {
         var s = selSzezon.value;
         var k = inputKamisz.value.toUpperCase();
         var f = selFuvarozo.value;
-        var showSentGhu = chkShowSentGhu.checked;
-        var showSentLog = chkShowSentLog.checked;
+        var showSent = chkShowSent.checked;
 
         var filtered = appData.filter(function(r) {
             var matchS = r.season === s;
             var matchK = r.tour.toUpperCase().indexOf(k) !== -1 || r.docName.toUpperCase().indexOf(k) !== -1;
             var matchF = f === '' || r.transporter === f;
-            
-            var isHidden = false;
-            if (r.has_ghu || r.has_log) { 
-                var shouldHideGhu = r.has_ghu ? r.sent_ghu : true; 
-                var shouldHideLog = r.has_log ? r.sent_log : true; 
-                if (shouldHideGhu && shouldHideLog) {
-                    isHidden = true;
-                    if ((r.has_ghu && r.sent_ghu && showSentGhu) || (r.has_log && r.sent_log && showSentLog)) {
-                        isHidden = false;
-                    }
-                }
-            } else {
-                if (r.sent_ghu && r.sent_log) {
-                    isHidden = true;
-                    if (showSentGhu || showSentLog) isHidden = false;
-                }
-            }
+
+            var isHidden = r.sent_ghu && !showSent;
 
             return matchS && matchK && matchF && !isHidden;
         });
@@ -172,18 +150,10 @@ export function renderEkaerek(container, windowManager) {
         tbody.innerHTML = data.map(function(r) {
             var isSelected = r.id === selectedRowId;
             var trStyle = isSelected ? 'background-color: #e0f2fe;' : '';
-            
-            // GHU és LOG pipák logikája
-            var isGhuActive = r.has_ghu || (!r.has_ghu && !r.has_log);
-            var isLogActive = r.has_log || (!r.has_ghu && !r.has_log);
-            
-            var ghuHtml = isGhuActive 
-                ? '<input type="checkbox" class="ek-sent-ghu-chk" data-id="' + r.id + '" ' + (r.sent_ghu ? 'checked' : '') + ' style="cursor:pointer; width:18px; height:18px;">'
-                : '<span style="color:#94a3b8; font-weight:bold;">❌</span>';
-                
-            var logHtml = isLogActive 
-                ? '<input type="checkbox" class="ek-sent-log-chk" data-id="' + r.id + '" ' + (r.sent_log ? 'checked' : '') + ' style="cursor:pointer; width:18px; height:18px;">'
-                : '<span style="color:#94a3b8; font-weight:bold;">❌</span>';
+
+            var sentHtml = '<input type="checkbox" class="ek-sent-chk" data-id="' + r.id + '" ' +
+                (r.sent_ghu ? 'checked' : '') +
+                ' style="cursor:pointer; width:18px; height:18px;">';
 
             return '<tr class="ek-row" data-id="' + r.id + '" style="cursor:pointer; ' + trStyle + '">' +
                 '<td style="text-align:center;"><input type="radio" name="ek_select" ' + (isSelected ? 'checked' : '') + ' style="cursor:pointer; pointer-events:none;"></td>' +
@@ -191,12 +161,10 @@ export function renderEkaerek(container, windowManager) {
                 '<td>' + r.docName + '</td>' +
                 '<td>' + r.date + '</td>' +
                 '<td>' + r.transporter + '</td>' +
-                '<td style="text-align:center;" title="Kiküldve GHU">' + ghuHtml + '</td>' +
-                '<td style="text-align:center;" title="Kiküldve LOG">' + logHtml + '</td>' +
+                '<td style="text-align:center;" title="Kiküldve">' + sentHtml + '</td>' +
                 '</tr>';
         }).join('');
 
-        // Row selection logic
         tbody.querySelectorAll('.ek-row').forEach(function(row) {
             row.addEventListener('click', function(e) {
                 if (e.target.tagName.toLowerCase() === 'input' && e.target.type === 'checkbox') return;
@@ -205,63 +173,42 @@ export function renderEkaerek(container, windowManager) {
             });
         });
 
-        // Checkbox trigger logic (GHU és LOG)
-        var handleSentStatusChange = function(e, type) {
-            var id = parseInt(e.target.getAttribute('data-id'));
-            var rowData = appData.find(function(x) { return x.id === id; });
-            if (rowData) {
-                var newSentStatus = e.target.checked;
-                
-                // Confirm ablak
-                if (newSentStatus) {
-                    if (!confirm('Biztosan kiküldve állapotúra állítod a ' + type.toUpperCase() + ' dokumentumot?')) {
-                        e.target.checked = false;
-                        return;
-                    }
-                }
-                
-                var payload = {};
-                if (type === 'ghu') {
-                    payload.is_sent_ghu = newSentStatus;
-                    rowData.sent_ghu = newSentStatus;
-                } else {
-                    payload.is_sent_log = newSentStatus;
-                    rowData.sent_log = newSentStatus;
+        tbody.querySelectorAll('.ek-sent-chk').forEach(function(chk) {
+            chk.addEventListener('change', function(e) {
+                var id = parseInt(e.target.getAttribute('data-id'));
+                var rowData = appData.find(function(x) { return x.id === id; });
+                if (!rowData) return;
+
+                var newVal = e.target.checked;
+
+                if (newVal && !confirm('Biztosan kiküldve állapotúra állítod ezt az EKAER dokumentumot?')) {
+                    e.target.checked = false;
+                    return;
                 }
 
                 fetch('/api/v1/ekaer-records/' + id, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({ is_sent_ghu: newVal, is_sent_log: newVal })
                 })
-                .then(function(response) { return response.json(); })
+                .then(function(res) { return res.json(); })
                 .then(function(resData) {
                     if (resData.status !== 'success') {
-                        console.error('Hiba a státusz frissítésekor:', resData.message);
-                        e.target.checked = !newSentStatus;
-                        if (type === 'ghu') rowData.sent_ghu = !newSentStatus;
-                        else rowData.sent_log = !newSentStatus;
+                        e.target.checked = !newVal;
+                        rowData.sent_ghu = !newVal;
                         alert('Hiba a státusz frissítésekor: ' + resData.message);
                     } else {
+                        rowData.sent_ghu = newVal;
+                        rowData.sent_log = newVal;
                         filter();
                     }
                 })
-                .catch(function(err) {
-                    console.error('Hálózati hiba:', err);
-                    e.target.checked = !newSentStatus;
-                    if (type === 'ghu') rowData.sent_ghu = !newSentStatus;
-                    else rowData.sent_log = !newSentStatus;
+                .catch(function() {
+                    e.target.checked = !newVal;
+                    rowData.sent_ghu = !newVal;
                     alert('Hálózati hiba a státusz frissítésekor!');
                 });
-            }
-        };
-
-        tbody.querySelectorAll('.ek-sent-ghu-chk').forEach(function(chk) {
-            chk.addEventListener('change', function(e) { handleSentStatusChange(e, 'ghu'); });
-        });
-        
-        tbody.querySelectorAll('.ek-sent-log-chk').forEach(function(chk) {
-            chk.addEventListener('change', function(e) { handleSentStatusChange(e, 'log'); });
+            });
         });
     }
 
@@ -440,15 +387,13 @@ export function renderEkaerek(container, windowManager) {
     });
 
     selFuvarozo.addEventListener('change', filter);
-    chkShowSentGhu.addEventListener('change', filter);
-    chkShowSentLog.addEventListener('change', filter);
+    chkShowSent.addEventListener('change', filter);
 
     btnClear.addEventListener('click', function() {
         selSzezon.value = '25-26';
         inputKamisz.value = '';
         selFuvarozo.value = '';
-        chkShowSentGhu.checked = false;
-        chkShowSentLog.checked = false;
+        chkShowSent.checked = false;
         filter();
     });
 

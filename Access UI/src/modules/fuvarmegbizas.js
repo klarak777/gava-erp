@@ -39,12 +39,8 @@ export function renderFuvarmegbizas(container, windowManager) {
                 '</div>' +
                 '<div style="display:flex; align-items:center; gap:16px; margin-left:10px;">' +
                     '<label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--text-main); cursor:pointer;">' +
-                        '<input type="checkbox" id="fuvm-show-sent-ghu" style="cursor:pointer; width:16px; height:16px; accent-color:var(--primary);">' +
-                        'Mutassa a kiküldött GHU fuvarokat' +
-                    '</label>' +
-                    '<label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--text-main); cursor:pointer;">' +
-                        '<input type="checkbox" id="fuvm-show-sent-log" style="cursor:pointer; width:16px; height:16px; accent-color:var(--primary);">' +
-                        'Mutassa a kiküldött LOG fuvarokat' +
+                        '<input type="checkbox" id="fuvm-show-sent" style="cursor:pointer; width:16px; height:16px; accent-color:var(--primary);">' +
+                        'Mutassa a kiküldött fuvarokat' +
                     '</label>' +
                 '</div>' +
                 '<div style="display:flex; gap:8px; padding-bottom: 2px;">' +
@@ -69,8 +65,7 @@ export function renderFuvarmegbizas(container, windowManager) {
                         '<th>Kamion szám</th>' +
                         '<th>Rakodás nap</th>' +
                         '<th>Fuvarozó cég</th>' +
-                        '<th style="text-align:center; width:110px;">Kiküldve GHU</th>' +
-                        '<th style="text-align:center; width:110px;">Kiküldve LOG</th>' +
+                        '<th style="text-align:center; width:100px;">Kiküldve</th>' +
                     '</tr></thead>' +
                     '<tbody id="fuvm-tbody"></tbody>' +
                 '</table>' +
@@ -83,8 +78,7 @@ export function renderFuvarmegbizas(container, windowManager) {
     var selSzezon = view.querySelector('#fuvm-szezon');
     var inputKamisz = view.querySelector('#fuvm-kamisz');
     var selFuvarozo = view.querySelector('#fuvm-fuvarozo');
-    var chkShowSentGhu = view.querySelector('#fuvm-show-sent-ghu');
-    var chkShowSentLog = view.querySelector('#fuvm-show-sent-log');
+    var chkShowSent = view.querySelector('#fuvm-show-sent');
     var btnClear = view.querySelector('#btn-clear-fuvm');
     var tbody = view.querySelector('#fuvm-tbody');
     var btnOpenDoc = view.querySelector('#btn-open-doc');
@@ -118,41 +112,15 @@ export function renderFuvarmegbizas(container, windowManager) {
         var s = selSzezon.value;
         var k = inputKamisz.value.toUpperCase();
         var f = selFuvarozo.value;
-        var showSentGhu = chkShowSentGhu.checked;
-        var showSentLog = chkShowSentLog.checked;
+        var showSent = chkShowSent.checked;
 
         var filtered = appData.filter(function(r) {
             var matchS = r.season === s;
             var matchK = r.tour.toUpperCase().indexOf(k) !== -1 || r.docName.toUpperCase().indexOf(k) !== -1;
             var matchF = f === '' || r.transporter === f;
-            
-            // Rejtési logika
-            // Ha egy fuvar GHU-s és LOG-os is, mindkettőnek kiküldve kell lennie a rejtéshez
-            // Ha csak GHU-s, a GHU kiküldése elég
-            // Ha csak LOG-os, a LOG kiküldése elég
-            // Természetesen, ha a felhasználó pipálja a "Mutasd a kiküldötteket" szűrőt, akkor megjelenik.
-            
-            var isHidden = false;
-            
-            if (r.has_ghu || r.has_log) { // Ha van rajta valami
-                var shouldHideGhu = r.has_ghu ? r.sent_ghu : true; // Ha nincs GHU, akkor az a rész 'kész'
-                var shouldHideLog = r.has_log ? r.sent_log : true; // Ha nincs LOG, akkor az a rész 'kész'
-                
-                // Ha minden aktív része ki van küldve, el akarjuk rejteni
-                if (shouldHideGhu && shouldHideLog) {
-                    isHidden = true;
-                    // De ha bekapcsolták a szűrőt, mégis mutatjuk
-                    if ((r.has_ghu && r.sent_ghu && showSentGhu) || (r.has_log && r.sent_log && showSentLog)) {
-                        isHidden = false;
-                    }
-                }
-            } else {
-                // Üres fuvar esetén (sem GHU, sem LOG), a terv szerint mindkét pipa aktív
-                if (r.sent_ghu && r.sent_log) {
-                    isHidden = true;
-                    if (showSentGhu || showSentLog) isHidden = false;
-                }
-            }
+
+            // Ha ki van küldve és a szűrő nincs bekapcsolva, elrejtjük
+            var isHidden = r.sent_ghu && !showSent;
 
             return matchS && matchK && matchF && !isHidden;
         });
@@ -168,26 +136,17 @@ export function renderFuvarmegbizas(container, windowManager) {
         tbody.innerHTML = data.map(function(r) {
             var isSelected = r.id === selectedRowId;
             var trStyle = isSelected ? 'background-color: #e0f2fe;' : '';
-            
-            // GHU és LOG pipák logikája
-            var isGhuActive = r.has_ghu || (!r.has_ghu && !r.has_log); // Üres fuvar esetén mindkettő aktív
-            var isLogActive = r.has_log || (!r.has_ghu && !r.has_log);
-            
-            var ghuHtml = isGhuActive 
-                ? '<input type="checkbox" class="fuvm-sent-ghu-chk" data-id="' + r.id + '" ' + (r.sent_ghu ? 'checked' : '') + ' style="cursor:pointer; width:18px; height:18px;">'
-                : '<span style="color:#94a3b8; font-weight:bold;">❌</span>';
-                
-            var logHtml = isLogActive 
-                ? '<input type="checkbox" class="fuvm-sent-log-chk" data-id="' + r.id + '" ' + (r.sent_log ? 'checked' : '') + ' style="cursor:pointer; width:18px; height:18px;">'
-                : '<span style="color:#94a3b8; font-weight:bold;">❌</span>';
+
+            var sentHtml = '<input type="checkbox" class="fuvm-sent-chk" data-id="' + r.id + '" ' +
+                (r.sent_ghu ? 'checked' : '') +
+                ' style="cursor:pointer; width:18px; height:18px;">';
 
             return '<tr class="fuvm-row" data-id="' + r.id + '" style="cursor:pointer; ' + trStyle + '">' +
                 '<td style="text-align:center;"><input type="radio" name="fuvm_select" ' + (isSelected ? 'checked' : '') + ' style="cursor:pointer; pointer-events:none;"></td>' +
                 '<td>' + r.tour + '</td>' +
                 '<td>' + r.date + '</td>' +
                 '<td>' + r.transporter + '</td>' +
-                '<td style="text-align:center;" title="Kiküldve GHU">' + ghuHtml + '</td>' +
-                '<td style="text-align:center;" title="Kiküldve LOG">' + logHtml + '</td>' +
+                '<td style="text-align:center;" title="Kiküldve">' + sentHtml + '</td>' +
                 '</tr>';
         }).join('');
 
@@ -200,64 +159,44 @@ export function renderFuvarmegbizas(container, windowManager) {
             });
         });
 
-        // Kiküldve checkbox logika (GHU és LOG)
-        var handleSentStatusChange = function(e, type) {
-            var id = parseInt(e.target.getAttribute('data-id'));
-            var rowData = appData.find(function(x) { return x.id === id; });
-            if (rowData) {
-                var newSentStatus = e.target.checked;
-                
-                // Confirm ablak, ha be akarja pipálni
-                if (newSentStatus) {
-                    if (!confirm('Biztosan kiküldve állapotúra állítod a ' + type.toUpperCase() + ' dokumentumot?')) {
-                        e.target.checked = false;
-                        return;
-                    }
-                }
-                
-                var payload = {};
-                if (type === 'ghu') {
-                    payload.is_sent_ghu = newSentStatus;
-                    rowData.sent_ghu = newSentStatus;
-                } else {
-                    payload.is_sent_log = newSentStatus;
-                    rowData.sent_log = newSentStatus;
+        // Kiküldve checkbox logika
+        tbody.querySelectorAll('.fuvm-sent-chk').forEach(function(chk) {
+            chk.addEventListener('change', function(e) {
+                var id = parseInt(e.target.getAttribute('data-id'));
+                var rowData = appData.find(function(x) { return x.id === id; });
+                if (!rowData) return;
+
+                var newVal = e.target.checked;
+
+                if (newVal && !confirm('Biztosan kiküldve állapotúra állítod ezt a fuvarmegbízást?')) {
+                    e.target.checked = false;
+                    return;
                 }
 
+                // Mindkét mezőt (GHU + LOG) egyszerre állítjuk – a GHU/LOG logika más modulban lesz
                 fetch('/api/v1/transport-orders/' + id, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({ is_sent_ghu: newVal, is_sent_log: newVal })
                 })
-                .then(function(response) { return response.json(); })
+                .then(function(res) { return res.json(); })
                 .then(function(resData) {
                     if (resData.status !== 'success') {
-                        console.error('Hiba a státusz frissítésekor:', resData.message);
-                        e.target.checked = !newSentStatus;
-                        if (type === 'ghu') rowData.sent_ghu = !newSentStatus;
-                        else rowData.sent_log = !newSentStatus;
+                        e.target.checked = !newVal;
+                        rowData.sent_ghu = !newVal;
                         alert('Hiba a státusz frissítésekor: ' + resData.message);
                     } else {
-                        // Újrarajzolás a rejtési/szűrési szabályok miatt
+                        rowData.sent_ghu = newVal;
+                        rowData.sent_log = newVal;
                         filter();
                     }
                 })
-                .catch(function(err) {
-                    console.error('Hálózati hiba:', err);
-                    e.target.checked = !newSentStatus;
-                    if (type === 'ghu') rowData.sent_ghu = !newSentStatus;
-                    else rowData.sent_log = !newSentStatus;
+                .catch(function() {
+                    e.target.checked = !newVal;
+                    rowData.sent_ghu = !newVal;
                     alert('Hálózati hiba a státusz frissítésekor!');
                 });
-            }
-        };
-
-        tbody.querySelectorAll('.fuvm-sent-ghu-chk').forEach(function(chk) {
-            chk.addEventListener('change', function(e) { handleSentStatusChange(e, 'ghu'); });
-        });
-        
-        tbody.querySelectorAll('.fuvm-sent-log-chk').forEach(function(chk) {
-            chk.addEventListener('change', function(e) { handleSentStatusChange(e, 'log'); });
+            });
         });
     }
 
@@ -441,15 +380,13 @@ export function renderFuvarmegbizas(container, windowManager) {
         filter();
     });
     selFuvarozo.addEventListener('change', filter);
-    chkShowSentGhu.addEventListener('change', filter);
-    chkShowSentLog.addEventListener('change', filter);
+    chkShowSent.addEventListener('change', filter);
 
     btnClear.addEventListener('click', function() {
         selSzezon.value = '25-26';
         inputKamisz.value = '';
         selFuvarozo.value = '';
-        chkShowSentGhu.checked = false;
-        chkShowSentLog.checked = false;
+        chkShowSent.checked = false;
         filter();
     });
 
@@ -500,7 +437,7 @@ export function renderFuvarmegbizas(container, windowManager) {
 
     // --- INICIALIZÁLÁS ---
     function loadData() {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">Adatok betöltése...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">Adatok betöltése...</td></tr>';
         fetch('/api/v1/transport-orders')
             .then(function(res) { return res.json(); })
             .then(function(data) {
@@ -509,12 +446,12 @@ export function renderFuvarmegbizas(container, windowManager) {
                     populateFuvarozok();
                     filter();
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red; padding:20px;">Hiba az adatok betöltésekor.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:red; padding:20px;">Hiba az adatok betöltésekor.</td></tr>';
                 }
             })
             .catch(function(err) {
                 console.error('Fetch error:', err);
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red; padding:20px;">Hálózati hiba az adatok betöltésekor.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:red; padding:20px;">Hálózati hiba az adatok betöltésekor.</td></tr>';
             });
     }
 
