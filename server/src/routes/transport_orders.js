@@ -4,7 +4,8 @@ const db = require('../db/db');
 const path = require('path');
 const fs = require('fs');
 const mammoth = require('mammoth');
-const HTMLtoDOCX = require('html-to-docx');
+const HTMLtoDOCX = require('html-to-docx'); // fallback
+const { applyHtmlEditsToDocx } = require('../utils/docxEditor');
 
 // Helper: Windows hálózati útvonal → Docker/Linux útvonal feloldása
 function resolveFilePath(filePath) {
@@ -265,13 +266,20 @@ router.put('/:id/edit', async (req, res) => {
     const backupFileName = `${path.basename(resolvedPath, '.docx')}_${new Date().toISOString().replace(/[:.]/g, '-')}.docx.bak`;
     fs.copyFileSync(resolvedPath, path.join(backupDir, backupFileName));
 
-    // 2. HTML → DOCX konverzió
-    const fullHtml = `<!DOCTYPE html><html><body>${html}</body></html>`;
-    const docxBuffer = await HTMLtoDOCX(fullHtml, null, {
-      table: { row: { cantSplit: true } },
-      footer: false,
-      pageNumber: false,
-    });
+    // 2. HTML → DOCX konverzió: közvetlen XML manipuláció (formázás megőrzésével)
+    let docxBuffer;
+    try {
+      docxBuffer = applyHtmlEditsToDocx(resolvedPath, html);
+    } catch (xmlErr) {
+      console.warn('XML szerkesztő hiba, fallback html-to-docx-ra:', xmlErr.message);
+      // Fallback: html-to-docx (formázás részben elveszhet)
+      const fullHtml = `<!DOCTYPE html><html><body>${html}</body></html>`;
+      docxBuffer = await HTMLtoDOCX(fullHtml, null, {
+        table: { row: { cantSplit: true } },
+        footer: false,
+        pageNumber: false,
+      });
+    }
 
     // 3. Visszamentés az eredeti helyre
     fs.writeFileSync(resolvedPath, docxBuffer);
