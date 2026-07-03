@@ -1,4 +1,4 @@
-# Napi Javítások és Fejlesztések (2026. 07. 03.)
+﻿# Napi Javítások és Fejlesztések (2026. 07. 03.)
 
 ## Fuvarmegbízások és EKAEREK Modul Fejlesztése (GHU / LOG logikák)
 
@@ -22,6 +22,12 @@ A Fuvarmegbízások és EKAEREK táblázatok funkcionalitása és felhasználói
 - Ha a fuvar "üres" (nincs célállomás, áru), akkor egy figyelmeztető ablak ugrik fel: *"⚠️ Nincsenek tételek (áru) rögzítve ezen a kamion fuvaron! Biztosan létre akarja hozni..."*
 - Ha a felhasználó igennel válaszol, a fuvar üresen is elkészül, és a Fuvarmegbízások/EKAEREK listában **mindkét** (GHU és LOG) jelölőnégyzet aktív lesz, hogy kézzel le tudják zárni.
 
-### 4. Egy�b Finom�t�sok
-- **Rakod�s:** Kamion r�gz�t�sn�l a fuvard�j (Transport price) mellett megjelent egy p�nznem v�laszt� (EUR/HUF), ami ment�sre is ker�l az adatb�zisban.
-- **Transportistas:** A kamionsz�mra (Order number) kattintva mostant�l felugrik az adott kamion szerkeszt�si ablaka.
+### 4. Egyéb Finomítások
+- **Rakodás:** Kamion rögzítésnél a fuvardíj (Transport price) mellett megjelent egy pénznem választó (EUR/HUF), ami mentésre is kerül az adatbázisban.
+- **Transportistas:** A kamionszámra (Order number) kattintva mostantól felugrik az adott kamion szerkesztési ablaka.
+
+### 5. Dokumentumok online szerkesztése (Fuvarmegbízás és EKAER)
+- **Szerkeszthető előnézet:** A "📄 Dokumentum megnyitása" gombra kattintva a fejlécben megjelent egy sárga "✏️ Szerkesztés" gomb. Erre kattintva a dokumentum szöveges része közvetlenül a böngészőben szerkeszthetővé válik.
+- **Mentési funkció:** A "💾 Mentés" gomb elmenti a változtatásokat közvetlenül a szerveren lévő eredeti .docx fájlba. A "✕ Mégse" gomb elveti a módosításokat.
+- **Biztonsági mentés (Backup):** A mentés gomb megnyomásakor a rendszer az eredeti .docx fájlról automatikusan másolatot készít a /mnt/raktar/_DOCX_Backup/Fuvarmegbizasok/ és /mnt/raktar/_DOCX_Backup/EKAER/ mappákba időbélyeggel ellátva, így az eredeti dokumentumok bármikor visszaállíthatók.
+- **Formázás megőrzése (XML-alapú szerkesztés):** A szöveges módosítások a Word fájl belső XML szerkezetén mennek végbe (`w:t` elemek frissítése), így a dokumentum formázása (betűméret, bold, dőlt, betűtípus) érintetlenül megmarad.
