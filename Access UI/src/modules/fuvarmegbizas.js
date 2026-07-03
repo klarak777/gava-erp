@@ -263,22 +263,41 @@ export function renderFuvarmegbizas(container, windowManager) {
 
     // --- DOKUMENTUM ELŐNÉZET MODAL ---
     function openDocumentPreviewModal(rowData) {
+        var isEditMode = false;
+        var originalHtml = '';
+
         var modalContent =
             '<div style="display:flex; flex-direction:column; height:100%;">' +
-                // Fejléc sáv letöltő gombbal
+                // Fejléc sáv
                 '<div style="display:flex; align-items:center; justify-content:space-between; padding:12px 20px; background:linear-gradient(135deg,#1e3a5f,#2563eb); border-radius:8px; margin-bottom:16px; flex-shrink:0;">' +
                     '<div>' +
                         '<div style="font-size:11px; color:rgba(255,255,255,0.7); font-weight:500; letter-spacing:0.5px; text-transform:uppercase;">Fuvarmegbízás dokumentum</div>' +
                         '<div style="font-size:14px; color:#fff; font-weight:700; margin-top:2px;">' + (rowData.docName || 'Dokumentum') + '</div>' +
                         '<div style="font-size:11px; color:rgba(255,255,255,0.6); margin-top:2px;">Kamion: ' + rowData.tour + ' &nbsp;|&nbsp; Fuvarozó cég: ' + rowData.transporter + ' &nbsp;|&nbsp; Dátum: ' + rowData.date + '</div>' +
                     '</div>' +
-                    '<a id="fuvm-download-btn" href="/api/v1/transport-orders/' + rowData.id + '/download" download ' +
-                       'style="display:flex; align-items:center; gap:6px; background:#22c55e; color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer; text-decoration:none; transition:all 0.2s; white-space:nowrap;">' +
-                        '⬇️ Letöltés' +
-                    '</a>' +
+                    // Gombok csoport
+                    '<div style="display:flex; gap:8px; align-items:center;">' +
+                        '<div id="fuvm-status-msg" style="font-size:12px; font-weight:600; display:none; padding:4px 10px; border-radius:6px;"></div>' +
+                        '<a id="fuvm-download-btn" href="/api/v1/transport-orders/' + rowData.id + '/download" download ' +
+                           'style="display:flex; align-items:center; gap:6px; background:#22c55e; color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer; text-decoration:none; transition:all 0.2s; white-space:nowrap;">' +
+                            '⬇️ Letöltés' +
+                        '</a>' +
+                        '<button id="fuvm-edit-btn" ' +
+                           'style="display:flex; align-items:center; gap:6px; background:#f59e0b; color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s; white-space:nowrap;">' +
+                            '✏️ Szerkesztés' +
+                        '</button>' +
+                        '<button id="fuvm-save-btn" ' +
+                           'style="display:none; align-items:center; gap:6px; background:#2563eb; color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s; white-space:nowrap;">' +
+                            '💾 Mentés' +
+                        '</button>' +
+                        '<button id="fuvm-cancel-btn" ' +
+                           'style="display:none; align-items:center; gap:6px; background:#64748b; color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s; white-space:nowrap;">' +
+                            '✕ Mégse' +
+                        '</button>' +
+                    '</div>' +
                 '</div>' +
-                // Előnézeti terület
-                '<div id="fuvm-preview-body" style="flex:1; overflow-y:auto; padding:24px 28px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0; font-family:\'Segoe UI\', Arial, sans-serif; font-size:13px; line-height:1.6; color:#1e293b; min-height:300px;">' +
+                // Előnézeti / szerkesztési terület
+                '<div id="fuvm-preview-body" style="flex:1; overflow-y:auto; padding:24px 28px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0; font-family:\'Segoe UI\', Arial, sans-serif; font-size:13px; line-height:1.6; color:#1e293b; min-height:300px; outline:none;">' +
                     '<div id="fuvm-preview-spinner" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:200px; gap:12px; color:#64748b;">' +
                         '<div style="width:36px; height:36px; border:3px solid #e2e8f0; border-top-color:#2563eb; border-radius:50%; animation:fuvm-spin 0.8s linear infinite;"></div>' +
                         '<span style="font-size:13px;">Dokumentum betöltése...</span>' +
@@ -294,14 +313,16 @@ export function renderFuvarmegbizas(container, windowManager) {
                     '#fuvm-preview-body p { margin:4px 0 8px; }' +
                     '#fuvm-preview-body strong, #fuvm-preview-body b { font-weight:700; }' +
                     '#fuvm-download-btn:hover { background:#16a34a !important; transform:translateY(-1px); box-shadow:0 4px 12px rgba(34,197,94,0.3); }' +
+                    '#fuvm-edit-btn:hover { background:#d97706 !important; }' +
+                    '#fuvm-save-btn:hover { background:#1d4ed8 !important; }' +
+                    '#fuvm-preview-content[contenteditable="true"] { outline:2px dashed #2563eb; outline-offset:4px; background:#fffbeb; border-radius:4px; cursor:text; }' +
                 '</style>' +
             '</div>';
 
-        // windowManager.createModal API feltételezi: { title, width, height, content } → { element }
         var modal = windowManager.createModal({
             title: '📄 ' + (rowData.docName || 'Dokumentum előnézet'),
             width: 820,
-            height: 640,
+            height: 660,
             content: modalContent
         });
 
@@ -309,6 +330,71 @@ export function renderFuvarmegbizas(container, windowManager) {
         var spinner = modalEl.querySelector('#fuvm-preview-spinner');
         var contentDiv = modalEl.querySelector('#fuvm-preview-content');
         var errorDiv = modalEl.querySelector('#fuvm-preview-error');
+        var editBtn = modalEl.querySelector('#fuvm-edit-btn');
+        var saveBtn = modalEl.querySelector('#fuvm-save-btn');
+        var cancelBtn = modalEl.querySelector('#fuvm-cancel-btn');
+        var statusMsg = modalEl.querySelector('#fuvm-status-msg');
+
+        // Szerkesztési mód be/ki
+        function setEditMode(on) {
+            isEditMode = on;
+            contentDiv.contentEditable = on ? 'true' : 'false';
+            editBtn.style.display = on ? 'none' : 'flex';
+            saveBtn.style.display = on ? 'flex' : 'none';
+            cancelBtn.style.display = on ? 'flex' : 'none';
+            statusMsg.style.display = 'none';
+            if (on) {
+                originalHtml = contentDiv.innerHTML;
+                contentDiv.focus();
+            }
+        }
+
+        editBtn.addEventListener('click', function() {
+            if (contentDiv.style.display !== 'none') setEditMode(true);
+        });
+
+        cancelBtn.addEventListener('click', function() {
+            contentDiv.innerHTML = originalHtml;
+            setEditMode(false);
+        });
+
+        saveBtn.addEventListener('click', function() {
+            saveBtn.disabled = true;
+            saveBtn.textContent = '⏳ Mentés...';
+            statusMsg.style.display = 'none';
+
+            fetch('/api/v1/transport-orders/' + rowData.id + '/edit', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ html: contentDiv.innerHTML })
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                saveBtn.disabled = false;
+                saveBtn.textContent = '💾 Mentés';
+                if (data.status === 'success') {
+                    statusMsg.textContent = '✅ Sikeresen mentve!';
+                    statusMsg.style.background = '#dcfce7';
+                    statusMsg.style.color = '#15803d';
+                    statusMsg.style.display = 'block';
+                    originalHtml = contentDiv.innerHTML;
+                    setEditMode(false);
+                } else {
+                    statusMsg.textContent = '⚠️ Hiba: ' + (data.message || 'Ismeretlen hiba');
+                    statusMsg.style.background = '#fef2f2';
+                    statusMsg.style.color = '#dc2626';
+                    statusMsg.style.display = 'block';
+                }
+            })
+            .catch(function(err) {
+                saveBtn.disabled = false;
+                saveBtn.textContent = '💾 Mentés';
+                statusMsg.textContent = '⚠️ Hálózati hiba: ' + err.message;
+                statusMsg.style.background = '#fef2f2';
+                statusMsg.style.color = '#dc2626';
+                statusMsg.style.display = 'block';
+            });
+        });
 
         // Dokumentum betöltése Mammoth HTML előnézetként
         fetch('/api/v1/transport-orders/' + rowData.id + '/preview')
@@ -318,7 +404,9 @@ export function renderFuvarmegbizas(container, windowManager) {
                 if (data.status === 'success') {
                     contentDiv.innerHTML = data.html || '<em style="color:#94a3b8;">A dokumentum nem tartalmaz szöveget.</em>';
                     contentDiv.style.display = 'block';
+                    editBtn.style.display = 'flex'; // Szerkesztés gomb csak ha betöltött a tartalom
                 } else {
+                    editBtn.style.display = 'none';
                     errorDiv.innerHTML =
                         '<strong>⚠️ Nem sikerült betölteni a dokumentumot</strong><br><br>' +
                         (data.message || 'Ismeretlen hiba') + '<br><br>' +
@@ -328,12 +416,14 @@ export function renderFuvarmegbizas(container, windowManager) {
             })
             .catch(function(err) {
                 spinner.style.display = 'none';
+                editBtn.style.display = 'none';
                 errorDiv.innerHTML =
                     '<strong>⚠️ Hálózati hiba</strong><br><br>' + err.message + '<br><br>' +
                     '<span style="font-size:11px; color:#94a3b8;">Ellenőrizze a szerver kapcsolatot, és próbálja újra.</span>';
                 errorDiv.style.display = 'block';
             });
     }
+
 
     // --- ESEMÉNYKEZELŐK ---
 

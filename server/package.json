@@ -24,6 +24,7 @@
     "docxtemplater": "^3.68.7",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "html-to-docx": "^1.8.0",
     "jsonwebtoken": "^9.0.3",
     "knex": "^3.2.10",
     "mammoth": "^1.12.0",

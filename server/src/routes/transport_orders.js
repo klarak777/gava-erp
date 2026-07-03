@@ -4,6 +4,7 @@ const db = require('../db/db');
 const path = require('path');
 const fs = require('fs');
 const mammoth = require('mammoth');
+const HTMLtoDOCX = require('html-to-docx');
 
 // Helper: Windows hálózati útvonal → Docker/Linux útvonal feloldása
 function resolveFilePath(filePath) {
@@ -233,6 +234,52 @@ router.get('/:id/preview', async (req, res) => {
       status: 'error',
       message: 'Szerverhiba az előnézet generálásakor: ' + error.message
     });
+  }
+});
+
+// PUT /api/v1/transport-orders/:id/edit - Szerkesztett HTML visszamentése DOCX-ként
+router.put('/:id/edit', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { html } = req.body;
+
+    if (!html) {
+      return res.status(400).json({ status: 'error', message: 'Nincs HTML tartalom a kérésben.' });
+    }
+
+    const record = await db('transport_orders').where({ id }).first();
+    if (!record || !record.file_path) {
+      return res.status(404).json({ status: 'error', message: 'Fuvarmegbízás vagy fájl elérési út nem található.' });
+    }
+
+    const resolvedPath = resolveFilePath(record.file_path);
+    if (!fs.existsSync(resolvedPath)) {
+      return res.status(404).json({ status: 'error', message: `A fájl nem található a szerveren: ${resolvedPath}` });
+    }
+
+    // 1. Biztonsági mentés (backup) egy külön mappába
+    const backupDir = path.join(process.env.RAKTAR_PATH || '/mnt/raktar', '_DOCX_Backup', 'Fuvarmegbizasok');
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+    }
+    const backupFileName = `${path.basename(resolvedPath, '.docx')}_${new Date().toISOString().replace(/[:.]/g, '-')}.docx.bak`;
+    fs.copyFileSync(resolvedPath, path.join(backupDir, backupFileName));
+
+    // 2. HTML → DOCX konverzió
+    const fullHtml = `<!DOCTYPE html><html><body>${html}</body></html>`;
+    const docxBuffer = await HTMLtoDOCX(fullHtml, null, {
+      table: { row: { cantSplit: true } },
+      footer: false,
+      pageNumber: false,
+    });
+
+    // 3. Visszamentés az eredeti helyre
+    fs.writeFileSync(resolvedPath, docxBuffer);
+
+    res.json({ status: 'success', message: 'Dokumentum sikeresen mentve.' });
+  } catch (error) {
+    console.error('Hiba a fuvarmegbízás szerkesztésekor:', error);
+    res.status(500).json({ status: 'error', message: 'Szerverhiba a mentés során: ' + error.message });
   }
 });
 
