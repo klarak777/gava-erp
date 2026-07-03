@@ -31,3 +31,8 @@ A Fuvarmegbízások és EKAEREK táblázatok funkcionalitása és felhasználói
 - **Mentési funkció:** A "💾 Mentés" gomb elmenti a változtatásokat közvetlenül a szerveren lévő eredeti .docx fájlba. A "✕ Mégse" gomb elveti a módosításokat.
 - **Biztonsági mentés (Backup):** A mentés gomb megnyomásakor a rendszer az eredeti .docx fájlról automatikusan másolatot készít a /mnt/raktar/_DOCX_Backup/Fuvarmegbizasok/ és /mnt/raktar/_DOCX_Backup/EKAER/ mappákba időbélyeggel ellátva, így az eredeti dokumentumok bármikor visszaállíthatók.
 - **Formázás megőrzése (XML-alapú szerkesztés):** A szöveges módosítások a Word fájl belső XML szerkezetén mennek végbe (`w:t` elemek frissítése), így a dokumentum formázása (betűméret, bold, dőlt, betűtípus) érintetlenül megmarad.
+
+### 6. Kiküldve (is_sent) logika visszaállítása
+- **Adatbázis módosítás visszavonása:** Az is_sent_ghu és is_sent_log mezőket megszüntettük a 	ransport_orders és ekaer_records táblákban, és visszaállítottuk az eredeti is_sent logikai mezőt.
+- A GHU és LOG szerinti megkülönböztetésre a jövőben egy **pénzügyi / könyvelési modulban** lesz szükség, nem pedig a fuvarok/EKAER-ek kiküldésének lezárásánál.
+- A Frontend és az API hívások (Fuvarmegbízások és EKAEREK) visszaálltak a korábbi, egyszerű "egy checkbox = egy kiküldés" (is_sent) logikára, de megtartották az új, tiszta UI-t, a megerősítő ablakokat (confirm) és az okos szűrőt.

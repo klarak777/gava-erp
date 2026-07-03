@@ -120,7 +120,7 @@ export function renderFuvarmegbizas(container, windowManager) {
             var matchF = f === '' || r.transporter === f;
 
             // Ha ki van küldve és a szűrő nincs bekapcsolva, elrejtjük
-            var isHidden = r.sent_ghu && !showSent;
+            var isHidden = r.sent && !showSent;
 
             return matchS && matchK && matchF && !isHidden;
         });
@@ -138,7 +138,7 @@ export function renderFuvarmegbizas(container, windowManager) {
             var trStyle = isSelected ? 'background-color: #e0f2fe;' : '';
 
             var sentHtml = '<input type="checkbox" class="fuvm-sent-chk" data-id="' + r.id + '" ' +
-                (r.sent_ghu ? 'checked' : '') +
+                (r.sent ? 'checked' : '') +
                 ' style="cursor:pointer; width:18px; height:18px;">';
 
             return '<tr class="fuvm-row" data-id="' + r.id + '" style="cursor:pointer; ' + trStyle + '">' +
@@ -173,27 +173,26 @@ export function renderFuvarmegbizas(container, windowManager) {
                     return;
                 }
 
-                // Mindkét mezőt (GHU + LOG) egyszerre állítjuk – a GHU/LOG logika más modulban lesz
+                // Itt mostantól az is_sent flaget állítjuk
                 fetch('/api/v1/transport-orders/' + id, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ is_sent_ghu: newVal, is_sent_log: newVal })
+                    body: JSON.stringify({ is_sent: newVal })
                 })
                 .then(function(res) { return res.json(); })
                 .then(function(resData) {
                     if (resData.status !== 'success') {
                         e.target.checked = !newVal;
-                        rowData.sent_ghu = !newVal;
+                        rowData.sent = !newVal;
                         alert('Hiba a státusz frissítésekor: ' + resData.message);
                     } else {
-                        rowData.sent_ghu = newVal;
-                        rowData.sent_log = newVal;
+                        rowData.sent = newVal;
                         filter();
                     }
                 })
                 .catch(function() {
                     e.target.checked = !newVal;
-                    rowData.sent_ghu = !newVal;
+                    rowData.sent = !newVal;
                     alert('Hálózati hiba a státusz frissítésekor!');
                 });
             });

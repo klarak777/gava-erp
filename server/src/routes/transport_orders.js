@@ -51,10 +51,7 @@ router.get('/', async (req, res) => {
         'shipments.order_number',
         'seasons.code as season_code',
         'transporters.name as transporter_name',
-        'transport_orders.is_sent_ghu',
-        'transport_orders.is_sent_log',
-        db.raw(`EXISTS (SELECT 1 FROM shipment_lines sl WHERE sl.shipment_id = shipments.id AND sl.customer ILIKE '%GHU%') AS has_ghu`),
-        db.raw(`EXISTS (SELECT 1 FROM shipment_lines sl WHERE sl.shipment_id = shipments.id AND (sl.customer NOT ILIKE '%GHU%' OR sl.customer IS NULL)) AS has_log`)
+        'transport_orders.is_sent'
       )
       .orderBy('transport_orders.id', 'desc');
 
@@ -78,10 +75,7 @@ router.get('/', async (req, res) => {
         tour: order.order_number || '-',
         transporter: order.transporter_name || '-',
         season: order.season_code || '-',
-        sent_ghu: !!order.is_sent_ghu,
-        sent_log: !!order.is_sent_log,
-        has_ghu: !!order.has_ghu,
-        has_log: !!order.has_log
+        sent: !!order.is_sent
       };
     });
 
@@ -438,13 +432,16 @@ router.get('/:id/download', async (req, res) => {
 // PUT /api/v1/transport-orders/:id - Egy megbízás státuszának (pl. is_sent) frissítése
 router.put('/:id', async (req, res) => {
   try {
-    const id = req.params.id;
-    const { is_sent_ghu, is_sent_log } = req.body;
+    const { id } = req.params;
+    const { is_sent } = req.body;
 
     const updateData = {};
-    if (is_sent_ghu !== undefined) updateData.is_sent_ghu = is_sent_ghu;
-    if (is_sent_log !== undefined) updateData.is_sent_log = is_sent_log;
+    if (is_sent !== undefined) updateData.is_sent = is_sent;
     updateData.updated_at = db.fn.now();
+
+    if (Object.keys(updateData).length === 1 && updateData.updated_at) {
+      return res.status(400).json({ status: 'error', message: 'Nincs frissítendő adat' });
+    }
 
     const affected = await db('transport_orders')
       .where({ id })

@@ -57,10 +57,7 @@ router.get('/', async (req, res) => {
         'shipments.order_number',
         'seasons.code as season_code',
         'transporters.name as transporter_name',
-        'ekaer_records.is_sent_ghu',
-        'ekaer_records.is_sent_log',
-        db.raw(`EXISTS (SELECT 1 FROM shipment_lines sl WHERE sl.shipment_id = shipments.id AND sl.customer ILIKE '%GHU%') AS has_ghu`),
-        db.raw(`EXISTS (SELECT 1 FROM shipment_lines sl WHERE sl.shipment_id = shipments.id AND (sl.customer NOT ILIKE '%GHU%' OR sl.customer IS NULL)) AS has_log`)
+        'ekaer_records.is_sent'
       )
       .orderBy('ekaer_records.id', 'desc');
 
@@ -84,10 +81,7 @@ router.get('/', async (req, res) => {
         tour: record.order_number || '-',
         transporter: record.transporter_name || '-',
         season: record.season_code || '-',
-        sent_ghu: !!record.is_sent_ghu,
-        sent_log: !!record.is_sent_log,
-        has_ghu: !!record.has_ghu,
-        has_log: !!record.has_log
+        sent: !!record.is_sent
       };
     });
 
@@ -404,16 +398,19 @@ router.get('/:id/download', async (req, res) => {
   }
 });
 
-// PUT /api/v1/ekaer-records/:id - Egy bejegyzés státuszának (pl. is_sent_ghu) frissítése
+// PUT /api/v1/ekaer-records/:id - Egy bejegyzés státuszának (pl. is_sent) frissítése
 router.put('/:id', async (req, res) => {
   try {
-    const id = req.params.id;
-    const { is_sent_ghu, is_sent_log } = req.body;
+    const { id } = req.params;
+    const { is_sent } = req.body;
 
     const updateData = {};
-    if (is_sent_ghu !== undefined) updateData.is_sent_ghu = is_sent_ghu;
-    if (is_sent_log !== undefined) updateData.is_sent_log = is_sent_log;
+    if (is_sent !== undefined) updateData.is_sent = is_sent;
     updateData.updated_at = db.fn.now();
+
+    if (Object.keys(updateData).length === 1 && updateData.updated_at) {
+      return res.status(400).json({ status: 'error', message: 'Nincs frissítendő adat' });
+    }
 
     const affected = await db('ekaer_records')
       .where({ id })

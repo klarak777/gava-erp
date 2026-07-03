@@ -134,7 +134,7 @@ export function renderEkaerek(container, windowManager) {
             var matchK = r.tour.toUpperCase().indexOf(k) !== -1 || r.docName.toUpperCase().indexOf(k) !== -1;
             var matchF = f === '' || r.transporter === f;
 
-            var isHidden = r.sent_ghu && !showSent;
+            var isHidden = r.sent && !showSent;
 
             return matchS && matchK && matchF && !isHidden;
         });
@@ -152,7 +152,7 @@ export function renderEkaerek(container, windowManager) {
             var trStyle = isSelected ? 'background-color: #e0f2fe;' : '';
 
             var sentHtml = '<input type="checkbox" class="ek-sent-chk" data-id="' + r.id + '" ' +
-                (r.sent_ghu ? 'checked' : '') +
+                (r.sent ? 'checked' : '') +
                 ' style="cursor:pointer; width:18px; height:18px;">';
 
             return '<tr class="ek-row" data-id="' + r.id + '" style="cursor:pointer; ' + trStyle + '">' +
@@ -189,23 +189,22 @@ export function renderEkaerek(container, windowManager) {
                 fetch('/api/v1/ekaer-records/' + id, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ is_sent_ghu: newVal, is_sent_log: newVal })
+                    body: JSON.stringify({ is_sent: newVal })
                 })
                 .then(function(res) { return res.json(); })
                 .then(function(resData) {
                     if (resData.status !== 'success') {
                         e.target.checked = !newVal;
-                        rowData.sent_ghu = !newVal;
+                        rowData.sent = !newVal;
                         alert('Hiba a státusz frissítésekor: ' + resData.message);
                     } else {
-                        rowData.sent_ghu = newVal;
-                        rowData.sent_log = newVal;
+                        rowData.sent = newVal;
                         filter();
                     }
                 })
                 .catch(function() {
                     e.target.checked = !newVal;
-                    rowData.sent_ghu = !newVal;
+                    rowData.sent = !newVal;
                     alert('Hálózati hiba a státusz frissítésekor!');
                 });
             });
