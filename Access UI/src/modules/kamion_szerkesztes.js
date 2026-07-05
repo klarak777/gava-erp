@@ -148,7 +148,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                                     <th style="text-align:right; min-width:55px;">Reloading/plt</th>
                                     <th style="text-align:right; min-width:65px;">Transport BCN/plt</th>
                                     <th style="min-width:110px;">Customer order N°</th>
-                                    <th style="text-align:center; min-width:70px;">Truck N°/plt</th>
+                                    <th style="text-align:center; min-width:70px;">Order N° /</th>
                                 </tr>
                             </thead>
                             <tbody id="km-lines-tbody"></tbody>
@@ -471,15 +471,40 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 const rounded = Math.round(sumNormal);
                 convertedNormal = conversionMap[rounded] !== undefined ? conversionMap[rounded] : sumNormal * (33.0 / 26.0);
             }
+            
+            const orderNo = kmOrder ? (kmOrder.value || '').trim().toUpperCase() : '';
+            const isTargetOrder = orderNo.startsWith('H') || orderNo.startsWith('GHU');
+            const referenceMap = new Map();
+            let refCounter = 0;
+
             return items.map(l => {
                 if (l._empty) return { ...l, totalPalets: '' };
                 const lineEuro = parseFloat(String(l.euro_palets).replace(',', '.')) || 0;
                 const lineNorm = parseFloat(String(l.normal_palets).replace(',', '.')) || 0;
                 let totalPalets = lineEuro;
                 if (sumNormal > 0 && lineNorm > 0) totalPalets += convertedNormal * (lineNorm / sumNormal);
-                return { ...l, totalPalets: Number(totalPalets.toFixed(2)) };
+                
+                let truckNumberPer = '';
+                if (isTargetOrder) {
+                    const cust = (l.customer || '').toUpperCase();
+                    if (cust.includes('GHU')) {
+                        let ref = (l.albaran_number || '').trim().toUpperCase();
+                        if (ref === 'AGROPONIENTE NATURAL') ref = 'AGROPONIENTE';
+                        
+                        if (!referenceMap.has(ref)) {
+                            referenceMap.set(ref, refCounter);
+                            refCounter++;
+                        }
+                        const num = referenceMap.get(ref);
+                        truckNumberPer = num === 0 ? '' : String(num);
+                    }
+                }
+                l.truck_number_per = truckNumberPer;
+
+                return { ...l, totalPalets: Number(totalPalets.toFixed(2)), truck_number_per: truckNumberPer };
             });
         }
+
 
         // ===== TÁBLÁZAT RENDERELÉS =====
         const cellStyle = 'border:none; background:transparent; font-size:11px; width:100%; padding:1px 3px; font-family:inherit; outline:none;';
@@ -598,9 +623,10 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                         style="${numCellStyle} width:60px;" value="${isEmpty ? '' : escHtml(l.transport_bcn_per_plt)}" min="0" step="0.01" placeholder="0"></td>
                     <td><input type="text" class="cell-edit" data-field="customer_order_no" data-index="${index}"
                         style="${cellStyle} min-width:100px;" value="${isEmpty ? '' : escHtml(l.customer_order_no)}"></td>
-                    <td><input type="number" class="cell-edit" data-field="truck_number_per" data-index="${index}"
-                        style="${numCellStyle} width:60px;" value="${isEmpty ? '' : escHtml(parseInt(l.truck_number_per) || 0)}" min="0" step="1" placeholder="0"></td>
+                    <td><input type="text" class="cell-edit" data-field="truck_number_per" data-index="${index}"
+                        style="${cellStyle} width:60px; text-align:center; background-color:#f8fafc; font-weight:bold;" value="${isEmpty ? '' : (l.truck_number_per !== '' && l.truck_number_per != null ? escHtml(l.truck_number_per) : '')}" readonly placeholder=""></td>
                 </tr>`;
+
             }).join('');
 
             // Inline cell edit – szinkron az állapotba
@@ -614,10 +640,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                     }
                     const numFields = ['euro_palets', 'normal_palets', 'gross_weight_kg', 'price_eur',
                         'price_bcn_eur', 'reloading_per_plt', 'transport_bcn_per_plt'];
-                    const intFields = ['truck_number_per'];
-                    if (intFields.includes(field)) {
-                        lines[idx][field] = parseInt(inp.value) || 0;
-                    } else if (numFields.includes(field)) {
+                    
+                    if (numFields.includes(field)) {
                         lines[idx][field] = parseFloat(inp.value) || 0;
                     } else {
                         lines[idx][field] = inp.value;
