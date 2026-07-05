@@ -424,7 +424,7 @@ export function renderRakodas(container, windowManager) {
                 '<td style="text-align:center; padding:3px 4px; font-size:10px; font-weight:600; color:#0369a1;">' + (r.euro_palets || 0) + '</td>' +
                 '<td style="text-align:center; padding:3px 4px; font-size:10px; font-weight:600; color:#7c3aed;">' + (r.normal_palets || 0) + '</td>' +
                 '<td style="padding:3px 4px; font-size:10px;">' + escHtml(r.product_name || '') + '</td>' +
-                '<td style="padding:3px 4px; font-size:10px; color:#64748b;">' + escHtml(r.albaran_number || '') + '</td>' +
+                '<td style="padding:3px 4px; font-size:10px; color:#64748b;">' + escHtml(r.partner_name || '') + '</td>' +
                 '<td style="padding:3px 4px; font-size:10px; color:#64748b;">' + escHtml(r.customer_name || '') + '</td>' +
                 '<td style="padding:3px 4px; font-size:10px; color:#64748b;">' + escHtml(r.destination || '') + '</td>' +
                 '<td style="padding:3px 4px; font-size:10px; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px;" title="' + escHtml(r.comment || r.notes || '') + '">' + escHtml(r.comment || r.notes || '') + '</td>' +
@@ -816,12 +816,12 @@ export function renderRakodas(container, windowManager) {
                     body: JSON.stringify({
                         product_id: prodIdInput.value ? parseInt(prodIdInput.value) : null,
                         product_name: pName,
-                        partner_name: null,
+                        partner_name: modalEl.querySelector('#aru-add-reference').value.trim() || null,
                         customer_name: modalEl.querySelector('#aru-add-customer').value.trim() || null,
                         euro_palets: euro,
                         normal_palets: normal,
                         notes: modalEl.querySelector('#aru-add-notes').value.trim() || null,
-                        albaran_number: modalEl.querySelector('#aru-add-reference').value.trim() || null,
+                        albaran_number: modalEl.querySelector('#aru-add-custorder').value.trim() || null,
                         destination: modalEl.querySelector('#aru-add-destination').value.trim() || null,
                         gross_weight_kg: parseFloat(modalEl.querySelector('#aru-add-weight').value) || 0,
                         price_eur: parseFloat(modalEl.querySelector('#aru-add-price-eur').value) || 0,

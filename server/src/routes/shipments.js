@@ -87,9 +87,11 @@ router.get('/by-order/:orderNumber', async (req, res) => {
     const lines = await db('shipment_lines')
       .select(
         'shipment_lines.*',
-        'products.name as productName'
+        'products.name as productName',
+        'partners.name as partner_name'
       )
       .leftJoin('products', 'shipment_lines.product_id', 'products.id')
+      .leftJoin('partners', 'shipment_lines.partner_id', 'partners.id')
       .where('shipment_id', shipment.id)
       .orderBy('shipment_lines.id', 'asc');
 
@@ -117,9 +119,11 @@ router.get('/:id', async (req, res, next) => {
     const lines = await db('shipment_lines')
       .select(
         'shipment_lines.*',
-        'products.name as productName'
+        'products.name as productName',
+        'partners.name as partner_name'
       )
       .leftJoin('products', 'shipment_lines.product_id', 'products.id')
+      .leftJoin('partners', 'shipment_lines.partner_id', 'partners.id')
       .where('shipment_id', shipment.id)
       .orderBy('shipment_lines.id', 'asc');
 

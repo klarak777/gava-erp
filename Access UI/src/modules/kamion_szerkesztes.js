@@ -259,7 +259,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
         // ① Üres sor prototípus
         function emptyLine() {
             return {
-                product_id: null, productName: '', albaran_number: '', customer: '',
+                product_id: null, productName: '', partner_id: null, partner_name: '', albaran_number: '', customer: '',
                 destination: '', customer_order_no: '', comment: '',
                 euro_palets: 0, normal_palets: 0, gross_weight_kg: 0,
                 price_eur: 0, price_bcn_eur: 0, unit: '',
@@ -403,6 +403,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                         _dbId: l.id,  // adatbázis ID az áthelyezéshez
                         product_id: l.product_id,
                         productName: l.productName || '',
+                        partner_id: l.partner_id || null,
+                        partner_name: l.partner_name || '',
                         albaran_number: l.albaran_number || '',
                         customer: l.customer || '',
                         destination: l.destination || '',
@@ -428,6 +430,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                                 dbId: l._dbId,
                                 productName: l.productName || '',
                                 product_id: l.product_id || null,
+                                partner_name: l.partner_name || '',
+                                partner_id: l.partner_id || null,
                                 albaran_number: l.albaran_number || '',
                                 customer: l.customer || ''
                             };
@@ -565,8 +569,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 // Kizárólag a táblázatban lévő sorok 'albaran_number' értékeit gyűjtjük ki
                 const uniqueRefs = [...new Set(
                     linesWithTotals
-                        .filter(l => !l._empty && l.albaran_number && l.albaran_number.trim() !== '')
-                        .map(l => l.albaran_number.trim())
+                        .filter(l => !l._empty && l.partner_name && l.partner_name.trim() !== '')
+                        .map(l => l.partner_name.trim())
                 )].sort();
 
                 const refsToShow = uniqueRefs;
@@ -578,7 +582,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
 
             // --- Szűrés ---
             const filteredLines = refFilter
-                ? linesWithTotals.filter(l => !l._empty && (l.albaran_number || '').trim() === refFilter)
+                ? linesWithTotals.filter(l => !l._empty && (l.partner_name || '').trim() === refFilter)
                 : linesWithTotals;
 
             tbody.innerHTML = filteredLines.map((l, filteredIndex) => {
@@ -601,8 +605,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                         style="${numCellStyle} width:70px;" value="${isEmpty ? '' : escHtml(l.normal_palets)}" min="0" step="any" placeholder="0" ${currentShipmentIsLoaded ? 'disabled' : ''}></td>
                     <td><input type="text" class="cell-edit" data-field="productName" data-index="${index}"
                         style="${cellStyle} min-width:170px;" value="${isEmpty ? '' : escHtml(l.productName)}"></td>
-                    <td><input type="text" class="cell-edit" data-field="albaran_number" data-index="${index}"
-                        style="${cellStyle} min-width:90px;" value="${isEmpty ? '' : escHtml(l.albaran_number)}"></td>
+                    <td><input type="text" class="cell-edit" data-field="partner_name" data-index="${index}"
+                        style="${cellStyle} min-width:90px;" value="${isEmpty ? '' : escHtml(l.partner_name)}"></td>
                     <td><input type="text" class="cell-edit" data-field="customer" data-index="${index}"
                         style="${cellStyle} min-width:90px;" value="${isEmpty ? '' : escHtml(l.customer)}"></td>
                     <td><input type="text" class="cell-edit" data-field="destination" data-index="${index}"
@@ -621,8 +625,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                         style="${numCellStyle} width:50px;" value="${isEmpty ? '' : escHtml(l.reloading_per_plt)}" min="0" step="0.01" placeholder="0"></td>
                     <td><input type="number" class="cell-edit" data-field="transport_bcn_per_plt" data-index="${index}"
                         style="${numCellStyle} width:60px;" value="${isEmpty ? '' : escHtml(l.transport_bcn_per_plt)}" min="0" step="0.01" placeholder="0"></td>
-                    <td><input type="text" class="cell-edit" data-field="customer_order_no" data-index="${index}"
-                        style="${cellStyle} min-width:100px;" value="${isEmpty ? '' : escHtml(l.customer_order_no)}"></td>
+                    <td><input type="text" class="cell-edit" data-field="albaran_number" data-index="${index}"
+                        style="${cellStyle} min-width:100px;" value="${isEmpty ? '' : escHtml(l.albaran_number)}"></td>
                     <td><input type="text" class="cell-edit" data-field="truck_number_per" data-index="${index}"
                         style="${cellStyle} width:60px; text-align:center; background-color:#f8fafc; font-weight:bold;" value="${isEmpty ? '' : (l.truck_number_per !== '' && l.truck_number_per != null ? escHtml(l.truck_number_per) : '')}" readonly placeholder=""></td>
                 </tr>`;
@@ -706,7 +710,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
             });
 
             // Inline Reference Autocomplete
-            tbody.querySelectorAll('.cell-edit[data-field="albaran_number"]').forEach(inp => {
+            tbody.querySelectorAll('.cell-edit[data-field="partner_name"]').forEach(inp => {
                 inp.addEventListener('input', () => {
                     const val = inp.value.toLowerCase();
                     const idx = parseInt(inp.dataset.index);
@@ -721,7 +725,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                             div.textContent = p.name;
                             div.onmousedown = () => {
                                 inp.value = p.name;
-                                lines[idx].albaran_number = p.name;
+                                lines[idx].partner_name = p.name;
+                                lines[idx].partner_id = p.id;
                                 if (lines[idx]._empty) delete lines[idx]._empty;
                                 inlineRefDropdown.style.display = 'none';
                                 // trigger change visually
@@ -1026,6 +1031,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                                 decreasedItems.push({
                                     productName: (refLine && refLine.productName) || snap.productName || '(ismeretlen termék)',
                                     customer: (refLine && refLine.customer) || snap.customer || '',
+                                    partner_name: (refLine && refLine.partner_name) || snap.partner_name || '',
+                                    partner_id: (refLine && refLine.partner_id) || snap.partner_id || null,
                                     albaran_number: (refLine && refLine.albaran_number) || snap.albaran_number || '',
                                     diffEuro: Math.max(0, diffEuro),
                                     diffNormal: Math.max(0, diffNormal),
@@ -1045,6 +1052,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                                         product_name: item.productName,
                                         albaran_number: item.albaran_number || null,
                                         customer_name: item.customer || null,
+                                        partner_name: item.partner_name || null,
+                                        partner_id: item.partner_id || null,
                                         euro_palets: item.diffEuro,
                                         normal_palets: item.diffNormal,
                                         notes: `Automatikus: raklap csökkentés ${orderNumber} fuvarról`
