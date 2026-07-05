@@ -492,7 +492,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 if (isTargetOrder) {
                     const cust = (l.customer || '').toUpperCase();
                     if (cust.includes('GHU')) {
-                        let ref = (l.albaran_number || '').trim().toUpperCase();
+                        let ref = (l.partner_name || '').trim().toUpperCase();
                         if (ref === 'AGROPONIENTE NATURAL') ref = 'AGROPONIENTE';
                         
                         if (!referenceMap.has(ref)) {
