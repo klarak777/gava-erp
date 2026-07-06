@@ -45,6 +45,8 @@ router.get('/', async (req, res) => {
         'shipment_lines.reloading_per_plt',
         'shipment_lines.transport_bcn_per_plt',
         'shipment_lines.albaran_number',
+        'shipment_lines.truck_number_per',
+        'shipment_lines.is_received',
         'shipment_lines.transport_cost',          // CSV-ből: "Total Transport cost"
         'shipment_lines.transport_cost_product',  // CSV-ből: "Transport Cost / product"
 
@@ -125,8 +127,8 @@ router.get('/', async (req, res) => {
         line.transport_cost_product = parseFloat(line.transport_cost_product).toFixed(2);
       }
 
-      // Shipment_id belső mező törlése
-      delete line.shipment_id;
+      // Költségek és egyéb mezők kerekítése
+      // ... a korábbi delete line.shipment_id; sor eltávolítva, mert a UI-nak szüksége van rá a csoportsításhoz és a kamion szerkesztő megnyitásához
     });
 
     res.json(lines);
@@ -261,6 +263,56 @@ router.post('/:id/transfer', async (req, res) => {
   } catch (err) {
     console.error('Hiba a tétel áthelyezésekor:', err);
     res.status(500).json({ error: 'Belső szerverhiba: ' + err.message });
+  }
+});
+
+// PATCH /api/v1/shipment-lines/receive
+// Bevételezve állapot frissítése egy fuvar adott partneréhez (ref_name alapján)
+// A per értékek dinamikusan számolódnak a frontenden, ezért partner névvel azonosítunk
+router.patch('/receive', async (req, res) => {
+  try {
+    const { shipment_id, ref_name, is_received } = req.body;
+    if (!shipment_id) return res.status(400).json({ error: 'shipment_id is required' });
+
+    // ref_name alapján megkeressük az érintett partner ID-kat
+    // AGROPONIENTE NATURAL → AGROPONIENTE normalizálás fordítva is kell
+    let partnerNames = [];
+    if (ref_name) {
+      const normalizedRef = ref_name.trim().toUpperCase();
+      partnerNames.push(ref_name.trim());
+      // Ha AGROPONIENTE, akkor AGROPONIENTE NATURAL is beletartozik
+      if (normalizedRef === 'AGROPONIENTE') {
+        partnerNames.push('AGROPONIENTE NATURAL');
+      }
+      // Ha AGROPONIENTE NATURAL, a normalizált AGROPONIENTE is beletartozik
+      if (normalizedRef === 'AGROPONIENTE NATURAL') {
+        partnerNames.push('AGROPONIENTE');
+      }
+    }
+
+    if (partnerNames.length > 0) {
+      // Partner névhez partner_id-k lekérése (case-insensitive)
+      const partners = await db('partners')
+        .whereRaw('UPPER(name) = ANY(?)', [partnerNames.map(n => n.toUpperCase())]);
+      const partnerIds = partners.map(p => p.id);
+
+      if (partnerIds.length > 0) {
+        await db('shipment_lines')
+          .where('shipment_id', shipment_id)
+          .whereIn('partner_id', partnerIds)
+          .update({ is_received: !!is_received });
+      }
+    } else {
+      // Ha nincs ref_name: az összes sort frissítjük a fuvarhoz
+      await db('shipment_lines')
+        .where('shipment_id', shipment_id)
+        .update({ is_received: !!is_received });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Hiba a bevételezés frissítésekor:', err);
+    res.status(500).json({ error: 'Belső szerverhiba' });
   }
 });
 

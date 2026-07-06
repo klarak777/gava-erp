@@ -15,6 +15,8 @@ import { renderCimke } from './modules/cimke.js';
 import { renderEkaerek } from './modules/ekaerek.js';
 import { renderKamionSzerkesztes } from './modules/kamion_szerkesztes.js';
 import { renderFuvarokMainPage } from './modules/fuvarok_main.js';
+import { renderMenedzser } from './modules/menedzser.js';
+import { renderLogisztika } from './modules/logisztika.js';
 
 // Modules with Titles
 import { renderDashboard } from './modules/dashboard.js';
@@ -72,7 +74,9 @@ const modules = {
     invoicing: { render: renderInvoicing, title: 'Számlázás' },
     finance: { render: renderFinance, title: 'Pénzügy' },
     reports: { render: renderReports, title: 'Kimutatás' },
-    admin: { render: renderAdmin, title: 'Rendszer' }
+    admin: { render: renderAdmin, title: 'Rendszer' },
+    menedzser: { render: renderMenedzser, title: 'Menedzser' },
+    logisztika: { render: renderLogisztika, title: 'Logisztika' }
 };
 
 function navigateTo(moduleId, subModuleId = null) {

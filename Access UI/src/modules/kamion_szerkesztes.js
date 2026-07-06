@@ -628,7 +628,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                     <td><input type="text" class="cell-edit" data-field="albaran_number" data-index="${index}"
                         style="${cellStyle} min-width:100px;" value="${isEmpty ? '' : escHtml(l.albaran_number)}"></td>
                     <td><input type="text" class="cell-edit" data-field="truck_number_per" data-index="${index}"
-                        style="${cellStyle} width:60px; text-align:center; background-color:#f8fafc; font-weight:bold;" value="${isEmpty ? '' : (l.truck_number_per !== '' && l.truck_number_per != null ? escHtml(l.truck_number_per) : '')}" readonly placeholder=""></td>
+                        style="${cellStyle} width:60px; text-align:center; background-color:#f8fafc; font-weight:bold;" value="${isEmpty ? '' : (l.truck_number_per !== '' && l.truck_number_per != null ? escHtml(parseInt(l.truck_number_per, 10)) : '')}" readonly placeholder=""></td>
                 </tr>`;
 
             }).join('');

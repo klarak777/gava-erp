@@ -33,10 +33,6 @@ export function renderTransportistas(container, windowManager) {
             <!-- Sor 1: Jelölőkapcsolók -->
             <div style="display:flex; gap:28px; margin-bottom:12px; align-items:center;">
                 <label style="display:flex; align-items:center; gap:7px; cursor:pointer; font-size:13px; user-select:none;">
-                    <input type="checkbox" id="chk-bev-var" style="width:15px;height:15px;accent-color:var(--primary);">
-                    <span>Bevételezésre vár</span>
-                </label>
-                <label style="display:flex; align-items:center; gap:7px; cursor:pointer; font-size:13px; user-select:none;">
                     <input type="checkbox" id="chk-hianyzo-szla" style="width:15px;height:15px;accent-color:var(--primary);">
                     <span>Hiányzó fuvarszámla</span>
                 </label>
@@ -127,7 +123,6 @@ export function renderTransportistas(container, windowManager) {
                             <th style="min-width:160px;">Plate number</th>
                             <th style="min-width:120px; text-align:right;">Transport price</th>
                             <th style="min-width:105px;">Arrival date</th>
-                            <th style="min-width:85px; text-align:center;">Bevételezve</th>
                             <th style="min-width:110px; text-align:right;">K-B</th>
                             <th style="min-width:110px; text-align:right;">B</th>
                             <th style="min-width:110px; text-align:right;">T</th>
@@ -154,7 +149,6 @@ export function renderTransportistas(container, windowManager) {
     // --- Vezérlők lekérése ---
     const tbody = tableContainer.querySelector('#transport-tbody');
     const recordCount = tableContainer.querySelector('#record-count');
-    const chkBevVar = filterPanel.querySelector('#chk-bev-var');
     const chkHiany = filterPanel.querySelector('#chk-hianyzo-szla');
     const inpOrderNum = filterPanel.querySelector('#filter-order-num');
     const inpKamion = filterPanel.querySelector('#filter-kamion');
@@ -195,10 +189,6 @@ export function renderTransportistas(container, windowManager) {
                 <td style="white-space:nowrap;font-family:monospace;font-size:14px;">${row.plateNumber}</td>
                 <td style="text-align:right;white-space:nowrap;">${row.transportPrice}</td>
                 <td style="white-space:nowrap;">${row.arrivalDate}</td>
-                <td style="text-align:center;">
-                    <input type="checkbox" class="bev-chk" data-id="${row.id}" ${row.bevetelezve ? 'checked' : ''}
-                        style="width:15px;height:15px;cursor:pointer;accent-color:var(--primary);">
-                </td>
                 <td style="text-align:right;white-space:nowrap;"><input type="number" step="any" class="edit-input" data-field="kb" data-id="${row.id}" style="${inputStyle} text-align:right;" value="${escHtml(row.kb)}"></td>
                 <td style="text-align:right;white-space:nowrap;"><input type="number" step="any" class="edit-input" data-field="b" data-id="${row.id}" style="${inputStyle} text-align:right;" value="${escHtml(row.b)}"></td>
                 <td style="text-align:right;white-space:nowrap;"><input type="number" step="any" class="edit-input" data-field="t" data-id="${row.id}" style="${inputStyle} text-align:right;" value="${escHtml(row.t)}"></td>
@@ -213,13 +203,7 @@ export function renderTransportistas(container, windowManager) {
             tbody.appendChild(tr);
         });
 
-        // Bevételezve checkbox – interaktív (egy jövőbeli backend végponttal)
-        tbody.querySelectorAll('.bev-chk').forEach(chk => {
-            chk.addEventListener('change', e => {
-                const id = parseInt(e.target.dataset.id);
-                // Később itt API hívással mentjük az állapotot
-            });
-        });
+
         
         // Add click listener for Order Number badge
         tbody.querySelectorAll('.order-number-badge').forEach(badge => {
@@ -283,7 +267,6 @@ export function renderTransportistas(container, windowManager) {
         const valFuvarozo = selFuvarozo.value;
         const valEv = selEv.value;
         const valSzezon = selSzezon.value;
-        const bevVar = chkBevVar.checked;
         const hiany = chkHiany.checked;
 
         const filtered = tableData.filter(row => {
@@ -295,9 +278,8 @@ export function renderTransportistas(container, windowManager) {
             const mFuvarozo = !valFuvarozo || row.transporter === valFuvarozo;
             const mEv = !valEv || getYear(row.loadingDate) === valEv;
             const mSzezon = !valSzezon || row.seasonCode === valSzezon;
-            const mBevVar = !bevVar || !row.bevetelezve;
             const mHiany = !hiany || row.invoiceNumber === '';
-            return mOrderNum && mKamion && mHely && mFuvarozo && mEv && mSzezon && mBevVar && mHiany;
+            return mOrderNum && mKamion && mHely && mFuvarozo && mEv && mSzezon && mHiany;
         });
 
         renderTable(filtered);
@@ -310,7 +292,6 @@ export function renderTransportistas(container, windowManager) {
     selFuvarozo.addEventListener('change', filterData);
     selSzezon.addEventListener('change', filterData);
     selEv.addEventListener('change', filterData);
-    chkBevVar.addEventListener('change', filterData);
     chkHiany.addEventListener('change', filterData);
 
     btnSave.addEventListener('click', async () => {
@@ -355,7 +336,6 @@ export function renderTransportistas(container, windowManager) {
         selFuvarozo.value = '';
         selSzezon.value = '';
         selEv.value = '';
-        chkBevVar.checked = false;
         chkHiany.checked = false;
         filterData();
     });
@@ -385,7 +365,6 @@ export function renderTransportistas(container, windowManager) {
                     transportPrice: d.transport_price ? d.transport_price + (d.transport_currency === 'HUF' ? ' Ft' : ' €') : '',
                     arrivalDate: d.arrival_date ? d.arrival_date.substring(0, 10) : '',
                     seasonCode: d.season_code || '',
-                    bevetelezve: false,
                     kb: d.kb != null ? d.kb : '',
                     b: d.b != null ? d.b : '',
                     t: d.t != null ? d.t : '',

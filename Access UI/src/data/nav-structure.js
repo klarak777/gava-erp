@@ -3,7 +3,8 @@ export const NAV_CATEGORIES = [
         id: 'iroda',
         label: 'IRODA',
         groups: [
-            // Később kerülnek ide az Iroda modulok
+            { id: 'menedzser', title: 'Menedzser', icon: '👔', moduleId: 'menedzser', items: [] },
+            { id: 'logisztika', title: 'Logisztika', icon: '📦', moduleId: 'logisztika', items: [] }
         ],
     },
     {
