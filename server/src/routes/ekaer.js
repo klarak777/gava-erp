@@ -439,18 +439,15 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-module.exports = router;
-
-
-
 // DELETE /api/v1/ekaer-records/:id
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const db = require('../config/db');
     const deleted = await db('ekaer_records').where({ id }).del();
     if (deleted) { res.json({ status: 'success' }); } else { res.status(404).json({ status: 'error', message: 'Not found' }); }
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });
   }
 });
+
+module.exports = router;
