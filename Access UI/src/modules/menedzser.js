@@ -99,7 +99,7 @@ export function renderMenedzser(container, windowManager) {
 
     function fmtDate(val) { return val ? val.substring(0, 10) : ''; }
 
-    function renderTable(data) {
+    function renderTable(data, totalCount = data.length) {
         tbody.innerHTML = '';
         data.forEach(row => {
             const tr = document.createElement('tr');
@@ -159,7 +159,11 @@ export function renderMenedzser(container, windowManager) {
             });
         });
 
-        recordCount.textContent = `(${data.length} rekord)`;
+        if (totalCount > 200) {
+            recordCount.textContent = `(első 200 sor megjelenítve / ${totalCount} összesen)`;
+        } else {
+            recordCount.textContent = `(${totalCount} rekord)`;
+        }
     }
 
     function filterData() {
@@ -177,7 +181,9 @@ export function renderMenedzser(container, windowManager) {
             return mOrderNum && mRef && mBevVar && mHiany;
         });
 
-        renderTable(filtered);
+        // Teljesítmény optimalizálás: csak az első 200 sort rendereljük ki a DOM-ba
+        const sliced = filtered.slice(0, 200);
+        renderTable(sliced, filtered.length);
     }
 
     inpOrderNum.addEventListener('input', filterData);
