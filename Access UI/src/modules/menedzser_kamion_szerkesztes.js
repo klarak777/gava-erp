@@ -283,8 +283,8 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName) {
                         <thead>
                             <tr>
                                 <th>Lin</th>
-                                <th>Code Prod</th>
-                                <th style="display:none;">Product</th>
+                                <th style="display:none;">Code Prod</th>
+                                <th>Product</th>
                                 <th>C</th>
                                 <th>Description</th>
                                 <th>Palets</th>
@@ -412,8 +412,8 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName) {
             tr.setAttribute('data-product-id', line.product_id || '');
             tr.innerHTML = `
                 <td style="text-align:center;" class="row-num">${i+1}</td>
-                <td><input type="text" class="inp-prod-code" list="${dlCodeId}" value="${displayCode}" style="width:80px;"><datalist id="${dlCodeId}">${dlCodeItems}</datalist></td>
-                <td style="display:none;"><input type="text" class="inp-prod-name" list="${dlNameId}" value="${displayName}" style="width:160px;"><datalist id="${dlNameId}">${dlNameItems}</datalist></td>
+                <td style="display:none;"><input type="text" class="inp-prod-code" list="${dlCodeId}" value="${displayCode}" style="width:80px;"><datalist id="${dlCodeId}">${dlCodeItems}</datalist></td>
+                <td><input type="text" class="inp-prod-name" list="${dlNameId}" value="${displayName}" style="width:160px;"><datalist id="${dlNameId}">${dlNameItems}</datalist></td>
                 <td style="text-align:center;">c</td>
                 <td><input type="text" class="inp-desc" value="${line.description_finance || line.comment || ''}"></td>
                 <td><input type="number" step="0.01" class="inp-palets" value="${line.total_palets || ''}" readonly style="background:#eee;"></td>
