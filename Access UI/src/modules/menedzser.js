@@ -1,4 +1,4 @@
-import { openKamionSzerkesztesWindow } from './kamion_szerkesztes.js';
+import { openMenedzserKamionWindow } from './menedzser_kamion_szerkesztes.js';
 
 export function renderMenedzser(container, windowManager) {
     container.style.overflow = 'hidden';
@@ -77,6 +77,7 @@ export function renderMenedzser(container, windowManager) {
                             <th style="min-width:110px;">Order number</th>
                             <th style="min-width:150px;">Reference</th>
                             <th style="min-width:105px;">Arrival date</th>
+                            <th style="min-width:150px;">Invoice number</th>
                         </tr>
                     </thead>
                     <tbody id="menedzser-tbody"></tbody>
@@ -109,9 +110,10 @@ export function renderMenedzser(container, windowManager) {
                         style="width:15px;height:15px;cursor:pointer;accent-color:var(--primary);">
                 </td>
                 <td style="white-space:nowrap;">${fmtDate(row.loading_date)}</td>
-                <td><span class="badge order-number-badge" data-id="${row.shipment_id}" style="background:var(--bg-main);color:var(--primary);border:1px solid var(--border);font-size:11px;cursor:pointer;text-decoration:underline;" title="Kattints a kamion szerkesztéséhez">${row.display_order_number}</span></td>
+                <td><span class="badge order-number-badge" data-id="${row.shipment_id}" data-ref="${row.ref_name || ''}" style="background:var(--bg-main);color:var(--primary);border:1px solid var(--border);font-size:11px;cursor:pointer;text-decoration:underline;" title="Kattints a kamion szerkesztéséhez">${row.display_order_number}</span></td>
                 <td style="white-space:nowrap;">${row.reference || ''}</td>
                 <td style="white-space:nowrap;">${fmtDate(row.arrival_date)}</td>
+                <td style="white-space:nowrap;">${row.invoice_number || ''}</td>
             `;
             tbody.appendChild(tr);
         });
@@ -153,8 +155,9 @@ export function renderMenedzser(container, windowManager) {
         tbody.querySelectorAll('.order-number-badge').forEach(badge => {
             badge.addEventListener('click', function(e) {
                 const id = this.getAttribute('data-id');
+                const refName = this.getAttribute('data-ref');
                 if (id) {
-                    openKamionSzerkesztesWindow(windowManager, id);
+                    openMenedzserKamionWindow(windowManager, id, refName);
                 }
             });
         });
@@ -200,7 +203,7 @@ export function renderMenedzser(container, windowManager) {
     });
 
     btnNewKamion.addEventListener('click', () => {
-        openKamionSzerkesztesWindow(windowManager, null);
+        openMenedzserKamionWindow(windowManager, null, null);
     });
 
     async function loadRealData() {

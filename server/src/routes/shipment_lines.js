@@ -50,8 +50,21 @@ router.get('/', async (req, res) => {
         'shipment_lines.transport_cost',          // CSV-ből: "Total Transport cost"
         'shipment_lines.transport_cost_product',  // CSV-ből: "Transport Cost / product"
 
+        // Pénzügyi (Menedzser) mezők
+        'shipment_lines.boxes',
+        'shipment_lines.kgs_finance',
+        'shipment_lines.unit_price',
+        'shipment_lines.net_amount',
+        'shipment_lines.unit_price_a',
+        'shipment_lines.tax_percent',
+        'shipment_lines.amount_a_bt',
+        'shipment_lines.tax_amount',
+        'shipment_lines.amount_a',
+        'shipment_lines.description_finance',
+
         // Termék és partner
         'products.name as prod',
+        'products.code as prod_code',
         'partners.name as ref',
 
         // Fuvar fejléc adatok (shipments táblából)

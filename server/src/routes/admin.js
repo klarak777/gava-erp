@@ -3,7 +3,7 @@ const router = express.Router();
 const db = require('../db/db');
 
 // Engedélyezett táblák a generic végpontokhoz biztonsági okokból
-const ALLOWED_TABLES = ['products', 'partners', 'transporters'];
+const ALLOWED_TABLES = ['products', 'partners', 'transporters', 'finance_truck_types'];
 
 // GET /api/v1/admin/:table
 router.get('/:table', async (req, res) => {

@@ -7,6 +7,7 @@ export function renderAdmin(container, wm, subModuleId = null) {
 
     const actionMap = {
         'admin-products': () => openAdminTable(wm, 'Products', 'products', [
+            { field: 'code', label: 'Code Prod' },
             { field: 'name', label: 'Products (English)' },
             { field: 'name_hu', label: 'Products:Magyar (Hungarian)' }
         ]),
@@ -23,6 +24,9 @@ export function renderAdmin(container, wm, subModuleId = null) {
         'admin-transporters': () => openAdminTable(wm, 'Fuvarozó cég', 'transporters', [
             { field: 'name', label: 'Name' },
             { field: 'code', label: 'Code' }
+        ]),
+        'admin-finance-trucks': () => openAdminTable(wm, 'Pénzügyi Kamion Típus', 'finance_truck_types', [
+            { field: 'name', label: 'Name' }
         ])
     };
 

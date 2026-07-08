@@ -88,6 +88,7 @@ router.get('/by-order/:orderNumber', async (req, res) => {
       .select(
         'shipment_lines.*',
         'products.name as productName',
+        'products.code as product_code',
         'partners.name as partner_name'
       )
       .leftJoin('products', 'shipment_lines.product_id', 'products.id')
@@ -107,6 +108,8 @@ router.get('/by-order/:orderNumber', async (req, res) => {
 router.get('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
+    const { ref_name } = req.query;
+
     if (!/^\d+$/.test(id)) {
       return next();
     }
@@ -116,16 +119,52 @@ router.get('/:id', async (req, res, next) => {
 
     if (!shipment) return res.status(404).json({ error: 'Kamion nem található: id=' + id });
 
-    const lines = await db('shipment_lines')
+    let linesQuery = db('shipment_lines')
       .select(
         'shipment_lines.*',
         'products.name as productName',
+        'products.code as product_code',
         'partners.name as partner_name'
       )
       .leftJoin('products', 'shipment_lines.product_id', 'products.id')
       .leftJoin('partners', 'shipment_lines.partner_id', 'partners.id')
       .where('shipment_id', shipment.id)
       .orderBy('shipment_lines.id', 'asc');
+
+    if (ref_name) {
+      linesQuery = linesQuery.andWhere('partners.name', ref_name);
+    }
+
+    let lines = await linesQuery;
+
+    // Pallet calculation for older records where total_palets is null
+    const conversions = await db('pallet_conversion').select('normal_count', 'euro_equivalent');
+    const conversionMap = {};
+    conversions.forEach(c => { conversionMap[c.normal_count] = c.euro_equivalent; });
+
+    const sumNormal = lines.reduce((sum, l) => sum + (parseFloat(l.normal_palets) || 0), 0);
+    let convertedNormal = 0;
+    if (sumNormal > 0) {
+      const roundedNormal = Math.round(sumNormal);
+      if (conversionMap[roundedNormal] !== undefined) {
+        convertedNormal = conversionMap[roundedNormal];
+      } else {
+        convertedNormal = sumNormal * (33.0 / 26.0);
+      }
+    }
+
+    lines = lines.map(line => {
+      if (line.total_palets == null) {
+        const lineEuro = parseFloat(line.euro_palets) || 0;
+        const lineNorm = parseFloat(line.normal_palets) || 0;
+        let lineTotal = lineEuro;
+        if (sumNormal > 0 && lineNorm > 0) {
+          lineTotal += convertedNormal * (lineNorm / sumNormal);
+        }
+        line.total_palets = lineTotal.toFixed(2);
+      }
+      return line;
+    });
 
     res.json({ shipment, lines });
   } catch (err) {
@@ -625,6 +664,91 @@ router.put('/:id', async (req, res) => {
   } catch (err) {
     await trx.rollback();
     console.error('Hiba a fuvar frissítésekor:', err);
+    res.status(500).json({ error: 'Hiba történt a mentés során: ' + err.message });
+  }
+});
+
+// PUT /api/v1/shipments/:id/finance
+// A Menedzser pénzügyi modul (TruckCostSheet) mentése
+router.put('/:id/finance', async (req, res) => {
+  const trx = await db.transaction();
+  try {
+    const { id } = req.params;
+    const {
+      price_trance_toll, overhead_percent, goods_currency, exchange_rate,
+      finance_truck_type_id, supplier_name, finance_status, finance_date, finance_comments,
+      invoice_number, loading_date, arrival_date, plate_number, lines
+    } = req.body;
+
+    // 1. Fejléc frissítése (mind a régi, mind az új mezők)
+    await trx('shipments')
+      .where('id', id)
+      .update({
+        price_trance_toll,
+        overhead_percent: parseFloat(overhead_percent) || null,
+        goods_currency,
+        exchange_rate: parseFloat(exchange_rate) || null,
+        finance_truck_type_id: finance_truck_type_id || null,
+        supplier_name,
+        finance_status,
+        finance_date: finance_date || null,
+        finance_comments,
+        invoice_number,
+        loading_date: loading_date || null,
+        arrival_date: arrival_date || null,
+        plate_number
+      });
+
+    // 2. Sorok frissítése
+    // Mivel a pénzügyi nézet is betöltheti a sorokat (esetleg újakat ad hozzá), 
+    // végigmegyünk a kapott 'lines' tömbön és frissítjük vagy beszúrjuk őket.
+    if (lines && lines.length > 0) {
+      for (const line of lines) {
+        if (line.id) {
+          // Meglévő sor frissítése
+          await trx('shipment_lines')
+            .where('id', line.id)
+            .where('shipment_id', id)
+            .update({
+              product_id: line.product_id || null,
+              boxes: parseFloat(line.boxes) || 0,
+              kgs_finance: parseFloat(line.kgs_finance) || 0,
+              unit_price: parseFloat(line.unit_price) || 0,
+              net_amount: parseFloat(line.net_amount) || 0,
+              unit_price_a: parseFloat(line.unit_price_a) || 0,
+              tax_percent: parseFloat(line.tax_percent) || 0,
+              amount_a_bt: parseFloat(line.amount_a_bt) || 0,
+              tax_amount: parseFloat(line.tax_amount) || 0,
+              amount_a: parseFloat(line.amount_a) || 0,
+              description_finance: line.description_finance || ''
+            });
+        } else {
+          // Új sor hozzáadása (ha a UI-on is van Delete / Update / Add funkció)
+          await trx('shipment_lines').insert({
+            shipment_id: id,
+            product_id: line.product_id || null,
+            partner_id: line.partner_id || null, // A UI-ról bejövő partner (per fuvar) alapján!
+            customer: line.customer || '',
+            boxes: parseFloat(line.boxes) || 0,
+            kgs_finance: parseFloat(line.kgs_finance) || 0,
+            unit_price: parseFloat(line.unit_price) || 0,
+            net_amount: parseFloat(line.net_amount) || 0,
+            unit_price_a: parseFloat(line.unit_price_a) || 0,
+            tax_percent: parseFloat(line.tax_percent) || 0,
+            amount_a_bt: parseFloat(line.amount_a_bt) || 0,
+            tax_amount: parseFloat(line.tax_amount) || 0,
+            amount_a: parseFloat(line.amount_a) || 0,
+            description_finance: line.description_finance || ''
+          });
+        }
+      }
+    }
+
+    await trx.commit();
+    res.json({ message: 'Pénzügyi adatok sikeresen frissítve' });
+  } catch (err) {
+    await trx.rollback();
+    console.error('Hiba a pénzügyi adatok frissítésekor:', err);
     res.status(500).json({ error: 'Hiba történt a mentés során: ' + err.message });
   }
 });
