@@ -258,7 +258,11 @@ export function renderMenedzser(container, windowManager) {
                     const referenceMap = new Map();
                     let refCounter = 0;
 
-                    ghuLines.forEach(l => {
+                    // Rendezés line_id szerint növekvő sorrendbe, hogy megegyezzen a Kamion Szerkesztő
+                    // által használt ORDER BY shipment_lines.id ASC sorrenddel
+                    const sortedGhuLines = [...ghuLines].sort((a, b) => (a.line_id || 0) - (b.line_id || 0));
+
+                    sortedGhuLines.forEach(l => {
                         let refKey = (l.ref || '').trim().toUpperCase();
                         if (refKey === 'AGROPONIENTE NATURAL') refKey = 'AGROPONIENTE';
 
