@@ -284,7 +284,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName) {
                             <tr>
                                 <th>Lin</th>
                                 <th>Code Prod</th>
-                                <th>Product</th>
+                                <th style="display:none;">Product</th>
                                 <th>C</th>
                                 <th>Description</th>
                                 <th>Palets</th>
@@ -388,23 +388,32 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName) {
         }
 
         function appendRow(tbody, line, i) {
-            let prodCodeOpts = '<option value="">-</option>';
+            // Egyedi datalist ID ehhez a sorhoz
+            const dlCodeId = `dl-prod-code-${i}`;
+            const dlNameId = `dl-prod-name-${i}`;
+
+            // Datalist opciókat az Admin terméklistából töltjük be
+            let dlCodeItems = '';
+            let dlNameItems = '';
             productsData.forEach(p => {
-                prodCodeOpts += `<option value="${p.id}" ${line.product_id === p.id ? 'selected' : ''}>${p.code || ''}</option>`;
+                dlCodeItems += `<option value="${p.code || ''}" data-id="${p.id}"></option>`;
+                dlNameItems += `<option value="${p.name}" data-id="${p.id}"></option>`;
             });
-            
-            let prodNameOpts = '<option value="">-</option>';
-            productsData.forEach(p => {
-                prodNameOpts += `<option value="${p.id}" ${line.product_id === p.id ? 'selected' : ''}>${p.name}</option>`;
-            });
+
+            // Az API-ból jövő terméknevet és kódot jelenítjük meg alapértelmezettként,
+            // még akkor is, ha nincs meg az Admin listában
+            const matchedProduct = productsData.find(p => p.id === line.product_id);
+            const displayCode = matchedProduct ? (matchedProduct.code || '') : (line.prod_code || '');
+            const displayName = matchedProduct ? matchedProduct.name : (line.prod || line.productName || '');
 
             const tr = document.createElement('tr');
             tr.setAttribute('data-index', i);
             tr.setAttribute('data-line-id', line.id || '');
+            tr.setAttribute('data-product-id', line.product_id || '');
             tr.innerHTML = `
                 <td style="text-align:center;" class="row-num">${i+1}</td>
-                <td><select class="inp-prod-code">${prodCodeOpts}</select></td>
-                <td><select class="inp-prod-name">${prodNameOpts}</select></td>
+                <td><input type="text" class="inp-prod-code" list="${dlCodeId}" value="${displayCode}" style="width:80px;"><datalist id="${dlCodeId}">${dlCodeItems}</datalist></td>
+                <td style="display:none;"><input type="text" class="inp-prod-name" list="${dlNameId}" value="${displayName}" style="width:160px;"><datalist id="${dlNameId}">${dlNameItems}</datalist></td>
                 <td style="text-align:center;">c</td>
                 <td><input type="text" class="inp-desc" value="${line.description_finance || line.comment || ''}"></td>
                 <td><input type="number" step="0.01" class="inp-palets" value="${line.total_palets || ''}" readonly style="background:#eee;"></td>
@@ -421,11 +430,30 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName) {
             `;
             tbody.appendChild(tr);
 
-            // Sync Product Code and Name selects
-            const selCode = tr.querySelector('.inp-prod-code');
-            const selName = tr.querySelector('.inp-prod-name');
-            selCode.addEventListener('change', () => { selName.value = selCode.value; });
-            selName.addEventListener('change', () => { selCode.value = selName.value; });
+            // Ha a Code mezőt módosítják, szinkronizáljuk a Name mezőt (és fordítva)
+            const inpCode = tr.querySelector('.inp-prod-code');
+            const inpName = tr.querySelector('.inp-prod-name');
+
+            inpCode.addEventListener('change', () => {
+                // Keressük meg a datalist-ben az egyező terméket kód alapján
+                const match = productsData.find(p => (p.code || '').toLowerCase() === inpCode.value.toLowerCase());
+                if (match) {
+                    inpName.value = match.name;
+                    tr.setAttribute('data-product-id', match.id);
+                } else {
+                    tr.setAttribute('data-product-id', '');
+                }
+            });
+
+            inpName.addEventListener('change', () => {
+                const match = productsData.find(p => p.name.toLowerCase() === inpName.value.toLowerCase());
+                if (match) {
+                    inpCode.value = match.code || '';
+                    tr.setAttribute('data-product-id', match.id);
+                } else {
+                    tr.setAttribute('data-product-id', '');
+                }
+            });
             
             // Kalkulációk
             tr.querySelectorAll('.num-calc').forEach(inp => {
@@ -499,8 +527,10 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName) {
             };
 
             container.querySelectorAll('#fm-lines-table tbody tr').forEach(tr => {
-                const prodId = tr.querySelector('.inp-prod-code').value;
-                if (!prodId) return; // Skip empty rows
+                const prodId = tr.getAttribute('data-product-id') || null;
+                const prodNameVal = tr.querySelector('.inp-prod-name').value;
+                // Sor kihagyása, ha sem product_id, sem terméknév nem adott
+                if (!prodId && !prodNameVal) return;
                 
                 payload.lines.push({
                     id: tr.getAttribute('data-line-id') || null,
