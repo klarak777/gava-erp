@@ -14,7 +14,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                 winEl.style.top = `${top}px`;
             }, 10);
         }
-        
+
         container.style.padding = '0';
         container.style.backgroundColor = 'var(--bg-light)';
         container.style.display = 'flex';
@@ -320,7 +320,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
         let taxRatesData = [];
         let shipmentData = null;
         let linesData = [];
-        
+
         async function loadLookups() {
             try {
                 const [prodRes, typeRes, taxRes] = await Promise.all([
@@ -331,7 +331,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                 productsData = prodRes.ok ? await prodRes.json() : [];
                 financeTruckTypes = typeRes.ok ? await typeRes.json() : [];
                 taxRatesData = taxRes.ok ? await taxRes.json() : [];
-                
+
                 const typeSelect = container.querySelector('#fm-type-truck');
                 financeTruckTypes.forEach(t => {
                     const opt = document.createElement('option');
@@ -350,7 +350,9 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                 if (!res.ok) throw new Error('Nem sikerült betölteni a kamiont');
                 const data = await res.json();
                 shipmentData = data.shipment;
-                linesData = data.lines || [];
+                const rawLines = data.lines || [];
+                // Csak a GHU vevőhöz tartozó tételek jelennek meg (a backend `customer` mezőnevet ad vissza itt, nem `cust`-ot)
+                linesData = rawLines.filter(l => (l.customer || l.cust || '').toUpperCase().includes('GHU'));
                 renderData();
             } catch (err) {
                 alert(err.message);
@@ -360,13 +362,13 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
 
         function renderData() {
             if (!shipmentData) return;
-            
+
             // Header logic
             const orderToParse = displayOrderNumber || shipmentData.order_number || '';
             const match = orderToParse.match(/^([a-zA-Z]+)\s*(.*)$/);
             container.querySelector('#fm-title').textContent = match ? match[1].toUpperCase() : 'N/A';
             container.querySelector('#fm-truck-no').textContent = match ? match[2] : orderToParse;
-            
+
             // Értékek betöltése
             container.querySelector('#fm-invoice').value = (linesData.length > 0 && linesData[0].invoice_number_finance) ? linesData[0].invoice_number_finance : (shipmentData.invoice_number || '');
             container.querySelector('#fm-auto-num').value = shipmentData.plate_number || '';
@@ -388,9 +390,9 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
         function renderLines() {
             const tbody = container.querySelector('#fm-lines-table tbody');
             tbody.innerHTML = '';
-            
+
             const numRows = Math.max(1, linesData.length);
-            
+
             for (let i = 0; i < numRows; i++) {
                 const line = linesData[i] || {};
                 appendRow(tbody, line, i);
@@ -417,18 +419,18 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
             const displayCode = matchedProduct ? (matchedProduct.code || '') : (line.prod_code || '');
             const displayName = matchedProduct ? matchedProduct.name : (line.prod || line.productName || '');
 
-                let taxOptions = '<option value="0">0.00</option>';
-                taxRatesData.forEach(t => {
-                    const selected = (parseFloat(line.tax_percent) === parseFloat(t.rate_value)) ? 'selected' : '';
-                    taxOptions += `<option value="${t.rate_value}" ${selected}>${t.rate_value}</option>`;
-                });
+            let taxOptions = '<option value="0">0.00</option>';
+            taxRatesData.forEach(t => {
+                const selected = (parseFloat(line.tax_percent) === parseFloat(t.rate_value)) ? 'selected' : '';
+                taxOptions += `<option value="${t.rate_value}" ${selected}>${t.rate_value}</option>`;
+            });
 
-                const tr = document.createElement('tr');
-                tr.setAttribute('data-index', i);
-                tr.setAttribute('data-line-id', line.id || '');
-                tr.setAttribute('data-product-id', line.product_id || '');
-                tr.innerHTML = `
-                    <td style="text-align:center;" class="row-num">${i+1}</td>
+            const tr = document.createElement('tr');
+            tr.setAttribute('data-index', i);
+            tr.setAttribute('data-line-id', line.id || '');
+            tr.setAttribute('data-product-id', line.product_id || '');
+            tr.innerHTML = `
+                    <td style="text-align:center;" class="row-num">${i + 1}</td>
                     <td style="display:none;"><input type="text" class="inp-prod-code" list="${dlCodeId}" value="${displayCode}" style="width:80px;"><datalist id="${dlCodeId}">${dlCodeItems}</datalist></td>
                     <td><input type="text" class="inp-prod-name" list="${dlNameId}" value="${displayName}" style="width:160px;"><datalist id="${dlNameId}">${dlNameItems}</datalist></td>
                     <td style="text-align:center;">c</td>
@@ -445,7 +447,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                     <td><input type="number" step="0.01" class="inp-taxamt" value="${line.tax_amount || ''}" readonly style="background:#f0f8ff;"></td>
                     <td><input type="number" step="0.01" class="inp-amnta" value="${line.amount_a || ''}" readonly style="background:#f0f8ff;"></td>
                 `;
-                tbody.appendChild(tr);
+            tbody.appendChild(tr);
 
             // Ha a Code mezőt módosítják, szinkronizáljuk a Name mezőt (és fordítva)
             const inpCode = tr.querySelector('.inp-prod-code');
@@ -471,7 +473,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                     tr.setAttribute('data-product-id', '');
                 }
             });
-            
+
             // Kalkulációk
             tr.querySelectorAll('.num-calc').forEach(inp => {
                 inp.addEventListener('input', () => {
@@ -485,22 +487,22 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
             const boxes = parseFloat(tr.querySelector('.inp-boxes').value) || 0;
             const kgs = parseFloat(tr.querySelector('.inp-kgs').value) || 0;
             const unitPr = parseFloat(tr.querySelector('.inp-unitpr').value) || 0;
-            
+
             // Nettó Amnt = Kgs * Unit Pr (ez volt a 3. kérés)
             const netAmnt = kgs * unitPr;
             tr.querySelector('.inp-netamnt').value = netAmnt > 0 ? netAmnt.toFixed(2) : '';
-            
+
             // Un Pr A = Unit Pr (ez volt a 4. kérés)
             tr.querySelector('.inp-unpra').value = unitPr > 0 ? unitPr.toFixed(2) : '';
-            
+
             // AmountA BT = Nettó Amnt (ez volt az 5. kérés)
             tr.querySelector('.inp-amntabt').value = netAmnt > 0 ? netAmnt.toFixed(2) : '';
-            
+
             const amntABT = netAmnt; // Amit az imént állítottunk be
             const taxPct = parseFloat(tr.querySelector('.inp-tax').value) || 0;
             const taxAmt = amntABT * (taxPct / 100);
             tr.querySelector('.inp-taxamt').value = taxAmt > 0 ? taxAmt.toFixed(2) : '';
-            
+
             const amntA = amntABT + taxAmt;
             tr.querySelector('.inp-amnta').value = amntA > 0 ? amntA.toFixed(2) : '';
         }
@@ -508,27 +510,27 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
         function calculateTotals() {
             let tPal = 0, tBox = 0, tKg = 0, tNet = 0;
             let tAmntABT = 0, tTaxAmt = 0, tAmntA = 0;
-            
+
             container.querySelectorAll('#fm-lines-table tbody tr').forEach(tr => {
                 tPal += parseFloat(tr.querySelector('.inp-palets').value) || 0;
                 tBox += parseFloat(tr.querySelector('.inp-boxes').value) || 0;
                 tKg += parseFloat(tr.querySelector('.inp-kgs').value) || 0;
                 tNet += parseFloat(tr.querySelector('.inp-netamnt').value) || 0;
-                
+
                 tAmntABT += parseFloat(tr.querySelector('.inp-amntabt').value) || 0;
                 tTaxAmt += parseFloat(tr.querySelector('.inp-taxamt').value) || 0;
                 tAmntA += parseFloat(tr.querySelector('.inp-amnta').value) || 0;
             });
-            
+
             container.querySelector('#tot-palets').value = tPal > 0 ? tPal.toFixed(2) : '';
             container.querySelector('#tot-boxes').value = tBox > 0 ? tBox.toFixed(2) : '';
             container.querySelector('#tot-kgs').value = tKg > 0 ? tKg.toFixed(2) : '';
             container.querySelector('#tot-net').value = tNet > 0 ? tNet.toFixed(2) : '';
-            
+
             container.querySelector('#tot-inv-abt').value = tAmntABT > 0 ? tAmntABT.toFixed(2) : '';
             container.querySelector('#tot-inv-tax').value = tTaxAmt > 0 ? tTaxAmt.toFixed(2) : '';
             container.querySelector('#tot-inv-amnta').value = tAmntA > 0 ? tAmntA.toFixed(2) : '';
-            
+
             // Set Finance panel Totals
             container.querySelector('#ts-goods-inv').textContent = tNet > 0 ? tNet.toFixed(2) : '0';
             container.querySelector('#ts-goods-inv-a').textContent = tAmntA > 0 ? tAmntA.toFixed(2) : '0';
@@ -557,7 +559,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                 const prodNameVal = tr.querySelector('.inp-prod-name').value;
                 // Sor kihagyása, ha sem product_id, sem terméknév nem adott
                 if (!prodId && !prodNameVal) return;
-                
+
                 payload.lines.push({
                     id: tr.getAttribute('data-line-id') || null,
                     product_id: prodId,
@@ -583,7 +585,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                     body: JSON.stringify(payload)
                 });
                 if (!res.ok) throw new Error(await res.text());
-                
+
                 alert('Pénzügyi adatok sikeresen mentve!');
                 // trigger refresh if needed
                 if (window.dispatchEvent) {
@@ -600,7 +602,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                 container.closest('.mdi-window').querySelector('.mdi-window-close').click();
             }
         });
-        
+
         const btnAddLine = container.querySelector('#fm-add-line');
         if (btnAddLine) {
             btnAddLine.addEventListener('click', () => {

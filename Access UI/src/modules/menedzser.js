@@ -1,5 +1,7 @@
 import { openMenedzserKamionWindow } from './menedzser_kamion_szerkesztes.js';
 
+let cachedMenedzserData = null;
+
 export function renderMenedzser(container, windowManager) {
     container.style.overflow = 'hidden';
     container.style.padding = '0';
@@ -19,6 +21,7 @@ export function renderMenedzser(container, windowManager) {
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
                 <strong style="font-size:13px;">Keresés és Szűrés</strong>
                 <div style="display:flex; gap:10px;">
+                    <button class="primary-btn btn-dense" id="btn-refresh" style="font-size:12px; padding:5px 12px; background:var(--info); color:#fff; border:none; border-radius:4px; cursor:pointer;" title="Adatok újratöltése a szerverről">Frissítés</button>
                     <button class="primary-btn btn-dense" id="btn-new-kamion" style="font-size:12px; padding:5px 12px;">+ Új kamion</button>
                     <button class="secondary-btn btn-dense" id="btn-clear-filters" style="font-size:12px; padding:5px 12px;">Szűrők törlése</button>
                 </div>
@@ -97,6 +100,7 @@ export function renderMenedzser(container, windowManager) {
     const inpRef = filterPanel.querySelector('#filter-ref');
     const btnClear = filterPanel.querySelector('#btn-clear-filters');
     const btnNewKamion = filterPanel.querySelector('#btn-new-kamion');
+    const btnRefresh = filterPanel.querySelector('#btn-refresh');
 
     function fmtDate(val) { return val ? val.substring(0, 10) : ''; }
 
@@ -207,8 +211,19 @@ export function renderMenedzser(container, windowManager) {
         openMenedzserKamionWindow(windowManager, null, null);
     });
 
-    async function loadRealData() {
+    btnRefresh.addEventListener('click', () => {
+        loadRealData(true);
+    });
+
+    async function loadRealData(force = false) {
+        if (!force && cachedMenedzserData) {
+            tableData = cachedMenedzserData;
+            filterData();
+            return;
+        }
+
         try {
+            recordCount.textContent = 'Adatok betöltése...';
             const response = await fetch('/api/v1/shipment-lines');
             if (response.ok) {
                 const lines = await response.json();
@@ -301,6 +316,7 @@ export function renderMenedzser(container, windowManager) {
                     });
                 });
 
+                cachedMenedzserData = rows;
                 tableData = rows;
                 tableData.sort((a, b) => {
                     const da = a.loading_date ? new Date(a.loading_date) : new Date(0);

@@ -17,3 +17,7 @@
 
 ## UI / Megjelenés
 - A verziószám a felületen (belépő képernyő, oldalsáv és fejléc) **V0.5.0**-ra frissült.
+
+## Menedzser Modul Adatkezelés és Optimalizáció
+- **Gyorstárazás (Caching) és Frissítés gomb:** A Menedzser modul mostantól elmenti a szerverről lekérdezett adatokat, így a fülek/menüpontok közötti váltáskor nem terheli feleslegesen az adatbázist. A felületen elhelyezésre került egy új "Frissítés" gomb a gyors és manuális adatszinkronizációhoz.
+- **Kamion Pénzügyi Szerkesztő GHU Szűrés javítása:** Kijavításra került a betöltési logika, mely szigorúan csak azokat a termékeket/tételeket jeleníti meg az adott alfuvarban (pl. H196/2), melyek `Customer` (Vevő) mezője tartalmazza a "GHU" azonosítót. Ennek köszönhetően a "SPAR SLO", "SPAR CRO" és a hasonló, más vevőhöz (pl. FRUBALMED) tartozó tételek automatikusan rejtve maradnak, igazodva a Transportistas modul szabályrendszeréhez.
