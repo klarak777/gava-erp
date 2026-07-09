@@ -132,7 +132,17 @@ router.get('/:id', async (req, res, next) => {
       .orderBy('shipment_lines.id', 'asc');
 
     if (ref_name) {
-      linesQuery = linesQuery.andWhere('partners.name', ref_name);
+      const normalizedRef = ref_name.trim().toUpperCase();
+      let partnerNames = [ref_name.trim()];
+      if (normalizedRef === 'AGROPONIENTE') {
+        partnerNames.push('AGROPONIENTE NATURAL');
+      }
+      if (normalizedRef === 'AGROPONIENTE NATURAL') {
+        partnerNames.push('AGROPONIENTE');
+      }
+      linesQuery = linesQuery.andWhere(function() {
+        this.whereRaw('UPPER(partners.name) = ANY(?)', [partnerNames.map(n => n.toUpperCase())]);
+      });
     }
 
     let lines = await linesQuery;
