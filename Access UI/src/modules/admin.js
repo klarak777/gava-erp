@@ -27,6 +27,9 @@ export function renderAdmin(container, wm, subModuleId = null) {
         ]),
         'admin-finance-trucks': () => openAdminTable(wm, 'Pénzügyi Kamion Típus', 'finance_truck_types', [
             { field: 'name', label: 'Name' }
+        ]),
+        'admin-finance-tax-rates': () => openAdminTable(wm, 'TpTAX (Adókulcsok)', 'finance_tax_rates', [
+            { field: 'rate_value', label: 'Adókulcs (%)' }
         ])
     };
 

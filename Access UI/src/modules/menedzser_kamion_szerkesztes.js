@@ -1,6 +1,6 @@
 const GRID_ROWS = 25;
 
-export function openMenedzserKamionWindow(windowManager, kamionId, refName) {
+export function openMenedzserKamionWindow(windowManager, kamionId, refName, displayOrderNumber) {
     windowManager.open('menedzser_kamion_' + kamionId, 'Kamion pénzügyi szerkesztése...', async (container) => {
         const winEl = container.closest('.mdi-window');
         if (winEl) {
@@ -111,10 +111,10 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName) {
                 <div class="finance-panel finance-header-grid">
                     <!-- Bal oldal: Fő adatok -->
                     <div>
-                        <div class="finance-title" id="fm-title">GHU</div>
-                        <div style="display:flex; justify-content: space-between;">
-                            <span>Season: <b id="fm-season">25-26</b></span>
-                            <span>Truck No: <b id="fm-truck-no">209</b></span>
+                        <div style="display:flex; align-items: baseline; gap: 12px; margin-bottom: 8px;">
+                            <div class="finance-title" id="fm-title" style="margin-bottom:0;">GHU</div>
+                            <div style="font-weight:bold; font-size:14px; margin-left: 8px;">Season: <span id="fm-season" style="font-size:16px;">25-26</span></div>
+                            <div style="font-weight:bold; font-size:14px; margin-left: 8px;">Truck No: <span id="fm-truck-no" style="font-size:16px;">209</span></div>
                         </div>
                         <hr style="margin: 8px 0;">
                         <div class="input-group">
@@ -143,12 +143,15 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName) {
                         </div>
                         <div class="input-group">
                             <label>Goods Currency:</label>
-                            <select id="fm-currency">
+                            <select id="fm-currency" style="width:70px;">
                                 <option value="EUR">EUR</option>
                                 <option value="HUF">HUF</option>
                                 <option value="USD">USD</option>
                             </select>
+                            <label style="margin-left:8px;">ExchRt:</label>
+                            <input type="number" step="0.01" id="fm-exch-rt" style="width: 70px;">
                         </div>
+
                         <div class="input-group">
                             <label>Comments:</label>
                             <input type="text" id="fm-comments">
@@ -179,10 +182,6 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName) {
                             </div>
                         </div>
 
-                        <div style="display:flex; gap: 8px; align-items:center; margin-bottom: 8px;">
-                            <label>ExchRt:</label>
-                            <input type="number" step="0.01" id="fm-exch-rt" style="width: 100px;">
-                        </div>
 
                         <table class="finance-table-summary">
                             <thead>
@@ -256,31 +255,39 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName) {
 
                 <!-- Tétel táblázat blokk -->
                 <div class="finance-panel">
-                    <div style="display:flex; justify-content:space-between; margin-bottom: 4px;">
-                        <div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom: 4px; align-items:center;">
+                        <div style="display:flex; align-items:center; gap: 4px;">
                             <button class="action-btn">Delete line</button>
                             <button class="action-btn">Update</button>
                             <button class="action-btn" id="fm-add-line" style="background:#4caf50; color:white;">Add line</button>
-                        </div>
-                        <div style="display:flex; gap: 16px; align-items:center;">
-                            <b>Totals</b>
-                            <div style="display:flex; gap: 8px;">
-                                <input type="text" id="tot-palets" readonly style="width:60px; text-align:right; background:#eee;">
-                                <input type="text" id="tot-boxes" readonly style="width:60px; text-align:right; background:#eee;">
-                                <input type="text" id="tot-kgs" readonly style="width:60px; text-align:right; background:#eee;">
-                                <input type="text" id="tot-net" readonly style="width:80px; text-align:right; background:#eee;">
-                            </div>
-                            <b style="margin-left: 20px;">Tot Invoice A</b>
-                            <div style="display:flex; gap: 8px;">
-                                <input type="text" id="tot-inv-abt" readonly style="width:80px; text-align:right; background:#eee;">
-                                <input type="text" id="tot-inv-tax" readonly style="width:60px; text-align:right; background:#eee;">
-                                <input type="text" id="tot-inv-amnta" readonly style="width:80px; text-align:right; background:#eee;">
-                            </div>
+                            
+                            <span style="margin-left:16px; font-weight:bold;">Currency:</span>
+                            <select id="fm-currency-2" style="padding: 2px;">
+                                <option value="EUR">EUR</option>
+                                <option value="HUF">HUF</option>
+                                <option value="USD">USD</option>
+                            </select>
+                            
+                            <span style="margin-left:12px; font-weight:bold;">ExchRt:</span>
+                            <input type="number" step="0.01" id="fm-exch-rt-2" style="width: 80px; padding: 2px;">
                         </div>
                     </div>
 
                     <table class="grid-table" id="fm-lines-table">
                         <thead>
+                            <tr style="background:var(--bg-light); border-bottom: 2px solid var(--border);">
+                                <th colspan="4" style="text-align:right; font-weight:bold; padding-right:8px;">Totals:</th>
+                                <th><input type="text" id="tot-palets" readonly style="width:60px; text-align:right; background:#eee; font-weight:bold; border:none; padding:2px;"></th>
+                                <th></th>
+                                <th><input type="text" id="tot-boxes" readonly style="width:60px; text-align:right; background:#eee; font-weight:bold; border:none; padding:2px;"></th>
+                                <th><input type="text" id="tot-kgs" readonly style="width:60px; text-align:right; background:#eee; font-weight:bold; border:none; padding:2px;"></th>
+                                <th></th>
+                                <th><input type="text" id="tot-net" readonly style="width:80px; text-align:right; background:#eee; font-weight:bold; border:none; padding:2px;"></th>
+                                <th colspan="2" style="text-align:right; font-weight:bold; padding-right:8px;">Tot Invoice A</th>
+                                <th><input type="text" id="tot-inv-abt" readonly style="width:80px; text-align:right; background:#eee; font-weight:bold; border:none; padding:2px;"></th>
+                                <th><input type="text" id="tot-inv-tax" readonly style="width:60px; text-align:right; background:#eee; font-weight:bold; border:none; padding:2px;"></th>
+                                <th><input type="text" id="tot-inv-amnta" readonly style="width:80px; text-align:right; background:#eee; font-weight:bold; border:none; padding:2px;"></th>
+                            </tr>
                             <tr>
                                 <th>Lin</th>
                                 <th style="display:none;">Code Prod</th>
@@ -310,17 +317,20 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName) {
 
         let productsData = [];
         let financeTruckTypes = [];
+        let taxRatesData = [];
         let shipmentData = null;
         let linesData = [];
         
         async function loadLookups() {
             try {
-                const [prodRes, typeRes] = await Promise.all([
+                const [prodRes, typeRes, taxRes] = await Promise.all([
                     fetch('/api/v1/admin/products'),
-                    fetch('/api/v1/admin/finance_truck_types')
+                    fetch('/api/v1/admin/finance_truck_types'),
+                    fetch('/api/v1/admin/finance_tax_rates')
                 ]);
                 productsData = prodRes.ok ? await prodRes.json() : [];
                 financeTruckTypes = typeRes.ok ? await typeRes.json() : [];
+                taxRatesData = taxRes.ok ? await taxRes.json() : [];
                 
                 const typeSelect = container.querySelector('#fm-type-truck');
                 financeTruckTypes.forEach(t => {
@@ -352,12 +362,13 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName) {
             if (!shipmentData) return;
             
             // Header logic
-            const match = (shipmentData.order_number || '').match(/^([a-zA-Z]+)\s*(.*)$/);
+            const orderToParse = displayOrderNumber || shipmentData.order_number || '';
+            const match = orderToParse.match(/^([a-zA-Z]+)\s*(.*)$/);
             container.querySelector('#fm-title').textContent = match ? match[1].toUpperCase() : 'N/A';
-            container.querySelector('#fm-truck-no').textContent = match ? match[2] : shipmentData.order_number;
+            container.querySelector('#fm-truck-no').textContent = match ? match[2] : orderToParse;
             
             // Értékek betöltése
-            container.querySelector('#fm-invoice').value = shipmentData.invoice_number || '';
+            container.querySelector('#fm-invoice').value = (linesData.length > 0 && linesData[0].invoice_number_finance) ? linesData[0].invoice_number_finance : (shipmentData.invoice_number || '');
             container.querySelector('#fm-auto-num').value = shipmentData.plate_number || '';
             container.querySelector('#fm-dep-date').value = shipmentData.loading_date ? shipmentData.loading_date.split('T')[0] : '';
             container.querySelector('#fm-arr-date').value = shipmentData.arrival_date ? shipmentData.arrival_date.split('T')[0] : '';
@@ -406,29 +417,35 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName) {
             const displayCode = matchedProduct ? (matchedProduct.code || '') : (line.prod_code || '');
             const displayName = matchedProduct ? matchedProduct.name : (line.prod || line.productName || '');
 
-            const tr = document.createElement('tr');
-            tr.setAttribute('data-index', i);
-            tr.setAttribute('data-line-id', line.id || '');
-            tr.setAttribute('data-product-id', line.product_id || '');
-            tr.innerHTML = `
-                <td style="text-align:center;" class="row-num">${i+1}</td>
-                <td style="display:none;"><input type="text" class="inp-prod-code" list="${dlCodeId}" value="${displayCode}" style="width:80px;"><datalist id="${dlCodeId}">${dlCodeItems}</datalist></td>
-                <td><input type="text" class="inp-prod-name" list="${dlNameId}" value="${displayName}" style="width:160px;"><datalist id="${dlNameId}">${dlNameItems}</datalist></td>
-                <td style="text-align:center;">c</td>
-                <td><input type="text" class="inp-desc" value="${line.description_finance || line.comment || ''}"></td>
-                <td><input type="number" step="0.01" class="inp-palets" value="${line.total_palets || ''}" readonly style="background:#eee;"></td>
-                <td style="text-align:center;">u</td>
-                <td><input type="number" step="0.01" class="inp-boxes num-calc" value="${line.boxes || ''}"></td>
-                <td><input type="number" step="0.01" class="inp-kgs num-calc" value="${line.kgs_finance || ''}"></td>
-                <td><input type="number" step="0.01" class="inp-unitpr num-calc" value="${line.unit_price || ''}"></td>
-                <td><input type="number" step="0.01" class="inp-netamnt" value="${line.net_amount || ''}" readonly style="background:#f0f8ff;"></td>
-                <td><input type="number" step="0.01" class="inp-unpra num-calc" value="${line.unit_price_a || ''}"></td>
-                <td><input type="number" step="0.01" class="inp-tax num-calc" value="${line.tax_percent || ''}"></td>
-                <td><input type="number" step="0.01" class="inp-amntabt num-calc" value="${line.amount_a_bt || ''}"></td>
-                <td><input type="number" step="0.01" class="inp-taxamt" value="${line.tax_amount || ''}" readonly style="background:#f0f8ff;"></td>
-                <td><input type="number" step="0.01" class="inp-amnta" value="${line.amount_a || ''}" readonly style="background:#f0f8ff;"></td>
-            `;
-            tbody.appendChild(tr);
+                let taxOptions = '<option value="0">0.00</option>';
+                taxRatesData.forEach(t => {
+                    const selected = (parseFloat(line.tax_percent) === parseFloat(t.rate_value)) ? 'selected' : '';
+                    taxOptions += `<option value="${t.rate_value}" ${selected}>${t.rate_value}</option>`;
+                });
+
+                const tr = document.createElement('tr');
+                tr.setAttribute('data-index', i);
+                tr.setAttribute('data-line-id', line.id || '');
+                tr.setAttribute('data-product-id', line.product_id || '');
+                tr.innerHTML = `
+                    <td style="text-align:center;" class="row-num">${i+1}</td>
+                    <td style="display:none;"><input type="text" class="inp-prod-code" list="${dlCodeId}" value="${displayCode}" style="width:80px;"><datalist id="${dlCodeId}">${dlCodeItems}</datalist></td>
+                    <td><input type="text" class="inp-prod-name" list="${dlNameId}" value="${displayName}" style="width:160px;"><datalist id="${dlNameId}">${dlNameItems}</datalist></td>
+                    <td style="text-align:center;">c</td>
+                    <td><input type="text" class="inp-desc" value="${line.description_finance || line.comment || ''}"></td>
+                    <td><input type="number" step="0.01" class="inp-palets" value="${line.total_palets || ''}" readonly style="background:#eee;"></td>
+                    <td style="text-align:center;">u</td>
+                    <td><input type="number" step="0.01" class="inp-boxes num-calc" value="${line.boxes || ''}"></td>
+                    <td><input type="number" step="0.01" class="inp-kgs num-calc" value="${line.kgs_finance || ''}"></td>
+                    <td><input type="number" step="0.01" class="inp-unitpr num-calc" value="${line.unit_price || ''}"></td>
+                    <td><input type="number" step="0.01" class="inp-netamnt num-calc" value="${line.net_amount || ''}" readonly style="background:#f0f8ff;"></td>
+                    <td><input type="number" step="0.01" class="inp-unpra num-calc" value="${line.unit_price_a || ''}" readonly style="background:#f0f8ff;"></td>
+                    <td><select class="inp-tax num-calc">${taxOptions}</select></td>
+                    <td><input type="number" step="0.01" class="inp-amntabt num-calc" value="${line.amount_a_bt || ''}" readonly style="background:#f0f8ff;"></td>
+                    <td><input type="number" step="0.01" class="inp-taxamt" value="${line.tax_amount || ''}" readonly style="background:#f0f8ff;"></td>
+                    <td><input type="number" step="0.01" class="inp-amnta" value="${line.amount_a || ''}" readonly style="background:#f0f8ff;"></td>
+                `;
+                tbody.appendChild(tr);
 
             // Ha a Code mezőt módosítják, szinkronizáljuk a Name mezőt (és fordítva)
             const inpCode = tr.querySelector('.inp-prod-code');
@@ -466,11 +483,20 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName) {
 
         function calculateRow(tr) {
             const boxes = parseFloat(tr.querySelector('.inp-boxes').value) || 0;
+            const kgs = parseFloat(tr.querySelector('.inp-kgs').value) || 0;
             const unitPr = parseFloat(tr.querySelector('.inp-unitpr').value) || 0;
-            const netAmnt = boxes * unitPr;
+            
+            // Nettó Amnt = Kgs * Unit Pr (ez volt a 3. kérés)
+            const netAmnt = kgs * unitPr;
             tr.querySelector('.inp-netamnt').value = netAmnt > 0 ? netAmnt.toFixed(2) : '';
             
-            const amntABT = parseFloat(tr.querySelector('.inp-amntabt').value) || 0;
+            // Un Pr A = Unit Pr (ez volt a 4. kérés)
+            tr.querySelector('.inp-unpra').value = unitPr > 0 ? unitPr.toFixed(2) : '';
+            
+            // AmountA BT = Nettó Amnt (ez volt az 5. kérés)
+            tr.querySelector('.inp-amntabt').value = netAmnt > 0 ? netAmnt.toFixed(2) : '';
+            
+            const amntABT = netAmnt; // Amit az imént állítottunk be
             const taxPct = parseFloat(tr.querySelector('.inp-tax').value) || 0;
             const taxAmt = amntABT * (taxPct / 100);
             tr.querySelector('.inp-taxamt').value = taxAmt > 0 ? taxAmt.toFixed(2) : '';

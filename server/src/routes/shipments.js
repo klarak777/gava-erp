@@ -693,7 +693,6 @@ router.put('/:id/finance', async (req, res) => {
         finance_status,
         finance_date: finance_date || null,
         finance_comments,
-        invoice_number,
         loading_date: loading_date || null,
         arrival_date: arrival_date || null,
         plate_number
@@ -720,7 +719,8 @@ router.put('/:id/finance', async (req, res) => {
               amount_a_bt: parseFloat(line.amount_a_bt) || 0,
               tax_amount: parseFloat(line.tax_amount) || 0,
               amount_a: parseFloat(line.amount_a) || 0,
-              description_finance: line.description_finance || ''
+              description_finance: line.description_finance || '',
+              invoice_number_finance: invoice_number || null
             });
         } else {
           // Új sor hozzáadása (ha a UI-on is van Delete / Update / Add funkció)
@@ -738,7 +738,8 @@ router.put('/:id/finance', async (req, res) => {
             amount_a_bt: parseFloat(line.amount_a_bt) || 0,
             tax_amount: parseFloat(line.tax_amount) || 0,
             amount_a: parseFloat(line.amount_a) || 0,
-            description_finance: line.description_finance || ''
+            description_finance: line.description_finance || '',
+            invoice_number_finance: invoice_number || null
           });
         }
       }

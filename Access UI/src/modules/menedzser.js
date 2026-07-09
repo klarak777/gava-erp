@@ -156,8 +156,9 @@ export function renderMenedzser(container, windowManager) {
             badge.addEventListener('click', function(e) {
                 const id = this.getAttribute('data-id');
                 const refName = this.getAttribute('data-ref');
+                const displayNum = this.textContent.trim();
                 if (id) {
-                    openMenedzserKamionWindow(windowManager, id, refName);
+                    openMenedzserKamionWindow(windowManager, id, refName, displayNum);
                 }
             });
         });
@@ -225,7 +226,7 @@ export function renderMenedzser(container, windowManager) {
                             order_number: line.order_number,
                             loading_date: line.loading_date,
                             arrival_date: line.arrival_date,
-                            invoice_number: line.invoice_number || '',
+                            invoice_number: line.invoice_number_finance || '',
                             allLines: []
                         });
                     }
@@ -250,7 +251,7 @@ export function renderMenedzser(container, windowManager) {
                             loading_date: shipment.loading_date,
                             arrival_date: shipment.arrival_date,
                             is_received: shipment.allLines.some(l => !!l.is_received),
-                            invoice_number: shipment.invoice_number
+                            invoice_number: shipment.allLines[0]?.invoice_number_finance || ''
                         });
                         return;
                     }
@@ -295,7 +296,7 @@ export function renderMenedzser(container, windowManager) {
                             loading_date: shipment.loading_date,
                             arrival_date: shipment.arrival_date,
                             is_received: val.is_received,
-                            invoice_number: shipment.invoice_number
+                            invoice_number: shipment.allLines.find(l => (l.ref || '').trim().toUpperCase() === val.originalRef.trim().toUpperCase() || (l.ref || '').trim().toUpperCase() === val.ref_name)?.invoice_number_finance || ''
                         });
                     });
                 });

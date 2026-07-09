@@ -74,6 +74,7 @@ router.get('/', async (req, res) => {
         'shipments.arrival_date',
         'shipments.transport_price',
         'shipments.plate_number',
+        'shipment_lines.invoice_number_finance',
         'shipments.invoice_number',
         'shipments.invoice_amount_huf',
         'shipments.invoice_amount_eur',

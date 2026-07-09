@@ -39,6 +39,7 @@ export const NAV_CATEGORIES = [
                     { id: 'admin-customers', label: 'Customer', icon: '🛒', desc: 'Vevők' },
                     { id: 'admin-transporters', label: 'Fuvarozó cég', icon: '🚚', desc: 'Fuvarozók' },
                     { id: 'admin-finance-trucks', label: 'Type Truck (Pénzügyi)', icon: '🚛', desc: 'Pénzügyi kamion típusok' },
+                    { id: 'admin-finance-tax-rates', label: 'TpTAX (Adókulcsok)', icon: '💰', desc: 'Pénzügyi adókulcsok' },
                 ],
             }
         ],
