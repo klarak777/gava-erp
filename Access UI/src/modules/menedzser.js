@@ -110,11 +110,11 @@ export function renderMenedzser(container, windowManager) {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td style="text-align:center;">
-                    <input type="checkbox" class="bev-chk" data-shipment-id="${row.shipment_id}" data-ref="${row.ref_name || ''}" ${row.is_received ? 'checked' : ''}
+                    <input type="checkbox" class="bev-chk" data-shipment-id="${row.shipment_id}" data-ref="${row.reference || ''}" ${row.is_received ? 'checked' : ''}
                         style="width:15px;height:15px;cursor:pointer;accent-color:var(--primary);">
                 </td>
                 <td style="white-space:nowrap;">${fmtDate(row.loading_date)}</td>
-                <td><span class="badge order-number-badge" data-id="${row.shipment_id}" data-ref="${row.ref_name || ''}" style="background:var(--bg-main);color:var(--primary);border:1px solid var(--border);font-size:11px;cursor:pointer;text-decoration:underline;" title="Kattints a kamion szerkesztéséhez">${row.display_order_number}</span></td>
+                <td><span class="badge order-number-badge" data-id="${row.shipment_id}" data-ref="${row.reference || ''}" style="background:var(--bg-main);color:var(--primary);border:1px solid var(--border);font-size:11px;cursor:pointer;text-decoration:underline;" title="Kattints a kamion szerkesztéséhez">${row.display_order_number}</span></td>
                 <td style="white-space:nowrap;">${row.reference || ''}</td>
                 <td style="white-space:nowrap;">${fmtDate(row.arrival_date)}</td>
                 <td style="white-space:nowrap;">${row.invoice_number || ''}</td>
