@@ -294,13 +294,12 @@ router.patch('/receive', async (req, res) => {
     if (ref_name) {
       const normalizedRef = ref_name.trim().toUpperCase();
       partnerNames.push(ref_name.trim());
-      // Ha AGROPONIENTE, akkor AGROPONIENTE NATURAL is beletartozik
-      if (normalizedRef === 'AGROPONIENTE') {
-        partnerNames.push('AGROPONIENTE NATURAL');
-      }
-      // Ha AGROPONIENTE NATURAL, a normalizált AGROPONIENTE is beletartozik
-      if (normalizedRef === 'AGROPONIENTE NATURAL') {
-        partnerNames.push('AGROPONIENTE');
+      if (normalizedRef.startsWith('AGROPONIENTE')) {
+        const partners = await db('partners')
+          .whereRaw('UPPER(name) LIKE ?', ['AGROPONIENTE%']);
+        if (partners.length > 0) {
+          partnerNames = partners.map(p => p.name);
+        }
       }
     }
 

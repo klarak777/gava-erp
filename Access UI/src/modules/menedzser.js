@@ -257,17 +257,6 @@ export function renderMenedzser(container, windowManager) {
                     );
 
                     if (ghuLines.length === 0) {
-                        rows.push({
-                            shipment_id: shipment.shipment_id,
-                            truck_number_per: 0,
-                            display_order_number: shipment.order_number,
-                            reference: '',
-                            ref_name: '',
-                            loading_date: shipment.loading_date,
-                            arrival_date: shipment.arrival_date,
-                            is_received: shipment.allLines.some(l => !!l.is_received),
-                            invoice_number: shipment.allLines[0]?.invoice_number_finance || ''
-                        });
                         return;
                     }
 
@@ -280,7 +269,7 @@ export function renderMenedzser(container, windowManager) {
 
                     sortedGhuLines.forEach(l => {
                         let refKey = (l.ref || '').trim().toUpperCase();
-                        if (refKey === 'AGROPONIENTE NATURAL') refKey = 'AGROPONIENTE';
+                        if (refKey.startsWith('AGROPONIENTE')) refKey = 'AGROPONIENTE';
 
                         if (!referenceMap.has(refKey)) {
                             referenceMap.set(refKey, {

@@ -134,11 +134,12 @@ router.get('/:id', async (req, res, next) => {
     if (ref_name) {
       const normalizedRef = ref_name.trim().toUpperCase();
       let partnerNames = [ref_name.trim()];
-      if (normalizedRef === 'AGROPONIENTE') {
-        partnerNames.push('AGROPONIENTE NATURAL');
-      }
-      if (normalizedRef === 'AGROPONIENTE NATURAL') {
-        partnerNames.push('AGROPONIENTE');
+      if (normalizedRef.startsWith('AGROPONIENTE')) {
+        const partners = await db('partners')
+          .whereRaw('UPPER(name) LIKE ?', ['AGROPONIENTE%']);
+        if (partners.length > 0) {
+          partnerNames = partners.map(p => p.name);
+        }
       }
       linesQuery = linesQuery.andWhere(function() {
         this.whereRaw('UPPER(partners.name) = ANY(?)', [partnerNames.map(n => n.toUpperCase())]);
