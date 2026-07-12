@@ -207,9 +207,15 @@ async function runImport() {
     const partnerDb = await db('partners').select('*');
     for (const p of partnerDb) partnerMap[p.name.toUpperCase()] = p.id;
     
+    const mainAgroponiente = partnerDb.find(p => p.name.toUpperCase() === 'AGROPONIENTE' && p.is_active);
+    const mainAgroponienteId = mainAgroponiente ? mainAgroponiente.id : null;
+
     async function getPartnerId(name) {
       if (!name || name.trim() === '') return null;
       const key = name.trim().toUpperCase();
+      if (key.startsWith('AGROPONIENTE') && mainAgroponienteId) {
+        return mainAgroponienteId;
+      }
       if (partnerMap[key]) return partnerMap[key];
       const [newId] = await db('partners').insert({ name: name.trim() }).returning('id');
       partnerMap[key] = newId.id;

@@ -49,3 +49,6 @@ Thumbs.db
 # Scratch fájlok
 scratch/
 browser_recordings/
+
+# Biztonsági mentések
+server/backups/
