@@ -755,9 +755,29 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
         function renderUnitCostLines() {
             const tbody = container.querySelector('#uc-lines-tbody');
             tbody.innerHTML = '';
-            const numRows = Math.max(1, unitCostLinesData.length);
+            
+            let dataSource = unitCostLinesData;
+            if (unitCostLinesData.length === 0 && linesData.length > 0) {
+                dataSource = linesData.map(l => {
+                    const matchedProduct = productsData.find(p => p.id === l.product_id);
+                    const prodName = matchedProduct ? matchedProduct.name : (l.prod || l.productName || '');
+                    
+                    const kgs = parseFloat(l.kgs_finance) || 0;
+                    const boxes = parseFloat(l.boxes) || 0;
+                    const kgsPerBox = boxes > 0 ? (kgs / boxes) : 0;
+                    
+                    return {
+                        product_name: prodName,
+                        description: l.description_finance || l.comment || '',
+                        netto_kgs: kgs,
+                        kgs_per_box: kgsPerBox.toFixed(2)
+                    };
+                });
+            }
+
+            const numRows = Math.max(1, dataSource.length);
             for (let i = 0; i < numRows; i++) {
-                const line = unitCostLinesData[i] || {};
+                const line = dataSource[i] || {};
                 appendUnitCostRow(tbody, line, i);
             }
             calculateUnitCostTotals();
