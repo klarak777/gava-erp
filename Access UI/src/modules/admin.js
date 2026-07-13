@@ -30,6 +30,10 @@ export function renderAdmin(container, wm, subModuleId = null) {
         ]),
         'admin-finance-tax-rates': () => openAdminTable(wm, 'TpTAX (Adókulcsok)', 'finance_tax_rates', [
             { field: 'rate_value', label: 'Adókulcs (%)' }
+        ]),
+        'admin-currencies': () => openAdminTable(wm, 'Currencies (Devizák)', 'currencies', [
+            { field: 'code', label: 'Kód (pl. EUR)' },
+            { field: 'name', label: 'Megnevezés' }
         ])
     };
 

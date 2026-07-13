@@ -3,7 +3,7 @@ const router = express.Router();
 const db = require('../db/db');
 
 // Engedélyezett táblák a generic végpontokhoz biztonsági okokból
-const ALLOWED_TABLES = ['products', 'partners', 'transporters', 'finance_truck_types', 'finance_tax_rates'];
+const ALLOWED_TABLES = ['products', 'partners', 'transporters', 'finance_truck_types', 'finance_tax_rates', 'currencies'];
 
 // GET /api/v1/admin/:table
 router.get('/:table', async (req, res) => {
@@ -14,7 +14,7 @@ router.get('/:table', async (req, res) => {
 
   try {
     const query = db(table).orderBy('id', 'asc');
-    if (table !== 'finance_tax_rates') {
+    if (!['finance_tax_rates', 'currencies'].includes(table)) {
         query.where('is_active', true);
     }
     
