@@ -1,6 +1,6 @@
 /**
  * GAVA ERP – Partnerek modul
- * v0.5.2 – Teljes partner beviteli és kezelési modul (8 főfül, alfülekkel)
+ * v0.5.4 – Teljes partner beviteli és kezelési modul (8 főfül, alfülekkel)
  * Iroda > Partnerek
  */
 
@@ -20,7 +20,7 @@ const PARTNEREK_STYLE = `
   background: var(--bg-light); color: var(--text-primary); font-size: 14px; width: 260px;
 }
 .prt-table-wrap {
-  background: var(--bg-card); border-radius: 12px;
+  background: #ffffff; border-radius: 12px;
   overflow: hidden; border: 1px solid var(--border);
 }
 .prt-table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -51,7 +51,7 @@ const PARTNEREK_STYLE = `
   padding: 20px; overflow-y: auto;
 }
 .prt-modal {
-  background: var(--bg-card); border-radius: 16px; width: 100%; max-width: 1200px;
+  background: #ffffff; border-radius: 16px; width: 100%; max-width: 1200px;
   border: 1px solid var(--border); box-shadow: 0 24px 80px rgba(0,0,0,0.5);
   display: flex; flex-direction: column; min-height: 640px; flex-shrink: 0;
 }
@@ -85,8 +85,8 @@ const PARTNEREK_STYLE = `
 }
 .prt-tab-main:hover { color: var(--text-primary); background: rgba(255,255,255,0.06); }
 .prt-tab-main.active {
-  color: var(--accent); background: var(--bg-card);
-  border-color: var(--border); border-bottom: 1px solid var(--bg-card);
+  color: var(--accent); background: #ffffff;
+  border-color: var(--border); border-bottom: 1px solid #ffffff;
 }
 
 /* ── Tab Panels ─────────────────────────────────────────────── */
