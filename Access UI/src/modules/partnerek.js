@@ -201,26 +201,29 @@ async function prtApi(method, path, body = null) {
 }
 
 // ─── Render lista ────────────────────────────────────────────────────────────
-function prtRenderList(container) {
+function prtGetRowsHtml() {
   const typeBadge = (t) => {
     const map = { customer: ['Vevő', 'customer'], supplier: ['Szállító', 'supplier'] };
     const [label, cls] = map[t] || ['Egyéb', 'other'];
     return `<span class="prt-badge prt-badge-${cls}">${label}</span>`;
   };
-  const rows = prtState.list.map(p => `
+  return prtState.list.map(p => {
+    let address = [p.zip, p.city, p.street_name, p.street_number].filter(Boolean).join(' ');
+    if (!address) address = '-';
+    let taxId = p.tax_id || '-';
+    return `
     <tr data-id="${p.id}">
       <td>${p.id}</td>
-      <td>${p.name || ''}</td>
+      <td style="font-weight:600">${p.name || ''}</td>
+      <td>${taxId}</td>
+      <td>${address}</td>
       <td>${typeBadge(p.type)}</td>
-      <td>${p.zip || ''} ${p.city || ''}</td>
-      <td>${p.country || ''}</td>
-      <td>${p.is_inactive ? '<span class="prt-badge prt-badge-inactive">Inaktív</span>' : '<span style="color:var(--text-muted)">-</span>'}</td>
-      <td>
-        <button class="prt-toolbar-btn prt-edit-btn" data-id="${p.id}">✏️ Szerkeszt</button>
-      </td>
     </tr>
-  `).join('');
+    `;
+  }).join('');
+}
 
+function prtRenderList(container) {
   container.innerHTML = `
     ${PARTNEREK_STYLE}
     <div class="prt-list-wrap">
@@ -228,6 +231,7 @@ function prtRenderList(container) {
         <h2>🤝 Partnerek</h2>
         <div class="prt-search-row">
           <input class="prt-search-input" id="prt-search" type="text" placeholder="🔍 Keresés névre...">
+          <button class="secondary-btn" id="prt-clear-btn" style="padding:8px 12px; border-radius:8px; border:1px solid var(--border);" title="Szűrő törlése">✖</button>
           <select id="prt-type-filter" class="prt-search-input" style="width:140px">
             <option value="">Minden típus</option>
             <option value="customer">Vevők</option>
@@ -240,10 +244,10 @@ function prtRenderList(container) {
         <table class="prt-table">
           <thead>
             <tr>
-              <th>#</th><th>Név</th><th>Típus</th><th>Helyszín</th><th>Ország</th><th>Státusz</th><th>Műveletek</th>
+              <th>#</th><th>Név</th><th>Adószám</th><th>Cím</th><th>Típus</th>
             </tr>
           </thead>
-          <tbody id="prt-tbody">${rows}</tbody>
+          <tbody id="prt-tbody">${prtGetRowsHtml()}</tbody>
         </table>
       </div>
     </div>
@@ -251,26 +255,27 @@ function prtRenderList(container) {
 
   // Events
   container.querySelector('#prt-new-btn').addEventListener('click', () => prtOpenModal(null, container));
+  container.querySelector('#prt-clear-btn').addEventListener('click', async () => {
+    container.querySelector('#prt-search').value = '';
+    container.querySelector('#prt-type-filter').value = '';
+    await prtLoadList('', '');
+    container.querySelector('#prt-tbody').innerHTML = prtGetRowsHtml();
+    prtBindListEvents(container);
+  });
   container.querySelector('#prt-search').addEventListener('input', async (e) => {
     await prtLoadList(e.target.value, container.querySelector('#prt-type-filter').value);
-    prtRenderList(container);
+    container.querySelector('#prt-tbody').innerHTML = prtGetRowsHtml();
     prtBindListEvents(container);
   });
   container.querySelector('#prt-type-filter').addEventListener('change', async (e) => {
     await prtLoadList(container.querySelector('#prt-search').value, e.target.value);
-    prtRenderList(container);
+    container.querySelector('#prt-tbody').innerHTML = prtGetRowsHtml();
     prtBindListEvents(container);
   });
   prtBindListEvents(container);
 }
 
 function prtBindListEvents(container) {
-  container.querySelectorAll('.prt-edit-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      prtOpenModal(parseInt(btn.dataset.id), container);
-    });
-  });
   container.querySelectorAll('#prt-tbody tr').forEach(row => {
     row.addEventListener('click', () => prtOpenModal(parseInt(row.dataset.id), container));
   });

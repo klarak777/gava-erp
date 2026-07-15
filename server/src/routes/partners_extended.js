@@ -118,7 +118,7 @@ router.get('/', async (req, res) => {
   try {
     const { search, type, limit = 200, offset = 0 } = req.query;
     let query = db('partners').select(
-      'id', 'name', 'type', 'is_inactive', 'country', 'city', 'zip', 'is_natural_person'
+      'id', 'name', 'type', 'is_inactive', 'country', 'city', 'zip', 'street_name', 'street_number', 'tax_id', 'is_natural_person'
     ).orderBy('name');
 
     if (search) {
