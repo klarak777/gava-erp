@@ -12,6 +12,7 @@ app.use(express.json());
 // Szolgáljuk ki a statikus frontend fájlokat
 const path = require('path');
 app.use(express.static(path.join(__dirname, '../Access UI')));
+app.use('/documents', express.static(path.join(__dirname, 'documents')));
 
 // Útvonalak (Routes) importálása
 const seasonsRouter = require('./src/routes/seasons');
@@ -19,7 +20,7 @@ const shipmentsRouter = require('./src/routes/shipments');
 const shipmentLinesRouter = require('./src/routes/shipment_lines');
 const transportersRouter = require('./src/routes/transporters');
 const productsRouter = require('./src/routes/products');
-const partnersRouter = require('./src/routes/partners');
+const partnersRouter = require('./src/routes/partners_extended');
 const cargoDemandsRouter = require('./src/routes/cargo_demands');
 const transportOrdersRouter = require('./src/routes/transport_orders');
 const ekaerRouter = require('./src/routes/ekaer');

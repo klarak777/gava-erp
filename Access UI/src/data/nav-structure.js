@@ -4,7 +4,8 @@ export const NAV_CATEGORIES = [
         label: 'IRODA',
         groups: [
             { id: 'menedzser', title: 'Menedzser', icon: '👔', moduleId: 'menedzser', items: [] },
-            { id: 'logisztika', title: 'Logisztika', icon: '📦', moduleId: 'logisztika', items: [] }
+            { id: 'logisztika', title: 'Logisztika', icon: '📦', moduleId: 'logisztika', items: [] },
+            { id: 'partnerek', title: 'Partnerek', icon: '🤝', moduleId: 'partnerek', items: [] }
         ],
     },
     {
