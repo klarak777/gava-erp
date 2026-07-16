@@ -41,6 +41,7 @@ const PARTNEREK_STYLE = `
 }
 .prt-badge-customer { background: rgba(34,197,94,0.15); color: #4ade80; }
 .prt-badge-supplier { background: rgba(96,165,250,0.15); color: #60a5fa; }
+.prt-badge-fuvarozó { background: rgba(251,191,36,0.15); color: #fbbf24; }
 .prt-badge-other { background: rgba(148,163,184,0.15); color: #94a3b8; }
 .prt-badge-inactive { background: rgba(239,68,68,0.15); color: #f87171; }
 
@@ -203,7 +204,13 @@ async function prtApi(method, path, body = null) {
 // ─── Render lista ────────────────────────────────────────────────────────────
 function prtGetRowsHtml() {
   const typeBadge = (t) => {
-    const map = { customer: ['Vevő', 'customer'], supplier: ['Szállító', 'supplier'] };
+    const map = {
+      'vevő': ['Vevő', 'customer'],
+      'szállító': ['Szállító', 'supplier'],
+      'fuvarozó': ['Fuvarozó', 'fuvarozó'],
+      'customer': ['Vevő', 'customer'],
+      'supplier': ['Szállító', 'supplier'],
+    };
     const [label, cls] = map[t] || ['Egyéb', 'other'];
     return `<span class="prt-badge prt-badge-${cls}">${label}</span>`;
   };
@@ -234,8 +241,9 @@ function prtRenderList(container) {
           <button class="secondary-btn" id="prt-clear-btn" style="padding:8px 12px; border-radius:8px; border:1px solid var(--border);" title="Szűrő törlése">✖</button>
           <select id="prt-type-filter" class="prt-search-input" style="width:140px">
             <option value="">Minden típus</option>
-            <option value="customer">Vevők</option>
-            <option value="supplier">Szállítók</option>
+            <option value="vevő">Vevők</option>
+            <option value="szállító">Szállítók</option>
+            <option value="fuvarozó">Fuvarozók</option>
           </select>
           <button class="primary-btn" id="prt-new-btn">➕ Új Partner</button>
         </div>
