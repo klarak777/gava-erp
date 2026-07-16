@@ -1,9 +1,15 @@
 const fs = require('fs');
 const path = require('path');
 const iconv = require('iconv-lite');
-const knex = require('knex')(require('../../knexfile').development);
+const knex = require('knex')(require('../../knexfile')[process.env.NODE_ENV || 'development']);
 
-const csvPath = path.join(__dirname, '../../..', 'Partner_cleaned.csv');
+let csvPath = path.join(__dirname, '../../..', 'Partner_cleaned.csv');
+if (!fs.existsSync(csvPath)) {
+  csvPath = path.join(__dirname, '../../Partner_cleaned.csv');
+}
+if (!fs.existsSync(csvPath)) {
+  csvPath = '/app/Partner_cleaned.csv';
+}
 const DRY_RUN = process.argv.includes('--dry-run');
 
 function parseCSVLine(line) {
