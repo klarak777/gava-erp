@@ -315,22 +315,35 @@ function prtBindListEvents(container) {
         const id = parseInt(row.dataset.id);
         const name = row.querySelector('td:nth-child(2)').textContent;
         if (confirm(`Biztosan törölni szeretnéd a(z) "${name}" nevű partnert és minden kapcsolódó adatát?`)) {
-          try {
-            const res = await fetch(`/api/v1/partners/${id}`, { method: 'DELETE' });
-            const result = await res.json();
-            if (res.ok && result.success) {
-              // Reload list
-              const search = container.querySelector('#prt-search').value;
-              const type = container.querySelector('#prt-type-filter').value;
-              await prtLoadList(search, type);
-              container.querySelector('#prt-tbody').innerHTML = prtGetRowsHtml();
-              prtBindListEvents(container);
-            } else {
-              alert('Hiba a törlés során: ' + (result.error || 'Ismeretlen hiba'));
+          const doDelete = async (force = false) => {
+            try {
+              const url = `/api/v1/partners/${id}` + (force ? '?force=true' : '');
+              const res = await fetch(url, { method: 'DELETE' });
+              const result = await res.json();
+              
+              if (res.status === 409 && result.warning) {
+                if (confirm(result.error)) {
+                  await doDelete(true);
+                }
+                return;
+              }
+              
+              if (res.ok && result.success) {
+                // Reload list
+                const search = container.querySelector('#prt-search').value;
+                const type = container.querySelector('#prt-type-filter').value;
+                await prtLoadList(search, type);
+                container.querySelector('#prt-tbody').innerHTML = prtGetRowsHtml();
+                prtBindListEvents(container);
+              } else {
+                alert('Hiba a törlés során: ' + (result.error || 'Ismeretlen hiba'));
+              }
+            } catch (err) {
+              alert('Hiba a törlés során: ' + err.message);
             }
-          } catch (err) {
-            alert('Hiba a törlés során: ' + err.message);
-          }
+          };
+          
+          await doDelete(false);
         }
       });
     }

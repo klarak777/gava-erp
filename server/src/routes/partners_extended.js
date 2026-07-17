@@ -375,13 +375,16 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const { force } = req.query;
     
-    // Ellenőrizzük, hogy a partner szerepel-e fuvarokban vagy pénzügyi sorokban
-    const slCheck = await db('shipment_lines').where('partner_id', id).first();
-    const ftCheck = await db('finance_transport_lines').where('partner_id', id).first();
-    
-    if (slCheck || ftCheck) {
-      return res.status(400).json({ error: 'A partner törlése nem lehetséges, mert már szerepel egy vagy több rögzített fuvarhoz kapcsolódó adatban (szállítóként, vevőként vagy fuvarozóként)!' });
+    if (force !== 'true') {
+      // Ellenőrizzük, hogy a partner szerepel-e fuvarokban vagy pénzügyi sorokban
+      const slCheck = await db('shipment_lines').where('partner_id', id).first();
+      const ftCheck = await db('finance_transport_lines').where('partner_id', id).first();
+      
+      if (slCheck || ftCheck) {
+        return res.status(409).json({ warning: true, error: 'A partner szerepel korábban rögzített fuvarokban (pl. szállítóként, vevőként vagy fuvarozóként).\n\nBiztosan törölni szeretnéd a partnert az adatbázisból?' });
+      }
     }
 
     await db('partners').where('id', id).delete();
@@ -389,7 +392,7 @@ router.delete('/:id', async (req, res) => {
   } catch (err) {
     console.error('Hiba a partner törlésekor:', err);
     if (err.code === '23503') { // PostgreSQL Foreign Key Violation
-      return res.status(400).json({ error: 'A partner nem törölhető, mert már hivatkozás történik rá más rögzített adatokban (pl. fuvarok).' });
+      return res.status(400).json({ error: 'A partner nem törölhető, mert már szigorú hivatkozás történik rá más rögzített adatokban.' });
     }
     res.status(500).json({ error: 'Belső szerverhiba a törlés során' });
   }
