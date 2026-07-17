@@ -89,9 +89,22 @@ async function saveSubTables(trx, partnerId, body) {
     for (const site of body.sites) {
       if (site.id) {
         await trx('partner_sites').where('id', site.id).where('partner_id', partnerId).update({
-          name: site.name, country: site.country, zip: site.zip, city: site.city,
+          name: site.name, country: site.country, zip: site.zip, city: site.city, district: site.district,
           street_name: site.street_name, street_type: site.street_type,
-          street_number: site.street_number, is_deleted: site.is_deleted || false
+          street_number: site.street_number, building: site.building,
+          staircase: site.staircase, floor: site.floor, door: site.door,
+          comm_lang: site.comm_lang, excise_num: site.excise_num, gln: site.gln,
+          delivery_warehouse: site.delivery_warehouse, default_transaction: site.default_transaction,
+          document_name: site.document_name, is_same_as_hq: site.is_same_as_hq,
+          is_billing_address: site.is_billing_address, mailing_address_source: site.mailing_address_source,
+          is_invoice_mailing_address: site.is_invoice_mailing_address,
+          mailing_document_name: site.mailing_document_name, mailing_gln: site.mailing_gln,
+          mailing_country: site.mailing_country, mailing_region: site.mailing_region,
+          mailing_zip: site.mailing_zip, mailing_city: site.mailing_city,
+          mailing_street_name: site.mailing_street_name,
+          region: site.region, street_full: site.street_full,
+          mailing_street_full: site.mailing_street_full,
+          is_deleted: site.is_deleted || false
         });
       } else {
         await trx('partner_sites').insert({ ...site, id: undefined, partner_id: partnerId });
@@ -125,7 +138,18 @@ router.get('/', async (req, res) => {
       query = query.whereRaw('LOWER(name) LIKE ?', [`%${search.toLowerCase()}%`]);
     }
     if (type) {
-      query = query.where('type', type);
+      if (['Adószám', 'CCW + Kód', 'Csoportos adószám', 'Közösségi adószám', 'FELIR azonosító', 'NEBIH'].includes(type)) {
+        query = query.where(function() {
+          this.where('type', type)
+              .orWhereExists(function() {
+                this.select('*').from('partner_identifiers')
+                    .whereRaw('partner_identifiers.partner_id = partners.id')
+                    .where('id_type', type);
+              });
+        });
+      } else {
+        query = query.where('type', type);
+      }
     }
     query = query.limit(parseInt(limit)).offset(parseInt(offset));
 
@@ -134,6 +158,26 @@ router.get('/', async (req, res) => {
   } catch (err) {
     console.error('Hiba a partnerek lekérdezésekor:', err);
     res.status(500).json({ error: 'Belső szerverhiba' });
+  }
+});
+
+// GET /api/v1/partners/verify-vat/:vatNumber - EU VAT check via VIES
+router.get('/verify-vat/:vatNumber', async (req, res) => {
+  try {
+    let { vatNumber } = req.params;
+    vatNumber = vatNumber.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+    if (vatNumber.length < 3) return res.status(400).json({ error: 'Túl rövid adószám' });
+    
+    const countryCode = vatNumber.substring(0, 2);
+    const vat = vatNumber.substring(2);
+    
+    const response = await fetch(`https://ec.europa.eu/taxation_customs/vies/rest-api/ms/${countryCode}/vat/${vat}`);
+    if (!response.ok) throw new Error('VIES API nem elérhető');
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    console.error('VIES API hiba:', err);
+    res.status(500).json({ error: 'Hiba a VIES ellenőrzés során: ' + err.message });
   }
 });
 
@@ -181,16 +225,39 @@ router.post('/', async (req, res) => {
         mailing_street_number: partner.mailing_street_number, gln: partner.gln,
         // természetes személy
         nat_family_name_prefix: partner.nat_family_name_prefix, nat_family_name: partner.nat_family_name,
-        nat_first_name: partner.nat_first_name, birth_place: partner.birth_place,
-        birth_date: partner.birth_date, gender: partner.gender, tax_id: partner.tax_id,
-        taj: partner.taj, farmer_reg_number: partner.farmer_reg_number,
+        nat_first_name: partner.nat_first_name,
+        nat_prev_family_name_prefix: partner.nat_prev_family_name_prefix, nat_prev_family_name: partner.nat_prev_family_name,
+        nat_prev_first_name: partner.nat_prev_first_name,
+        birth_family_name: partner.birth_family_name, birth_first_name: partner.birth_first_name,
+        birth_display_name: partner.birth_display_name, birth_place: partner.birth_place,
+        birth_date: partner.birth_date, gender: partner.gender,
+        mothers_family_name: partner.mothers_family_name, mothers_first_name: partner.mothers_first_name,
+        mothers_display_name: partner.mothers_display_name,
+        tax_id: partner.tax_id, taj: partner.taj,
+        farmer_reg_number: partner.farmer_reg_number, farmer_cert_number: partner.farmer_cert_number,
+        farmer_activity_id: partner.farmer_activity_id, family_farm_id: partner.family_farm_id,
+        has_compensation_surcharge: partner.has_compensation_surcharge || false,
         citizenship: partner.citizenship,
         // pénzügyi
         currency: partner.currency, price_type: partner.price_type,
         payment_method: partner.payment_method,
         has_domestic_tax_num: partner.has_domestic_tax_num || false,
         has_eu_tax_num: partner.has_eu_tax_num || false,
+        has_other_tax_num: partner.has_other_tax_num || false,
+        product_tax_code: partner.product_tax_code, product_id_type: partner.product_id_type,
+        claims_as_current_account: partner.claims_as_current_account || false,
+        invoice_compensation_allowed: partner.invoice_compensation_allowed || false,
+        cash_flow_accounting: partner.cash_flow_accounting || false,
+        late_fee_applicable: partner.late_fee_applicable || false,
+        is_kata_taxpayer: partner.is_kata_taxpayer || false,
+        einvoice_receive_start: partner.einvoice_receive_start || null,
+        einvoice_receive_end: partner.einvoice_receive_end || null,
+        einvoice_send_start: partner.einvoice_send_start || null,
+        einvoice_send_end: partner.einvoice_send_end || null,
+        edi_provider: partner.edi_provider,
         notes: partner.notes, default_print_mode: partner.default_print_mode || 'system',
+        comm_lang: partner.comm_lang, excise_num: partner.excise_num,
+        delivery_warehouse: partner.delivery_warehouse, default_transaction: partner.default_transaction,
       }).returning('id');
       partnerId = typeof id === 'object' ? id.id : id;
       await saveSubTables(trx, partnerId, body);
@@ -233,15 +300,38 @@ router.put('/:id', async (req, res) => {
         mailing_street_type: partner.mailing_street_type,
         mailing_street_number: partner.mailing_street_number, gln: partner.gln,
         nat_family_name_prefix: partner.nat_family_name_prefix, nat_family_name: partner.nat_family_name,
-        nat_first_name: partner.nat_first_name, birth_place: partner.birth_place,
-        birth_date: partner.birth_date, gender: partner.gender, tax_id: partner.tax_id,
-        taj: partner.taj, farmer_reg_number: partner.farmer_reg_number,
+        nat_first_name: partner.nat_first_name,
+        nat_prev_family_name_prefix: partner.nat_prev_family_name_prefix, nat_prev_family_name: partner.nat_prev_family_name,
+        nat_prev_first_name: partner.nat_prev_first_name,
+        birth_family_name: partner.birth_family_name, birth_first_name: partner.birth_first_name,
+        birth_display_name: partner.birth_display_name, birth_place: partner.birth_place,
+        birth_date: partner.birth_date, gender: partner.gender,
+        mothers_family_name: partner.mothers_family_name, mothers_first_name: partner.mothers_first_name,
+        mothers_display_name: partner.mothers_display_name,
+        tax_id: partner.tax_id, taj: partner.taj,
+        farmer_reg_number: partner.farmer_reg_number, farmer_cert_number: partner.farmer_cert_number,
+        farmer_activity_id: partner.farmer_activity_id, family_farm_id: partner.family_farm_id,
+        has_compensation_surcharge: partner.has_compensation_surcharge || false,
         citizenship: partner.citizenship,
         currency: partner.currency, price_type: partner.price_type,
         payment_method: partner.payment_method,
         has_domestic_tax_num: partner.has_domestic_tax_num || false,
         has_eu_tax_num: partner.has_eu_tax_num || false,
+        has_other_tax_num: partner.has_other_tax_num || false,
+        product_tax_code: partner.product_tax_code, product_id_type: partner.product_id_type,
+        claims_as_current_account: partner.claims_as_current_account || false,
+        invoice_compensation_allowed: partner.invoice_compensation_allowed || false,
+        cash_flow_accounting: partner.cash_flow_accounting || false,
+        late_fee_applicable: partner.late_fee_applicable || false,
+        is_kata_taxpayer: partner.is_kata_taxpayer || false,
+        einvoice_receive_start: partner.einvoice_receive_start || null,
+        einvoice_receive_end: partner.einvoice_receive_end || null,
+        einvoice_send_start: partner.einvoice_send_start || null,
+        einvoice_send_end: partner.einvoice_send_end || null,
+        edi_provider: partner.edi_provider,
         notes: partner.notes, default_print_mode: partner.default_print_mode || 'system',
+        comm_lang: partner.comm_lang, excise_num: partner.excise_num,
+        delivery_warehouse: partner.delivery_warehouse, default_transaction: partner.default_transaction,
         updated_at: new Date(),
       });
       await saveSubTables(trx, id, body);

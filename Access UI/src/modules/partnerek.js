@@ -48,30 +48,37 @@ const PARTNEREK_STYLE = `
 /* ── Modal ─────────────────────────────────────────────────── */
 .prt-modal-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.65);
-  z-index: 3000; display: flex; align-items: flex-start; justify-content: center;
-  padding: 20px; overflow-y: auto;
+  z-index: 3000; overflow: hidden;
 }
 .prt-modal {
+  position: absolute; top: 5vh; left: 50%; transform: translateX(-50%);
   background: #ffffff; border-radius: 16px; width: 100%; max-width: 1200px;
   border: 1px solid var(--border); box-shadow: 0 24px 80px rgba(0,0,0,0.5);
-  display: flex; flex-direction: column; min-height: 640px; flex-shrink: 0;
+  display: flex; flex-direction: column; height: 90vh; overflow: hidden;
+}
+.prt-modal.maximized {
+  top: 0 !important; left: 0 !important; transform: none !important;
+  width: 100vw !important; height: 100vh !important; max-width: none !important;
+  border-radius: 0 !important;
 }
 .prt-modal-titlebar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 20px; border-bottom: 1px solid var(--border);
   background: rgba(255,255,255,0.03); border-radius: 16px 16px 0 0;
+  cursor: grab; flex-shrink: 0;
 }
-.prt-modal-titlebar h3 { margin: 0; font-size: 17px; font-weight: 700; color: var(--text-primary); }
+.prt-modal-titlebar:active { cursor: grabbing; }
+.prt-modal-titlebar h3 { margin: 0; font-size: 17px; font-weight: 700; color: var(--text-primary); pointer-events: none; }
 .prt-modal-toprow {
   display: flex; align-items: center; gap: 16px; padding: 12px 20px;
   border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);
-  flex-wrap: wrap;
+  flex-wrap: wrap; flex-shrink: 0;
 }
 .prt-modal-toprow .prt-name-wrap { flex: 1; min-width: 260px; }
 .prt-modal-toprow .prt-name-wrap label { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px; }
 .prt-modal-toprow .prt-name-input {
-  width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border);
-  background: var(--bg-light); color: var(--text-primary); font-size: 15px; font-weight: 600;
+  width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid #ccc;
+  background: #fff; color: #111; font-size: 15px; font-weight: 600;
 }
 .prt-modal-flags { display: flex; gap: 18px; align-items: center; }
 .prt-modal-flags label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted); cursor: pointer; }
@@ -91,7 +98,7 @@ const PARTNEREK_STYLE = `
 }
 
 /* ── Tab Panels ─────────────────────────────────────────────── */
-.prt-panels { flex: 1; padding: 18px 20px; overflow-y: auto; }
+.prt-panels { flex: 1; padding: 18px 20px; overflow-y: auto; min-height: 0; }
 .prt-panel { display: none; }
 .prt-panel.active { display: block; }
 
@@ -169,12 +176,7 @@ const PARTNEREK_STYLE = `
 }
 .prt-attach-dropzone:hover { border-color: var(--accent); color: var(--accent); }
 
-/* ── Footer ─────────────────────────────────────────────────── */
-.prt-modal-footer {
-  display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px;
-  border-top: 1px solid var(--border); background: rgba(255,255,255,0.02);
-  border-radius: 0 0 16px 16px;
-}
+/* Footer removed */
 </style>
 `;
 
@@ -205,11 +207,18 @@ async function prtApi(method, path, body = null) {
 function prtGetRowsHtml() {
   const typeBadge = (t) => {
     const map = {
-      'vevő': ['Vevő', 'customer'],
-      'szállító': ['Szállító', 'supplier'],
-      'fuvarozó': ['Fuvarozó', 'fuvarozó'],
-      'customer': ['Vevő', 'customer'],
-      'supplier': ['Szállító', 'supplier'],
+      'vevő': ['(Customer) Vevők', 'customer'],
+      'szállító': ['(Reference) Szállítók / Partnerek', 'supplier'],
+      'fuvarozó': ['Fuvarozó', 'transporter'],
+      'customer': ['(Customer) Vevők', 'customer'],
+      'supplier': ['(Reference) Szállítók / Partnerek', 'supplier'],
+      'transporter': ['Fuvarozók', 'transporter'],
+      'Adószám': ['Adószám', 'other'],
+      'CCW + Kód': ['CCW + Kód', 'other'],
+      'Csoportos adószám': ['Csoportos', 'other'],
+      'Közösségi adószám': ['Közösségi ad.', 'other'],
+      'FELIR azonosító': ['FELIR', 'other'],
+      'NEBIH': ['NEBIH', 'other'],
     };
     const [label, cls] = map[t] || ['Egyéb', 'other'];
     return `<span class="prt-badge prt-badge-${cls}">${label}</span>`;
@@ -239,11 +248,17 @@ function prtRenderList(container) {
         <div class="prt-search-row">
           <input class="prt-search-input" id="prt-search" type="text" placeholder="🔍 Keresés névre...">
           <button class="secondary-btn" id="prt-clear-btn" style="padding:8px 12px; border-radius:8px; border:1px solid var(--border);" title="Szűrő törlése">✖</button>
-          <select id="prt-type-filter" class="prt-search-input" style="width:140px">
+          <select id="prt-type-filter" class="prt-search-input" style="width:220px">
             <option value="">Minden típus</option>
-            <option value="vevő">Vevők</option>
-            <option value="szállító">Szállítók</option>
-            <option value="fuvarozó">Fuvarozók</option>
+            <option value="customer">(Customer) Vevők</option>
+            <option value="supplier">(Reference) Szállítók / Partnerek</option>
+            <option value="transporter">Fuvarozók</option>
+            <option value="Adószám">Adószám</option>
+            <option value="CCW + Kód">CCW + Kód</option>
+            <option value="Csoportos adószám">Csoportos adószám</option>
+            <option value="Közösségi adószám">Közösségi adószám</option>
+            <option value="FELIR azonosító">FELIR azonosító</option>
+            <option value="NEBIH">NEBIH</option>
           </select>
           <button class="primary-btn" id="prt-new-btn">➕ Új Partner</button>
         </div>
@@ -294,6 +309,11 @@ async function prtLoadList(search = '', type = '') {
 }
 
 // ─── Modal Builder ────────────────────────────────────────────────────────────
+function prtEsc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
 function prtBuildModal(data) {
   const p = data?.partner || {};
   const sites = data?.sites || [];
@@ -302,10 +322,13 @@ function prtBuildModal(data) {
   return `
   <div class="prt-modal" id="prt-modal">
     <div class="prt-modal-titlebar">
-      <h3>${isNew ? '➕ Új Partner' : `✏️ Partner: ${p.name || ''}`}</h3>
-      <div style="display:flex;gap:10px;align-items:center">
-        <span style="font-size:12px;color:var(--text-muted)">Rögzítés után bezárás</span>
-        <button class="secondary-btn" id="prt-close-btn" style="padding:5px 14px">✕ Bezár</button>
+      <h3>${isNew ? '➕ Új Partner' : `✏️ Partner: ${prtEsc(p.name)}`}</h3>
+      <div style="display:flex;gap:12px;align-items:center">
+        <button class="primary-btn" id="prt-save-btn" style="padding:4px 14px; font-size:13px;">💾 Mentés</button>
+        <div style="width:1px; background:var(--border); margin:0 4px; height:20px;"></div>
+        <button class="win-btn minimize" id="prt-minimize-btn" title="Kis méret" style="background:none; border:none; color:var(--text-primary); cursor:pointer; font-size:16px; padding:0 5px; font-weight:bold;">_</button>
+        <button class="win-btn maximize" id="prt-maximize-btn" title="Teljes méret" style="background:none; border:none; color:var(--text-primary); cursor:pointer; font-size:14px; padding:0 5px;">□</button>
+        <button class="secondary-btn" id="prt-close-btn" style="padding:4px 14px; font-size:13px;">✕ Bezár</button>
       </div>
     </div>
 
@@ -313,21 +336,15 @@ function prtBuildModal(data) {
     <div class="prt-modal-toprow">
       <div class="prt-name-wrap">
         <label>Név: *</label>
-        <input class="prt-name-input" id="prt-f-name" type="text" value="${p.name || ''}" placeholder="Partner neve">
+        <input class="prt-name-input" id="prt-f-name" type="text" value="${prtEsc(p.name)}" placeholder="Partner neve">
       </div>
       <div class="prt-modal-flags">
         <label><input type="checkbox" id="prt-f-natural" ${p.is_natural_person ? 'checked' : ''}> Természetes személy</label>
         <label><input type="checkbox" id="prt-f-inactive" ${p.is_inactive ? 'checked' : ''}> Inaktív</label>
         <label><input type="checkbox" id="prt-f-anon" ${p.is_anonymized ? 'checked' : ''}> Anonimizált</label>
-        <div class="prt-field" style="margin:0;min-width:140px">
-          <select id="prt-f-type" style="padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg-light);color:var(--text-primary)">
-            <option value="supplier" ${p.type === 'supplier' ? 'selected' : ''}>Szállító</option>
-            <option value="customer" ${p.type === 'customer' ? 'selected' : ''}>Vevő</option>
-            <option value="transporter" ${p.type === 'transporter' ? 'selected' : ''}>Fuvarozó</option>
-            <option value="agent" ${p.type === 'agent' ? 'selected' : ''}>Ügynök</option>
-            <option value="other" ${p.type === 'other' ? 'selected' : ''}>Egyéb</option>
-          </select>
-        </div>
+        <!-- Típus rejtett – az Azonosítók fülön állítható -->
+        <input type="hidden" id="prt-f-type" value="${p.type || 'other'}">
+        <span id="prt-type-badge" style="padding:5px 12px;border-radius:7px;background:rgba(99,102,241,0.12);color:var(--accent);font-size:12px;font-weight:600;">${prtEsc(p.type) || 'Nincs beállítva'}</span>
       </div>
     </div>
 
@@ -352,7 +369,7 @@ function prtBuildModal(data) {
         ${prtBuildTermeszetesPanel(p)}
       </div>
       <!-- 3: Egyéb adatok -->
-      <div class="prt-panel" data-panel="3">
+      <div class="prt-panel" data-panel="3" style="overflow-y:auto; max-height:480px; padding-right:8px;">
         ${prtBuildEgyebAdatokPanel(p, data)}
       </div>
       <!-- 4: Megjegyzés/Kategóriák -->
@@ -373,11 +390,6 @@ function prtBuildModal(data) {
       </div>
     </div>
 
-    <!-- Footer -->
-    <div class="prt-modal-footer">
-      <button class="secondary-btn" id="prt-cancel-btn">Mégsem</button>
-      <button class="primary-btn" id="prt-save-btn">💾 Mentés</button>
-    </div>
   </div>`;
 }
 
@@ -552,30 +564,56 @@ function prtBuildTelephelyekPanel(sites) {
 }
 
 function prtBuildTermeszetesPanel(p) {
+  const getPrefixOptions = (val) => {
+    const opts = ['Dr.','Prof.','Úr','Asszony','Kisasszony','ifj.','id.','özv.','Mr.','Mrs.','Ms.','Miss','Mx.','Sir','Dame','Lord','Lady','Rev.','Fr.','Capt.','Col.','Gen.','Sr.','Sra.','Srta.','Don','Doña','Ing.','Lic.'];
+    let html = `<option value="" ${!val?'selected':''}>-</option>`;
+    html += opts.map(o => `<option value="${o}" ${val===o?'selected':''}>${o}</option>`).join('');
+    return html;
+  };
+
   return `
   <div class="prt-cols-2">
+    <!-- Bal oszlop -->
     <div>
+      <!-- Személyes adatok -->
       <div class="prt-section">
-        <div class="prt-section-title">👤 Személyes adatok</div>
-        <div class="prt-row-2">
-          ${prtField('prt-f-nat-fam-pref', 'Előtag', p.nat_family_name_prefix)}
-          ${prtField('prt-f-nat-fam', 'Családi neve', p.nat_family_name)}
+        <div class="prt-section-title">Személyes adatok</div>
+        <div style="display:flex; gap:10px; margin-bottom:5px;">
+          <div class="prt-field" style="flex:1;"><label>Családi neve:</label>
+            <div style="display:flex; gap:5px;">
+              <select id="prt-f-nat-fam-pref" style="width:80px;height:24px;border:1px solid var(--border);border-radius:3px;">${getPrefixOptions(p.nat_family_name_prefix)}</select>
+              <input type="text" id="prt-f-nat-fam" value="${p.nat_family_name||''}" style="flex:1;">
+            </div>
+          </div>
+          <div class="prt-field" style="flex:1;"><label>utóneve:</label>
+            <input type="text" id="prt-f-nat-first" value="${p.nat_first_name||''}">
+          </div>
         </div>
-        ${prtField('prt-f-nat-first', 'utóneve', p.nat_first_name)}
-        <div class="prt-row-2">
-          ${prtField('prt-f-nat-prev-fam-pref', 'Előző előtag', p.nat_prev_family_name_prefix)}
-          ${prtField('prt-f-nat-prev-fam', 'Előző családi neve', p.nat_prev_family_name)}
+        <div style="display:flex; gap:10px;">
+          <div class="prt-field" style="flex:1;"><label>Előző családi neve:</label>
+            <div style="display:flex; gap:5px;">
+              <select id="prt-f-nat-prev-fam-pref" style="width:80px;height:24px;border:1px solid var(--border);border-radius:3px;">${getPrefixOptions(p.nat_prev_family_name_prefix)}</select>
+              <input type="text" id="prt-f-nat-prev-fam" value="${p.nat_prev_family_name||''}" style="flex:1;">
+            </div>
+          </div>
+          <div class="prt-field" style="flex:1;"><label>utóneve:</label>
+            <input type="text" id="prt-f-nat-prev-first" value="${p.nat_prev_first_name||''}">
+          </div>
         </div>
-        ${prtField('prt-f-nat-prev-first', 'Előző utóneve', p.nat_prev_first_name)}
       </div>
+      
+      <!-- Születési adatok -->
       <div class="prt-section">
-        <div class="prt-section-title">📋 Születési adatok</div>
-        ${prtField('prt-f-birth-fam', 'Születési családi neve', p.birth_family_name)}
-        ${prtField('prt-f-birth-first', 'Születési utóneve', p.birth_first_name)}
-        ${prtField('prt-f-birth-place', 'Születési helye', p.birth_place)}
+        <div class="prt-section-title">Születési adatok</div>
         <div class="prt-row-2">
-          ${prtField('prt-f-birth-date', 'Születési idő', p.birth_date, 'date')}
-          <div class="prt-field"><label>Neme</label>
+          ${prtField('prt-f-birth-fam', 'Családi neve:', p.birth_family_name)}
+          ${prtField('prt-f-birth-first', 'utóneve:', p.birth_first_name)}
+        </div>
+        ${prtField('prt-f-birth-display', 'Megjelenített név:', p.birth_display_name)}
+        ${prtField('prt-f-birth-place', 'Hely:', p.birth_place)}
+        <div class="prt-row-2">
+          ${prtField('prt-f-birth-date', 'Idő:', p.birth_date, 'date')}
+          <div class="prt-field"><label>Neme:</label>
             <select id="prt-f-gender">
               <option value="">-</option>
               <option value="M" ${p.gender==='M'?'selected':''}>Férfi</option>
@@ -583,76 +621,85 @@ function prtBuildTermeszetesPanel(p) {
             </select>
           </div>
         </div>
-        ${prtField('prt-f-mother-fam', 'Anyja születési csn.', p.mothers_family_name)}
-        ${prtField('prt-f-mother-first', 'Anyja utóneve', p.mothers_first_name)}
+        <div class="prt-row-2">
+          ${prtField('prt-f-mother-fam', 'Anyja családi neve:', p.mothers_family_name)}
+          ${prtField('prt-f-mother-first', 'utóneve:', p.mothers_first_name)}
+        </div>
+        ${prtField('prt-f-mother-display', 'Anyja megjelenített neve:', p.mothers_display_name)}
       </div>
     </div>
+    
+    <!-- Jobb oszlop -->
     <div>
       <div class="prt-section">
-        <div class="prt-section-title">🪪 Azonosítók</div>
-        ${prtField('prt-f-tax-id', 'Adóazonosító jel', p.tax_id)}
-        ${prtField('prt-f-taj', 'TAJ szám', p.taj)}
+        <div class="prt-section-title">Azonosítók</div>
+        ${prtField('prt-f-tax-id', 'Adóazonosító jel:', p.tax_id)}
+        ${prtField('prt-f-taj', 'TAJ:', p.taj)}
       </div>
       <div class="prt-section">
-        <div class="prt-section-title">🌾 Őstermelői adatok</div>
-        ${prtField('prt-f-farmer-reg', 'Őstermelői regisztrációs szám', p.farmer_reg_number)}
-        ${prtField('prt-f-farmer-cert', 'Őstermelői igazolvány száma', p.farmer_cert_number)}
-        ${prtField('prt-f-farmer-act', 'Őstermelői tevékenység azon.', p.farmer_activity_id)}
-        ${prtField('prt-f-family-farm', 'Családi gazdaság azonosítója', p.family_farm_id)}
-        <div class="prt-check-row"><input type="checkbox" id="prt-f-comp-surcharge" ${p.has_compensation_surcharge?'checked':''}><label for="prt-f-comp-surcharge">Kompenzációs felárra jogosult</label></div>
-        <div class="prt-field"><label>Állampolgárság</label>
+        <div class="prt-section-title">Őstermelő</div>
+        ${prtField('prt-f-farmer-reg', 'Őstermelői regisztrációs szám:', p.farmer_reg_number)}
+        ${prtField('prt-f-farmer-cert', 'Őstermelő igazolvány száma:', p.farmer_cert_number)}
+        ${prtField('prt-f-farmer-act', 'Őstermelői tevékenység azon.:', p.farmer_activity_id)}
+        ${prtField('prt-f-family-farm', 'Családi gazdaság azonosítója:', p.family_farm_id)}
+            <input type="checkbox" id="prt-f-comp-surcharge" ${p.has_compensation_surcharge?'checked':''}> Kompenzációs felárra jogosult
+          </label>
+        </div>
+        <div class="prt-field" style="margin-top:10px;"><label>Állampolgárság:</label>
           <select id="prt-f-citizenship">
             <option value="">-</option>
-            <option value="HU" ${p.citizenship==='HU'?'selected':''}>Magyar</option>
-            <option value="ES" ${p.citizenship==='ES'?'selected':''}>Spanyol</option>
-            <option value="DE" ${p.citizenship==='DE'?'selected':''}>Német</option>
-            <option value="other">Egyéb</option>
+            <option value="Magyar" ${p.citizenship==='Magyar'?'selected':''}>Magyar</option>
+            <option value="Külföldi" ${p.citizenship==='Külföldi'?'selected':''}>Külföldi</option>
           </select>
         </div>
       </div>
     </div>
-  </div>`;
+  </div>
+  `;
 }
 
 function prtBuildEgyebAdatokPanel(p, data) {
   const idents = data?.identifiers || [];
   const chars = data?.characteristics || [];
+  
+  // Inject tax_id if present and not in idents
+  if (p.tax_id && !idents.some(i => i.id_type === 'Adószám')) {
+    idents.unshift({ id_type: 'Adószám', value: p.tax_id, is_verified: false, checked_by: '' });
+  }
   return `
   <div class="prt-cols-2">
     <div>
-      <div class="prt-section-title" style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:8px">🔢 Azonosítók</div>
-      <div class="prt-subtable-toolbar">
+      <div class="prt-section-title" style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:8px">Azonosítók</div>
+      <div class="prt-subtable-toolbar" style="background:var(--bg-light); padding:4px; border:1px solid var(--border); border-bottom:none; border-radius:8px 8px 0 0;">
         <button class="prt-toolbar-btn" id="ident-add-btn">➕</button>
         <button class="prt-toolbar-btn danger" id="ident-del-btn">🗑️</button>
-        <button class="prt-toolbar-btn" style="color:var(--accent)">ABC Ellenőrzés</button>
+        <button class="prt-toolbar-btn" id="ident-type-btn" style="color:var(--text-primary);">⚙️ Típus megadása</button>
+        <button class="prt-toolbar-btn" id="ident-verify-btn" style="color:var(--text-primary);">ABC Ellenőrzés</button>
       </div>
-      <div class="prt-subtable-wrap">
+      <div class="prt-subtable-wrap" style="height:250px; border:1px solid var(--border); background:var(--surface); border-radius:0 0 8px 8px;">
         <table class="prt-subtable" id="ident-table">
           <thead><tr><th>Típus</th><th>Érték</th><th>É</th><th>Ellenőrizve</th></tr></thead>
           <tbody>
             ${idents.map(i=>`<tr data-id="${i.id||''}">
-              <td><input type="text" class="ident-type" value="${i.id_type||''}"></td>
-              <td><input type="text" class="ident-value" value="${i.value||''}"></td>
-              <td><input type="text" class="ident-checked-by" value="${i.checked_by||''}" style="width:50px"></td>
-              <td style="text-align:center"><input type="checkbox" class="ident-verified" ${i.is_verified?'checked':''}></td>
+              <td><select class="ident-type" style="background:var(--bg-light); min-width:160px;"><option value="Adószám" ${i.id_type==='Adószám'?'selected':''}>Adószám</option><option value="CCW + Kód" ${i.id_type==='CCW + Kód'?'selected':''}>CCW + Kód</option><option value="Csoportos adószám" ${i.id_type==='Csoportos adószám'?'selected':''}>Csoportos adószám</option><option value="Közösségi adószám" ${i.id_type==='Közösségi adószám'?'selected':''}>Közösségi adószám</option><option value="FELIR azonosító" ${i.id_type==='FELIR azonosító'?'selected':''}>FELIR azonosító</option><option value="NEBIH" ${i.id_type==='NEBIH'?'selected':''}>NEBIH</option></select></td>
+              <td><input type="text" class="ident-value" value="${prtEsc(i.value)}" style="background:var(--bg-light);color:var(--text-primary)"></td>
+              <td style="text-align:center"><span class="ident-status">${i.is_verified ? '✅' : (i.checked_by ? '❌' : '—')}</span><input type="hidden" class="ident-verified" value="${i.is_verified ? '1' : '0'}"></td>
+              <td><input type="text" class="ident-checked-by" value="${prtEsc(i.checked_by)}" style="width:120px; background:var(--bg-light);" readonly></td>
             </tr>`).join('')}
           </tbody>
         </table>
       </div>
     </div>
     <div>
-      <div class="prt-section-title" style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:8px">⭐ Jellemzők</div>
-      <div class="prt-subtable-toolbar">
-        <button class="prt-toolbar-btn" id="char-add-btn">➕</button>
-        <button class="prt-toolbar-btn danger" id="char-del-btn">🗑️</button>
-      </div>
-      <div class="prt-subtable-wrap">
+      <div class="prt-section-title" style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:8px">Jellemzők</div>
+      <div class="prt-subtable-wrap" style="height:285px; border:1px solid var(--border); background:var(--surface); border-radius:8px;">
         <table class="prt-subtable" id="char-table">
-          <thead><tr><th>Jellemző</th><th>Érték</th></tr></thead>
+          <thead><tr><th>Jellemző</th><th>Érték</th><th><button class="prt-toolbar-btn" id="char-add-btn" style="padding:2px 6px;">➕</button> <button class="prt-toolbar-btn danger" id="char-del-btn" style="padding:2px 6px;">🗑️</button></th></tr></thead>
           <tbody>
             ${chars.map(c=>`<tr data-id="${c.id||''}">
-              <td><input type="text" class="char-name" value="${c.characteristic||''}"></td>
-              <td><input type="text" class="char-value" value="${c.value||''}"></td>
+              <td><input type="text" class="char-name" value="${c.characteristic||''}" style="background:var(--bg-light);"></td>
+              <td><input type="text" class="char-value" value="${c.value||''}" style="background:var(--bg-light);"></td>
+              <td></td>
             </tr>`).join('')}
           </tbody>
         </table>
@@ -660,20 +707,56 @@ function prtBuildEgyebAdatokPanel(p, data) {
     </div>
   </div>
   <!-- Egyéb adatok section -->
-  <div class="prt-section" style="margin-top:14px">
-    <div class="prt-section-title">⚙️ Egyéb adatok</div>
-    <div class="prt-row-4">
-      <div class="prt-field"><label>Deviza</label><select id="prt-f-currency"><option value="EUR" ${p.currency==='EUR'?'selected':''}>EUR</option><option value="HUF" ${p.currency==='HUF'?'selected':''}>HUF</option><option value="USD" ${p.currency==='USD'?'selected':''}>USD</option></select></div>
-      <div class="prt-field"><label>Árforma</label><select id="prt-f-price-type"><option>Listaár</option><option>Akció</option></select></div>
-      <div class="prt-field"><label>Fizetési mód</label><select id="prt-f-payment"><option>Átutalás (30 nap)</option><option>Átutalás (60 nap)</option><option>Készpénz</option></select></div>
-      <div class="prt-field"><label>Termékazonosító</label><input type="text" id="prt-f-product-id-type"></div>
+  <div class="prt-section" style="margin-top:14px; background:var(--bg-light); padding:10px; border-radius:8px; border:1px solid var(--border);">
+    <div class="prt-section-title" style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text-primary);">Egyéb adatok</div>
+    <div class="prt-row-3" style="margin-bottom:10px;">
+      <div class="prt-field" style="display:flex;align-items:center;gap:8px;"><label style="width:100px;">Deviza:</label><select id="prt-f-currency" style="flex:1; background:var(--surface);"><option value="EUR" ${p.currency==='EUR'?'selected':''}>EUR</option><option value="HUF" ${p.currency==='HUF'?'selected':''}>HUF</option><option value="USD" ${p.currency==='USD'?'selected':''}>USD</option></select></div>
+      <div class="prt-field" style="display:flex;align-items:center;gap:8px;"><label style="width:100px;">Árforma:</label><select id="prt-f-price-type" style="flex:1; background:var(--surface);"><option ${p.price_type==='Listaár'?'selected':''}>Listaár</option><option ${p.price_type==='Akció'?'selected':''}>Akció</option></select></div>
+      <div class="prt-field" style="display:flex;align-items:center;gap:8px;"><label style="width:100px;">Fizetési mód:</label><select id="prt-f-payment" style="flex:1; background:var(--surface);"><option ${p.payment_method==='Átutalás (30 nap)'?'selected':''}>Átutalás (30 nap)</option><option ${p.payment_method==='Átutalás (60 nap)'?'selected':''}>Átutalás (60 nap)</option><option ${p.payment_method==='Készpénz'?'selected':''}>Készpénz</option></select></div>
     </div>
-    <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:8px">
-      <label class="prt-check-row"><input type="checkbox" id="prt-f-has-huni-tax" ${p.has_domestic_tax_num?'checked':''}><span>Rendelkezik adószámmal: Honi</span></label>
-      <label class="prt-check-row"><input type="checkbox" id="prt-f-has-eu-tax" ${p.has_eu_tax_num?'checked':''}><span>EU</span></label>
-      <label class="prt-check-row"><input type="checkbox" ${p.has_other_tax_num?'checked':''}><span>Egyéb</span></label>
-      <label class="prt-check-row"><input type="checkbox" ${p.invoice_compensation_allowed?'checked':''}><span>Számlakompenzáció engedélyezve</span></label>
-      <label class="prt-check-row"><input type="checkbox" ${p.is_kata_taxpayer?'checked':''}><span>KATA adózó</span></label>
+    <div class="prt-row-3" style="margin-bottom:10px;">
+      <div class="prt-field" style="display:flex;align-items:center;gap:8px;">
+        <label style="width:140px;">Rendelkezik adószámmal:</label>
+        <label class="prt-check-row" style="margin:0"><input type="checkbox" id="prt-f-has-huni-tax" ${p.has_domestic_tax_num?'checked':''}> Honi</label>
+        <label class="prt-check-row" style="margin:0"><input type="checkbox" id="prt-f-has-eu-tax" ${p.has_eu_tax_num?'checked':''}> EU</label>
+        <label class="prt-check-row" style="margin:0"><input type="checkbox" id="prt-f-has-other-tax" ${p.has_other_tax_num?'checked':''}> Egyéb</label>
+      </div>
+      <div class="prt-field" style="display:flex;align-items:center;gap:8px;"><label style="width:130px;">Termékdíj ügyletkód:</label><input type="text" id="prt-f-product-tax-code" value="${p.product_tax_code||''}" style="flex:1; background:var(--surface);"></div>
+      <div class="prt-field" style="display:flex;align-items:center;gap:8px;"><label style="width:110px;">Termékazonosító:</label><input type="text" id="prt-f-product-id-type" value="${p.product_id_type||''}" style="flex:1; background:var(--surface);"></div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:10px;font-size:12px;">
+      <label class="prt-check-row"><input type="checkbox" id="prt-f-claims-acc" ${p.claims_as_current_account?'checked':''}><span>Követelések kezelése folyószámla jelleggel</span></label>
+      <label class="prt-check-row"><input type="checkbox" id="prt-f-inv-comp" ${p.invoice_compensation_allowed?'checked':''}><span>Számlakompenzáció engedélyezve</span></label>
+      <label class="prt-check-row"><input type="checkbox" id="prt-f-cash-flow" ${p.cash_flow_accounting?'checked':''}><span>Pénzforgalmi elszámolású</span></label>
+      <label class="prt-check-row"><input type="checkbox" id="prt-f-late-fee" ${p.late_fee_applicable?'checked':''}><span>Késedelmi költségátalány felszámítás</span></label>
+      <label class="prt-check-row"><input type="checkbox" id="prt-f-kata" ${p.is_kata_taxpayer?'checked':''}><span>KATA adózó</span></label>
+    </div>
+    
+    <div class="prt-cols-2" style="margin-bottom:10px;">
+      <div class="prt-section" style="background:var(--surface); border:1px solid var(--border); padding:8px; margin-bottom:0;">
+        <div style="font-weight:600;margin-bottom:6px;font-size:12px;">E-számla befogadás</div>
+        <div style="display:flex;gap:10px;">
+          <div class="prt-field" style="flex:1;display:flex;align-items:center;gap:5px;margin-bottom:0;"><label>Kezdete:</label><input type="date" id="prt-f-einv-rec-start" value="${p.einvoice_receive_start?p.einvoice_receive_start.split('T')[0]:''}" style="flex:1; background:var(--bg-light);"></div>
+          <div class="prt-field" style="flex:1;display:flex;align-items:center;gap:5px;margin-bottom:0;"><label>Vége:</label><input type="date" id="prt-f-einv-rec-end" value="${p.einvoice_receive_end?p.einvoice_receive_end.split('T')[0]:''}" style="flex:1; background:var(--bg-light);"></div>
+        </div>
+      </div>
+      <div class="prt-section" style="background:var(--surface); border:1px solid var(--border); padding:8px; margin-bottom:0;">
+        <div style="font-weight:600;margin-bottom:6px;font-size:12px;">E-számla küldés</div>
+        <div style="display:flex;gap:10px;">
+          <div class="prt-field" style="flex:1;display:flex;align-items:center;gap:5px;margin-bottom:0;"><label>Kezdete:</label><input type="date" id="prt-f-einv-send-start" value="${p.einvoice_send_start?p.einvoice_send_start.split('T')[0]:''}" style="flex:1; background:var(--bg-light);"></div>
+          <div class="prt-field" style="flex:1;display:flex;align-items:center;gap:5px;margin-bottom:0;"><label>Vége:</label><input type="date" id="prt-f-einv-send-end" value="${p.einvoice_send_end?p.einvoice_send_end.split('T')[0]:''}" style="flex:1; background:var(--bg-light);"></div>
+        </div>
+      </div>
+    </div>
+    
+    <div style="display:flex;gap:20px;align-items:center;">
+      <div class="prt-field" style="display:flex;align-items:center;gap:8px;flex:1;margin-bottom:0;"><label style="width:140px;margin-bottom:0;">EDI/e-számla szolgáltató:</label><select id="prt-f-edi-prov" style="flex:1; background:var(--surface);"><option value="">Nincs</option><option value="Szolgáltató 1" ${p.edi_provider==='Szolgáltató 1'?'selected':''}>Szolgáltató 1</option><option value="Szolgáltató 2" ${p.edi_provider==='Szolgáltató 2'?'selected':''}>Szolgáltató 2</option></select></div>
+      <div class="prt-field" style="display:flex;align-items:center;gap:15px;flex:2;margin-bottom:0;">
+        <label style="margin-bottom:0;">Alapértelmezett bizonylat nyomtatási mód:</label>
+        <label style="display:flex;align-items:center;gap:4px;margin-bottom:0;"><input type="radio" name="prt_print_mode" value="system" ${(!p.default_print_mode || p.default_print_mode==='system')?'checked':''}> Rendszerbeállítás</label>
+        <label style="display:flex;align-items:center;gap:4px;margin-bottom:0;"><input type="radio" name="prt_print_mode" value="local" ${p.default_print_mode==='local'?'checked':''}> Helyi nyomtató</label>
+        <label style="display:flex;align-items:center;gap:4px;margin-bottom:0;"><input type="radio" name="prt_print_mode" value="remote" ${p.default_print_mode==='remote'?'checked':''}> Távnyomtatás</label>
+      </div>
     </div>
   </div>`;
 }
@@ -873,6 +956,101 @@ async function prtOpenModal(id, listContainer) {
 }
 
 function prtBindModal(overlay, listContainer, id) {
+  // Dirty-tracking: has anything changed?
+  let isDirty = false;
+  overlay.addEventListener('input', () => { isDirty = true; }, true);
+  overlay.addEventListener('change', () => { isDirty = true; }, true);
+
+  // Dragging logic
+  const modal = overlay.querySelector('.prt-modal');
+  const titlebar = overlay.querySelector('.prt-modal-titlebar');
+  let isDragging = false, startX, startY, initialLeft, initialTop;
+
+  titlebar.addEventListener('mousedown', (e) => {
+    if (modal.classList.contains('maximized') || modal.classList.contains('minimized')) return;
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    const rect = modal.getBoundingClientRect();
+    // Convert from transform-based center to absolute left/top for dragging
+    modal.style.transform = 'none';
+    modal.style.left = rect.left + 'px';
+    modal.style.top = rect.top + 'px';
+    initialLeft = rect.left;
+    initialTop = rect.top;
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging || modal.classList.contains('maximized') || modal.classList.contains('minimized')) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    modal.style.left = (initialLeft + dx) + 'px';
+    modal.style.top = (initialTop + dy) + 'px';
+  });
+
+  document.addEventListener('mouseup', () => {
+    isDragging = false;
+  });
+
+  // Minimize / Maximize handlers
+  const minBtn = overlay.querySelector('#prt-minimize-btn');
+  const maxBtn = overlay.querySelector('#prt-maximize-btn');
+
+  minBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    // Use current name from input; fall back to loaded partner name; then 'Új'
+    const partnerName = overlay.querySelector('#prt-f-name')?.value?.trim()
+                        || prtState.currentData?.partner?.name?.trim()
+                        || '';
+    const shortName = partnerName
+      ? (partnerName.length > 18 ? partnerName.substring(0, 15) + '...' : partnerName)
+      : (id ? '#' + id : 'Új');
+    
+    overlay.style.display = 'none';
+    
+    if (!overlay.dataset.taskId) {
+      overlay.dataset.taskId = 'prt-modal-' + Date.now() + Math.floor(Math.random() * 1000);
+    }
+    
+    let taskItem = document.querySelector(`.taskbar-item[data-prt-modal="${overlay.dataset.taskId}"]`);
+    if (!taskItem) {
+      taskItem = document.createElement('div');
+      taskItem.className = 'taskbar-item';
+      taskItem.setAttribute('data-prt-modal', overlay.dataset.taskId);
+      taskItem.style.cssText = 'background:#111;color:#bbb;padding:6px 14px;border-radius:4px;cursor:pointer;margin-right:5px;font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px;';
+      taskItem.innerHTML = '<span>👤</span><span class="task-label">Partner: ' + shortName + '</span>';
+      
+      taskItem.onclick = (e) => {
+        e.stopPropagation();
+        overlay.style.display = 'block';
+        taskItem.remove();
+        const mdiTaskbar = document.querySelector('.mdi-taskbar');
+        if (mdiTaskbar) {
+          const visibleItems = Array.from(mdiTaskbar.children).some(item => item.style.display !== 'none');
+          mdiTaskbar.style.display = visibleItems ? 'flex' : 'none';
+          mdiTaskbar.style.visibility = visibleItems ? 'visible' : 'hidden';
+        }
+      };
+      
+      const mdiTaskbar = document.querySelector('.mdi-taskbar');
+      if (mdiTaskbar) {
+        mdiTaskbar.appendChild(taskItem);
+        mdiTaskbar.style.display = 'flex';
+        mdiTaskbar.style.visibility = 'visible';
+      }
+    } else {
+      const lbl = taskItem.querySelector('.task-label');
+      if (lbl) lbl.textContent = 'Partner: ' + shortName;
+      taskItem.style.display = 'flex';
+    }
+  });
+
+  maxBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    modal.classList.toggle('maximized');
+  });
+
   // Fő tab váltás
   overlay.querySelectorAll('.prt-tab-main').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -946,7 +1124,94 @@ function prtBindModal(overlay, listContainer, id) {
   bindSubtable('site-add-btn','site-del-btn','sites-table', () =>
     `<td><input type="text" class="site-name"></td><td><input type="text" class="site-address"></td><td style="text-align:center"><input type="checkbox" class="site-deleted"></td>`);
   bindSubtable('ident-add-btn','ident-del-btn','ident-table', () =>
-    `<td><input type="text" class="ident-type" value="Adószám"></td><td><input type="text" class="ident-value"></td><td><input type="text" class="ident-checked-by" style="width:50px"></td><td style="text-align:center"><input type="checkbox" class="ident-verified"></td>`);
+    `<td><select class="ident-type" style="min-width:160px"><option value="Adószám">Adószám</option><option value="CCW + Kód">CCW + Kód</option><option value="Csoportos adószám">Csoportos adószám</option><option value="Közösségi adószám">Közösségi adószám</option><option value="FELIR azonosító">FELIR azonosító</option><option value="NEBIH">NEBIH</option></select></td><td><input type="text" class="ident-value"></td><td style="text-align:center"><span class="ident-status">—</span><input type="hidden" class="ident-verified" value="0"></td><td><input type="text" class="ident-checked-by" style="width:120px" readonly></td>`);
+
+  const identTable = overlay.querySelector('#ident-table');
+
+  // ── Identifiers Popup Logic ──
+  const identTypeBtn = overlay.querySelector('#ident-type-btn');
+
+  if (identTypeBtn && identTable) {
+    identTypeBtn.addEventListener('click', () => {
+      const modalHTML = `
+        <div class="prt-ident-modal-overlay" id="prt-ident-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:4000;display:flex;align-items:center;justify-content:center;">
+          <div style="background:#555;border-radius:6px;width:380px;border:1px solid #333;box-shadow:0 10px 30px rgba(0,0,0,0.5);overflow:hidden; font-family:Arial,sans-serif;">
+            <div style="background:#222;color:#fff;padding:8px 12px;display:flex;align-items:center;font-weight:bold;font-size:13px;border-bottom:1px solid #111;">
+              <span style="color:#ffd700;margin-right:8px;font-size:15px;">🐍</span> Partner azonosító
+            </div>
+            <div style="padding:16px;display:flex;flex-direction:column;gap:12px;background:#777;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <label style="width:70px;color:#fff;font-size:12px;text-align:right;">Típus:*</label>
+                <select id="ident-modal-type" style="flex:1;padding:4px;background:#ffffe0;border:1px solid #444;font-size:12px;">
+                  <option value="Adószám">Adószám</option>
+                  <option value="CCW + Kód">CCW + Kód</option>
+                  <option value="Csoportos adószám">Csoportos adószám</option>
+                  <option value="Közösségi adószám">Közösségi adószám</option>
+                  <option value="FELIR azonosító">FELIR azonosító</option>
+                  <option value="NEBIH">NEBIH</option>
+                  <option value="(Reference) Szállítók / Partnerek">(Reference) Szállítók / Partnerek</option>
+                  <option value="(Customer) Vevők">(Customer) Vevők</option>
+                  <option value="Fuvarozók">Fuvarozók</option>
+                </select>
+              </div>
+            </div>
+            <div style="background:#666;padding:10px;display:flex;justify-content:center;gap:12px;border-top:1px solid #444;">
+              <button id="ident-modal-ok" style="padding:4px 20px;background:#ddd;border:1px solid #333;border-radius:3px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:4px;">✅ OK</button>
+              <button id="ident-modal-cancel" style="padding:4px 20px;background:#ddd;border:1px solid #333;border-radius:3px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:4px;">❌ Mégsem</button>
+            </div>
+          </div>
+        </div>
+      `;
+      const div = document.createElement('div');
+      div.innerHTML = modalHTML;
+      document.body.appendChild(div.firstElementChild);
+
+      const m = document.getElementById('prt-ident-modal');
+      const typeSel = m.querySelector('#ident-modal-type');
+
+      // Init type from current primary type
+      const currType = overlay.querySelector('#prt-f-type').value;
+      const reverseMap = {
+        'supplier': '(Reference) Szállítók / Partnerek',
+        'customer': '(Customer) Vevők',
+        'transporter': 'Fuvarozók'
+      };
+      const initialType = reverseMap[currType] || currType;
+      for (const opt of typeSel.options) {
+        if (opt.value === initialType) {
+          opt.selected = true;
+          break;
+        }
+      }
+
+      m.querySelector('#ident-modal-cancel').onclick = () => m.remove();
+      m.querySelector('#ident-modal-ok').onclick = () => {
+        const t = typeSel.value;
+        
+        // Auto-update header type if it's a partner status
+        const identTypeMap = { 
+          '(Reference) Szállítók / Partnerek': 'supplier', 
+          '(Customer) Vevők': 'customer', 
+          'Fuvarozók': 'transporter',
+          'Adószám': 'Adószám',
+          'CCW + Kód': 'CCW + Kód',
+          'Csoportos adószám': 'Csoportos adószám',
+          'Közösségi adószám': 'Közösségi adószám',
+          'FELIR azonosító': 'FELIR azonosító',
+          'NEBIH': 'NEBIH'
+        };
+        if (identTypeMap[t]) {
+          const typeInput = overlay.querySelector('#prt-f-type');
+          if (typeInput) typeInput.value = identTypeMap[t];
+          const badge = overlay.querySelector('#prt-type-badge');
+          if (badge) badge.textContent = t;
+        }
+
+        m.remove();
+        overlay.dispatchEvent(new Event('input'));
+      };
+    });
+  }
   bindSubtable('char-add-btn','char-del-btn','char-table', () =>
     `<td><input type="text" class="char-name"></td><td><input type="text" class="char-value"></td>`);
   bindSubtable('restr-add-btn','restr-del-btn','restr-table', () =>
@@ -957,6 +1222,55 @@ function prtBindModal(overlay, listContainer, id) {
     `<td><input type="text" class="bank-num"></td><td><input type="text" class="bank-name"></td><td style="text-align:center"><input type="checkbox" class="bank-primary"></td>`);
   bindSubtable('disc-add-btn','disc-del-btn','disc-table', () =>
     `<td><input type="text" class="disc-group"></td><td><input type="number" class="disc-pct" step="0.01"></td>`);
+
+  // ── VIES Ellenőrzés ──
+  const verifyBtn = overlay.querySelector('#ident-verify-btn');
+  if (verifyBtn) {
+    verifyBtn.addEventListener('click', async () => {
+      const selectedRow = overlay.querySelector('#ident-table tbody tr.selected');
+      if (!selectedRow) return alert('Válassz ki egy azonosítót az ellenőrzéshez (kattints a sorra)!');
+      const typeSelect = selectedRow.querySelector('.ident-type');
+      if (!typeSelect || (typeSelect.value !== 'Közösségi adószám' && typeSelect.value !== 'Adószám')) {
+        return alert('Csak Közösségi adószám vagy Adószám típusú azonosítót lehet ellenőrizni!');
+      }
+      const valInput = selectedRow.querySelector('.ident-value');
+      const vatNumber = valInput?.value?.trim();
+      if (!vatNumber) return alert('Az érték mező üres!');
+      
+      try {
+        verifyBtn.textContent = '⏳ Ellenőrzés...';
+        verifyBtn.disabled = true;
+        const res = await fetch('/api/v1/partners/verify-vat/' + vatNumber);
+        const data = await res.json();
+        const dt = new Date();
+        const pad = (n) => n.toString().padStart(2, '0');
+        const checkedBy = `${dt.getFullYear()}.${pad(dt.getMonth()+1)}.${pad(dt.getDate())} ${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+        selectedRow.querySelector('.ident-checked-by').textContent = checkedBy;
+        if (res.ok && data.isValid) {
+          selectedRow.querySelector('.ident-verified').value = '1';
+          const statusSpan = selectedRow.querySelector('.ident-status');
+
+          if (statusSpan) statusSpan.textContent = '✅';
+          
+          if (data.name) {
+            const nameInput = overlay.querySelector('#prt-f-name');
+            if (nameInput) nameInput.value = data.name;
+          }
+          alert('Az adószám érvényes!\nNév: ' + (data.name || 'ismeretlen') + '\nCím: ' + (data.address || 'ismeretlen'));
+        } else {
+          selectedRow.querySelector('.ident-verified').value = '0';
+          const statusSpan = selectedRow.querySelector('.ident-status');
+          if (statusSpan) statusSpan.textContent = '❌';
+          alert('Az adószám érvénytelen vagy nem ellenőrizhető.\nOka: ' + (data.error || 'Nincs adat.'));
+        }
+      } catch (err) {
+        alert('Hiba az ellenőrzés során: ' + err.message);
+      } finally {
+        verifyBtn.textContent = 'ABC Ellenőrzés';
+        verifyBtn.disabled = false;
+      }
+    });
+  }
 
   // ── Csatolmány feltöltés ──
   const attUploadBtn = overlay.querySelector('#att-upload-btn');
@@ -986,10 +1300,17 @@ function prtBindModal(overlay, listContainer, id) {
   }
 
   // ── Bezár ──
-  overlay.querySelector('#prt-close-btn')?.addEventListener('click', () => prtCloseModal(overlay));
-  overlay.querySelector('#prt-cancel-btn')?.addEventListener('click', () => prtCloseModal(overlay));
+  function tryClose() {
+    if (isDirty) {
+      const ok = confirm('Vannak nem mentett módosítások. Biztosan bezárod mentés nélkül?');
+      if (!ok) return;
+    }
+    prtCloseModal(overlay);
+  }
+  overlay.querySelector('#prt-close-btn')?.addEventListener('click', tryClose);
+  overlay.querySelector('#prt-cancel-btn')?.addEventListener('click', tryClose);
   overlay.addEventListener('mousedown', (e) => {
-    if (e.target === overlay) prtCloseModal(overlay);
+    if (e.target === overlay) tryClose();
   });
 
   // ── Mentés ──
@@ -1024,6 +1345,7 @@ function prtCollectTableRows(overlay, tableId, fields) {
       const el = tr.querySelector(`.${cls}`);
       if (!el) return;
       if (type === 'bool') row[key] = el.checked;
+      else if (type === 'boolstr') row[key] = el.value === '1';
       else row[key] = el.value;
     });
     rows.push(row);
@@ -1068,12 +1390,24 @@ function prtCollectData(overlay) {
       nat_family_name_prefix: v('prt-f-nat-fam-pref'),
       nat_family_name: v('prt-f-nat-fam'),
       nat_first_name: v('prt-f-nat-first'),
+      nat_prev_family_name_prefix: v('prt-f-nat-prev-fam-pref'),
+      nat_prev_family_name: v('prt-f-nat-prev-fam'),
+      nat_prev_first_name: v('prt-f-nat-prev-first'),
+      birth_family_name: v('prt-f-birth-fam'),
+      birth_first_name: v('prt-f-birth-first'),
+      birth_display_name: v('prt-f-birth-display'),
       birth_place: v('prt-f-birth-place'),
       birth_date: v('prt-f-birth-date'),
       gender: v('prt-f-gender'),
+      mothers_family_name: v('prt-f-mother-fam'),
+      mothers_first_name: v('prt-f-mother-first'),
+      mothers_display_name: v('prt-f-mother-display'),
       tax_id: v('prt-f-tax-id'),
       taj: v('prt-f-taj'),
       farmer_reg_number: v('prt-f-farmer-reg'),
+      farmer_cert_number: v('prt-f-farmer-cert'),
+      farmer_activity_id: v('prt-f-farmer-act'),
+      family_farm_id: v('prt-f-family-farm'),
       has_compensation_surcharge: cb('prt-f-comp-surcharge'),
       citizenship: v('prt-f-citizenship'),
       currency: v('prt-f-currency'),
@@ -1081,8 +1415,21 @@ function prtCollectData(overlay) {
       payment_method: v('prt-f-payment'),
       has_domestic_tax_num: cb('prt-f-has-huni-tax'),
       has_eu_tax_num: cb('prt-f-has-eu-tax'),
+      has_other_tax_num: cb('prt-f-has-other-tax'),
+      product_tax_code: v('prt-f-product-tax-code'),
+      product_id_type: v('prt-f-product-id-type'),
+      claims_as_current_account: cb('prt-f-claims-acc'),
+      invoice_compensation_allowed: cb('prt-f-inv-comp'),
+      cash_flow_accounting: cb('prt-f-cash-flow'),
+      late_fee_applicable: cb('prt-f-late-fee'),
+      is_kata_taxpayer: cb('prt-f-kata'),
+      einvoice_receive_start: v('prt-f-einv-rec-start'),
+      einvoice_receive_end: v('prt-f-einv-rec-end'),
+      einvoice_send_start: v('prt-f-einv-send-start'),
+      einvoice_send_end: v('prt-f-einv-send-end'),
+      edi_provider: v('prt-f-edi-prov'),
       notes: overlay.querySelector('#prt-f-notes')?.value || null,
-      default_print_mode: 'system',
+      default_print_mode: overlay.querySelector('input[name="prt_print_mode"]:checked')?.value || 'system',
     },
     communications: prtCollectTableRows(overlay, 'szh-comm-table', [
       ['szh-comm-type','channel_type','str'],
@@ -1105,7 +1452,7 @@ function prtCollectData(overlay) {
       ['ident-type','id_type','str'],
       ['ident-value','value','str'],
       ['ident-checked-by','checked_by','str'],
-      ['ident-verified','is_verified','bool'],
+      ['ident-verified','is_verified','boolstr'],
     ]),
     characteristics: prtCollectTableRows(overlay, 'char-table', [
       ['char-name','characteristic','str'],
