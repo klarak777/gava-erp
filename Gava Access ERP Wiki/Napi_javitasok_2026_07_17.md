@@ -19,4 +19,9 @@
   - A cím adatmezők mellett megjelentek az egyéb speciális mezők is (pl. Számlázási cím, Számla postázási cím, Azonos a székhellyel opció, Kommunikációs nyelv, Jövedéki engedélyszám, GLN, Szállítási raktár, Alapértelmezett tranzakció).
   - **Többszintű mentési logika:** A telephelyekhez kapcsolódó egyedi elérhetőségek (communications) és kapcsolattartók (contacts) a telephely kiválasztásakor szintén szerkeszthetők a saját alfüleiken.
   - **Új telephelyek ID feloldása (Backend & Frontend):** Az adatbázis integritás megőrzése érdekében a mentés során a kliens egyedi ideiglenes azonosítókkal (`_tempId`) küldi be az új telephelyeket és a hozzájuk rendelt al-adatokat. A backend a mentés során először beszúrja a telephelyeket, lekéri a generált adatbázis ID-kat, majd ezekkel automatikusan feloldja és társítja a kapcsolódó elérhetőségek és kapcsolattartók `site_id` hivatkozásait.
+- **Partner Törlése a Táblázatból:**
+  - A fő partner listában a sorok végén elhelyeztünk egy `🗑️` (Törlés) gombot.
+  - A gombra kattintva megerősítést kér a rendszer, majd a háttérben meghívja a `DELETE /api/v1/partners/:id` végpontot. Sikeres törlés után frissíti a listát és újrarendeli az eseménykezelőket.
+  - A gombra való kattintás megakadályozza a sor megnyitását (`event.stopPropagation()`), így nem ugrik fel a partner adatlapja törléskor.
+
 

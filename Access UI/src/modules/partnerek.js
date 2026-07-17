@@ -234,6 +234,9 @@ function prtGetRowsHtml() {
       <td>${taxId}</td>
       <td>${address}</td>
       <td>${typeBadge(p.type)}</td>
+      <td style="text-align:center; padding: 2px 8px;">
+        <button class="prt-row-del-btn" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:16px; padding:4px;" title="Törlés">🗑️</button>
+      </td>
     </tr>
     `;
   }).join('');
@@ -267,7 +270,7 @@ function prtRenderList(container) {
         <table class="prt-table">
           <thead>
             <tr>
-              <th>#</th><th>Név</th><th>Adószám</th><th>Cím</th><th>Típus</th>
+              <th>#</th><th>Név</th><th>Adószám</th><th>Cím</th><th>Típus</th><th style="width:70px; text-align:center">Művelet</th>
             </tr>
           </thead>
           <tbody id="prt-tbody">${prtGetRowsHtml()}</tbody>
@@ -300,7 +303,37 @@ function prtRenderList(container) {
 
 function prtBindListEvents(container) {
   container.querySelectorAll('#prt-tbody tr').forEach(row => {
-    row.addEventListener('click', () => prtOpenModal(parseInt(row.dataset.id), container));
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('.prt-row-del-btn')) return;
+      prtOpenModal(parseInt(row.dataset.id), container);
+    });
+
+    const delBtn = row.querySelector('.prt-row-del-btn');
+    if (delBtn) {
+      delBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const id = parseInt(row.dataset.id);
+        const name = row.querySelector('td:nth-child(2)').textContent;
+        if (confirm(`Biztosan törölni szeretnéd a(z) "${name}" nevű partnert és minden kapcsolódó adatát?`)) {
+          try {
+            const res = await fetch(`/api/v1/partners/${id}`, { method: 'DELETE' });
+            const result = await res.json();
+            if (res.ok && result.success) {
+              // Reload list
+              const search = container.querySelector('#prt-search').value;
+              const type = container.querySelector('#prt-type-filter').value;
+              await prtLoadList(search, type);
+              container.querySelector('#prt-tbody').innerHTML = prtGetRowsHtml();
+              prtBindListEvents(container);
+            } else {
+              alert('Hiba a törlés során: ' + (result.error || 'Ismeretlen hiba'));
+            }
+          } catch (err) {
+            alert('Hiba a törlés során: ' + err.message);
+          }
+        }
+      });
+    }
   });
 }
 
