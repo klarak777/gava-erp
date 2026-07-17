@@ -14,3 +14,9 @@
   - A felugró ablakból eltávolítottuk az értékmezőt (`Érték`), így a felhasználót nem kötelezzük felesleges adatbevitelre a státuszok kiválasztásakor.
 - **Adószám Auto-betöltés Logika:** Meglévő partnerek megnyitásakor a korábban a fő táblában (`partners.tax_id`) tárolt adószám beolvasásra kerül, és automatikusan bekerül egy szerkeszthető és ellenőrizhető sorként az Azonosítók táblázatába, ha ott még nem szerepelt.
 - **Mentés Gomb:** A felugró ablak mentés gombja stabilan a fejlécen lett rögzítve CSS segítségével, és az ablak magassága `90vh`-ban lett maximalizálva a különböző képernyőméretek kezelése érdekében.
+- **Telephelyek Cím- és Adatbeviteli Mezők:**
+  - Teljesen restauráltuk és kibővítettük a `Telephelyek` fület. Mostantól ha kiválasztasz egy telephelyet a listából, a lenti részen megjelenik a **Székhelynél alkalmazottal megegyező strukturált cím adatbeviteli blokk** (🏠 Cím és ✉️ Levelezési cím).
+  - A cím adatmezők mellett megjelentek az egyéb speciális mezők is (pl. Számlázási cím, Számla postázási cím, Azonos a székhellyel opció, Kommunikációs nyelv, Jövedéki engedélyszám, GLN, Szállítási raktár, Alapértelmezett tranzakció).
+  - **Többszintű mentési logika:** A telephelyekhez kapcsolódó egyedi elérhetőségek (communications) és kapcsolattartók (contacts) a telephely kiválasztásakor szintén szerkeszthetők a saját alfüleiken.
+  - **Új telephelyek ID feloldása (Backend & Frontend):** Az adatbázis integritás megőrzése érdekében a mentés során a kliens egyedi ideiglenes azonosítókkal (`_tempId`) küldi be az új telephelyeket és a hozzájuk rendelt al-adatokat. A backend a mentés során először beszúrja a telephelyeket, lekéri a generált adatbázis ID-kat, majd ezekkel automatikusan feloldja és társítja a kapcsolódó elérhetőségek és kapcsolattartók `site_id` hivatkozásait.
+

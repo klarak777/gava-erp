@@ -532,32 +532,43 @@ function prtBuildTelephelyekPanel(sites) {
     <table class="prt-subtable" id="sites-table">
       <thead><tr><th>Név</th><th>Cím</th><th>Törölve</th></tr></thead>
       <tbody>
-        ${sites.map(s=>`<tr data-id="${s.id||''}">
-          <td><input type="text" class="site-name" value="${s.name||''}"></td>
-          <td><input type="text" class="site-address" value="${[s.zip,s.city,s.street_name].filter(Boolean).join(' ')}"></td>
-          <td style="text-align:center"><input type="checkbox" class="site-deleted" ${s.is_deleted?'checked':''}></td>
-        </tr>`).join('')}
+        ${sites.map((s, index) => {
+          let addrStr = [s.zip, s.city, s.street_name, s.street_number].filter(Boolean).join(' ');
+          if (s.is_same_as_hq) addrStr = 'Azonos a székhellyel';
+          return `<tr data-index="${index}" data-id="${s.id||''}" style="${s.is_deleted ? 'opacity:0.5;' : ''}">
+            <td><input type="text" class="site-name" value="${prtEsc(s.name)}" style="background:var(--bg-light);"></td>
+            <td><input type="text" class="site-address" value="${prtEsc(addrStr)}" readonly style="background:var(--bg-light);"></td>
+            <td style="text-align:center"><input type="checkbox" class="site-deleted" ${s.is_deleted?'checked':''}></td>
+          </tr>`;
+        }).join('')}
       </tbody>
     </table>
   </div>
-  <div style="color:var(--text-muted);font-size:12px;margin-bottom:10px">Ha kiválasztasz egy telephelyet, az alfüleken az ahhoz kapcsolódó elérhetőségeket és kapcsolattartókat szerkesztheted.</div>
+  <div style="color:var(--text-muted);font-size:12px;margin-bottom:10px">Ha kiválasztasz egy telephelyet, az alfüleken az ahhoz kapcsolódó címeket, elérhetőségeket és kapcsolattartókat szerkesztheted.</div>
   <div class="prt-subtabs">
-    ${['Elérhetőségek','Kapcsolattartók','Egyéb adatok'].map((t,i)=>
+    ${['Címek','Elérhetőségek','Kapcsolattartók','Egyéb adatok'].map((t,i)=>
       `<div class="prt-subtab ${i===0?'active':''}" data-subtab="site-${i}">${t}</div>`).join('')}
   </div>
   <div class="prt-subpanel active" data-subpanel="site-0">
-    <div id="site-comm-area" style="color:var(--text-muted);padding:20px;text-align:center;font-size:13px">
-      Válassz ki egy telephelyet a listából a kapcsolódó adatok szerkesztéséhez.
+    <div id="site-address-area">
+      <div style="color:var(--text-muted);padding:20px;text-align:center;font-size:13px">
+        Válassz ki egy telephelyet a listából a címadatok szerkesztéséhez.
+      </div>
     </div>
   </div>
   <div class="prt-subpanel" data-subpanel="site-1">
-    <div id="site-cont-area" style="color:var(--text-muted);padding:20px;text-align:center;font-size:13px">
+    <div id="site-comm-area" style="color:var(--text-muted);padding:20px;text-align:center;font-size:13px">
       Válassz ki egy telephelyet a listából.
     </div>
   </div>
   <div class="prt-subpanel" data-subpanel="site-2">
-    <div style="padding:10px">
-      <div class="prt-field"><label>Kommunikációs nyelv</label><select><option>Magyar</option><option>Angol</option></select></div>
+    <div id="site-cont-area" style="color:var(--text-muted);padding:20px;text-align:center;font-size:13px">
+      Válassz ki egy telephelyet a listából.
+    </div>
+  </div>
+  <div class="prt-subpanel" data-subpanel="site-3">
+    <div id="site-other-area" style="color:var(--text-muted);padding:20px;text-align:center;font-size:13px">
+      Válassz ki egy telephelyet a listából.
     </div>
   </div>
   `;
@@ -1121,8 +1132,125 @@ function prtBindModal(overlay, listContainer, id) {
     `<td><input type="text" class="szh-cont-name"></td><td><input type="text" class="szh-cont-title"></td>`);
   bindSubtable('szh-agent-add','szh-agent-del','szh-agent-table', () =>
     `<td><input type="date" class="szh-agent-from"></td><td><input type="date" class="szh-agent-to"></td><td><input type="text" class="szh-agent-name"></td>`);
-  bindSubtable('site-add-btn','site-del-btn','sites-table', () =>
-    `<td><input type="text" class="site-name"></td><td><input type="text" class="site-address"></td><td style="text-align:center"><input type="checkbox" class="site-deleted"></td>`);
+  // ── Custom Sites Table Handler ──
+  let selectedSiteIndex = null;
+  
+  const sitesTable = overlay.querySelector('#sites-table');
+  if (sitesTable) {
+    sitesTable.addEventListener('click', (e) => {
+      const tr = e.target.closest('tbody tr');
+      if (!tr) return;
+      
+      const idx = parseInt(tr.dataset.index);
+      if (isNaN(idx)) return;
+      
+      if (selectedSiteIndex !== null && selectedSiteIndex !== idx) {
+        prtSaveActiveSiteToMemory(overlay, selectedSiteIndex);
+      }
+      
+      selectedSiteIndex = idx;
+      
+      // Highlight row
+      sitesTable.querySelectorAll('tbody tr').forEach(r => r.classList.remove('selected'));
+      tr.classList.add('selected', 'selected-row');
+      tr.style.background = 'rgba(99,102,241,0.15)';
+      
+      prtLoadActiveSiteDetails(overlay, idx);
+    });
+
+    // Handle updates to Name input and Deleted checkbox inside the table row
+    sitesTable.addEventListener('input', (e) => {
+      const tr = e.target.closest('tr');
+      if (!tr) return;
+      const idx = parseInt(tr.dataset.index);
+      const site = prtState.currentData.sites[idx];
+      if (!site) return;
+      if (e.target.classList.contains('site-name')) {
+        site.name = e.target.value;
+      }
+    });
+
+    sitesTable.addEventListener('change', (e) => {
+      const tr = e.target.closest('tr');
+      if (!tr) return;
+      const idx = parseInt(tr.dataset.index);
+      const site = prtState.currentData.sites[idx];
+      if (!site) return;
+      if (e.target.classList.contains('site-deleted')) {
+        site.is_deleted = e.target.checked;
+        tr.style.opacity = e.target.checked ? '0.5' : '1';
+      }
+    });
+  }
+
+  const siteAddBtn = overlay.querySelector('#site-add-btn');
+  const siteDelBtn = overlay.querySelector('#site-del-btn');
+
+  if (siteAddBtn && sitesTable) {
+    siteAddBtn.addEventListener('click', () => {
+      if (!prtState.currentData.sites) prtState.currentData.sites = [];
+      const newSite = {
+        name: 'Új Telephely',
+        is_deleted: false,
+        is_same_as_hq: false,
+        is_billing_address: false,
+        is_invoice_mailing_address: false,
+        mailing_address_source: 'same',
+        communications: [],
+        contacts: []
+      };
+      prtState.currentData.sites.push(newSite);
+      
+      prtRenderSitesTable(overlay);
+      
+      const lastIndex = prtState.currentData.sites.length - 1;
+      selectedSiteIndex = lastIndex;
+      prtHighlightSiteRow(overlay, lastIndex);
+      prtLoadActiveSiteDetails(overlay, lastIndex);
+    });
+  }
+
+  if (siteDelBtn && sitesTable) {
+    siteDelBtn.addEventListener('click', () => {
+      if (selectedSiteIndex !== null && prtState.currentData.sites[selectedSiteIndex]) {
+        const site = prtState.currentData.sites[selectedSiteIndex];
+        if (site.id) {
+          site.is_deleted = true;
+        } else {
+          prtState.currentData.sites.splice(selectedSiteIndex, 1);
+        }
+        selectedSiteIndex = null;
+        prtRenderSitesTable(overlay);
+        
+        // Clear detail panels
+        overlay.querySelector('#site-address-area').innerHTML = `
+          <div style="color:var(--text-muted);padding:20px;text-align:center;font-size:13px">
+            Válassz ki egy telephelyet a listából a címadatok szerkesztéséhez.
+          </div>`;
+        overlay.querySelector('#site-comm-area').innerHTML = `
+          <div style="color:var(--text-muted);padding:20px;text-align:center;font-size:13px">
+            Válassz ki egy telephelyet a listából.
+          </div>`;
+        overlay.querySelector('#site-cont-area').innerHTML = `
+          <div style="color:var(--text-muted);padding:20px;text-align:center;font-size:13px">
+            Válassz ki egy telephelyet a listából.
+          </div>`;
+        overlay.querySelector('#site-other-area').innerHTML = `
+          <div style="color:var(--text-muted);padding:20px;text-align:center;font-size:13px">
+            Válassz ki egy telephelyet a listából.
+          </div>`;
+      } else {
+        alert('Válassz ki egy telephelyet a listából a törléshez!');
+      }
+    });
+  }
+
+  // To allow saving of currently active site details to memory before save click
+  overlay.querySelector('#prt-save-btn')?.addEventListener('mousedown', () => {
+    if (selectedSiteIndex !== null) {
+      prtSaveActiveSiteToMemory(overlay, selectedSiteIndex);
+    }
+  });
   bindSubtable('ident-add-btn','ident-del-btn','ident-table', () =>
     `<td><select class="ident-type" style="min-width:160px"><option value="Adószám">Adószám</option><option value="CCW + Kód">CCW + Kód</option><option value="Csoportos adószám">Csoportos adószám</option><option value="Közösségi adószám">Közösségi adószám</option><option value="FELIR azonosító">FELIR azonosító</option><option value="NEBIH">NEBIH</option></select></td><td><input type="text" class="ident-value"></td><td style="text-align:center"><span class="ident-status">—</span><input type="hidden" class="ident-verified" value="0"></td><td><input type="text" class="ident-checked-by" style="width:120px" readonly></td>`);
 
@@ -1431,23 +1559,14 @@ function prtCollectData(overlay) {
       notes: overlay.querySelector('#prt-f-notes')?.value || null,
       default_print_mode: overlay.querySelector('input[name="prt_print_mode"]:checked')?.value || 'system',
     },
-    communications: prtCollectTableRows(overlay, 'szh-comm-table', [
-      ['szh-comm-type','channel_type','str'],
-      ['szh-comm-value','value','str'],
-    ]),
-    contacts: prtCollectTableRows(overlay, 'szh-cont-table', [
-      ['szh-cont-name','name','str'],
-      ['szh-cont-title','title','str'],
-    ]),
+    communications: [], // Will be populated below
+    contacts: [], // Will be populated below
     agents: prtCollectTableRows(overlay, 'szh-agent-table', [
       ['szh-agent-from','valid_from','str'],
       ['szh-agent-to','valid_to','str'],
       ['szh-agent-name','agent_name','str'],
     ]),
-    sites: prtCollectTableRows(overlay, 'sites-table', [
-      ['site-name','name','str'],
-      ['site-deleted','is_deleted','bool'],
-    ]),
+    sites: [], // Will be populated below
     identifiers: prtCollectTableRows(overlay, 'ident-table', [
       ['ident-type','id_type','str'],
       ['ident-value','value','str'],
@@ -1481,6 +1600,56 @@ function prtCollectData(overlay) {
       group_collection: overlay.querySelector('#prt-f-group-coll')?.checked || false,
     },
   };
+
+  // Collect HQ communications and contacts
+  data.communications = prtCollectTableRows(overlay, 'szh-comm-table', [
+    ['szh-comm-type','channel_type','str'],
+    ['szh-comm-value','value','str'],
+  ]);
+
+  data.contacts = prtCollectTableRows(overlay, 'szh-cont-table', [
+    ['szh-cont-name','name','str'],
+    ['szh-cont-title','title','str'],
+  ]);
+
+  // Collect sites and enrich communications/contacts with tempId/siteId mappings
+  const rawSites = prtState.currentData?.sites || [];
+  data.sites = rawSites.map((s, idx) => {
+    const tr = overlay.querySelector(`#sites-table tbody tr[data-index="${idx}"]`);
+    const nameVal = tr ? tr.querySelector('.site-name')?.value : s.name;
+    const delVal = tr ? tr.querySelector('.site-deleted')?.checked : s.is_deleted;
+    
+    const enrichedSite = {
+      ...s,
+      name: nameVal || s.name,
+      is_deleted: delVal !== undefined ? delVal : s.is_deleted,
+      _tempId: s.id ? null : idx + 1
+    };
+
+    // Push site communications
+    if (s.communications) {
+      s.communications.forEach(c => {
+        data.communications.push({
+          ...c,
+          site_id: s.id || null,
+          site_temp_id: s.id ? null : enrichedSite._tempId
+        });
+      });
+    }
+
+    // Push site contacts
+    if (s.contacts) {
+      s.contacts.forEach(c => {
+        data.contacts.push({
+          ...c,
+          site_id: s.id || null,
+          site_temp_id: s.id ? null : enrichedSite._tempId
+        });
+      });
+    }
+
+    return enrichedSite;
+  });
 }
 
 // ─── Module entry point ───────────────────────────────────────────────────────
@@ -1491,5 +1660,360 @@ export default async function partnerekModule(container) {
     prtRenderList(container);
   } catch (e) {
     container.innerHTML = `<div style="padding:40px;color:#f87171">Hiba: ${e.message}</div>`;
+  }
+}
+
+// ─── Telephely részletes mentés / betöltés segédfüggvények ──────────────────
+
+function prtBuildSiteAddressForm(s) {
+  return `
+  <div class="prt-cols-2" style="margin-bottom:14px">
+    <!-- Bal: Cím -->
+    <div class="prt-section">
+      <div class="prt-section-title">🏠 Cím</div>
+      <div class="prt-check-row"><input type="checkbox" class="site-f-same-hq" ${s.is_same_as_hq?'checked':''}><label>Azonos a székhely címmel</label></div>
+      <div class="prt-check-row"><input type="checkbox" class="site-f-billing" ${s.is_billing_address?'checked':''}><label>Számlázási cím</label></div>
+      <div class="prt-check-row"><input type="checkbox" class="site-f-invoice-mailing" ${s.is_invoice_mailing_address?'checked':''}><label>Számla postázási cím</label></div>
+      
+      <div class="site-address-fields" ${s.is_same_as_hq?'style="opacity:0.4;pointer-events:none"':''}>
+        <div class="prt-field"><label>Név a bizonylaton</label><input type="text" class="site-f-invoice-name" value="${s.document_name||''}"></div>
+        <div class="prt-field"><label>Ország</label><input type="text" class="site-f-country" value="${s.country||''}"></div>
+        <div class="prt-row-3">
+          <div class="prt-field"><label>Irsz.</label><input type="text" class="site-f-zip" value="${s.zip||''}"></div>
+          <div class="prt-field"><label>Helység</label><input type="text" class="site-f-city" value="${s.city||''}"></div>
+          <div class="prt-field"><label>Kerület</label><input type="text" class="site-f-district" value="${s.district||''}"></div>
+        </div>
+        <div class="prt-field"><label>Közterület neve</label><input type="text" class="site-f-street-name" value="${s.street_name||''}"></div>
+        <div class="prt-row-3">
+          <div class="prt-field"><label>Jellege</label><input type="text" class="site-f-street-type" value="${s.street_type||''}"></div>
+          <div class="prt-field"><label>Száma</label><input type="text" class="site-f-street-number" value="${s.street_number||''}"></div>
+          <div class="prt-field"><label>Épület</label><input type="text" class="site-f-building" value="${s.building||''}"></div>
+        </div>
+        <div class="prt-row-3">
+          <div class="prt-field"><label>Lépcsőház</label><input type="text" class="site-f-staircase" value="${s.staircase||''}"></div>
+          <div class="prt-field"><label>Emelet</label><input type="text" class="site-f-floor" value="${s.floor||''}"></div>
+          <div class="prt-field"><label>Ajtó</label><input type="text" class="site-f-door" value="${s.door||''}"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Jobb: Levelezési cím -->
+    <div class="prt-section">
+      <div class="prt-section-title">✉️ Levelezési cím</div>
+      <div class="prt-check-row"><input type="checkbox" class="site-f-mailing-same" ${s.mailing_address_source==='same' || !s.mailing_country?'checked':''}><label>Azonos a címmel</label></div>
+      <div class="site-mailing-fields" ${(s.mailing_address_source==='same' || !s.mailing_country)?'style="opacity:0.4;pointer-events:none"':''}>
+        <div class="prt-field"><label>Név a bizonylaton</label><input type="text" class="site-f-mailing-inv-name" value="${s.mailing_document_name||''}"></div>
+        <div class="prt-field"><label>Ország</label><input type="text" class="site-f-mailing-country" value="${s.mailing_country||''}"></div>
+        <div class="prt-row-2">
+          <div class="prt-field"><label>Irsz.</label><input type="text" class="site-f-mailing-zip" value="${s.mailing_zip||''}"></div>
+          <div class="prt-field"><label>Helység</label><input type="text" class="site-f-mailing-city" value="${s.mailing_city||''}"></div>
+        </div>
+        <div class="prt-field"><label>Közterület neve</label><input type="text" class="site-f-mailing-street-name" value="${s.mailing_street_name||''}"></div>
+        <div class="prt-row-2">
+          <div class="prt-field"><label>Jellege</label><input type="text" class="site-f-mailing-street-type" value="${s.mailing_street_type||''}"></div>
+          <div class="prt-field"><label>Száma</label><input type="text" class="site-f-mailing-street-number" value="${s.mailing_street_number||''}"></div>
+        </div>
+        <div class="prt-field"><label>GLN</label><input type="text" class="site-f-mailing-gln" value="${s.mailing_gln||''}"></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function prtBuildSiteCommPanel(comms) {
+  return `
+  <div class="prt-subtable-toolbar">
+    <button class="prt-toolbar-btn" id="site-comm-add-btn">➕ Hozzáadás</button>
+    <button class="prt-toolbar-btn danger" id="site-comm-del-btn">🗑️ Törlés</button>
+  </div>
+  <div class="prt-subtable-wrap">
+    <table class="prt-subtable" id="site-comm-table">
+      <thead><tr><th>Kommunikációs csatorna</th><th>Érték</th></tr></thead>
+      <tbody>
+        ${comms.map(c=>`<tr data-id="${c.id||''}">
+          <td><select class="site-comm-type">${['Telefon','Email','Fax','Web','Mobil'].map(o=>`<option ${o===c.channel_type?'selected':''}>${o}</option>`).join('')}</select></td>
+          <td><input type="text" class="site-comm-value" value="${c.value||''}"></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function prtBuildSiteContPanel(contacts) {
+  return `
+  <div class="prt-subtable-toolbar">
+    <button class="prt-toolbar-btn" id="site-cont-add-btn">➕ Hozzáadás</button>
+    <button class="prt-toolbar-btn danger" id="site-cont-del-btn">🗑️ Törlés</button>
+  </div>
+  <div class="prt-subtable-wrap">
+    <table class="prt-subtable" id="site-cont-table">
+      <thead><tr><th>Kapcsolattartó</th><th>Titulus</th></tr></thead>
+      <tbody>
+        ${contacts.map(c=>`<tr data-id="${c.id||''}">
+          <td><input type="text" class="site-cont-name" value="${c.name||''}"></td>
+          <td><input type="text" class="site-cont-title" value="${c.title||''}"></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function prtBuildSiteOtherPanel(s) {
+  return `
+  <div style="padding:10px">
+    <div class="prt-row-2">
+      <div class="prt-field"><label>Kommunikációs nyelv</label>
+        <select class="site-f-comm-lang">
+          <option value="Magyar" ${s.comm_lang==='Magyar'?'selected':''}>Magyar</option>
+          <option value="Angol" ${s.comm_lang==='Angol'?'selected':''}>Angol</option>
+          <option value="Spanyol" ${s.comm_lang==='Spanyol'?'selected':''}>Spanyol</option>
+          <option value="Egyéb" ${s.comm_lang==='Egyéb'?'selected':''}>Egyéb</option>
+        </select>
+      </div>
+      <div class="prt-field"><label>Jövedéki engedélyszám</label>
+        <input type="text" class="site-f-excise-num" value="${s.excise_num||''}">
+      </div>
+    </div>
+    <div class="prt-row-3">
+      <div class="prt-field"><label>GLN</label>
+        <input type="text" class="site-f-gln" value="${s.gln||''}">
+      </div>
+      <div class="prt-field"><label>Szállítási raktár</label>
+        <input type="text" class="site-f-del-wh" value="${s.delivery_warehouse||''}">
+      </div>
+      <div class="prt-field"><label>Alapértelmezett tranzakció</label>
+        <input type="text" class="site-f-def-tr" value="${s.default_transaction||''}">
+      </div>
+    </div>
+  </div>`;
+}
+
+function prtRenderSitesTable(overlay) {
+  const tbody = overlay.querySelector('#sites-table tbody');
+  if (!tbody) return;
+  const sites = prtState.currentData.sites || [];
+  tbody.innerHTML = sites.map((s, index) => {
+    let addrStr = [s.zip, s.city, s.street_name, s.street_number].filter(Boolean).join(' ');
+    if (s.is_same_as_hq) {
+      addrStr = 'Azonos a székhellyel';
+    }
+    return `
+      <tr data-index="${index}" data-id="${s.id||''}" style="${s.is_deleted ? 'opacity:0.5;' : ''}">
+        <td><input type="text" class="site-name" value="${prtEsc(s.name)}" style="background:var(--bg-light);"></td>
+        <td><input type="text" class="site-address" value="${prtEsc(addrStr)}" readonly style="background:var(--bg-light);"></td>
+        <td style="text-align:center"><input type="checkbox" class="site-deleted" ${s.is_deleted?'checked':''}></td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function prtHighlightSiteRow(overlay, idx) {
+  const table = overlay.querySelector('#sites-table');
+  if (table) {
+    table.querySelectorAll('tbody tr').forEach(r => r.classList.remove('selected'));
+    const tr = table.querySelector(`tbody tr[data-index="${idx}"]`);
+    if (tr) {
+      tr.classList.add('selected', 'selected-row');
+      tr.style.background = 'rgba(99,102,241,0.15)';
+    }
+  }
+}
+
+function prtSaveActiveSiteAddressToMemory(addressArea, site) {
+  const v = (cls) => addressArea.querySelector('.' + cls)?.value || '';
+  
+  site.document_name = v('site-f-invoice-name');
+  site.country = v('site-f-country');
+  site.zip = v('site-f-zip');
+  site.city = v('site-f-city');
+  site.district = v('site-f-district');
+  site.street_name = v('site-f-street-name');
+  site.street_type = v('site-f-street-type');
+  site.street_number = v('site-f-street-number');
+  site.building = v('site-f-building');
+  site.staircase = v('site-f-staircase');
+  site.floor = v('site-f-floor');
+  site.door = v('site-f-door');
+  
+  site.mailing_document_name = v('site-f-mailing-inv-name');
+  site.mailing_country = v('site-f-mailing-country');
+  site.mailing_zip = v('site-f-mailing-zip');
+  site.mailing_city = v('site-f-mailing-city');
+  site.mailing_street_name = v('site-f-mailing-street-name');
+  site.mailing_street_type = v('site-f-mailing-street-type');
+  site.mailing_street_number = v('site-f-mailing-street-number');
+  site.mailing_gln = v('site-f-mailing-gln');
+}
+
+function prtSaveActiveSiteToMemory(overlay, idx) {
+  const site = prtState.currentData.sites[idx];
+  if (!site) return;
+
+  const addressArea = overlay.querySelector('#site-address-area');
+  if (addressArea) {
+    prtSaveActiveSiteAddressToMemory(addressArea, site);
+  }
+
+  const commTable = overlay.querySelector('#site-comm-table');
+  if (commTable) {
+    site.communications = prtCollectTableRows(overlay, 'site-comm-table', [
+      ['site-comm-type','channel_type','str'],
+      ['site-comm-value','value','str'],
+    ]);
+  }
+
+  const contTable = overlay.querySelector('#site-cont-table');
+  if (contTable) {
+    site.contacts = prtCollectTableRows(overlay, 'site-cont-table', [
+      ['site-cont-name','name','str'],
+      ['site-cont-title','title','str'],
+    ]);
+  }
+
+  const otherArea = overlay.querySelector('#site-other-area');
+  if (otherArea) {
+    const v = (cls) => otherArea.querySelector('.' + cls)?.value || '';
+    site.comm_lang = v('site-f-comm-lang');
+    site.excise_num = v('site-f-excise-num');
+    site.gln = v('site-f-gln');
+    site.delivery_warehouse = v('site-f-del-wh');
+    site.default_transaction = v('site-f-def-tr');
+  }
+}
+
+function prtLoadActiveSiteDetails(overlay, idx) {
+  const site = prtState.currentData.sites[idx];
+  if (!site) return;
+
+  if (!site._enriched) {
+    site.communications = prtState.currentData.communications?.filter(c => c.site_id === site.id) || [];
+    site.contacts = prtState.currentData.contacts?.filter(c => c.site_id === site.id) || [];
+    site._enriched = true;
+  }
+
+  const addressArea = overlay.querySelector('#site-address-area');
+  if (addressArea) {
+    addressArea.innerHTML = prtBuildSiteAddressForm(site);
+    
+    const inputs = addressArea.querySelectorAll('input[type="text"]');
+    inputs.forEach(inp => {
+      inp.addEventListener('input', (e) => {
+        prtSaveActiveSiteAddressToMemory(addressArea, site);
+        const summaryInput = overlay.querySelector(`#sites-table tbody tr[data-index="${idx}"] .site-address`);
+        if (summaryInput) {
+          let addrStr = [site.zip, site.city, site.street_name, site.street_number].filter(Boolean).join(' ');
+          if (site.is_same_as_hq) addrStr = 'Azonos a székhellyel';
+          summaryInput.value = addrStr;
+        }
+      });
+    });
+
+    const sameHq = addressArea.querySelector('.site-f-same-hq');
+    sameHq?.addEventListener('change', (e) => {
+      site.is_same_as_hq = e.target.checked;
+      const fieldsDiv = addressArea.querySelector('.site-address-fields');
+      if (fieldsDiv) {
+        fieldsDiv.style.opacity = e.target.checked ? '0.4' : '1';
+        fieldsDiv.style.pointerEvents = e.target.checked ? 'none' : 'auto';
+      }
+      if (e.target.checked) {
+        site.invoice_name = overlay.querySelector('#prt-f-invoice-name')?.value || '';
+        site.country = overlay.querySelector('#prt-f-country')?.value || '';
+        site.zip = overlay.querySelector('#prt-f-zip')?.value || '';
+        site.city = overlay.querySelector('#prt-f-city')?.value || '';
+        site.district = overlay.querySelector('#prt-f-district')?.value || '';
+        site.street_name = overlay.querySelector('#prt-f-street-name')?.value || '';
+        site.street_type = overlay.querySelector('#prt-f-street-type')?.value || '';
+        site.street_number = overlay.querySelector('#prt-f-street-number')?.value || '';
+        site.building = overlay.querySelector('#prt-f-building')?.value || '';
+        site.staircase = overlay.querySelector('#prt-f-staircase')?.value || '';
+        site.floor = overlay.querySelector('#prt-f-floor')?.value || '';
+        site.door = overlay.querySelector('#prt-f-door')?.value || '';
+        
+        prtLoadActiveSiteDetails(overlay, idx);
+      }
+      
+      const summaryInput = overlay.querySelector(`#sites-table tbody tr[data-index="${idx}"] .site-address`);
+      if (summaryInput) {
+        summaryInput.value = e.target.checked ? 'Azonos a székhellyel' : [site.zip, site.city, site.street_name, site.street_number].filter(Boolean).join(' ');
+      }
+    });
+
+    const billing = addressArea.querySelector('.site-f-billing');
+    billing?.addEventListener('change', (e) => {
+      site.is_billing_address = e.target.checked;
+    });
+
+    const invMailing = addressArea.querySelector('.site-f-invoice-mailing');
+    invMailing?.addEventListener('change', (e) => {
+      site.is_invoice_mailing_address = e.target.checked;
+    });
+
+    const mailingSame = addressArea.querySelector('.site-f-mailing-same');
+    mailingSame?.addEventListener('change', (e) => {
+      site.mailing_address_source = e.target.checked ? 'same' : 'other';
+      const fieldsDiv = addressArea.querySelector('.site-mailing-fields');
+      if (fieldsDiv) {
+        fieldsDiv.style.opacity = e.target.checked ? '0.4' : '1';
+        fieldsDiv.style.pointerEvents = e.target.checked ? 'none' : 'auto';
+      }
+    });
+  }
+
+  const commArea = overlay.querySelector('#site-comm-area');
+  if (commArea) {
+    commArea.innerHTML = prtBuildSiteCommPanel(site.communications);
+    const addBtn = commArea.querySelector('#site-comm-add-btn');
+    const delBtn = commArea.querySelector('#site-comm-del-btn');
+    const table = commArea.querySelector('#site-comm-table');
+    
+    addBtn?.addEventListener('click', () => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td><select class="site-comm-type">${['Telefon','Email','Fax','Web','Mobil'].map(o=>`<option>${o}</option>`).join('')}</select></td><td><input type="text" class="site-comm-value"></td>`;
+      table.querySelector('tbody').appendChild(tr);
+    });
+
+    delBtn?.addEventListener('click', () => {
+      const selected = table.querySelector('tr.selected');
+      if (selected) selected.remove();
+    });
+
+    table?.addEventListener('click', (e) => {
+      const tr = e.target.closest('tr');
+      if (!tr || !tr.parentElement.tagName === 'TBODY') return;
+      table.querySelectorAll('tbody tr').forEach(r => r.classList.remove('selected'));
+      tr.classList.add('selected', 'selected-row');
+      tr.style.background = 'rgba(99,102,241,0.15)';
+    });
+  }
+
+  const contArea = overlay.querySelector('#site-cont-area');
+  if (contArea) {
+    contArea.innerHTML = prtBuildSiteContPanel(site.contacts);
+    const addBtn = contArea.querySelector('#site-cont-add-btn');
+    const delBtn = contArea.querySelector('#site-cont-del-btn');
+    const table = contArea.querySelector('#site-cont-table');
+
+    addBtn?.addEventListener('click', () => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td><input type="text" class="site-cont-name"></td><td><input type="text" class="site-cont-title"></td>`;
+      table.querySelector('tbody').appendChild(tr);
+    });
+
+    delBtn?.addEventListener('click', () => {
+      const selected = table.querySelector('tr.selected');
+      if (selected) selected.remove();
+    });
+
+    table?.addEventListener('click', (e) => {
+      const tr = e.target.closest('tr');
+      if (!tr || !tr.parentElement.tagName === 'TBODY') return;
+      table.querySelectorAll('tbody tr').forEach(r => r.classList.remove('selected'));
+      tr.classList.add('selected', 'selected-row');
+      tr.style.background = 'rgba(99,102,241,0.15)';
+    });
+  }
+
+  const otherArea = overlay.querySelector('#site-other-area');
+  if (otherArea) {
+    otherArea.innerHTML = prtBuildSiteOtherPanel(site);
   }
 }

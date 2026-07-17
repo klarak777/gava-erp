@@ -63,9 +63,63 @@ async function getPartnerFull(partnerId, trx) {
 }
 
 async function saveSubTables(trx, partnerId, body) {
+  const siteTempMap = {};
+  
+  // 1. Sites: save first to get database IDs
+  if (Array.isArray(body.sites)) {
+    for (const site of body.sites) {
+      const tempId = site._tempId;
+      const dbRow = {
+        name: site.name, country: site.country, zip: site.zip, city: site.city, district: site.district,
+        street_name: site.street_name, street_type: site.street_type,
+        street_number: site.street_number, building: site.building,
+        staircase: site.staircase, floor: site.floor, door: site.door,
+        comm_lang: site.comm_lang, excise_num: site.excise_num, gln: site.gln,
+        delivery_warehouse: site.delivery_warehouse, default_transaction: site.default_transaction,
+        document_name: site.document_name, is_same_as_hq: site.is_same_as_hq,
+        is_billing_address: site.is_billing_address, mailing_address_source: site.mailing_address_source,
+        is_invoice_mailing_address: site.is_invoice_mailing_address,
+        mailing_document_name: site.mailing_document_name, mailing_gln: site.mailing_gln,
+        mailing_country: site.mailing_country, mailing_region: site.mailing_region,
+        mailing_zip: site.mailing_zip, mailing_city: site.mailing_city,
+        mailing_street_name: site.mailing_street_name,
+        region: site.region, street_full: site.street_full,
+        mailing_street_full: site.mailing_street_full,
+        is_deleted: site.is_deleted || false
+      };
+      if (site.id) {
+        await trx('partner_sites').where('id', site.id).where('partner_id', partnerId).update(dbRow);
+        siteTempMap[site.id] = site.id;
+      } else {
+        const [inserted] = await trx('partner_sites').insert({ ...dbRow, partner_id: partnerId }).returning('id');
+        const insertedId = typeof inserted === 'object' ? inserted.id : inserted;
+        if (tempId) {
+          siteTempMap[tempId] = insertedId;
+        }
+      }
+    }
+  }
+
+  // 2. Prep communications and contacts with resolved site IDs
+  const coms = (body.communications || []).map(c => {
+    let sId = c.site_id;
+    if (c.site_temp_id && siteTempMap[c.site_temp_id]) {
+      sId = siteTempMap[c.site_temp_id];
+    }
+    return { ...c, site_id: sId, site_temp_id: undefined };
+  });
+
+  const conts = (body.contacts || []).map(c => {
+    let sId = c.site_id;
+    if (c.site_temp_id && siteTempMap[c.site_temp_id]) {
+      sId = siteTempMap[c.site_temp_id];
+    }
+    return { ...c, site_id: sId, site_temp_id: undefined };
+  });
+
   const sub = [
-    { table: 'partner_communications', data: body.communications },
-    { table: 'partner_contacts', data: body.contacts },
+    { table: 'partner_communications', data: coms },
+    { table: 'partner_contacts', data: conts },
     { table: 'partner_agents', data: body.agents },
     { table: 'partner_identifiers', data: body.identifiers },
     { table: 'partner_characteristics', data: body.characteristics },
@@ -81,34 +135,6 @@ async function saveSubTables(trx, partnerId, body) {
     if (data.length > 0) {
       const rows = data.map(r => ({ ...r, partner_id: partnerId, id: undefined, created_at: undefined, updated_at: undefined }));
       await trx(table).insert(rows);
-    }
-  }
-
-  // Sites: csak frissítés/hozzáadás, nem törlés (biztonságosabb)
-  if (Array.isArray(body.sites)) {
-    for (const site of body.sites) {
-      if (site.id) {
-        await trx('partner_sites').where('id', site.id).where('partner_id', partnerId).update({
-          name: site.name, country: site.country, zip: site.zip, city: site.city, district: site.district,
-          street_name: site.street_name, street_type: site.street_type,
-          street_number: site.street_number, building: site.building,
-          staircase: site.staircase, floor: site.floor, door: site.door,
-          comm_lang: site.comm_lang, excise_num: site.excise_num, gln: site.gln,
-          delivery_warehouse: site.delivery_warehouse, default_transaction: site.default_transaction,
-          document_name: site.document_name, is_same_as_hq: site.is_same_as_hq,
-          is_billing_address: site.is_billing_address, mailing_address_source: site.mailing_address_source,
-          is_invoice_mailing_address: site.is_invoice_mailing_address,
-          mailing_document_name: site.mailing_document_name, mailing_gln: site.mailing_gln,
-          mailing_country: site.mailing_country, mailing_region: site.mailing_region,
-          mailing_zip: site.mailing_zip, mailing_city: site.mailing_city,
-          mailing_street_name: site.mailing_street_name,
-          region: site.region, street_full: site.street_full,
-          mailing_street_full: site.mailing_street_full,
-          is_deleted: site.is_deleted || false
-        });
-      } else {
-        await trx('partner_sites').insert({ ...site, id: undefined, partner_id: partnerId });
-      }
     }
   }
 
