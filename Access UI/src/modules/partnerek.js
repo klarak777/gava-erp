@@ -690,7 +690,10 @@ function prtBuildTermeszetesPanel(p) {
     <div>
       <div class="prt-section">
         <div class="prt-section-title">Azonosítók</div>
-        ${prtField('prt-f-tax-id', 'Adóazonosító jel:', p.tax_id)}
+        ${p.is_natural_person 
+          ? prtField('prt-f-tax-id', 'Adóazonosító jel:', p.tax_id)
+          : '<div class="prt-field" style="opacity:0.4;pointer-events:none"><label>Adóazonosító jel: <em style="font-size:10px;">(csak term. személynek)</em></label><input type="hidden" id="prt-f-tax-id" value=""><input type="text" disabled style="width:100%;" placeholder="-"></div>'
+        }
         ${prtField('prt-f-taj', 'TAJ:', p.taj)}
       </div>
       <div class="prt-section">
@@ -719,8 +722,8 @@ function prtBuildEgyebAdatokPanel(p, data) {
   const idents = data?.identifiers || [];
   const chars = data?.characteristics || [];
   
-  // Inject tax_id if present and not in idents
-  if (p.tax_id && !idents.some(i => i.id_type === 'Adószám')) {
+  // Csak nem természetes személyeknél töltjük be az adószámot az Azonosítók táblába
+  if (!p.is_natural_person && p.tax_id && !idents.some(i => i.id_type === 'Adószám')) {
     idents.unshift({ id_type: 'Adószám', value: p.tax_id, is_verified: false, checked_by: '' });
   }
   return `
@@ -1117,6 +1120,21 @@ function prtBindModal(overlay, listContainer, id) {
       overlay.querySelector(`.prt-panel[data-panel="${tab.dataset.tab}"]`).classList.add('active');
     });
   });
+
+  // Természetes személy checkbox – Adóazonosító jel mező megjelenítése/elrejtése
+  const naturalCb = overlay.querySelector('#prt-f-natural');
+  const updateTaxIdField = () => {
+    const isNatural = naturalCb?.checked;
+    const taxIdWrap = overlay.querySelector('#prt-f-tax-id')?.closest('.prt-field');
+    if (taxIdWrap) {
+      taxIdWrap.style.opacity = isNatural ? '1' : '0.4';
+      taxIdWrap.style.pointerEvents = isNatural ? '' : 'none';
+      const taxInput = overlay.querySelector('#prt-f-tax-id');
+      if (taxInput) taxInput.disabled = !isNatural;
+    }
+  };
+  naturalCb?.addEventListener('change', updateTaxIdField);
+  updateTaxIdField(); // Kezdeti állapot beállítása
 
   // Alfülek (subtab) – általános kötés
   function bindSubtabs(scope) {
