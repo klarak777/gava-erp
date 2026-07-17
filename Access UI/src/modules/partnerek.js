@@ -207,12 +207,12 @@ async function prtApi(method, path, body = null) {
 function prtGetRowsHtml() {
   const typeBadge = (t) => {
     const map = {
-      'vevő': ['(Customer) Vevők', 'customer'],
-      'szállító': ['(Reference) Szállítók / Partnerek', 'supplier'],
+      'vevő': ['Vevő', 'customer'],
+      'szállító': ['Szállító', 'supplier'],
       'fuvarozó': ['Fuvarozó', 'transporter'],
-      'customer': ['(Customer) Vevők', 'customer'],
-      'supplier': ['(Reference) Szállítók / Partnerek', 'supplier'],
-      'transporter': ['Fuvarozók', 'transporter'],
+      'customer': ['Vevő', 'customer'],
+      'supplier': ['Szállító', 'supplier'],
+      'transporter': ['Fuvarozó', 'transporter'],
       'Adószám': ['Adószám', 'other'],
       'CCW + Kód': ['CCW + Kód', 'other'],
       'Csoportos adószám': ['Csoportos', 'other'],
@@ -250,9 +250,9 @@ function prtRenderList(container) {
           <button class="secondary-btn" id="prt-clear-btn" style="padding:8px 12px; border-radius:8px; border:1px solid var(--border);" title="Szűrő törlése">✖</button>
           <select id="prt-type-filter" class="prt-search-input" style="width:220px">
             <option value="">Minden típus</option>
-            <option value="customer">(Customer) Vevők</option>
-            <option value="supplier">(Reference) Szállítók / Partnerek</option>
-            <option value="transporter">Fuvarozók</option>
+            <option value="customer">Vevő</option>
+            <option value="supplier">Szállító</option>
+            <option value="transporter">Fuvarozó</option>
             <option value="Adószám">Adószám</option>
             <option value="CCW + Kód">CCW + Kód</option>
             <option value="Csoportos adószám">Csoportos adószám</option>
@@ -1277,9 +1277,9 @@ function prtBindModal(overlay, listContainer, id) {
                   <option value="Közösségi adószám">Közösségi adószám</option>
                   <option value="FELIR azonosító">FELIR azonosító</option>
                   <option value="NEBIH">NEBIH</option>
-                  <option value="(Reference) Szállítók / Partnerek">(Reference) Szállítók / Partnerek</option>
-                  <option value="(Customer) Vevők">(Customer) Vevők</option>
-                  <option value="Fuvarozók">Fuvarozók</option>
+                  <option value="Szállító">Szállító</option>
+                  <option value="Vevő">Vevő</option>
+                  <option value="Fuvarozó">Fuvarozó</option>
                 </select>
               </div>
             </div>
@@ -1300,9 +1300,9 @@ function prtBindModal(overlay, listContainer, id) {
       // Init type from current primary type
       const currType = overlay.querySelector('#prt-f-type').value;
       const reverseMap = {
-        'supplier': '(Reference) Szállítók / Partnerek',
-        'customer': '(Customer) Vevők',
-        'transporter': 'Fuvarozók'
+        'supplier': 'Szállító',
+        'customer': 'Vevő',
+        'transporter': 'Fuvarozó'
       };
       const initialType = reverseMap[currType] || currType;
       for (const opt of typeSel.options) {
@@ -1318,9 +1318,9 @@ function prtBindModal(overlay, listContainer, id) {
         
         // Auto-update header type if it's a partner status
         const identTypeMap = { 
-          '(Reference) Szállítók / Partnerek': 'supplier', 
-          '(Customer) Vevők': 'customer', 
-          'Fuvarozók': 'transporter',
+          'Szállító': 'supplier', 
+          'Vevő': 'customer', 
+          'Fuvarozó': 'transporter',
           'Adószám': 'Adószám',
           'CCW + Kód': 'CCW + Kód',
           'Csoportos adószám': 'Csoportos adószám',
