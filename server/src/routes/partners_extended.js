@@ -194,6 +194,11 @@ router.get('/verify-vat/:vatNumber', async (req, res) => {
     vatNumber = vatNumber.replace(/[^A-Z0-9]/gi, '').toUpperCase();
     if (vatNumber.length < 3) return res.status(400).json({ error: 'Túl rövid adószám' });
     
+    // Ha az adószám csak számokból áll (pl. egy hazai adószám), alakítsuk át Közösségi adószámmá a VIES-hez
+    if (/^\d{8,}$/.test(vatNumber)) {
+      vatNumber = 'HU' + vatNumber.substring(0, 8);
+    }
+    
     const countryCode = vatNumber.substring(0, 2);
     const vat = vatNumber.substring(2);
     

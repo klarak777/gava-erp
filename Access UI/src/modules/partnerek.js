@@ -740,7 +740,7 @@ function prtBuildEgyebAdatokPanel(p, data) {
           <thead><tr><th>Típus</th><th>Érték</th><th>É</th><th>Ellenőrizve</th></tr></thead>
           <tbody>
             ${idents.map(i=>`<tr data-id="${i.id||''}">
-              <td><select class="ident-type" style="background:var(--bg-light); min-width:160px;">
+              <td><select class="ident-type" style="background:var(--bg-light); min-width:160px;" ${i.id_type==='Adószám' ? 'disabled' : ''}>
                 <option value="Adószám" ${i.id_type==='Adószám'?'selected':''}>Adószám</option>
                 <option value="CCW + Kód" ${i.id_type==='CCW + Kód'?'selected':''}>CCW + Kód</option>
                 <option value="Csoportos adószám" ${i.id_type==='Csoportos adószám'?'selected':''}>Csoportos adószám</option>
@@ -751,8 +751,11 @@ function prtBuildEgyebAdatokPanel(p, data) {
                 <option value="Fuvarozók" ${i.id_type==='Fuvarozók'?'selected':''}>Fuvarozók</option>
               </select></td>
               <td><input type="text" class="ident-value" value="${prtEsc(i.value)}" style="background:var(--bg-light);color:var(--text-primary)"></td>
-              <td style="text-align:center"><span class="ident-status">${i.is_verified ? '✅' : (i.checked_by ? '❌' : '—')}</span><input type="hidden" class="ident-verified" value="${i.is_verified ? '1' : '0'}"></td>
-              <td><input type="text" class="ident-checked-by" value="${prtEsc(i.checked_by)}" style="width:120px; background:var(--bg-light);" readonly></td>
+              <td style="text-align:center">
+                <span class="ident-status" style="${['Adószám', 'Közösségi adószám'].includes(i.id_type) ? '' : 'display:none'}">${i.is_verified ? '✅' : (i.checked_by ? '❌' : '—')}</span>
+                <input type="hidden" class="ident-verified" value="${i.is_verified ? '1' : '0'}">
+              </td>
+              <td><input type="text" class="ident-checked-by" value="${prtEsc(i.checked_by)}" style="width:120px; background:var(--bg-light); ${['Adószám', 'Közösségi adószám'].includes(i.id_type) ? '' : 'display:none'}" readonly></td>
             </tr>`).join('')}
           </tbody>
         </table>
@@ -1324,7 +1327,7 @@ function prtBindModal(overlay, listContainer, id) {
     }
   });
   bindSubtable('ident-add-btn','ident-del-btn','ident-table', () =>
-    `<td><select class="ident-type" style="min-width:160px"><option value="Adószám">Adószám</option><option value="CCW + Kód">CCW + Kód</option><option value="Csoportos adószám">Csoportos adószám</option><option value="FELIR azonosító">FELIR azonosító</option><option value="NEBIH">NEBIH</option><option value="(Reference) Szállítók">(Reference) Szállítók</option><option value="(Customer) Vevők">(Customer) Vevők</option><option value="Fuvarozók">Fuvarozók</option></select></td><td><input type="text" class="ident-value"></td><td style="text-align:center"><span class="ident-status">—</span><input type="hidden" class="ident-verified" value="0"></td><td><input type="text" class="ident-checked-by" style="width:120px" readonly></td>`);
+    `<td><select class="ident-type" style="min-width:160px"><option value="Adószám">Adószám</option><option value="CCW + Kód">CCW + Kód</option><option value="Csoportos adószám">Csoportos adószám</option><option value="FELIR azonosító">FELIR azonosító</option><option value="NEBIH">NEBIH</option><option value="(Reference) Szállítók">(Reference) Szállítók</option><option value="(Customer) Vevők">(Customer) Vevők</option><option value="Fuvarozók">Fuvarozók</option></select></td><td><input type="text" class="ident-value"></td><td style="text-align:center"><span class="ident-status" style="display:none">—</span><input type="hidden" class="ident-verified" value="0"></td><td><input type="text" class="ident-checked-by" style="width:120px;display:none" readonly></td>`);
 
   const identTable = overlay.querySelector('#ident-table');
 
@@ -1334,15 +1337,27 @@ function prtBindModal(overlay, listContainer, id) {
     
     const enforceUniqueness = () => {
       const selects = Array.from(identTable.querySelectorAll('.ident-type'));
-      const usedTypes = selects.map(s => s.value).filter(v => uniqueTypes.includes(v));
+      const usedTypes = [];
+      
+      selects.forEach(select => {
+        let currentVal = select.value;
+        if (uniqueTypes.includes(currentVal) && usedTypes.includes(currentVal)) {
+          const firstAvailable = Array.from(select.options).find(o => !uniqueTypes.includes(o.value) || !usedTypes.includes(o.value));
+          if (firstAvailable) {
+            select.value = firstAvailable.value;
+            currentVal = firstAvailable.value;
+          }
+        }
+        if (uniqueTypes.includes(currentVal)) {
+          usedTypes.push(currentVal);
+        }
+      });
       
       selects.forEach(select => {
         const currentVal = select.value;
         Array.from(select.options).forEach(opt => {
           if (uniqueTypes.includes(opt.value)) {
-            // Disable if it's used by ANOTHER select
-            const count = usedTypes.filter(v => v === opt.value).length;
-            opt.disabled = (count > 0 && opt.value !== currentVal);
+            opt.disabled = (usedTypes.includes(opt.value) && opt.value !== currentVal);
           }
         });
       });
@@ -1351,15 +1366,28 @@ function prtBindModal(overlay, listContainer, id) {
     identTable.addEventListener('change', (e) => {
       if (e.target.classList.contains('ident-type')) {
         const val = e.target.value;
+        const row = e.target.closest('tr');
+        const statusSpan = row.querySelector('.ident-status');
+        const checkedByInput = row.querySelector('.ident-checked-by');
+        
+        if (['Adószám', 'Közösségi adószám'].includes(val)) {
+          if (statusSpan) statusSpan.style.display = 'inline';
+          if (checkedByInput) checkedByInput.style.display = 'inline-block';
+        } else {
+          if (statusSpan) statusSpan.style.display = 'none';
+          if (checkedByInput) checkedByInput.style.display = 'none';
+        }
+
         if (uniqueTypes.includes(val)) {
-          // Check if already used elsewhere
           const selects = Array.from(identTable.querySelectorAll('.ident-type'));
           const duplicates = selects.filter(s => s !== e.target && s.value === val);
           if (duplicates.length > 0) {
             alert('Már létezik "' + val + '" típusú azonosító! Ebből a típusból csak egy adható meg.');
-            // Revert to first available option
             const firstAvailable = Array.from(e.target.options).find(o => !o.disabled && o.value !== val);
-            if (firstAvailable) e.target.value = firstAvailable.value;
+            if (firstAvailable) {
+              e.target.value = firstAvailable.value;
+              e.target.dispatchEvent(new Event('change', { bubbles: true })); // trigger again to fix display
+            }
           }
         }
         enforceUniqueness();
@@ -1421,7 +1449,7 @@ function prtBindModal(overlay, listContainer, id) {
           selectedRow.querySelector('.ident-verified').value = '0';
           const statusSpan = selectedRow.querySelector('.ident-status');
           if (statusSpan) statusSpan.textContent = '❌';
-          alert('Az adószám érvénytelen vagy nem ellenőrizhető.\nOka: ' + (data.error || 'Nincs adat.'));
+          alert('Az adószám érvénytelen vagy nem ellenőrizhető.\nOka: ' + (data.userError || data.error || 'Nincs adat.'));
         }
       } catch (err) {
         alert('Hiba az ellenőrzés során: ' + err.message);
