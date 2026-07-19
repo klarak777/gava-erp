@@ -1433,7 +1433,8 @@ function prtBindModal(overlay, listContainer, id) {
         const dt = new Date();
         const pad = (n) => n.toString().padStart(2, '0');
         const checkedBy = `${dt.getFullYear()}.${pad(dt.getMonth()+1)}.${pad(dt.getDate())} ${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
-        selectedRow.querySelector('.ident-checked-by').textContent = checkedBy;
+        const checkedByInput = selectedRow.querySelector('.ident-checked-by');
+        if (checkedByInput) checkedByInput.value = checkedBy;
         if (res.ok && data.isValid) {
           selectedRow.querySelector('.ident-verified').value = '1';
           const statusSpan = selectedRow.querySelector('.ident-status');
@@ -1442,7 +1443,14 @@ function prtBindModal(overlay, listContainer, id) {
           
           if (data.name) {
             const invoiceNameInput = overlay.querySelector('#prt-f-invoice-name');
-            if (invoiceNameInput) invoiceNameInput.value = data.name;
+            if (invoiceNameInput) {
+              invoiceNameInput.value = data.name;
+              invoiceNameInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            // Also update the state directly just in case
+            if (prtState && prtState.currentData) {
+              prtState.currentData.invoice_name = data.name;
+            }
           }
           alert('Az adószám érvényes!\nNév: ' + (data.name || 'ismeretlen') + '\nCím: ' + (data.address || 'ismeretlen'));
         } else {
