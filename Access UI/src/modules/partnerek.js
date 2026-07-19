@@ -733,7 +733,6 @@ function prtBuildEgyebAdatokPanel(p, data) {
       <div class="prt-subtable-toolbar" style="background:var(--bg-light); padding:4px; border:1px solid var(--border); border-bottom:none; border-radius:8px 8px 0 0;">
         <button class="prt-toolbar-btn" id="ident-add-btn">➕</button>
         <button class="prt-toolbar-btn danger" id="ident-del-btn">🗑️</button>
-        <button class="prt-toolbar-btn" id="ident-type-btn" style="color:var(--text-primary);">⚙️ Típus megadása</button>
         <button class="prt-toolbar-btn" id="ident-verify-btn" style="color:var(--text-primary);">ABC Ellenőrzés</button>
       </div>
       <div class="prt-subtable-wrap" style="height:250px; border:1px solid var(--border); background:var(--surface); border-radius:0 0 8px 8px;">
@@ -741,7 +740,16 @@ function prtBuildEgyebAdatokPanel(p, data) {
           <thead><tr><th>Típus</th><th>Érték</th><th>É</th><th>Ellenőrizve</th></tr></thead>
           <tbody>
             ${idents.map(i=>`<tr data-id="${i.id||''}">
-              <td><select class="ident-type" style="background:var(--bg-light); min-width:160px;"><option value="Adószám" ${i.id_type==='Adószám'?'selected':''}>Adószám</option><option value="CCW + Kód" ${i.id_type==='CCW + Kód'?'selected':''}>CCW + Kód</option><option value="Csoportos adószám" ${i.id_type==='Csoportos adószám'?'selected':''}>Csoportos adószám</option><option value="Közösségi adószám" ${i.id_type==='Közösségi adószám'?'selected':''}>Közösségi adószám</option><option value="FELIR azonosító" ${i.id_type==='FELIR azonosító'?'selected':''}>FELIR azonosító</option><option value="NEBIH" ${i.id_type==='NEBIH'?'selected':''}>NEBIH</option></select></td>
+              <td><select class="ident-type" style="background:var(--bg-light); min-width:160px;">
+                <option value="Adószám" ${i.id_type==='Adószám'?'selected':''}>Adószám</option>
+                <option value="CCW + Kód" ${i.id_type==='CCW + Kód'?'selected':''}>CCW + Kód</option>
+                <option value="Csoportos adószám" ${i.id_type==='Csoportos adószám'?'selected':''}>Csoportos adószám</option>
+                <option value="FELIR azonosító" ${i.id_type==='FELIR azonosító'?'selected':''}>FELIR azonosító</option>
+                <option value="NEBIH" ${i.id_type==='NEBIH'?'selected':''}>NEBIH</option>
+                <option value="(Reference) Szállítók" ${i.id_type==='(Reference) Szállítók'?'selected':''}>(Reference) Szállítók</option>
+                <option value="(Customer) Vevők" ${i.id_type==='(Customer) Vevők'?'selected':''}>(Customer) Vevők</option>
+                <option value="Fuvarozók" ${i.id_type==='Fuvarozók'?'selected':''}>Fuvarozók</option>
+              </select></td>
               <td><input type="text" class="ident-value" value="${prtEsc(i.value)}" style="background:var(--bg-light);color:var(--text-primary)"></td>
               <td style="text-align:center"><span class="ident-status">${i.is_verified ? '✅' : (i.checked_by ? '❌' : '—')}</span><input type="hidden" class="ident-verified" value="${i.is_verified ? '1' : '0'}"></td>
               <td><input type="text" class="ident-checked-by" value="${prtEsc(i.checked_by)}" style="width:120px; background:var(--bg-light);" readonly></td>
@@ -1316,92 +1324,52 @@ function prtBindModal(overlay, listContainer, id) {
     }
   });
   bindSubtable('ident-add-btn','ident-del-btn','ident-table', () =>
-    `<td><select class="ident-type" style="min-width:160px"><option value="Adószám">Adószám</option><option value="CCW + Kód">CCW + Kód</option><option value="Csoportos adószám">Csoportos adószám</option><option value="Közösségi adószám">Közösségi adószám</option><option value="FELIR azonosító">FELIR azonosító</option><option value="NEBIH">NEBIH</option></select></td><td><input type="text" class="ident-value"></td><td style="text-align:center"><span class="ident-status">—</span><input type="hidden" class="ident-verified" value="0"></td><td><input type="text" class="ident-checked-by" style="width:120px" readonly></td>`);
+    `<td><select class="ident-type" style="min-width:160px"><option value="Adószám">Adószám</option><option value="CCW + Kód">CCW + Kód</option><option value="Csoportos adószám">Csoportos adószám</option><option value="FELIR azonosító">FELIR azonosító</option><option value="NEBIH">NEBIH</option><option value="(Reference) Szállítók">(Reference) Szállítók</option><option value="(Customer) Vevők">(Customer) Vevők</option><option value="Fuvarozók">Fuvarozók</option></select></td><td><input type="text" class="ident-value"></td><td style="text-align:center"><span class="ident-status">—</span><input type="hidden" class="ident-verified" value="0"></td><td><input type="text" class="ident-checked-by" style="width:120px" readonly></td>`);
 
   const identTable = overlay.querySelector('#ident-table');
 
-  // ── Identifiers Popup Logic ──
-  const identTypeBtn = overlay.querySelector('#ident-type-btn');
+  // ── Identifiers Uniqueness Logic ──
+  if (identTable) {
+    const uniqueTypes = ['Adószám', 'Csoportos adószám', 'FELIR azonosító', 'NEBIH'];
+    
+    const enforceUniqueness = () => {
+      const selects = Array.from(identTable.querySelectorAll('.ident-type'));
+      const usedTypes = selects.map(s => s.value).filter(v => uniqueTypes.includes(v));
+      
+      selects.forEach(select => {
+        const currentVal = select.value;
+        Array.from(select.options).forEach(opt => {
+          if (uniqueTypes.includes(opt.value)) {
+            // Disable if it's used by ANOTHER select
+            const count = usedTypes.filter(v => v === opt.value).length;
+            opt.disabled = (count > 0 && opt.value !== currentVal);
+          }
+        });
+      });
+    };
 
-  if (identTypeBtn && identTable) {
-    identTypeBtn.addEventListener('click', () => {
-      const modalHTML = `
-        <div class="prt-ident-modal-overlay" id="prt-ident-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:4000;display:flex;align-items:center;justify-content:center;">
-          <div style="background:#555;border-radius:6px;width:380px;border:1px solid #333;box-shadow:0 10px 30px rgba(0,0,0,0.5);overflow:hidden; font-family:Arial,sans-serif;">
-            <div style="background:#222;color:#fff;padding:8px 12px;display:flex;align-items:center;font-weight:bold;font-size:13px;border-bottom:1px solid #111;">
-              <span style="color:#ffd700;margin-right:8px;font-size:15px;">🐍</span> Partner azonosító
-            </div>
-            <div style="padding:16px;display:flex;flex-direction:column;gap:12px;background:#777;">
-              <div style="display:flex;align-items:center;gap:10px;">
-                <label style="width:70px;color:#fff;font-size:12px;text-align:right;">Típus:*</label>
-                <select id="ident-modal-type" style="flex:1;padding:4px;background:#ffffe0;border:1px solid #444;font-size:12px;">
-                  <option value="Adószám">Adószám</option>
-                  <option value="CCW + Kód">CCW + Kód</option>
-                  <option value="Csoportos adószám">Csoportos adószám</option>
-                  <option value="Közösségi adószám">Közösségi adószám</option>
-                  <option value="FELIR azonosító">FELIR azonosító</option>
-                  <option value="NEBIH">NEBIH</option>
-                  <option value="Szállító">Szállító</option>
-                  <option value="Vevő">Vevő</option>
-                  <option value="Fuvarozó">Fuvarozó</option>
-                </select>
-              </div>
-            </div>
-            <div style="background:#666;padding:10px;display:flex;justify-content:center;gap:12px;border-top:1px solid #444;">
-              <button id="ident-modal-ok" style="padding:4px 20px;background:#ddd;border:1px solid #333;border-radius:3px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:4px;">✅ OK</button>
-              <button id="ident-modal-cancel" style="padding:4px 20px;background:#ddd;border:1px solid #333;border-radius:3px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:4px;">❌ Mégsem</button>
-            </div>
-          </div>
-        </div>
-      `;
-      const div = document.createElement('div');
-      div.innerHTML = modalHTML;
-      document.body.appendChild(div.firstElementChild);
-
-      const m = document.getElementById('prt-ident-modal');
-      const typeSel = m.querySelector('#ident-modal-type');
-
-      // Init type from current primary type
-      const currType = overlay.querySelector('#prt-f-type').value;
-      const reverseMap = {
-        'supplier': 'Szállító',
-        'customer': 'Vevő',
-        'transporter': 'Fuvarozó'
-      };
-      const initialType = reverseMap[currType] || currType;
-      for (const opt of typeSel.options) {
-        if (opt.value === initialType) {
-          opt.selected = true;
-          break;
+    identTable.addEventListener('change', (e) => {
+      if (e.target.classList.contains('ident-type')) {
+        const val = e.target.value;
+        if (uniqueTypes.includes(val)) {
+          // Check if already used elsewhere
+          const selects = Array.from(identTable.querySelectorAll('.ident-type'));
+          const duplicates = selects.filter(s => s !== e.target && s.value === val);
+          if (duplicates.length > 0) {
+            alert('Már létezik "' + val + '" típusú azonosító! Ebből a típusból csak egy adható meg.');
+            // Revert to first available option
+            const firstAvailable = Array.from(e.target.options).find(o => !o.disabled && o.value !== val);
+            if (firstAvailable) e.target.value = firstAvailable.value;
+          }
         }
+        enforceUniqueness();
       }
+    });
 
-      m.querySelector('#ident-modal-cancel').onclick = () => m.remove();
-      m.querySelector('#ident-modal-ok').onclick = () => {
-        const t = typeSel.value;
-        
-        // Auto-update header type if it's a partner status
-        const identTypeMap = { 
-          'Szállító': 'supplier', 
-          'Vevő': 'customer', 
-          'Fuvarozó': 'transporter',
-          'Adószám': 'Adószám',
-          'CCW + Kód': 'CCW + Kód',
-          'Csoportos adószám': 'Csoportos adószám',
-          'Közösségi adószám': 'Közösségi adószám',
-          'FELIR azonosító': 'FELIR azonosító',
-          'NEBIH': 'NEBIH'
-        };
-        if (identTypeMap[t]) {
-          const typeInput = overlay.querySelector('#prt-f-type');
-          if (typeInput) typeInput.value = identTypeMap[t];
-          const badge = overlay.querySelector('#prt-type-badge');
-          if (badge) badge.textContent = t;
-        }
-
-        m.remove();
-        overlay.dispatchEvent(new Event('input'));
-      };
+    // Run initially and after adding a row
+    enforceUniqueness();
+    overlay.querySelector('#ident-add-btn')?.addEventListener('click', () => {
+      setTimeout(enforceUniqueness, 50);
     });
   }
   bindSubtable('char-add-btn','char-del-btn','char-table', () =>
