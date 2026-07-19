@@ -3,9 +3,9 @@
  * @returns { Promise<void> }
  */
 exports.up = async function(knex) {
-  // Migrate old transporter short codes to partner_identifiers
-  const transporters = await knex('transporters').select('name', 'code').whereNotNull('code');
-  const partners = await knex('partners').select('id', 'name');
+  // Migrate old transporter short codes (name) to partner_identifiers
+  const transporters = await knex('transporters').select('name', 'code').whereNotNull('name');
+  const partners = await knex('partners').select('id', 'name', 'type');
 
   const normalizePartner = (name) => {
     if (!name) return '';
@@ -17,8 +17,9 @@ exports.up = async function(knex) {
     partnerMap.set(normalizePartner(p.name), p.id);
   }
 
+  // 1. Fuvarozók
   for (const t of transporters) {
-    if (!t.code) continue;
+    if (!t.name) continue;
     const normT = normalizePartner(t.name);
     let partnerId = partnerMap.get(normT);
 
@@ -33,7 +34,6 @@ exports.up = async function(knex) {
     }
 
     if (partnerId) {
-      // Check if already exists
       const existing = await knex('partner_identifiers')
         .where('partner_id', partnerId)
         .andWhere('id_type', 'Fuvarozók')
@@ -43,9 +43,35 @@ exports.up = async function(knex) {
         await knex('partner_identifiers').insert({
           partner_id: partnerId,
           id_type: 'Fuvarozók',
-          value: t.code,
+          value: t.name, // The user wants the FULL short name (e.g. "KÓNYA" instead of "KON")
           is_verified: false,
           checked_by: ''
+        });
+      }
+    }
+  }
+
+  // 2. (Reference) Szállítók & (Customer) Vevők
+  // We populate them from their current names if they don't have one yet.
+  for (const p of partners) {
+    if (p.type === 'szállító') {
+      const existing = await knex('partner_identifiers').where({ partner_id: p.id, id_type: '(Reference) Szállítók' }).first();
+      if (!existing) {
+        await knex('partner_identifiers').insert({
+          partner_id: p.id,
+          id_type: '(Reference) Szállítók',
+          value: p.name,
+          is_verified: false, checked_by: ''
+        });
+      }
+    } else if (p.type === 'vevő') {
+      const existing = await knex('partner_identifiers').where({ partner_id: p.id, id_type: '(Customer) Vevők' }).first();
+      if (!existing) {
+        await knex('partner_identifiers').insert({
+          partner_id: p.id,
+          id_type: '(Customer) Vevők',
+          value: p.name,
+          is_verified: false, checked_by: ''
         });
       }
     }
@@ -57,5 +83,5 @@ exports.up = async function(knex) {
  * @returns { Promise<void> }
  */
 exports.down = async function(knex) {
-  await knex('partner_identifiers').where('id_type', 'Fuvarozók').delete();
+  await knex('partner_identifiers').whereIn('id_type', ['Fuvarozók', '(Reference) Szállítók', '(Customer) Vevők']).delete();
 };
