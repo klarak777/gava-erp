@@ -1441,8 +1441,8 @@ function prtBindModal(overlay, listContainer, id) {
           if (statusSpan) statusSpan.textContent = '✅';
           
           if (data.name) {
-            const nameInput = overlay.querySelector('#prt-f-name');
-            if (nameInput) nameInput.value = data.name;
+            const invoiceNameInput = overlay.querySelector('#prt-f-invoice-name');
+            if (invoiceNameInput) invoiceNameInput.value = data.name;
           }
           alert('Az adószám érvényes!\nNév: ' + (data.name || 'ismeretlen') + '\nCím: ' + (data.address || 'ismeretlen'));
         } else {
