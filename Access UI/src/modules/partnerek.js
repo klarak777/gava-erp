@@ -226,14 +226,16 @@ function prtGetRowsHtml() {
   return prtState.list.map(p => {
     let address = [p.zip, p.city, p.street_name, p.street_number].filter(Boolean).join(' ');
     if (!address) address = '-';
-    let taxId = p.tax_id || '-';
+    let invoiceName = p.invoice_name || '-';
+    // Mivel ezek partnerek (nem telephelyek), ezek alapértelmezetten a székhelyek.
+    let orgUnit = 'Székhely';
     return `
     <tr data-id="${p.id}">
       <td>${p.id}</td>
-      <td style="font-weight:600">${p.name || ''}</td>
-      <td>${taxId}</td>
-      <td>${address}</td>
-      <td>${typeBadge(p.type)}</td>
+      <td style="font-weight:600">${prtEsc(p.name)}</td>
+      <td>${prtEsc(invoiceName)}</td>
+      <td><span class="prt-badge prt-badge-other">${orgUnit}</span></td>
+      <td>${prtEsc(address)}</td>
       <td style="text-align:center; padding: 2px 8px;">
         <button class="prt-row-del-btn" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:16px; padding:4px;" title="Törlés">🗑️</button>
       </td>
@@ -249,20 +251,8 @@ function prtRenderList(container) {
       <div class="prt-list-header">
         <h2>🤝 Partnerek</h2>
         <div class="prt-search-row">
-          <input class="prt-search-input" id="prt-search" type="text" placeholder="🔍 Keresés névre...">
-          <button class="secondary-btn" id="prt-clear-btn" style="padding:8px 12px; border-radius:8px; border:1px solid var(--border);" title="Szűrő törlése">✖</button>
-          <select id="prt-type-filter" class="prt-search-input" style="width:220px">
-            <option value="">Minden típus</option>
-            <option value="customer">Vevő</option>
-            <option value="supplier">Szállító</option>
-            <option value="transporter">Fuvarozó</option>
-            <option value="Adószám">Adószám</option>
-            <option value="CCW + Kód">CCW + Kód</option>
-            <option value="Csoportos adószám">Csoportos adószám</option>
-            <option value="Közösségi adószám">Közösségi adószám</option>
-            <option value="FELIR azonosító">FELIR azonosító</option>
-            <option value="NEBIH">NEBIH</option>
-          </select>
+          <input class="prt-search-input" id="prt-search" type="text" placeholder="🔍 Keresés (név, adószám, város)..." style="width: 320px;">
+          <button class="secondary-btn" id="prt-clear-btn" style="padding:8px 12px; border-radius:8px; border:1px solid var(--border);" title="Kereső törlése">✖</button>
           <button class="primary-btn" id="prt-new-btn">➕ Új Partner</button>
         </div>
       </div>
@@ -270,7 +260,7 @@ function prtRenderList(container) {
         <table class="prt-table">
           <thead>
             <tr>
-              <th>#</th><th>Név</th><th>Adószám</th><th>Cím</th><th>Típus</th><th style="width:70px; text-align:center">Művelet</th>
+              <th>#</th><th>Név</th><th>Név a bizonylaton</th><th>Szervezeti egység</th><th>Cím</th><th style="width:70px; text-align:center">Művelet</th>
             </tr>
           </thead>
           <tbody id="prt-tbody">${prtGetRowsHtml()}</tbody>
@@ -283,20 +273,19 @@ function prtRenderList(container) {
   container.querySelector('#prt-new-btn').addEventListener('click', () => prtOpenModal(null, container));
   container.querySelector('#prt-clear-btn').addEventListener('click', async () => {
     container.querySelector('#prt-search').value = '';
-    container.querySelector('#prt-type-filter').value = '';
-    await prtLoadList('', '');
+    await prtLoadList('');
     container.querySelector('#prt-tbody').innerHTML = prtGetRowsHtml();
     prtBindListEvents(container);
   });
-  container.querySelector('#prt-search').addEventListener('input', async (e) => {
-    await prtLoadList(e.target.value, container.querySelector('#prt-type-filter').value);
-    container.querySelector('#prt-tbody').innerHTML = prtGetRowsHtml();
-    prtBindListEvents(container);
-  });
-  container.querySelector('#prt-type-filter').addEventListener('change', async (e) => {
-    await prtLoadList(container.querySelector('#prt-search').value, e.target.value);
-    container.querySelector('#prt-tbody').innerHTML = prtGetRowsHtml();
-    prtBindListEvents(container);
+  
+  let searchTimeout = null;
+  container.querySelector('#prt-search').addEventListener('input', (e) => {
+    if (searchTimeout) clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(async () => {
+      await prtLoadList(e.target.value);
+      container.querySelector('#prt-tbody').innerHTML = prtGetRowsHtml();
+      prtBindListEvents(container);
+    }, 250);
   });
   prtBindListEvents(container);
 }
@@ -331,8 +320,7 @@ function prtBindListEvents(container) {
               if (res.ok && result.success) {
                 // Reload list
                 const search = container.querySelector('#prt-search').value;
-                const type = container.querySelector('#prt-type-filter').value;
-                await prtLoadList(search, type);
+                await prtLoadList(search);
                 container.querySelector('#prt-tbody').innerHTML = prtGetRowsHtml();
                 prtBindListEvents(container);
               } else {
@@ -350,8 +338,8 @@ function prtBindListEvents(container) {
   });
 }
 
-async function prtLoadList(search = '', type = '') {
-  prtState.list = await prtApi('GET', `?search=${encodeURIComponent(search)}&type=${type}&limit=300`);
+async function prtLoadList(search = '') {
+  prtState.list = await prtApi('GET', `?search=${encodeURIComponent(search)}&limit=300`);
 }
 
 // ─── Modal Builder ────────────────────────────────────────────────────────────

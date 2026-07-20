@@ -155,28 +155,21 @@ async function saveSubTables(trx, partnerId, body) {
 // GET /api/v1/partners?search=...&type=...&limit=100
 router.get('/', async (req, res) => {
   try {
-    const { search, type, limit = 200, offset = 0 } = req.query;
+    const { search, limit = 200, offset = 0 } = req.query;
     let query = db('partners').select(
-      'id', 'name', 'type', 'is_inactive', 'country', 'city', 'zip', 'street_name', 'street_number', 'tax_id', 'is_natural_person'
+      'id', 'name', 'invoice_name', 'type', 'is_inactive', 'country', 'city', 'zip', 'street_name', 'street_number', 'tax_id', 'is_natural_person'
     ).orderBy('name');
 
     if (search) {
-      query = query.whereRaw('LOWER(name) LIKE ?', [`%${search.toLowerCase()}%`]);
+      const s = `%${search.toLowerCase()}%`;
+      query = query.where(function() {
+        this.whereRaw('LOWER(name) LIKE ?', [s])
+            .orWhereRaw('LOWER(invoice_name) LIKE ?', [s])
+            .orWhereRaw('LOWER(tax_id) LIKE ?', [s])
+            .orWhereRaw('LOWER(city) LIKE ?', [s]);
+      });
     }
-    if (type) {
-      if (['Adószám', 'CCW + Kód', 'Csoportos adószám', 'Közösségi adószám', 'FELIR azonosító', 'NEBIH'].includes(type)) {
-        query = query.where(function() {
-          this.where('type', type)
-              .orWhereExists(function() {
-                this.select('*').from('partner_identifiers')
-                    .whereRaw('partner_identifiers.partner_id = partners.id')
-                    .where('id_type', type);
-              });
-        });
-      } else {
-        query = query.where('type', type);
-      }
-    }
+    
     query = query.limit(parseInt(limit)).offset(parseInt(offset));
 
     const rows = await query;
