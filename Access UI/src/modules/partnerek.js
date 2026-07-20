@@ -1,6 +1,6 @@
 /**
  * GAVA ERP – Partnerek modul
- * v0.5.4 – Teljes partner beviteli és kezelési modul (8 főfül, alfülekkel)
+ * v0.5.8 – Teljes partner beviteli és kezelési modul (8 főfül, alfülekkel)
  * Iroda > Partnerek
  */
 
@@ -423,11 +423,11 @@ function prtBuildModal(data) {
         ${prtBuildTermeszetesPanel(p)}
       </div>
       <!-- 3: Egyéb adatok -->
-      <div class="prt-panel" data-panel="3" style="overflow-y:auto; max-height:480px; padding-right:8px;">
+      <div class="prt-panel" data-panel="3" style="overflow-y:auto; max-height:480px; padding-right:8px; margin-top:-12px;">
         ${prtBuildEgyebAdatokPanel(p, data)}
       </div>
       <!-- 4: Megjegyzés/Kategóriák -->
-      <div class="prt-panel" data-panel="4">
+      <div class="prt-panel" data-panel="4" style="margin-top:-12px;">
         ${prtBuildMegjegyzesPanel(p, data)}
       </div>
       <!-- 5: Csatolmányok -->
