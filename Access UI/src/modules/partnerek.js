@@ -1455,9 +1455,17 @@ function prtBindModal(overlay, listContainer, id) {
               invoiceNameInput.value = data.name;
               invoiceNameInput.dispatchEvent(new Event('input', { bubbles: true }));
             }
+            // Ha a fő Név mező üres, töltsük ki azt is!
+            const nameInput = overlay.querySelector('#prt-f-name');
+            if (nameInput && !nameInput.value.trim()) {
+              nameInput.value = data.name;
+              nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+
             // Also update the state directly just in case
             if (prtState && prtState.currentData) {
               prtState.currentData.invoice_name = data.name;
+              if (!prtState.currentData.name) prtState.currentData.name = data.name;
             }
           }
           alert('Az adószám érvényes!\nNév: ' + (data.name || 'ismeretlen') + '\nCím: ' + (data.address || 'ismeretlen'));
