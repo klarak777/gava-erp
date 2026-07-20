@@ -423,11 +423,11 @@ function prtBuildModal(data) {
         ${prtBuildTermeszetesPanel(p)}
       </div>
       <!-- 3: Egyéb adatok -->
-      <div class="prt-panel" data-panel="3" style="overflow-y:auto; max-height:480px; padding-right:8px; margin-top:-12px;">
+      <div class="prt-panel" data-panel="3" style="overflow-y:auto; max-height:480px; padding-right:8px; margin-top:-18px; padding-top:0;">
         ${prtBuildEgyebAdatokPanel(p, data)}
       </div>
       <!-- 4: Megjegyzés/Kategóriák -->
-      <div class="prt-panel" data-panel="4" style="margin-top:-12px;">
+      <div class="prt-panel" data-panel="4" style="margin-top:-18px; padding-top:0;">
         ${prtBuildMegjegyzesPanel(p, data)}
       </div>
       <!-- 5: Csatolmányok -->
