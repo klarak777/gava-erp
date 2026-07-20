@@ -449,7 +449,7 @@ function prtBuildModal(data) {
 
 // ─── Panel builders ────────────────────────────────────────────────────────────
 function prtField(id, label, value = '', type = 'text', attrs = '') {
-  return `<div class="prt-field"><label>${label}</label><input type="${type}" id="${id}" value="${value || ''}" ${attrs}></div>`;
+  return `<div class="prt-field"><label>${label}</label><input type="${type}" id="${id}" value="${prtEsc(value)}" ${attrs}></div>`;
 }
 
 function prtBuildSzekhelyPanel(p, data) {
