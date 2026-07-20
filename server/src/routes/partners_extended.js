@@ -214,6 +214,11 @@ router.get('/verify-vat/:vatNumber', async (req, res) => {
     const response = await fetch(`https://ec.europa.eu/taxation_customs/vies/rest-api/ms/${countryCode}/vat/${vat}`);
     if (!response.ok) throw new Error('VIES API nem elérhető');
     const data = await response.json();
+    
+    if (!data.isValid && countryCode === 'HU') {
+      data.userError = 'A partnernek NINCS Közösségi (EU) adószáma a VIES adatbázisában! (Ha belföldön élő adószáma van, azt a központi EU rendszer nem ismeri, kizárólag a magyar NAV adatbázisa tudná ellenőrizni).';
+    }
+
     res.json(data);
   } catch (err) {
     console.error('VIES API hiba:', err);
