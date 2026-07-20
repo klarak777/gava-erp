@@ -152,22 +152,28 @@ async function saveSubTables(trx, partnerId, body) {
 
 // ─── ROUTES ───────────────────────────────────────────────────────────────────
 
-// GET /api/v1/partners?search=...&type=...&limit=100
+// GET /api/v1/partners?searchName=...&searchTax=...&searchCity=...&limit=100
 router.get('/', async (req, res) => {
   try {
-    const { search, limit = 200, offset = 0 } = req.query;
+    const { searchName, searchTax, searchCity, limit = 200, offset = 0 } = req.query;
     let query = db('partners').select(
       'id', 'name', 'invoice_name', 'type', 'is_inactive', 'country', 'city', 'zip', 'street_name', 'street_number', 'tax_id', 'is_natural_person'
     ).orderBy('name');
 
-    if (search) {
-      const s = `%${search.toLowerCase()}%`;
+    if (searchName) {
+      const s = `%${searchName.toLowerCase()}%`;
       query = query.where(function() {
         this.whereRaw('LOWER(name) LIKE ?', [s])
-            .orWhereRaw('LOWER(invoice_name) LIKE ?', [s])
-            .orWhereRaw('LOWER(tax_id) LIKE ?', [s])
-            .orWhereRaw('LOWER(city) LIKE ?', [s]);
+            .orWhereRaw('LOWER(invoice_name) LIKE ?', [s]);
       });
+    }
+    if (searchTax) {
+      const s = `%${searchTax.toLowerCase()}%`;
+      query = query.whereRaw('LOWER(tax_id) LIKE ?', [s]);
+    }
+    if (searchCity) {
+      const s = `%${searchCity.toLowerCase()}%`;
+      query = query.whereRaw('LOWER(city) LIKE ?', [s]);
     }
     
     query = query.limit(parseInt(limit)).offset(parseInt(offset));

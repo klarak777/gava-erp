@@ -251,7 +251,9 @@ function prtRenderList(container) {
       <div class="prt-list-header">
         <h2>🤝 Partnerek</h2>
         <div class="prt-search-row">
-          <input class="prt-search-input" id="prt-search" type="text" placeholder="🔍 Keresés (név, adószám, város)..." style="width: 320px;">
+          <input class="prt-search-input" id="prt-search-name" type="text" placeholder="🔍 Név..." style="width: 180px;">
+          <input class="prt-search-input" id="prt-search-tax" type="text" placeholder="🔍 Adószám..." style="width: 150px;">
+          <input class="prt-search-input" id="prt-search-city" type="text" placeholder="🔍 Város..." style="width: 150px;">
           <button class="secondary-btn" id="prt-clear-btn" style="padding:8px 12px; border-radius:8px; border:1px solid var(--border);" title="Kereső törlése">✖</button>
           <button class="primary-btn" id="prt-new-btn">➕ Új Partner</button>
         </div>
@@ -272,21 +274,31 @@ function prtRenderList(container) {
   // Events
   container.querySelector('#prt-new-btn').addEventListener('click', () => prtOpenModal(null, container));
   container.querySelector('#prt-clear-btn').addEventListener('click', async () => {
-    container.querySelector('#prt-search').value = '';
-    await prtLoadList('');
+    container.querySelector('#prt-search-name').value = '';
+    container.querySelector('#prt-search-tax').value = '';
+    container.querySelector('#prt-search-city').value = '';
+    await prtLoadList('', '', '');
     container.querySelector('#prt-tbody').innerHTML = prtGetRowsHtml();
     prtBindListEvents(container);
   });
   
   let searchTimeout = null;
-  container.querySelector('#prt-search').addEventListener('input', (e) => {
+  const handleSearchInput = () => {
     if (searchTimeout) clearTimeout(searchTimeout);
     searchTimeout = setTimeout(async () => {
-      await prtLoadList(e.target.value);
+      const sName = container.querySelector('#prt-search-name').value;
+      const sTax = container.querySelector('#prt-search-tax').value;
+      const sCity = container.querySelector('#prt-search-city').value;
+      await prtLoadList(sName, sTax, sCity);
       container.querySelector('#prt-tbody').innerHTML = prtGetRowsHtml();
       prtBindListEvents(container);
     }, 250);
-  });
+  };
+
+  container.querySelector('#prt-search-name').addEventListener('input', handleSearchInput);
+  container.querySelector('#prt-search-tax').addEventListener('input', handleSearchInput);
+  container.querySelector('#prt-search-city').addEventListener('input', handleSearchInput);
+
   prtBindListEvents(container);
 }
 
@@ -319,8 +331,10 @@ function prtBindListEvents(container) {
               
               if (res.ok && result.success) {
                 // Reload list
-                const search = container.querySelector('#prt-search').value;
-                await prtLoadList(search);
+                const sName = container.querySelector('#prt-search-name').value;
+                const sTax = container.querySelector('#prt-search-tax').value;
+                const sCity = container.querySelector('#prt-search-city').value;
+                await prtLoadList(sName, sTax, sCity);
                 container.querySelector('#prt-tbody').innerHTML = prtGetRowsHtml();
                 prtBindListEvents(container);
               } else {
@@ -338,8 +352,12 @@ function prtBindListEvents(container) {
   });
 }
 
-async function prtLoadList(search = '') {
-  prtState.list = await prtApi('GET', `?search=${encodeURIComponent(search)}&limit=300`);
+async function prtLoadList(searchName = '', searchTax = '', searchCity = '') {
+  let url = `?limit=300`;
+  if (searchName) url += `&searchName=${encodeURIComponent(searchName)}`;
+  if (searchTax) url += `&searchTax=${encodeURIComponent(searchTax)}`;
+  if (searchCity) url += `&searchCity=${encodeURIComponent(searchCity)}`;
+  prtState.list = await prtApi('GET', url);
 }
 
 // ─── Modal Builder ────────────────────────────────────────────────────────────
