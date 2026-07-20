@@ -178,11 +178,11 @@ router.get('/', async (req, res) => {
       });
     }
     if (searchTax) {
-      const s = `%${searchTax.toLowerCase()}%`;
+      const s = `${searchTax.toLowerCase()}%`;
       query = query.whereRaw('LOWER(tax_id) LIKE ?', [s]);
     }
     if (searchCity) {
-      const s = `%${searchCity.toLowerCase()}%`;
+      const s = `${searchCity.toLowerCase()}%`;
       query = query.whereRaw('LOWER(city) LIKE ?', [s]);
     }
     

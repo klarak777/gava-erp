@@ -1,7 +1,7 @@
 exports.up = async function (knex) {
   // Május 31-ig visszamenőleg minden beállítása is_received = true-ra
   await knex('shipment_lines')
-    .whereIn('shipment_id', function() {
+    .whereIn('shipment_id', function () {
       this.select('id')
         .from('shipments')
         .where('loading_date', '<=', '2026-05-31');
