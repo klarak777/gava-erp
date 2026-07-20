@@ -161,10 +161,20 @@ router.get('/', async (req, res) => {
     ).orderBy('name');
 
     if (searchName) {
-      const s = `%${searchName.toLowerCase()}%`;
+      let clean = searchName.toLowerCase();
+      if (clean.startsWith('"') || clean.startsWith("'")) {
+        clean = clean.substring(1);
+      }
+      const s1 = `${clean}%`;
+      const s2 = `"${clean}%`;
+      const s3 = `'${clean}%`;
       query = query.where(function() {
-        this.whereRaw('LOWER(name) LIKE ?', [s])
-            .orWhereRaw('LOWER(invoice_name) LIKE ?', [s]);
+        this.whereRaw('LOWER(name) LIKE ?', [s1])
+            .orWhereRaw('LOWER(name) LIKE ?', [s2])
+            .orWhereRaw('LOWER(name) LIKE ?', [s3])
+            .orWhereRaw('LOWER(invoice_name) LIKE ?', [s1])
+            .orWhereRaw('LOWER(invoice_name) LIKE ?', [s2])
+            .orWhereRaw('LOWER(invoice_name) LIKE ?', [s3]);
       });
     }
     if (searchTax) {
