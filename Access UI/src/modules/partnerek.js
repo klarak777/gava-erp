@@ -1,6 +1,6 @@
 /**
  * GAVA ERP – Partnerek modul
- * v0.5.8 – Teljes partner beviteli és kezelési modul (8 főfül, alfülekkel)
+ * v0.5.9 – Teljes partner beviteli és kezelési modul (8 főfül, alfülekkel)
  * Iroda > Partnerek
  */
 
@@ -1423,15 +1423,19 @@ function prtBindModal(overlay, listContainer, id) {
   const verifyBtn = overlay.querySelector('#ident-verify-btn');
   if (verifyBtn) {
     verifyBtn.addEventListener('click', async () => {
-      const selectedRow = overlay.querySelector('#ident-table tbody tr.selected');
-      if (!selectedRow) return alert('Válassz ki egy azonosítót az ellenőrzéshez (kattints a sorra)!');
-      const typeSelect = selectedRow.querySelector('.ident-type');
-      if (!typeSelect || (typeSelect.value !== 'Közösségi adószám' && typeSelect.value !== 'Adószám')) {
-        return alert('Csak Közösségi adószám vagy Adószám típusú azonosítót lehet ellenőrizni!');
+      const rows = Array.from(overlay.querySelectorAll('#ident-table tbody tr'));
+      let targetRow = rows.find(tr => {
+        const typeSelect = tr.querySelector('.ident-type');
+        return typeSelect && (typeSelect.value === 'Adószám' || typeSelect.value === 'Közösségi adószám');
+      });
+
+      if (!targetRow) {
+        return alert('Legyen szíves adószámot felvinni az adott partnerhez az ellenőrzéshez!');
       }
-      const valInput = selectedRow.querySelector('.ident-value');
+
+      const valInput = targetRow.querySelector('.ident-value');
       const vatNumber = valInput?.value?.trim();
-      if (!vatNumber) return alert('Az érték mező üres!');
+      if (!vatNumber) return alert('Kérem töltse ki az adószám mezőt!');
       
       try {
         verifyBtn.textContent = '⏳ Ellenőrzés...';
@@ -1441,11 +1445,11 @@ function prtBindModal(overlay, listContainer, id) {
         const dt = new Date();
         const pad = (n) => n.toString().padStart(2, '0');
         const checkedBy = `${dt.getFullYear()}.${pad(dt.getMonth()+1)}.${pad(dt.getDate())} ${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
-        const checkedByInput = selectedRow.querySelector('.ident-checked-by');
+        const checkedByInput = targetRow.querySelector('.ident-checked-by');
         if (checkedByInput) checkedByInput.value = checkedBy;
         if (res.ok && data.isValid) {
-          selectedRow.querySelector('.ident-verified').value = '1';
-          const statusSpan = selectedRow.querySelector('.ident-status');
+          targetRow.querySelector('.ident-verified').value = '1';
+          const statusSpan = targetRow.querySelector('.ident-status');
 
           if (statusSpan) statusSpan.textContent = '✅';
           
@@ -1470,8 +1474,8 @@ function prtBindModal(overlay, listContainer, id) {
           }
           alert('Az adószám érvényes!\nNév: ' + (data.name || 'ismeretlen') + '\nCím: ' + (data.address || 'ismeretlen'));
         } else {
-          selectedRow.querySelector('.ident-verified').value = '0';
-          const statusSpan = selectedRow.querySelector('.ident-status');
+          targetRow.querySelector('.ident-verified').value = '0';
+          const statusSpan = targetRow.querySelector('.ident-status');
           if (statusSpan) statusSpan.textContent = '❌';
           alert('Az adószám érvénytelen vagy nem ellenőrizhető.\nOka: ' + (data.userError || data.error || 'Nincs adat.'));
         }

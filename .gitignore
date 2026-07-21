@@ -52,3 +52,11 @@ browser_recordings/
 
 # Biztonsági mentések
 server/backups/
+
+# CSV Import Scripts and Backups
+db_backup_*.json
+merged_partners_*.json
+import_csv_partners.js
+prepare_csv_import.js
+backup_db.js
+fix.js
