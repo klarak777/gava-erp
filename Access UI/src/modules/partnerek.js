@@ -276,7 +276,7 @@ function prtRenderList(container) {
   `;
 
   // Events
-  container.querySelector('#prt-new-btn').addEventListener('click', () => prtOpenModal(null, container));
+  container.querySelector('#prt-new-btn').addEventListener('click', () => prtOpenPreModal(container));
   container.querySelector('#prt-clear-btn').addEventListener('click', async () => {
     container.querySelector('#prt-search-name').value = '';
     container.querySelector('#prt-search-tax').value = '';
@@ -1043,6 +1043,70 @@ function prtBuildEsemenyekPanel(data) {
 }
 
 // ─── Modal: nyitás/zárás/binding ─────────────────────────────────────────────
+
+function prtOpenPreModal(listContainer) {
+  const overlay = document.createElement('div');
+  overlay.className = 'prt-modal-overlay';
+  overlay.style.zIndex = '9999';
+  overlay.innerHTML = `
+    <div class="prt-modal" style="width: 500px; max-width: 95vw; background: #c0c0c0; border: 2px solid #555; border-radius: 4px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+      <div class="prt-modal-header" style="background: #2a2a2a; color: white; border-bottom: 1px solid #000; padding: 6px 12px; display: flex; align-items: center; justify-content: space-between;">
+        <h3 style="margin: 0; font-size: 14px; font-weight: normal; display: flex; align-items: center; gap: 8px;">
+          <span style="font-size:18px; color:#d4af37;">🐍</span> Gava Hungria Kft. - Új partner adószám alapján
+        </h3>
+        <button class="prt-close-btn" style="color: white; border: none; background: transparent; font-size: 18px; cursor: pointer;">&times;</button>
+      </div>
+      <div class="prt-modal-content" style="padding: 20px; color: #000; min-height: 200px;">
+        <h2 style="margin-top: 0; margin-bottom: 20px; font-size: 22px; text-align: center;">Adószám</h2>
+        <div style="display: flex; gap: 15px; align-items: stretch;">
+          <div style="width: 100px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+            <div style="font-size: 26px; font-weight: bold; color: #5cb85c; line-height: 0.9; text-align: left; font-family: sans-serif; letter-spacing: -1px;">
+              online<br><span style="color:#333;">számla</span>
+            </div>
+          </div>
+          <div style="flex: 1;">
+            <div style="display: flex; align-items: center; margin-bottom: 6px;">
+              <label style="width: 70px; font-weight: 500;">Adószám:</label>
+              <input type="text" id="prt-pre-tax-input" style="flex: 1; padding: 4px; background: #ffffcc; border: 1px solid #777; outline: none;">
+            </div>
+            <textarea readonly style="width: 100%; height: 110px; resize: none; background: #959595; color: #333; border: 1px solid #777; padding: 8px; font-size: 12px; font-family: sans-serif; line-height: 1.4; outline: none;">A cég adatainak lekéréséhez a NAV online rendszeréből töltse ki az adószámot, vagy a mezőt üresen hagyva a kézi bevitellel folytathatja.</textarea>
+          </div>
+        </div>
+      </div>
+      <div class="prt-modal-footer" style="background: #c0c0c0; border-top: 1px solid #a0a0a0; display: flex; justify-content: center; gap: 15px; padding: 12px;">
+        <button id="prt-pre-back-btn" style="padding: 4px 16px; background: #e0e0e0; border: 1px solid #777; border-radius: 2px; cursor: pointer;">&lt; Vissza</button>
+        <button id="prt-pre-next-btn" style="padding: 4px 16px; background: #e0e0e0; border: 1px solid #777; border-radius: 2px; font-weight: bold; cursor: pointer; box-shadow: inset 0 0 4px rgba(212,175,55,0.4);">Tovább &gt;</button>
+        <button id="prt-pre-cancel-btn" style="padding: 4px 16px; background: #e0e0e0; border: 1px solid #777; border-radius: 2px; cursor: pointer;">Mégse</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+
+  overlay.querySelector('.prt-close-btn').addEventListener('click', close);
+  overlay.querySelector('#prt-pre-back-btn').addEventListener('click', close);
+  overlay.querySelector('#prt-pre-cancel-btn').addEventListener('click', close);
+  
+  overlay.querySelector('#prt-pre-next-btn').addEventListener('click', () => {
+    const taxVal = overlay.querySelector('#prt-pre-tax-input').value.trim();
+    if (taxVal) {
+      alert('Ez a funkció még fejlesztés alatt van!');
+    }
+    close();
+    // Start with pre-filled tax id? We can pass it if we want, but user just said "dobja be a már létező Partner felugró ablakot".
+    // We can prefill the adószám field in the modal by waiting a tiny bit then setting the value.
+    prtOpenModal(null, listContainer).then(() => {
+      if (taxVal) {
+        setTimeout(() => {
+          const mainTaxInput = document.getElementById('prt-f-tax-id');
+          if (mainTaxInput) mainTaxInput.value = taxVal;
+        }, 100);
+      }
+    });
+  });
+}
+
 async function prtOpenModal(id, listContainer) {
   prtState.currentId = id;
   let data = null;
