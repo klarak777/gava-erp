@@ -156,9 +156,22 @@ async function saveSubTables(trx, partnerId, body) {
 router.get('/', async (req, res) => {
   try {
     const { searchName, searchTax, searchCity, limit = 200, offset = 0 } = req.query;
-    let query = db('partners').select(
-      'id', 'name', 'invoice_name', 'type', 'is_inactive', 'country', 'city', 'zip', 'street_name', 'street_number', 'tax_id', 'is_natural_person'
-    ).orderBy('name');
+    let query = db('partners')
+      .leftJoin('partner_identifiers as pi_eu', function() {
+        this.on('partners.id', '=', 'pi_eu.partner_id')
+            .andOnVal('pi_eu.id_type', '=', 'Közösségi adószám');
+      })
+      .leftJoin('partner_identifiers as pi_tax', function() {
+        this.on('partners.id', '=', 'pi_tax.partner_id')
+            .andOnVal('pi_tax.id_type', '=', 'Adószám');
+      })
+      .select(
+        'partners.id', 'partners.name', 'partners.invoice_name', 'partners.type',
+        'partners.is_inactive', 'partners.country', 'partners.city', 'partners.zip',
+        'partners.street_name', 'partners.street_number', 'partners.tax_id',
+        'partners.is_natural_person', 'pi_eu.value as eu_tax_id', 'pi_tax.value as pi_tax_id'
+      )
+      .orderBy('partners.name');
 
     if (searchName) {
       let clean = searchName.toLowerCase();
@@ -169,21 +182,25 @@ router.get('/', async (req, res) => {
       const s2 = `"${clean}%`;
       const s3 = `'${clean}%`;
       query = query.where(function() {
-        this.whereRaw('LOWER(name) LIKE ?', [s1])
-            .orWhereRaw('LOWER(name) LIKE ?', [s2])
-            .orWhereRaw('LOWER(name) LIKE ?', [s3])
-            .orWhereRaw('LOWER(invoice_name) LIKE ?', [s1])
-            .orWhereRaw('LOWER(invoice_name) LIKE ?', [s2])
-            .orWhereRaw('LOWER(invoice_name) LIKE ?', [s3]);
+        this.whereRaw('LOWER(partners.name) LIKE ?', [s1])
+            .orWhereRaw('LOWER(partners.name) LIKE ?', [s2])
+            .orWhereRaw('LOWER(partners.name) LIKE ?', [s3])
+            .orWhereRaw('LOWER(partners.invoice_name) LIKE ?', [s1])
+            .orWhereRaw('LOWER(partners.invoice_name) LIKE ?', [s2])
+            .orWhereRaw('LOWER(partners.invoice_name) LIKE ?', [s3]);
       });
     }
     if (searchTax) {
       const s = `${searchTax.toLowerCase()}%`;
-      query = query.whereRaw('LOWER(tax_id) LIKE ?', [s]);
+      query = query.where(function() {
+        this.whereRaw('LOWER(partners.tax_id) LIKE ?', [s])
+            .orWhereRaw('LOWER(pi_tax.value) LIKE ?', [s])
+            .orWhereRaw('LOWER(pi_eu.value) LIKE ?', [s]);
+      });
     }
     if (searchCity) {
       const s = `${searchCity.toLowerCase()}%`;
-      query = query.whereRaw('LOWER(city) LIKE ?', [s]);
+      query = query.whereRaw('LOWER(partners.city) LIKE ?', [s]);
     }
     
     query = query.limit(parseInt(limit)).offset(parseInt(offset));

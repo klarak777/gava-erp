@@ -227,7 +227,8 @@ function prtGetRowsHtml() {
     let address = [p.zip, p.city, p.street_name, p.street_number].filter(Boolean).join(' ');
     if (!address) address = '-';
     let invoiceName = p.invoice_name || '-';
-    let taxId = p.tax_id || '-';
+    let taxId = p.tax_id || p.pi_tax_id || '-';
+    let euTaxId = p.eu_tax_id || '-';
     // Mivel ezek partnerek (nem telephelyek), ezek alapértelmezetten a székhelyek.
     let orgUnit = 'Székhely';
     return `
@@ -236,6 +237,7 @@ function prtGetRowsHtml() {
       <td style="font-weight:600">${prtEsc(p.name)}</td>
       <td>${prtEsc(invoiceName)}</td>
       <td>${prtEsc(taxId)}</td>
+      <td>${prtEsc(euTaxId)}</td>
       <td><span class="prt-badge prt-badge-other">${orgUnit}</span></td>
       <td>${prtEsc(address)}</td>
       <td style="text-align:center; padding: 2px 8px;">
@@ -264,7 +266,7 @@ function prtRenderList(container) {
         <table class="prt-table">
           <thead>
             <tr>
-              <th>#</th><th>Név</th><th>Név a bizonylaton</th><th>Adószám</th><th>Szervezeti egység</th><th>Cím</th><th style="width:70px; text-align:center">Művelet</th>
+              <th>#</th><th>Név</th><th>Név a bizonylaton</th><th>Adószám</th><th>Közösségi adószám</th><th>Szervezeti egység</th><th>Cím</th><th style="width:70px; text-align:center">Művelet</th>
             </tr>
           </thead>
           <tbody id="prt-tbody">${prtGetRowsHtml()}</tbody>
@@ -1426,8 +1428,22 @@ function prtBindModal(overlay, listContainer, id) {
       const rows = Array.from(overlay.querySelectorAll('#ident-table tbody tr'));
       let targetRow = rows.find(tr => {
         const typeSelect = tr.querySelector('.ident-type');
-        return typeSelect && (typeSelect.value === 'Adószám' || typeSelect.value === 'Közösségi adószám');
+        const valInput = tr.querySelector('.ident-value');
+        return typeSelect && typeSelect.value === 'Közösségi adószám' && valInput?.value?.trim();
       });
+      if (!targetRow) {
+        targetRow = rows.find(tr => {
+          const typeSelect = tr.querySelector('.ident-type');
+          const valInput = tr.querySelector('.ident-value');
+          return typeSelect && typeSelect.value === 'Adószám' && valInput?.value?.trim();
+        });
+      }
+      if (!targetRow) {
+        targetRow = rows.find(tr => {
+          const typeSelect = tr.querySelector('.ident-type');
+          return typeSelect && (typeSelect.value === 'Adószám' || typeSelect.value === 'Közösségi adószám');
+        });
+      }
 
       if (!targetRow) {
         return alert('Legyen szíves adószámot felvinni az adott partnerhez az ellenőrzéshez!');
