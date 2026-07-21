@@ -50,6 +50,41 @@ exports.up = async function(knex) {
       console.log(`Cleared incorrect Adószám from ${p.name} (id: ${p.id})`);
     }
   }
+
+  // 3. Ensure 'Kopfsalat Trade Sl' exists as a separate partner
+  const existingKopfsalat = await knex('partners').where('name', 'Kopfsalat Trade Sl').first();
+  if (!existingKopfsalat) {
+    const [inserted] = await knex('partners').insert({
+      name: 'Kopfsalat Trade Sl',
+      invoice_name: 'Kopfsalat Trade Sl',
+      tax_id: '30528949-2-51',
+      country: 'HU',
+      zip: '08040',
+      city: 'Barcelona',
+      street_name: 'Calle Longitudinal 9 Mercabarna Num 91',
+      is_active: true
+    }).returning('id');
+    
+    const newId = typeof inserted === 'object' ? inserted.id : inserted;
+    
+    await knex('partner_sites').insert({
+      partner_id: newId,
+      name: 'Székhely',
+      country: 'HU',
+      zip: '08040',
+      city: 'Barcelona',
+      street_name: 'Calle Longitudinal 9 Mercabarna Num 91',
+      is_same_as_hq: true
+    });
+
+    await knex('partner_identifiers').insert({
+      partner_id: newId,
+      id_type: 'Adószám',
+      value: '30528949-2-51'
+    });
+
+    console.log('Inserted missing partner: Kopfsalat Trade Sl');
+  }
 };
 
 exports.down = async function(knex) {
