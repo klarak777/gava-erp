@@ -791,9 +791,37 @@ function prtBuildEgyebAdatokPanel(p, data) {
   <div class="prt-section" style="margin-top:14px; background:var(--bg-light); padding:10px; border-radius:8px; border:1px solid var(--border);">
     <div class="prt-section-title" style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text-primary);">Egyéb adatok</div>
     <div class="prt-row-3" style="margin-bottom:10px;">
-      <div class="prt-field" style="display:flex;align-items:center;gap:8px;"><label style="width:100px;">Deviza:</label><select id="prt-f-currency" style="flex:1; background:var(--surface);"><option value="EUR" ${p.currency==='EUR'?'selected':''}>EUR</option><option value="HUF" ${p.currency==='HUF'?'selected':''}>HUF</option><option value="USD" ${p.currency==='USD'?'selected':''}>USD</option></select></div>
-      <div class="prt-field" style="display:flex;align-items:center;gap:8px;"><label style="width:100px;">Árforma:</label><select id="prt-f-price-type" style="flex:1; background:var(--surface);"><option ${p.price_type==='Listaár'?'selected':''}>Listaár</option><option ${p.price_type==='Akció'?'selected':''}>Akció</option></select></div>
-      <div class="prt-field" style="display:flex;align-items:center;gap:8px;"><label style="width:100px;">Fizetési mód:</label><select id="prt-f-payment" style="flex:1; background:var(--surface);"><option ${p.payment_method==='Átutalás (30 nap)'?'selected':''}>Átutalás (30 nap)</option><option ${p.payment_method==='Átutalás (60 nap)'?'selected':''}>Átutalás (60 nap)</option><option ${p.payment_method==='Készpénz'?'selected':''}>Készpénz</option></select></div>
+      <div class="prt-field" style="display:flex;align-items:center;gap:8px;"><label style="width:100px;">Deviza:</label><select id="prt-f-currency" style="flex:1; background:var(--surface);">
+        <option value="EUR – Euró" ${(!p.currency || p.currency==='EUR' || p.currency==='EUR – Euró')?'selected':''}>EUR – Euró</option>
+        <option value="USD – Amerikai dollár" ${(p.currency==='USD' || p.currency==='USD – Amerikai dollár')?'selected':''}>USD – Amerikai dollár</option>
+        <option value="GBP – Angol font" ${(p.currency==='GBP' || p.currency==='GBP – Angol font')?'selected':''}>GBP – Angol font</option>
+        <option value="CHF – Svájci frank" ${(p.currency==='CHF' || p.currency==='CHF – Svájci frank')?'selected':''}>CHF – Svájci frank</option>
+        <option value="JPY – Japán jen" ${(p.currency==='JPY' || p.currency==='JPY – Japán jen')?'selected':''}>JPY – Japán jen</option>
+        <option value="CNY – Kínai jüan" ${(p.currency==='CNY' || p.currency==='CNY – Kínai jüan')?'selected':''}>CNY – Kínai jüan</option>
+        <option value="AUD – Ausztrál dollár" ${(p.currency==='AUD' || p.currency==='AUD – Ausztrál dollár')?'selected':''}>AUD – Ausztrál dollár</option>
+        <option value="CAD – Kanadai dollár" ${(p.currency==='CAD' || p.currency==='CAD – Kanadai dollár')?'selected':''}>CAD – Kanadai dollár</option>
+        <option value="NZD – Új-zélandi dollár" ${(p.currency==='NZD' || p.currency==='NZD – Új-zélandi dollár')?'selected':''}>NZD – Új-zélandi dollár</option>
+        ${(p.currency && !['EUR','USD','GBP','CHF','JPY','CNY','AUD','CAD','NZD','EUR – Euró','USD – Amerikai dollár','GBP – Angol font','CHF – Svájci frank','JPY – Japán jen','CNY – Kínai jüan','AUD – Ausztrál dollár','CAD – Kanadai dollár','NZD – Új-zélandi dollár'].includes(p.currency)) ? `<option value="${p.currency}" selected>${p.currency}</option>` : ''}
+      </select></div>
+      <div class="prt-field" style="display:flex;align-items:center;gap:8px;"><label style="width:100px;">Árforma:</label><select id="prt-f-price-type" style="flex:1; background:var(--surface);">
+        <option value="Lista ár" ${(!p.price_type || p.price_type==='Lista ár' || p.price_type==='Listaár')?'selected':''}>Lista ár</option>
+        <option value="Nagyker ár" ${p.price_type==='Nagyker ár'?'selected':''}>Nagyker ár</option>
+        <option value="Kedvezményes ár" ${p.price_type==='Kedvezményes ár'?'selected':''}>Kedvezményes ár</option>
+        ${(p.price_type && !['Lista ár','Listaár','Nagyker ár','Kedvezményes ár'].includes(p.price_type)) ? `<option value="${p.price_type}" selected>${p.price_type}</option>` : ''}
+      </select></div>
+      <div class="prt-field" style="display:flex;align-items:center;gap:8px;"><label style="width:100px;">Fizetési mód:</label><select id="prt-f-payment" style="flex:1; background:var(--surface);">
+        <option value="Átutalás (8 nap)" ${p.payment_method==='Átutalás (8 nap)'?'selected':''}>Átutalás (8 nap)</option>
+        <option value="Átutalás (15 nap)" ${p.payment_method==='Átutalás (15 nap)'?'selected':''}>Átutalás (15 nap)</option>
+        <option value="Átutalás (30 nap)" ${(!p.payment_method || p.payment_method==='Átutalás (30 nap)')?'selected':''}>Átutalás (30 nap)</option>
+        <option value="Készpénz" ${p.payment_method==='Készpénz'?'selected':''}>Készpénz</option>
+        <option value="Átutalás (14 nap)" ${p.payment_method==='Átutalás (14 nap)'?'selected':''}>Átutalás (14 nap)</option>
+        <option value="Átutalás (20 nap)" ${p.payment_method==='Átutalás (20 nap)'?'selected':''}>Átutalás (20 nap)</option>
+        <option value="Szállítólevél" ${p.payment_method==='Szállítólevél'?'selected':''}>Szállítólevél</option>
+        <option value="Átutalás (3 nap)" ${p.payment_method==='Átutalás (3 nap)'?'selected':''}>Átutalás (3 nap)</option>
+        <option value="Bankkártya" ${p.payment_method==='Bankkártya'?'selected':''}>Bankkártya</option>
+        <option value="Átutalás (5 nap)" ${p.payment_method==='Átutalás (5 nap)'?'selected':''}>Átutalás (5 nap)</option>
+        ${(p.payment_method && !['Átutalás (8 nap)','Átutalás (15 nap)','Átutalás (30 nap)','Készpénz','Átutalás (14 nap)','Átutalás (20 nap)','Szállítólevél','Átutalás (3 nap)','Bankkártya','Átutalás (5 nap)'].includes(p.payment_method)) ? `<option value="${p.payment_method}" selected>${p.payment_method}</option>` : ''}
+      </select></div>
     </div>
     <div class="prt-row-3" style="margin-bottom:10px;">
       <div class="prt-field" style="display:flex;align-items:center;gap:8px;">
