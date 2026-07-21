@@ -86,6 +86,10 @@ async function main() {
       const existingDbRecord = existingPartners.find(ep => ep.id === matchedId);
       
       if (existingDbRecord) {
+        if (p.name && p.name !== existingDbRecord.name && p.name.length > existingDbRecord.name.length) {
+          updateData.name = p.name;
+          existingDbRecord.name = p.name;
+        }
         if (!existingDbRecord.tax_id && taxId) {
           updateData.tax_id = taxId;
           existingDbRecord.tax_id = taxId;

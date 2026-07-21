@@ -1,6 +1,6 @@
 /**
  * GAVA ERP – Partnerek modul
- * v0.5.9 – Teljes partner beviteli és kezelési modul (8 főfül, alfülekkel)
+ * v0.6.1 – Teljes partner beviteli és kezelési modul (8 főfül, alfülekkel)
  * Iroda > Partnerek
  */
 
@@ -1052,7 +1052,7 @@ function prtOpenPreModal(listContainer) {
     <div class="prt-modal" style="width: 500px; max-width: 95vw; background: #c0c0c0; border: 2px solid #555; border-radius: 4px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
       <div class="prt-modal-header" style="background: #2a2a2a; color: white; border-bottom: 1px solid #000; padding: 6px 12px; display: flex; align-items: center; justify-content: space-between;">
         <h3 style="margin: 0; font-size: 14px; font-weight: normal; display: flex; align-items: center; gap: 8px;">
-          <span style="font-size:18px; color:#d4af37;">🐍</span> Gava Hungria Kft. - Új partner adószám alapján
+          <img src="logo.ico" alt="Gava Logo" style="width: 18px; height: 18px; vertical-align: middle;"> Gava Hungria Kft. - Új partner adószám alapján
         </h3>
         <button class="prt-close-btn" style="color: white; border: none; background: transparent; font-size: 18px; cursor: pointer;">&times;</button>
       </div>

@@ -65,6 +65,10 @@ async function mergeDuplicates(groups, groupType) {
 
     // A fő partner frissítése, ha hiányozna nála a tax_id vagy invoice_name, de a duplikátumokban benne van
     const updateData = {};
+    const pWithLongerName = group.find(p => p.name && p.name.length > (updateData.name || primary.name).length);
+    if (pWithLongerName) {
+      updateData.name = pWithLongerName.name;
+    }
     if (!primary.tax_id) {
       const pWithTaxId = duplicates.find(d => d.tax_id);
       if (pWithTaxId) updateData.tax_id = pWithTaxId.tax_id;
