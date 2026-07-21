@@ -792,6 +792,7 @@ function prtBuildEgyebAdatokPanel(p, data) {
     <div class="prt-section-title" style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text-primary);">Egyéb adatok</div>
     <div class="prt-row-3" style="margin-bottom:10px;">
       <div class="prt-field" style="display:flex;align-items:center;gap:8px;"><label style="width:100px;">Deviza:</label><select id="prt-f-currency" style="flex:1; background:var(--surface);">
+        <option value="HUF – Magyar forint" ${(p.currency==='HUF' || p.currency==='HUF – Magyar forint')?'selected':''}>HUF – Magyar forint</option>
         <option value="EUR – Euró" ${(!p.currency || p.currency==='EUR' || p.currency==='EUR – Euró')?'selected':''}>EUR – Euró</option>
         <option value="USD – Amerikai dollár" ${(p.currency==='USD' || p.currency==='USD – Amerikai dollár')?'selected':''}>USD – Amerikai dollár</option>
         <option value="GBP – Angol font" ${(p.currency==='GBP' || p.currency==='GBP – Angol font')?'selected':''}>GBP – Angol font</option>
@@ -801,7 +802,7 @@ function prtBuildEgyebAdatokPanel(p, data) {
         <option value="AUD – Ausztrál dollár" ${(p.currency==='AUD' || p.currency==='AUD – Ausztrál dollár')?'selected':''}>AUD – Ausztrál dollár</option>
         <option value="CAD – Kanadai dollár" ${(p.currency==='CAD' || p.currency==='CAD – Kanadai dollár')?'selected':''}>CAD – Kanadai dollár</option>
         <option value="NZD – Új-zélandi dollár" ${(p.currency==='NZD' || p.currency==='NZD – Új-zélandi dollár')?'selected':''}>NZD – Új-zélandi dollár</option>
-        ${(p.currency && !['EUR','USD','GBP','CHF','JPY','CNY','AUD','CAD','NZD','EUR – Euró','USD – Amerikai dollár','GBP – Angol font','CHF – Svájci frank','JPY – Japán jen','CNY – Kínai jüan','AUD – Ausztrál dollár','CAD – Kanadai dollár','NZD – Új-zélandi dollár'].includes(p.currency)) ? `<option value="${p.currency}" selected>${p.currency}</option>` : ''}
+        ${(p.currency && !['HUF','EUR','USD','GBP','CHF','JPY','CNY','AUD','CAD','NZD','HUF – Magyar forint','EUR – Euró','USD – Amerikai dollár','GBP – Angol font','CHF – Svájci frank','JPY – Japán jen','CNY – Kínai jüan','AUD – Ausztrál dollár','CAD – Kanadai dollár','NZD – Új-zélandi dollár'].includes(p.currency)) ? `<option value="${p.currency}" selected>${p.currency}</option>` : ''}
       </select></div>
       <div class="prt-field" style="display:flex;align-items:center;gap:8px;"><label style="width:100px;">Árforma:</label><select id="prt-f-price-type" style="flex:1; background:var(--surface);">
         <option value="Lista ár" ${(!p.price_type || p.price_type==='Lista ár' || p.price_type==='Listaár')?'selected':''}>Lista ár</option>
