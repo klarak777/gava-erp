@@ -1048,16 +1048,19 @@ function prtOpenPreModal(listContainer) {
   const overlay = document.createElement('div');
   overlay.className = 'prt-modal-overlay';
   overlay.style.zIndex = '9999';
+  overlay.style.display = 'flex';
+  overlay.style.alignItems = 'center';
+  overlay.style.justifyContent = 'center';
   overlay.innerHTML = `
-    <div class="prt-modal" style="width: 500px; max-width: 95vw; background: #c0c0c0; border: 2px solid #555; border-radius: 4px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+    <div style="width: 500px; max-width: 95vw; height: auto; background: #c0c0c0; border: 2px solid #555; border-radius: 4px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); overflow: hidden;">
       <div class="prt-modal-header" style="background: #2a2a2a; color: white; border-bottom: 1px solid #000; padding: 6px 12px; display: flex; align-items: center; justify-content: space-between;">
         <h3 style="margin: 0; font-size: 14px; font-weight: normal; display: flex; align-items: center; gap: 8px;">
           <img src="logo.ico" alt="Gava Logo" style="width: 18px; height: 18px; vertical-align: middle;"> Gava Hungria Kft. - Új partner adószám alapján
         </h3>
         <button class="prt-close-btn" style="color: white; border: none; background: transparent; font-size: 18px; cursor: pointer;">&times;</button>
       </div>
-      <div class="prt-modal-content" style="padding: 20px; color: #000; min-height: 200px;">
-        <h2 style="margin-top: 0; margin-bottom: 20px; font-size: 22px; text-align: center;">Adószám</h2>
+      <div class="prt-modal-content" style="padding: 15px 20px 10px 20px; color: #000; min-height: auto;">
+        <h2 style="margin-top: 0; margin-bottom: 15px; font-size: 22px; text-align: center;">Adószám</h2>
         <div style="display: flex; gap: 15px; align-items: stretch;">
           <div style="width: 100px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
             <div style="font-size: 26px; font-weight: bold; color: #5cb85c; line-height: 0.9; text-align: left; font-family: sans-serif; letter-spacing: -1px;">
@@ -1073,7 +1076,7 @@ function prtOpenPreModal(listContainer) {
           </div>
         </div>
       </div>
-      <div class="prt-modal-footer" style="background: #c0c0c0; border-top: 1px solid #a0a0a0; display: flex; justify-content: center; gap: 15px; padding: 12px;">
+      <div class="prt-modal-footer" style="background: #c0c0c0; border-top: 1px solid #a0a0a0; display: flex; justify-content: center; gap: 15px; padding: 10px 12px;">
         <button id="prt-pre-back-btn" style="padding: 4px 16px; background: #e0e0e0; border: 1px solid #777; border-radius: 2px; cursor: pointer;">&lt; Vissza</button>
         <button id="prt-pre-next-btn" style="padding: 4px 16px; background: #e0e0e0; border: 1px solid #777; border-radius: 2px; font-weight: bold; cursor: pointer; box-shadow: inset 0 0 4px rgba(212,175,55,0.4);">Tovább &gt;</button>
         <button id="prt-pre-cancel-btn" style="padding: 4px 16px; background: #e0e0e0; border: 1px solid #777; border-radius: 2px; cursor: pointer;">Mégse</button>
