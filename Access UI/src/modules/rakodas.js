@@ -209,13 +209,13 @@ export function renderRakodas(container, windowManager) {
         }
         if (referencesList.length === 0) {
             try {
-                const r = await fetch('/api/v1/admin/partners?type=szállító');
+                const r = await fetch('/api/v1/partners-by-role?role=reference');
                 referencesList = await r.json();
             } catch (e) { referencesList = []; }
         }
         if (customersList.length === 0) {
             try {
-                const r = await fetch('/api/v1/admin/partners?type=vevő');
+                const r = await fetch('/api/v1/partners-by-role?role=customer');
                 customersList = await r.json();
             } catch (e) { customersList = []; }
         }
@@ -598,13 +598,13 @@ export function renderRakodas(container, windowManager) {
         }
         if (referencesList.length === 0) {
             try {
-                const r = await fetch('/api/v1/admin/partners?type=szállító');
+                const r = await fetch('/api/v1/partners-by-role?role=reference');
                 referencesList = await r.json();
             } catch (e) { referencesList = []; }
         }
         if (customersList.length === 0) {
             try {
-                const r = await fetch('/api/v1/admin/partners?type=vevő');
+                const r = await fetch('/api/v1/partners-by-role?role=customer');
                 customersList = await r.json();
             } catch (e) { customersList = []; }
         }
@@ -648,12 +648,18 @@ export function renderRakodas(container, windowManager) {
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:110px; position:relative;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">Reference:</label>
-                        <input type="text" id="aru-add-reference" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Partner" value="${escHtml(dRef)}">
+                        <div style="position:relative;">
+                            <input type="text" id="aru-add-reference" class="access-control-input" style="font-size:12px; padding:4px 20px 4px 8px; height:28px; width:100%;" placeholder="Partner" value="${escHtml(dRef)}">
+                            <span onmousedown="event.preventDefault(); this.previousElementSibling.focus(); this.previousElementSibling.dispatchEvent(new Event('input'))" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); cursor:pointer; font-size:10px; color:#666;">▼</span>
+                        </div>
                         <div id="aru-add-reference-dropdown" style="display:none; position:absolute; background:#fff; border:1px solid #ccc; z-index:200; width:100%; max-height:150px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); top:52px; border-radius:4px;"></div>
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:110px; position:relative;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">Customer:</label>
-                        <input type="text" id="aru-add-customer" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Vevő" value="${escHtml(dCust)}">
+                        <div style="position:relative;">
+                            <input type="text" id="aru-add-customer" class="access-control-input" style="font-size:12px; padding:4px 20px 4px 8px; height:28px; width:100%;" placeholder="Vevő" value="${escHtml(dCust)}">
+                            <span onmousedown="event.preventDefault(); this.previousElementSibling.focus(); this.previousElementSibling.dispatchEvent(new Event('input'))" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); cursor:pointer; font-size:10px; color:#666;">▼</span>
+                        </div>
                         <div id="aru-add-customer-dropdown" style="display:none; position:absolute; background:#fff; border:1px solid #ccc; z-index:200; width:100%; max-height:150px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); top:52px; border-radius:4px;"></div>
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:110px;">
@@ -746,8 +752,8 @@ export function renderRakodas(container, windowManager) {
         refInput.addEventListener('input', () => {
             const val = refInput.value.toLowerCase();
             refDropdown.innerHTML = '';
-            if (!val) { refDropdown.style.display = 'none'; return; }
-            const filtered = referencesList.filter(p => p.name.toLowerCase().startsWith(val)).slice(0, 8);
+            let filtered = val ? referencesList.filter(p => p.name.toLowerCase().startsWith(val)) : referencesList;
+            filtered = filtered.slice(0, 50);
             if (filtered.length > 0) {
                 filtered.forEach(p => {
                     const div = document.createElement('div');
@@ -766,7 +772,17 @@ export function renderRakodas(container, windowManager) {
                 refDropdown.style.display = 'none';
             }
         });
-        refInput.addEventListener('blur', () => { setTimeout(() => { refDropdown.style.display = 'none'; }, 200); });
+        refInput.addEventListener('blur', () => { 
+            setTimeout(() => { 
+                refDropdown.style.display = 'none'; 
+                const exactMatch = referencesList.find(p => p.name.toLowerCase() === refInput.value.toLowerCase());
+                if (exactMatch) {
+                    refInput.value = exactMatch.name;
+                } else {
+                    refInput.value = '';
+                }
+            }, 200); 
+        });
 
         // Customer Autocomplete
         const custInput = modalEl.querySelector('#aru-add-customer');
@@ -774,8 +790,8 @@ export function renderRakodas(container, windowManager) {
         custInput.addEventListener('input', () => {
             const val = custInput.value.toLowerCase();
             custDropdown.innerHTML = '';
-            if (!val) { custDropdown.style.display = 'none'; return; }
-            const filtered = customersList.filter(p => p.name.toLowerCase().startsWith(val)).slice(0, 8);
+            let filtered = val ? customersList.filter(p => p.name.toLowerCase().startsWith(val)) : customersList;
+            filtered = filtered.slice(0, 50);
             if (filtered.length > 0) {
                 filtered.forEach(p => {
                     const div = document.createElement('div');
@@ -794,7 +810,17 @@ export function renderRakodas(container, windowManager) {
                 custDropdown.style.display = 'none';
             }
         });
-        custInput.addEventListener('blur', () => { setTimeout(() => { custDropdown.style.display = 'none'; }, 200); });
+        custInput.addEventListener('blur', () => { 
+            setTimeout(() => { 
+                custDropdown.style.display = 'none'; 
+                const exactMatch = customersList.find(p => p.name.toLowerCase() === custInput.value.toLowerCase());
+                if (exactMatch) {
+                    custInput.value = exactMatch.name;
+                } else {
+                    custInput.value = '';
+                }
+            }, 200); 
+        });
 
         modalEl.querySelector('.btn-aru-cancel').addEventListener('click', () => modal.close());
 

@@ -6,25 +6,18 @@ export function renderAdmin(container, wm, subModuleId = null) {
     const items = group ? group.items : [];
 
     const actionMap = {
-        'admin-products': () => openAdminTable(wm, 'Products', 'products', [
-            { field: 'code', label: 'Code Prod' },
-            { field: 'name', label: 'Products (English)' },
-            { field: 'name_hu', label: 'Products:Magyar (Hungarian)' }
-        ]),
         'admin-references': () => openAdminTable(wm, 'Reference', 'partners', [
             { field: 'name', label: 'Name' },
-            { field: 'address', label: 'Address' },
-            { field: 'contact', label: 'Contact' }
-        ], { type: 'szállító' }),
+            { field: 'full_name', label: 'Teljes név' }
+        ], { isReadonly: true, customUrl: '/api/v1/partners-by-role?role=reference' }),
         'admin-customers': () => openAdminTable(wm, 'Customer', 'partners', [
             { field: 'name', label: 'Name' },
-            { field: 'address', label: 'Address' },
-            { field: 'contact', label: 'Contact' }
-        ], { type: 'vevő' }),
+            { field: 'full_name', label: 'Teljes név' }
+        ], { isReadonly: true, customUrl: '/api/v1/partners-by-role?role=customer' }),
         'admin-transporters': () => openAdminTable(wm, 'Fuvarozó cég', 'transporters', [
             { field: 'name', label: 'Name' },
-            { field: 'code', label: 'Code' }
-        ]),
+            { field: 'full_name', label: 'Teljes név' }
+        ], { isReadonly: true, customUrl: '/api/v1/partners-by-role?role=transporter' }),
         'admin-finance-trucks': () => openAdminTable(wm, 'Pénzügyi Kamion Típus', 'finance_truck_types', [
             { field: 'name', label: 'Name' }
         ]),
@@ -70,8 +63,8 @@ export function renderAdmin(container, wm, subModuleId = null) {
     requestAnimationFrame(setupEvents);
 }
 
-function openAdminTable(wm, title, tableName, columns, extraPayload = {}) {
-    wm.open(`admin-table-${title}`, `${title} karbantartása`, (winContainer) => {
+export function openAdminTable(wm, title, tableName, columns, extraPayload = {}, targetContainer = null) {
+    const buildContent = (winContainer) => {
         let items = [];
 
         winContainer.innerHTML = `
@@ -107,17 +100,21 @@ function openAdminTable(wm, title, tableName, columns, extraPayload = {}) {
                 }
             </style>
             <div style="padding:16px; display:flex; flex-direction:column; height:100%;">
+                ${extraPayload.isReadonly ? 
+                    '<div style="margin-bottom:12px; padding:8px; background-color:#eff6ff; color:#1e3a8a; border-radius:4px; font-size:12px;">ℹ️ Ezek a szerepkörök (Azonosítók) a "Partnerek" modulban kezelhetők.</div>' : ''}
+                ${extraPayload.isReadonly ? '' : `
                 <div style="margin-bottom:12px; display:flex; gap:8px;">
                     <button class="primary-btn" id="btn-add">Új hozzáadása</button>
                     <button class="secondary-btn" id="btn-refresh">Frissítés</button>
                 </div>
+                `}
                 <div style="flex:1; overflow:auto; border:1px solid var(--border-color);">
                     <table class="access-subform-table admin-compact-table">
                         <thead>
                             <tr>
                                 <th>ID</th>
                                 ${columns.map(c => `<th>${c.label}</th>`).join('')}
-                                <th style="width:100px;">Műveletek</th>
+                                ${extraPayload.isReadonly ? '' : '<th style="width:100px;">Műveletek</th>'}
                             </tr>
                         </thead>
                         <tbody id="admin-tbody">
@@ -153,8 +150,8 @@ function openAdminTable(wm, title, tableName, columns, extraPayload = {}) {
         async function loadData() {
             tbody.innerHTML = `<tr><td colspan="${columns.length + 2}" style="text-align:center;">Betöltés...</td></tr>`;
             try {
-                let url = `/api/v1/admin/${tableName}`;
-                if (extraPayload.type) {
+                let url = extraPayload.customUrl || `/api/v1/admin/${tableName}`;
+                if (extraPayload.type && !extraPayload.customUrl) {
                     url += `?type=${extraPayload.type}`;
                 }
                 const res = await fetch(url);
@@ -186,19 +183,22 @@ function openAdminTable(wm, title, tableName, columns, extraPayload = {}) {
                 <tr>
                     <td>${item.id}</td>
                     ${columns.map(c => `<td>${item[c.field] || ''}</td>`).join('')}
+                    ${extraPayload.isReadonly ? '' : `
                     <td>
                         <button class="icon-btn edit-btn" data-id="${item.id}">✏️</button>
                         <button class="icon-btn delete-btn" data-id="${item.id}">🗑️</button>
-                    </td>
+                    </td>`}
                 </tr>
             `).join('');
 
-            tbody.querySelectorAll('.edit-btn').forEach(btn => {
-                btn.addEventListener('click', () => openDialog(items.find(i => i.id == btn.dataset.id)));
-            });
-            tbody.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', () => deleteItem(btn.dataset.id));
-            });
+            if (!extraPayload.isReadonly) {
+                tbody.querySelectorAll('.edit-btn').forEach(btn => {
+                    btn.addEventListener('click', () => openDialog(items.find(i => i.id == btn.dataset.id)));
+                });
+                tbody.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', () => deleteItem(btn.dataset.id));
+                });
+            }
         }
 
         function openDialog(item = null) {
@@ -220,8 +220,10 @@ function openAdminTable(wm, title, tableName, columns, extraPayload = {}) {
             }
         }
 
-        winContainer.querySelector('#btn-add').addEventListener('click', () => openDialog(null));
-        winContainer.querySelector('#btn-refresh').addEventListener('click', loadData);
+        if (!extraPayload.isReadonly) {
+            winContainer.querySelector('#btn-add').addEventListener('click', () => openDialog(null));
+            winContainer.querySelector('#btn-refresh').addEventListener('click', loadData);
+        }
         winContainer.querySelector('#btn-cancel').addEventListener('click', () => dialog.close());
 
         form.addEventListener('submit', async (e) => {
@@ -249,5 +251,11 @@ function openAdminTable(wm, title, tableName, columns, extraPayload = {}) {
         });
 
         loadData();
-    });
+    };
+
+    if (targetContainer) {
+        buildContent(targetContainer);
+    } else if (wm) {
+        wm.open(`admin-table-${title}`, `${title} karbantartása`, buildContent);
+    }
 }

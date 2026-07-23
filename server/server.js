@@ -27,6 +27,7 @@ const ekaerRouter = require('./src/routes/ekaer');
 const adminRouter = require('./src/routes/admin');
 const financeTransportLinesRouter = require('./src/routes/finance_transport_lines');
 const financeUnitCostLinesRouter = require('./src/routes/finance_unit_cost_lines');
+const partnersByRoleRouter = require('./src/routes/partners_by_role');
 
 // Egyszerű teszt végpont
 app.get('/api/v1/status', (req, res) => {
@@ -50,6 +51,7 @@ app.use('/api/v1/ekaer-records', ekaerRouter);
 app.use('/api/v1/admin', adminRouter);
 app.use('/api/v1/finance-transport-lines', financeTransportLinesRouter);
 app.use('/api/v1/finance-unit-cost-lines', financeUnitCostLinesRouter);
+app.use('/api/v1/partners-by-role', partnersByRoleRouter);
 
 // Szerver indítása
 app.listen(PORT, () => {

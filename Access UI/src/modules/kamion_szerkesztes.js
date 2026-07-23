@@ -307,7 +307,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
 
         async function loadReferences() {
             try {
-                const res = await fetch(`${API}/admin/partners?type=szállító`);
+                const res = await fetch(`${API}/partners-by-role?role=reference`);
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 references = await res.json();
             } catch (err) {
@@ -318,7 +318,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
 
         async function loadCustomers() {
             try {
-                const res = await fetch(`${API}/admin/partners?type=vevő`);
+                const res = await fetch(`${API}/partners-by-role?role=customer`);
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 customers = await res.json();
             } catch (err) {
@@ -605,10 +605,12 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                         style="${numCellStyle} width:70px;" value="${isEmpty ? '' : escHtml(l.normal_palets)}" min="0" step="any" placeholder="0" ${currentShipmentIsLoaded ? 'disabled' : ''}></td>
                     <td><input type="text" class="cell-edit" data-field="productName" data-index="${index}"
                         style="${cellStyle} min-width:170px;" value="${isEmpty ? '' : escHtml(l.productName)}"></td>
-                    <td><input type="text" class="cell-edit" data-field="partner_name" data-index="${index}"
-                        style="${cellStyle} min-width:90px;" value="${isEmpty ? '' : escHtml(l.partner_name)}"></td>
-                    <td><input type="text" class="cell-edit" data-field="customer" data-index="${index}"
-                        style="${cellStyle} min-width:90px;" value="${isEmpty ? '' : escHtml(l.customer)}"></td>
+                    <td style="position:relative"><input type="text" class="cell-edit" data-field="partner_name" data-index="${index}"
+                        style="${cellStyle} min-width:90px; padding-right:16px;" value="${isEmpty ? '' : escHtml(l.partner_name)}">
+                        <span onmousedown="event.preventDefault(); this.previousElementSibling.focus(); this.previousElementSibling.dispatchEvent(new Event('input'))" style="position:absolute; right:4px; top:50%; transform:translateY(-50%); cursor:pointer; font-size:10px; color:#666;">▼</span></td>
+                    <td style="position:relative"><input type="text" class="cell-edit" data-field="customer" data-index="${index}"
+                        style="${cellStyle} min-width:90px; padding-right:16px;" value="${isEmpty ? '' : escHtml(l.customer)}">
+                        <span onmousedown="event.preventDefault(); this.previousElementSibling.focus(); this.previousElementSibling.dispatchEvent(new Event('input'))" style="position:absolute; right:4px; top:50%; transform:translateY(-50%); cursor:pointer; font-size:10px; color:#666;">▼</span></td>
                     <td><input type="text" class="cell-edit" data-field="destination" data-index="${index}"
                         style="${cellStyle} min-width:90px;" value="${isEmpty ? '' : escHtml(l.destination)}"></td>
                     <td><input type="text" class="cell-edit" data-field="comment" data-index="${index}"
@@ -715,9 +717,9 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                     const val = inp.value.toLowerCase();
                     const idx = parseInt(inp.dataset.index);
                     inlineRefDropdown.innerHTML = '';
-                    if (!val) { inlineRefDropdown.style.display = 'none'; return; }
+                    let filtered = val ? references.filter(p => p.name.toLowerCase().startsWith(val)) : references;
+                    filtered = filtered.slice(0, 50);
 
-                    const filtered = references.filter(p => p.name.toLowerCase().startsWith(val)).slice(0, 10);
                     if (filtered.length > 0) {
                         filtered.forEach(p => {
                             const div = document.createElement('div');
@@ -747,7 +749,21 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                     }
                 });
                 inp.addEventListener('blur', () => {
-                    setTimeout(() => { inlineRefDropdown.style.display = 'none'; }, 200);
+                    setTimeout(() => { 
+                        inlineRefDropdown.style.display = 'none'; 
+                        const exactMatch = references.find(p => p.name.toLowerCase() === inp.value.toLowerCase());
+                        if (exactMatch) {
+                            inp.value = exactMatch.name;
+                            lines[idx].partner_name = exactMatch.name;
+                            lines[idx].partner_id = exactMatch.id;
+                        } else {
+                            inp.value = '';
+                            lines[idx].partner_name = '';
+                            lines[idx].partner_id = null;
+                        }
+                        const ev = new Event('change');
+                        inp.dispatchEvent(ev);
+                    }, 200);
                 });
             });
 
@@ -757,9 +773,9 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                     const val = inp.value.toLowerCase();
                     const idx = parseInt(inp.dataset.index);
                     inlineCustDropdown.innerHTML = '';
-                    if (!val) { inlineCustDropdown.style.display = 'none'; return; }
+                    let filtered = val ? customers.filter(p => p.name.toLowerCase().startsWith(val)) : customers;
+                    filtered = filtered.slice(0, 50);
 
-                    const filtered = customers.filter(p => p.name.toLowerCase().startsWith(val)).slice(0, 10);
                     if (filtered.length > 0) {
                         filtered.forEach(p => {
                             const div = document.createElement('div');
@@ -788,7 +804,19 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                     }
                 });
                 inp.addEventListener('blur', () => {
-                    setTimeout(() => { inlineCustDropdown.style.display = 'none'; }, 200);
+                    setTimeout(() => { 
+                        inlineCustDropdown.style.display = 'none'; 
+                        const exactMatch = customers.find(p => p.name.toLowerCase() === inp.value.toLowerCase());
+                        if (exactMatch) {
+                            inp.value = exactMatch.name;
+                            lines[idx].customer = exactMatch.name;
+                        } else {
+                            inp.value = '';
+                            lines[idx].customer = '';
+                        }
+                        const ev = new Event('change');
+                        inp.dispatchEvent(ev);
+                    }, 200);
                 });
             });
 

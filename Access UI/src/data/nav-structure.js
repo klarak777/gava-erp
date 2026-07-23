@@ -18,8 +18,6 @@ export const NAV_CATEGORIES = [
             { id: 'transportistas', title: 'Transportistas', icon: '🚚', moduleId: 'transportistas', items: [] },
             { id: 'order_number', title: 'Order number', icon: '🔢', moduleId: 'order_number', items: [] },
             { id: 'fuvarok_osszesito', title: 'Fuvarok összesitö', icon: '📋', moduleId: 'fuvarok', items: [] },
-            { id: 'planning', title: 'Planning', icon: '📅', moduleId: 'planning', items: [] },
-            { id: 'erkezesek', title: 'Érkezések', icon: '📥', moduleId: 'erkezesek', items: [] },
             { id: 'felrakok', title: 'Felrakók', icon: '🏭', moduleId: 'felrakok', items: [] },
             { id: 'termekek_adat_tabla', title: 'Termékek adat tábla', icon: '📊', moduleId: 'termekek_adat_tabla', items: [] },
             { id: 'cimke', title: 'Címke', icon: '🏷️', moduleId: 'cimke', items: [] },
@@ -35,7 +33,6 @@ export const NAV_CATEGORIES = [
                 icon: '⚙️',
                 moduleId: 'admin',
                 items: [
-                    { id: 'admin-products', label: 'Products', icon: '🍎', desc: 'Angol és Magyar terméknevek' },
                     { id: 'admin-references', label: 'Reference', icon: '🏢', desc: 'Szállítók / Partnerek' },
                     { id: 'admin-customers', label: 'Customer', icon: '🛒', desc: 'Vevők' },
                     { id: 'admin-transporters', label: 'Fuvarozó cég', icon: '🚚', desc: 'Fuvarozók' },

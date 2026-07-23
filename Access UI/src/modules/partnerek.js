@@ -1,6 +1,6 @@
 /**
  * GAVA ERP – Partnerek modul
- * v0.6.1 – Teljes partner beviteli és kezelési modul (8 főfül, alfülekkel)
+ * v0.6.3 – Teljes partner beviteli és kezelési modul (8 főfül, alfülekkel)
  * Iroda > Partnerek
  */
 
@@ -98,12 +98,12 @@ const PARTNEREK_STYLE = `
 }
 
 /* ── Tab Panels ─────────────────────────────────────────────── */
-.prt-panels { flex: 1; padding: 18px 20px; overflow-y: auto; min-height: 0; }
-.prt-panel { display: none; }
-.prt-panel.active { display: block; }
+.prt-panels { flex: 1; padding: 2px 20px 18px 20px; overflow-y: auto; min-height: 0; }
+.prt-panel { display: none; margin: 0; padding: 0; }
+.prt-panel.active { display: block; margin: 0; padding: 0; }
 
 /* ── Alfülek (Sub-tabs) ─────────────────────────────────────── */
-.prt-subtabs { display: flex; gap: 4px; margin-bottom: 14px; }
+.prt-subtabs { display: flex; gap: 4px; margin-top: 0; margin-bottom: 14px; }
 .prt-subtab {
   padding: 5px 14px; border-radius: 6px; font-size: 12px; font-weight: 500;
   cursor: pointer; color: var(--text-muted); background: rgba(255,255,255,0.04);
@@ -376,6 +376,7 @@ function prtBuildModal(data) {
   const isNew = !p.id;
 
   return `
+  ${PARTNEREK_STYLE}
   <div class="prt-modal" id="prt-modal">
     <div class="prt-modal-titlebar">
       <h3>${isNew ? '➕ Új Partner' : `✏️ Partner: ${prtEsc(p.name)}`}</h3>
@@ -425,11 +426,11 @@ function prtBuildModal(data) {
         ${prtBuildTermeszetesPanel(p)}
       </div>
       <!-- 3: Egyéb adatok -->
-      <div class="prt-panel" data-panel="3" style="overflow-y:auto; max-height:480px; padding-right:8px; margin-top:-18px; padding-top:0;">
+      <div class="prt-panel" data-panel="3">
         ${prtBuildEgyebAdatokPanel(p, data)}
       </div>
       <!-- 4: Megjegyzés/Kategóriák -->
-      <div class="prt-panel" data-panel="4" style="margin-top:-18px; padding-top:0;">
+      <div class="prt-panel" data-panel="4">
         ${prtBuildMegjegyzesPanel(p, data)}
       </div>
       <!-- 5: Csatolmányok -->
@@ -877,17 +878,17 @@ function prtBuildMegjegyzesPanel(p, data) {
   return `
   <div class="prt-cols-2">
     <div>
-      <div class="prt-section">
+      <div class="prt-section" style="margin-bottom:12px;">
         <div class="prt-section-title">📝 Megjegyzés</div>
-        <textarea id="prt-f-notes" style="width:100%;min-height:120px;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-light);color:var(--text-primary);resize:vertical;box-sizing:border-box">${p.notes||''}</textarea>
+        <textarea id="prt-f-notes" style="width:100%;height:140px;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-light);color:var(--text-primary);resize:vertical;box-sizing:border-box">${p.notes||''}</textarea>
       </div>
-      <div class="prt-section">
+      <div class="prt-section" style="margin-bottom:0;">
         <div class="prt-section-title">🚫 Korlátozások</div>
         <div class="prt-subtable-toolbar">
           <button class="prt-toolbar-btn" id="restr-add-btn">➕</button>
           <button class="prt-toolbar-btn danger" id="restr-del-btn">🗑️</button>
         </div>
-        <div class="prt-subtable-wrap">
+        <div class="prt-subtable-wrap" style="height:220px; overflow-y:auto;">
           <table class="prt-subtable" id="restr-table">
             <thead><tr><th>Művelet megnevezése</th><th>Tiltás kezdete</th></tr></thead>
             <tbody>
@@ -901,13 +902,13 @@ function prtBuildMegjegyzesPanel(p, data) {
       </div>
     </div>
     <div>
-      <div class="prt-section">
+      <div class="prt-section" style="margin-bottom:0;">
         <div class="prt-section-title">🏷️ Kategória besorolás</div>
         <div class="prt-subtable-toolbar">
           <button class="prt-toolbar-btn" id="cat-add-btn">➕</button>
           <button class="prt-toolbar-btn danger" id="cat-del-btn">🗑️</button>
         </div>
-        <div class="prt-subtable-wrap">
+        <div class="prt-subtable-wrap" style="height:445px; overflow-y:auto;">
           <table class="prt-subtable" id="cat-table">
             <thead><tr><th>Kategória</th></tr></thead>
             <tbody>
@@ -925,7 +926,7 @@ function prtBuildMegjegyzesPanel(p, data) {
 function prtBuildCsatolmanyokPanel(data) {
   const attachments = data?.attachments || [];
   return `
-  <div class="prt-attach-dropzone" id="prt-drop-zone">
+  <div class="prt-attach-dropzone" id="prt-drop-zone" style="padding:16px; margin-bottom:10px;">
     📎 Húzd ide a fájlt, vagy kattints a feltöltéshez
     <input type="file" id="prt-file-input" style="display:none" multiple>
   </div>
@@ -933,7 +934,7 @@ function prtBuildCsatolmanyokPanel(data) {
     <button class="prt-toolbar-btn" id="att-upload-btn">📂 Hozzáadás</button>
     <button class="prt-toolbar-btn danger" id="att-del-btn">🗑️ Törlés</button>
   </div>
-  <div class="prt-subtable-wrap">
+  <div class="prt-subtable-wrap" style="height:430px; overflow-y:auto;">
     <table class="prt-subtable" id="att-table">
       <thead><tr><th>T</th><th>Megnevezés</th><th>▲</th><th>Csatolva</th><th>Típus</th><th>Létrehozva</th><th>G</th><th>A</th><th>B</th><th>X</th><th>E</th><th>T</th><th>É</th></tr></thead>
       <tbody id="att-tbody">
@@ -972,7 +973,7 @@ function prtBuildPenzugyiPanel(data) {
       <button class="prt-toolbar-btn" id="bank-add-btn">➕</button>
       <button class="prt-toolbar-btn danger" id="bank-del-btn">🗑️</button>
     </div>
-    <div class="prt-subtable-wrap">
+    <div class="prt-subtable-wrap" style="height:420px; overflow-y:auto;">
       <table class="prt-subtable" id="bank-table">
         <thead><tr><th>Számlaszám</th><th>Bank</th><th>A</th></tr></thead>
         <tbody>
@@ -991,7 +992,7 @@ function prtBuildPenzugyiPanel(data) {
       <button class="prt-toolbar-btn" id="disc-add-btn">➕</button>
       <button class="prt-toolbar-btn danger" id="disc-del-btn">🗑️</button>
     </div>
-    <div class="prt-subtable-wrap">
+    <div class="prt-subtable-wrap" style="height:420px; overflow-y:auto;">
       <table class="prt-subtable" id="disc-table">
         <thead><tr><th>Termékcsoport</th><th>Kedvezmény %</th></tr></thead>
         <tbody>
@@ -1005,7 +1006,7 @@ function prtBuildPenzugyiPanel(data) {
   </div>
   <!-- Hitelkeret stb. -->
   <div class="prt-subpanel" data-subpanel="fin-2">
-    <div class="prt-section">
+    <div class="prt-section" style="min-height:380px;">
       <div class="prt-section-title">💳 Hitelkeret & Késedelmi kamat</div>
       <div class="prt-row-3">
         ${prtField('prt-f-credit-limit', 'Hitelkeret összege', cs.credit_limit, 'number')}
@@ -1020,7 +1021,7 @@ function prtBuildPenzugyiPanel(data) {
 function prtBuildEsemenyekPanel(data) {
   const events = data?.events || [];
   return `
-  <div class="prt-subtable-wrap">
+  <div class="prt-subtable-wrap" style="height:420px; overflow-y:auto;">
     <table class="prt-subtable">
       <thead><tr><th>Időpont</th><th>Esemény típus</th><th>Megnevezés</th><th>Létrehozó</th><th>Partner</th></tr></thead>
       <tbody>
@@ -1234,7 +1235,10 @@ function prtBindModal(overlay, listContainer, id) {
       overlay.querySelectorAll('.prt-tab-main').forEach(t => t.classList.remove('active'));
       overlay.querySelectorAll('.prt-panel').forEach(p => p.classList.remove('active'));
       tab.classList.add('active');
-      overlay.querySelector(`.prt-panel[data-panel="${tab.dataset.tab}"]`).classList.add('active');
+      const targetPanel = overlay.querySelector(`.prt-panel[data-panel="${tab.dataset.tab}"]`);
+      if (targetPanel) targetPanel.classList.add('active');
+      const panelsContainer = overlay.querySelector('.prt-panels');
+      if (panelsContainer) panelsContainer.scrollTop = 0;
     });
   });
 

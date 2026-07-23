@@ -148,6 +148,24 @@ async function saveSubTables(trx, partnerId, body) {
       await trx('partner_credit_settings').insert(cs);
     }
   }
+
+  // Auto-sync partners.type based on role identifiers
+  // If identifiers include role types, set partners.type accordingly
+  if (Array.isArray(body.identifiers)) {
+    const roleTypes = body.identifiers.map(i => i.id_type);
+    let newType = null;
+    if (roleTypes.includes('(Reference) Szállítók')) {
+      newType = 'szállító';
+    } else if (roleTypes.includes('(Customer) Vevők')) {
+      newType = 'vevő';
+    } else if (roleTypes.includes('Fuvarozók')) {
+      newType = 'fuvarozó';
+    }
+    // Only update type if a role identifier is present; don't clear existing type
+    if (newType) {
+      await trx('partners').where('id', partnerId).update({ type: newType });
+    }
+  }
 }
 
 // ─── ROUTES ───────────────────────────────────────────────────────────────────

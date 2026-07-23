@@ -9,7 +9,6 @@ export function renderFuvarokMainPage(container, windowManager) {
         { icon: '🚚', title: 'Transportistas', desc: 'Szállítók, kamionok nyilvántartása', id: 'transportistas' },
         { icon: '📝', title: 'Fuvarmegbízások', desc: 'Fuvarmegbízások kezelése', id: 'fuvarmegbizas' },
         { icon: '🏗️', title: 'Rakodás', desc: 'Rakodási adatok, FileMapDatabase alapján', id: 'rakodas' },
-        { icon: '📅', title: 'Planning', desc: 'Tervezett szállítások havi bontásban', id: 'planning' },
         { icon: '📍', title: 'Telephelyek', desc: 'Felrakó és lerakó telephelyek', id: 'telephelyek' },
     ];
 
