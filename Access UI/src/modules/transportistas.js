@@ -210,7 +210,7 @@ export function renderTransportistas(container, windowManager) {
             badge.addEventListener('click', function(e) {
                 const id = this.getAttribute('data-id');
                 if (id) {
-                    openKamionSzerkesztesWindow(windowManager, id);
+                    openKamionSzerkesztesWindow(windowManager, id, { showDeliveryNoteBtn: true });
                 }
             });
         });

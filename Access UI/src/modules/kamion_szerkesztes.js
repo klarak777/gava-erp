@@ -1,7 +1,7 @@
 // Kamion szerkesztés modul - Új kamion létrehozása és szerkesztése
 const GRID_ROWS = 25; // mindig ennyi sor látszik a táblázatban
 
-export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
+export function openKamionSzerkesztesWindow(windowManager, kamionId = null, options = {}) {
     const isNew = !kamionId;
     // Az ablak fejléce / taskbar szöveg: csak "Új kamion rögzítése" lesz,
     // szerkesztésnél loadExistingShipment frissíti majd a valódi kamionszámra.
@@ -114,6 +114,14 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                                 </select>
                             </div>
                         </div>
+                        <!-- Szállítólevél feltöltése gomb -->
+                        <div style="display:flex; flex-direction:column; justify-content:flex-end; gap:3px; flex-shrink:0;">
+                            <label style="font-size:11px; font-weight:600; color:var(--text-main); white-space:nowrap;">Szállítólevél:</label>
+                            <button id="btn-open-delivery-note" title="Szállítólevél feltöltése" class="primary-btn"
+                                style="font-size:12px; padding:4px 12px; height:30px; background:#2563eb; border-color:#1d4ed8; display:none; align-items:center; gap:5px; white-space:nowrap;">
+                                📄 + Feltöltés
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -221,6 +229,59 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                     </div>
                 </div>
             </div>
+
+            <!-- SZÁLLÍTÓLEVÉL FELTÖLTÉSE MODAL -->
+            <div id="delivery-note-overlay" style="display:none; position:absolute; inset:0; background:rgba(0,0,0,0.6); z-index:700; align-items:center; justify-content:center;">
+                <div id="delivery-note-modal" style="background:#fff; border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,0.3); padding:24px; width:480px; max-width:95%; position:relative; transform:translate(0px,0px); transition:none;">
+                    <!-- Fejléc -->
+                    <div id="delivery-note-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; cursor:move; user-select:none;">
+                        <h3 style="margin:0; font-size:14px; font-weight:700; color:#1e293b;">📄 Szállítólevél feltöltése</h3>
+                        <button id="btn-dn-close" style="background:none; border:none; font-size:20px; cursor:pointer; color:#64748b; padding:2px 6px;">×</button>
+                    </div>
+
+                    <!-- Reference legördülő -->
+                    <div style="display:flex; flex-direction:column; gap:4px; margin-bottom:12px;">
+                        <label style="font-size:11px; font-weight:600; color:#334155;">Reference:</label>
+                        <select id="dn-reference" class="access-control-input" style="font-size:12px; height:30px;">
+                            <option value="">-- Válasszon --</option>
+                        </select>
+                    </div>
+
+                    <!-- Destination legördülő -->
+                    <div style="display:flex; flex-direction:column; gap:4px; margin-bottom:12px;">
+                        <label style="font-size:11px; font-weight:600; color:#334155;">Destination:</label>
+                        <select id="dn-destination" class="access-control-input" style="font-size:12px; height:30px;">
+                            <option value="">-- mind --</option>
+                        </select>
+                    </div>
+
+                    <!-- Customer order N° beviteli mező -->
+                    <div style="display:flex; flex-direction:column; gap:4px; margin-bottom:12px;">
+                        <label style="font-size:11px; font-weight:600; color:#334155;">Customer order N°:</label>
+                        <input type="text" id="dn-customer-order" class="access-control-input" placeholder="Pl. PO-2024-001" style="font-size:12px; height:30px;">
+                    </div>
+
+                    <!-- Drag & Drop zóna -->
+                    <div id="dn-dropzone" style="border:2px dashed #93c5fd; border-radius:8px; padding:24px 16px; text-align:center; cursor:pointer; background:#f0f9ff; margin-bottom:14px; transition:background 0.2s, border-color 0.2s;">
+                        <div style="font-size:28px; margin-bottom:6px;">📂</div>
+                        <div style="font-size:12px; color:#1d4ed8; font-weight:600;">Húzza ide a fájlt, vagy kattintson a tallózáshoz</div>
+                        <div style="font-size:11px; color:#64748b; margin-top:4px;">PDF, JPG, PNG, stb.</div>
+                        <input type="file" id="dn-file-input" style="display:none;" accept="*/*">
+                    </div>
+
+                    <!-- Kiválasztott fájl neve -->
+                    <div id="dn-file-name" style="font-size:11px; color:#334155; margin-bottom:14px; min-height:16px; font-style:italic;"></div>
+
+                    <!-- Gombok -->
+                    <div style="display:flex; justify-content:flex-end; gap:10px;">
+                        <button class="secondary-btn" id="btn-dn-cancel">Mégse</button>
+                        <button class="primary-btn" id="btn-dn-save">💾 Mentés</button>
+                    </div>
+
+                    <!-- Státusz üzenet -->
+                    <div id="dn-status" style="margin-top:10px; font-size:11px; min-height:16px;"></div>
+                </div>
+            </div>
             </div>
         `;
 
@@ -254,7 +315,194 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
 
         const resetTransferDrag = initDraggable(transferModal, transferHeader);
 
+        // Szallitolevel gomb: csak Transzportistasbol nyitva jelenik meg
+        const dnBtnWrapper = container.querySelector('#btn-open-delivery-note')?.closest('div[style*="flex-shrink:0"]');
+        if (options.showDeliveryNoteBtn) {
+            const dnBtn = container.querySelector('#btn-open-delivery-note');
+            if (dnBtn) dnBtn.style.display = 'flex';
+        } else {
+            // Elrejtjuk a szulo div-et is, hogy ne maradjon ures hely
+            if (dnBtnWrapper) dnBtnWrapper.style.display = 'none';
+        }
+
+        // ===== SZALLITOLEVEL FELTOLTESE MODAL =====
+        const dnOverlay = container.querySelector('#delivery-note-overlay');
+        const dnModal = container.querySelector('#delivery-note-modal');
+        const dnHeader = container.querySelector('#delivery-note-header');
+        const dnRefSelect = container.querySelector('#dn-reference');
+        const dnDestSelect = container.querySelector('#dn-destination');
+        const dnCustomerOrderInput = container.querySelector('#dn-customer-order');
+        const dnDropzone = container.querySelector('#dn-dropzone');
+        const dnFileInput = container.querySelector('#dn-file-input');
+        const dnFileNameEl = container.querySelector('#dn-file-name');
+        const dnStatusEl = container.querySelector('#dn-status');
+
+        let dnSelectedFile = null;
+        const resetDnDrag = initDraggable(dnModal, dnHeader);
+
+        function openDeliveryNoteModal() {
+            resetDnDrag();
+            dnSelectedFile = null;
+            dnFileNameEl.textContent = '';
+            dnStatusEl.textContent = '';
+            dnCustomerOrderInput.value = '';
+            dnDropzone.style.background = '#f0f9ff';
+            dnDropzone.style.borderColor = '#93c5fd';
+
+            // Legördülők feltöltése a jelenlegi sorok egyedi értékeivel
+            const filledLines = lines.filter(l => !l._empty);
+
+            const uniqueRefs = [...new Set(filledLines.map(l => l.partner_name || '').filter(Boolean))].sort();
+            dnRefSelect.innerHTML = '<option value="">-- Válasszon --</option>' +
+                uniqueRefs.map(r => `<option value="${r}">${r}</option>`).join('');
+
+            const uniqueDests = [...new Set(filledLines.map(l => l.destination || '').filter(Boolean))].sort();
+            dnDestSelect.innerHTML = '<option value="">-- mind --</option>' +
+                uniqueDests.map(d => `<option value="${d}">${d}</option>`).join('');
+
+            dnOverlay.style.display = 'flex';
+        }
+
+        function closeDeliveryNoteModal() {
+            dnOverlay.style.display = 'none';
+        }
+
+        // + gomb
+        container.querySelector('#btn-open-delivery-note').addEventListener('click', (e) => {
+            e.stopPropagation();
+            openDeliveryNoteModal();
+        });
+
+        // Bezárás
+        container.querySelector('#btn-dn-close').addEventListener('click', closeDeliveryNoteModal);
+        container.querySelector('#btn-dn-cancel').addEventListener('click', closeDeliveryNoteModal);
+        dnOverlay.addEventListener('click', e => { if (e.target === dnOverlay) closeDeliveryNoteModal(); });
+
+        // Drag & Drop
+        dnDropzone.addEventListener('dragover', e => {
+            e.preventDefault();
+            dnDropzone.style.background = '#dbeafe';
+            dnDropzone.style.borderColor = '#3b82f6';
+        });
+        dnDropzone.addEventListener('dragleave', () => {
+            dnDropzone.style.background = '#f0f9ff';
+            dnDropzone.style.borderColor = '#93c5fd';
+        });
+        dnDropzone.addEventListener('drop', e => {
+            e.preventDefault();
+            dnDropzone.style.background = '#f0f9ff';
+            dnDropzone.style.borderColor = '#93c5fd';
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                dnSelectedFile = file;
+                dnFileNameEl.textContent = '📎 ' + file.name;
+            }
+        });
+        dnDropzone.addEventListener('click', () => dnFileInput.click());
+        dnFileInput.addEventListener('change', () => {
+            if (dnFileInput.files[0]) {
+                dnSelectedFile = dnFileInput.files[0];
+                dnFileNameEl.textContent = '📎 ' + dnSelectedFile.name;
+            }
+        });
+
+        // Mentés gomb
+        container.querySelector('#btn-dn-save').addEventListener('click', async () => {
+            const selectedRef = dnRefSelect.value;
+            const selectedDest = dnDestSelect.value;
+            const customerOrderNo = dnCustomerOrderInput.value.trim();
+
+            if (!selectedRef) {
+                dnStatusEl.style.color = '#dc2626';
+                dnStatusEl.textContent = '⚠ Kérlek válassz Reference értéket!';
+                return;
+            }
+            if (!customerOrderNo) {
+                dnStatusEl.style.color = '#dc2626';
+                dnStatusEl.textContent = '⚠ A Customer order N° megadása kötelező!';
+                return;
+            }
+            if (!dnSelectedFile) {
+                dnStatusEl.style.color = '#dc2626';
+                dnStatusEl.textContent = '⚠ Kérlek válassz ki egy fájlt!';
+                return;
+            }
+
+            // Szezon lekérése – az order number alapján (pl. "LOG 355" → szezon a shipment-ből)
+            // A szezon adatát a currentShipmentId-vel kért adatból nézzük meg
+            // Ha nincs betöltve, lekérjük
+            let seasonLabel = '';
+            try {
+                if (currentShipmentId) {
+                    const sRes = await fetch(`/api/v1/shipments/${currentShipmentId}`);
+                    if (sRes.ok) {
+                        const sData = await sRes.json();
+                        seasonLabel = sData.shipment?.season_code || '';
+                    }
+                }
+            } catch (e) { /* figyelmen kívül hagyjuk */ }
+
+
+            // Ha a szezon nem érhető el, az order number alapjából próbálunk becsülni
+            if (!seasonLabel) {
+                seasonLabel = '25-26'; // fallback
+            }
+
+            const orderNumber = kmOrder.value.trim();
+
+            dnStatusEl.style.color = '#2563eb';
+            dnStatusEl.textContent = '⏳ Feltöltés folyamatban...';
+            container.querySelector('#btn-dn-save').disabled = true;
+
+            try {
+                const formData = new FormData();
+                formData.append('file', dnSelectedFile);
+                formData.append('season', seasonLabel);
+                formData.append('orderNumber', orderNumber);
+
+                const uploadRes = await fetch('/api/v1/uploads/delivery-note', {
+                    method: 'POST',
+                    body: formData
+                });
+                const uploadData = await uploadRes.json();
+
+                if (!uploadRes.ok) {
+                    throw new Error(uploadData.error || 'Szerver hiba a feltöltés során.');
+                }
+
+                // Siker: frissítjük a megfelelő sorokat a lines tömbben
+                // A Reference a partner_name mezőre szűr (ez jelenik meg a Reference legördülőben)
+                let updatedCount = 0;
+                lines.forEach(l => {
+                    if (l._empty) return;
+                    const refMatch = !selectedRef || l.partner_name === selectedRef;
+                    const destMatch = !selectedDest || l.destination === selectedDest;
+                    if (refMatch && destMatch) {
+                        l.customer_order_no = customerOrderNo;
+                        updatedCount++;
+                    }
+                });
+
+
+                // Táblázat frissítése (hogy a mezők is megjelenjenek)
+                renderTable();
+
+                dnStatusEl.style.color = '#16a34a';
+                dnStatusEl.textContent = `✅ Feltöltve: ${uploadData.fileName} | ${updatedCount} sor frissítve.`;
+
+                // Kis késleltetés után bezárjuk
+                setTimeout(() => closeDeliveryNoteModal(), 2000);
+
+            } catch (err) {
+                dnStatusEl.style.color = '#dc2626';
+                dnStatusEl.textContent = '❌ Hiba: ' + err.message;
+            } finally {
+                container.querySelector('#btn-dn-save').disabled = false;
+            }
+        });
+
         const API = '/api/v1';
+
 
         // ① Üres sor prototípus
         function emptyLine() {
@@ -270,8 +518,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
 
         // ① Mindig GRID_ROWS sort biztosít (adat + üres feltöltés)
         function normalizeLines() {
-            // A foghíjak elkerülése végett kiszűrjük a teljesen üres sorokat
-            let filled = lines.filter(l => l.product_id || parseFloat(String(l.euro_palets).replace(',', '.')) > 0 || parseFloat(String(l.normal_palets).replace(',', '.')) > 0);
+            // A foghíjak elkerülése végett kiszűrjük a teljesen üres sorokat és a csak pénzügyi (Finance) sorokat
+            let filled = lines.filter(l => !l.is_finance_only && (l.product_id || parseFloat(String(l.euro_palets).replace(',', '.')) > 0 || parseFloat(String(l.normal_palets).replace(',', '.')) > 0));
 
             // _empty flag törlése a kitöltött sorokon
             filled = filled.map(l => { const r = { ...l }; delete r._empty; return r; });
@@ -593,11 +841,13 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 return `
                 <tr data-index="${index}" style="${isEmpty ? 'background:#fafafa;' : ''}">
                     <td style="text-align:center; white-space:nowrap; padding:1px 2px;">
+                        <span class="drag-handle" data-index="${index}" title="Sor mozgatása (húzza fel/le)" style="cursor:grab; font-size:13px; color:#94a3b8; padding:1px 2px; user-select:none; display:inline-block;">☰</span>
                         <button class="transfer-line" data-index="${index}" title="Tétel áthelyezése másik fuvarra"
                             style="background:none; border:none; cursor:pointer; font-size:14px; padding:1px 3px; color:${(isEmpty || currentShipmentIsLoaded || !l._dbId) ? '#94a3b8' : '#f59e0b'};" ${(isEmpty || currentShipmentIsLoaded || !l._dbId) ? 'disabled' : ''}>🔀</button>
                         <button class="clear-line" data-index="${index}" title="Sor törlése (adatok törlése)"
                             style="background:none; border:none; cursor:pointer; font-size:13px; padding:1px 3px; color:${(isEmpty || currentShipmentIsLoaded) ? '#ccc' : '#dc2626'};" ${(isEmpty || currentShipmentIsLoaded) ? 'disabled' : ''}>✕</button>
                     </td>
+
                     <td style="text-align:center; font-weight:bold; padding:1px 4px; color:${tv ? '#1e40af' : '#ccc'};">${tv}</td>
                     <td><input type="number" class="cell-edit" data-field="euro_palets" data-index="${index}"
                         style="${numCellStyle} width:70px;" value="${isEmpty ? '' : escHtml(l.euro_palets)}" min="0" step="any" placeholder="0" ${currentShipmentIsLoaded ? 'disabled' : ''}></td>
@@ -750,21 +1000,32 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 });
                 inp.addEventListener('blur', () => {
                     setTimeout(() => { 
-                        inlineRefDropdown.style.display = 'none'; 
-                        const exactMatch = references.find(p => p.name.toLowerCase() === inp.value.toLowerCase());
-                        if (exactMatch) {
-                            inp.value = exactMatch.name;
-                            lines[idx].partner_name = exactMatch.name;
-                            lines[idx].partner_id = exactMatch.id;
-                        } else {
-                            inp.value = '';
+                        const idx = parseInt(inp.dataset.index); // FIX: idx saját scope-ban
+                        inlineRefDropdown.style.display = 'none';
+                        const currentVal = inp.value.trim();
+                        if (!currentVal) {
+                            // Ha üres maradt, töröljük az értéket
                             lines[idx].partner_name = '';
                             lines[idx].partner_id = null;
+                        } else {
+                            // Megpróbálunk pontos egyezést találni a listában
+                            const exactMatch = references.find(p => p.name.toLowerCase() === currentVal.toLowerCase());
+                            if (exactMatch) {
+                                inp.value = exactMatch.name;
+                                lines[idx].partner_name = exactMatch.name;
+                                lines[idx].partner_id = exactMatch.id;
+                            } else {
+                                // Szabadon beírt érték megtartása (nem töröljük)
+                                lines[idx].partner_name = currentVal;
+                                lines[idx].partner_id = null;
+                            }
                         }
+                        if (lines[idx]._empty && lines[idx].partner_name) delete lines[idx]._empty;
                         const ev = new Event('change');
                         inp.dispatchEvent(ev);
                     }, 200);
                 });
+
             });
 
             // Inline Customer Autocomplete
@@ -805,19 +1066,27 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 });
                 inp.addEventListener('blur', () => {
                     setTimeout(() => { 
-                        inlineCustDropdown.style.display = 'none'; 
-                        const exactMatch = customers.find(p => p.name.toLowerCase() === inp.value.toLowerCase());
-                        if (exactMatch) {
-                            inp.value = exactMatch.name;
-                            lines[idx].customer = exactMatch.name;
-                        } else {
-                            inp.value = '';
+                        const idx = parseInt(inp.dataset.index); // FIX: idx saját scope-ban
+                        inlineCustDropdown.style.display = 'none';
+                        const currentVal = inp.value.trim();
+                        if (!currentVal) {
                             lines[idx].customer = '';
+                        } else {
+                            const exactMatch = customers.find(p => p.name.toLowerCase() === currentVal.toLowerCase());
+                            if (exactMatch) {
+                                inp.value = exactMatch.name;
+                                lines[idx].customer = exactMatch.name;
+                            } else {
+                                // Szabadon beírt érték megtartása
+                                lines[idx].customer = currentVal;
+                            }
                         }
+                        if (lines[idx]._empty && lines[idx].customer) delete lines[idx]._empty;
                         const ev = new Event('change');
                         inp.dispatchEvent(ev);
                     }, 200);
                 });
+
             });
 
             // 🔀 Áthelyezés gombok
@@ -853,7 +1122,160 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
             });
         }
 
+        // ===== DRAG-AND-DROP SOR ATRENDEZESE =====
+        {
+            let dragSrcIndex = null;
+            let dragPlaceholder = null;
+
+            tbody.addEventListener('mousedown', (e) => {
+                const handle = e.target.closest('.drag-handle');
+                if (!handle) return;
+                e.preventDefault();
+
+                dragSrcIndex = parseInt(handle.dataset.index);
+                const srcRow = tbody.querySelector(`tr[data-index="${dragSrcIndex}"]`);
+                if (!srcRow) return;
+
+                // Vizualis jelzesek
+                srcRow.style.opacity = '0.4';
+                srcRow.style.background = '#dbeafe';
+                handle.style.cursor = 'grabbing';
+
+                // Placeholder sor letrehozasa
+                dragPlaceholder = document.createElement('tr');
+                dragPlaceholder.style.cssText = 'height:3px; background:#2563eb; border:none;';
+                const placeholderTd = document.createElement('td');
+                placeholderTd.colSpan = srcRow.cells.length;
+                placeholderTd.style.cssText = 'padding:0; height:3px; background:#2563eb; border:none;';
+                dragPlaceholder.appendChild(placeholderTd);
+
+                const tableWrap = container.querySelector('#km-table-wrap');
+
+                const onMouseMove = (ev) => {
+                    ev.preventDefault();
+                    const rows = Array.from(tbody.querySelectorAll('tr[data-index]'));
+                    let closestRow = null;
+                    let insertBefore = true;
+
+                    for (const row of rows) {
+                        if (row === dragPlaceholder) continue;
+                        const rect = row.getBoundingClientRect();
+                        const midY = rect.top + rect.height / 2;
+                        if (ev.clientY < midY) {
+                            closestRow = row;
+                            insertBefore = true;
+                            break;
+                        }
+                        closestRow = row;
+                        insertBefore = false;
+                    }
+
+                    // Placeholder mozgatasa
+                    if (dragPlaceholder.parentNode) dragPlaceholder.remove();
+                    if (closestRow) {
+                        if (insertBefore) {
+                            closestRow.parentNode.insertBefore(dragPlaceholder, closestRow);
+                        } else {
+                            closestRow.parentNode.insertBefore(dragPlaceholder, closestRow.nextSibling);
+                        }
+                    }
+
+                    // Auto-scroll ha a kurzor a tabla szelere er
+                    if (tableWrap) {
+                        const wrapRect = tableWrap.getBoundingClientRect();
+                        if (ev.clientY < wrapRect.top + 30) {
+                            tableWrap.scrollTop -= 10;
+                        } else if (ev.clientY > wrapRect.bottom - 30) {
+                            tableWrap.scrollTop += 10;
+                        }
+                    }
+                };
+
+                const onMouseUp = (ev) => {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+
+                    srcRow.style.opacity = '';
+                    srcRow.style.background = '';
+                    handle.style.cursor = 'grab';
+
+                    // Meghatarozas: hova kerult a sor
+                    if (dragPlaceholder && dragPlaceholder.parentNode) {
+                        const rows = Array.from(tbody.querySelectorAll('tr[data-index]'));
+                        const placeholderPos = Array.from(tbody.children).indexOf(dragPlaceholder);
+                        dragPlaceholder.remove();
+
+                        // Kiszamitjuk az uj poziciot
+                        const allDataRows = rows.filter(r => r !== dragPlaceholder);
+                        let targetVisualIndex = 0;
+                        for (let i = 0; i < tbody.children.length; i++) {
+                            if (tbody.children[i] === srcRow) break;
+                            if (tbody.children[i].dataset && tbody.children[i].dataset.index !== undefined) {
+                                targetVisualIndex++;
+                            }
+                        }
+
+                        // Az eredeti index es a cel index meghatrozasa a lines tombben
+                        const draggedLine = lines[dragSrcIndex];
+                        if (draggedLine) {
+                            // Sor eltavolitasa a regi helyrol
+                            lines.splice(dragSrcIndex, 1);
+
+                            // Uj pozicio kiszamitasa a DOM-bol
+                            const rowsAfterRemove = Array.from(tbody.querySelectorAll('tr[data-index]'));
+                            let newIndex = lines.length; // default: veg
+                            for (let i = 0; i < rowsAfterRemove.length; i++) {
+                                const rowRect = rowsAfterRemove[i].getBoundingClientRect();
+                                if (ev.clientY <= rowRect.top + rowRect.height / 2) {
+                                    newIndex = parseInt(rowsAfterRemove[i].dataset.index);
+                                    // Korrigalas: ha az eredeti index kisebb volt, az eltavolitassal eltolodott
+                                    if (dragSrcIndex < newIndex) newIndex--;
+                                    break;
+                                }
+                            }
+
+                            // Beszuras az uj helyre
+                            if (newIndex > lines.length) newIndex = lines.length;
+                            if (newIndex < 0) newIndex = 0;
+                            lines.splice(newIndex, 0, draggedLine);
+
+                            // display_order frissitese minden soron
+                            lines.forEach((l, i) => { l.display_order = i; });
+
+                            // Tabla ujrarajzolasa
+                            renderTable();
+
+                            // Automatikus mentes a szerverre (ha mar letezik a fuvar)
+                            if (currentShipmentId) {
+                                const dbLines = lines.filter(l => l._dbId);
+                                if (dbLines.length > 0) {
+                                    const orders = dbLines.map(l => ({
+                                        lineId: l._dbId,
+                                        display_order: l.display_order
+                                    }));
+                                    fetch(`${API}/shipments/${currentShipmentId}/reorder`, {
+                                        method: 'PATCH',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ orders })
+                                    }).catch(err => console.error('Sorrend mentes hiba:', err));
+                                }
+                            }
+                        }
+                    } else if (dragPlaceholder) {
+                        dragPlaceholder.remove();
+                    }
+
+                    dragSrcIndex = null;
+                    dragPlaceholder = null;
+                };
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+        }
+
         // ===== REFERENCE SZŰRŐ ESEMÉNYKEZELŐK (egyszer regisztrálva) =====
+
         container.addEventListener('change', (e) => {
             if (e.target && e.target.id === 'km-ref-filter') {
                 refFilter = e.target.value;
@@ -1006,6 +1428,24 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
             // Mentésnél csak a nem-üres sorokat küldjük
             const realLines = lines.filter(l => !l._empty);
 
+            // Validáció: legalább 1 sor raklapszámmal és 1 sor Reference-szel kell legyen
+            if (isNew) {
+                const hasAnyPallet = realLines.some(l =>
+                    (parseFloat(String(l.euro_palets).replace(',', '.')) || 0) > 0 ||
+                    (parseFloat(String(l.normal_palets).replace(',', '.')) || 0) > 0
+                );
+                const hasAnyReference = realLines.some(l => l.partner_id || (l.partner_name && l.partner_name.trim()));
+
+                const missing = [];
+                if (!hasAnyPallet) missing.push('• Legalább egy sorban meg kell adni a raklapszámot (Euro vagy Normal)');
+                if (!hasAnyReference) missing.push('• Legalább egy sorban meg kell adni a Reference (szállító) értékét');
+
+                if (missing.length > 0) {
+                    alert('⚠ A kamion nem hozható létre az alábbi hiányzó adatok miatt:\n\n' + missing.join('\n'));
+                    return;
+                }
+            }
+
             const payload = {
                 order_number: orderNumber,
                 truck_type: kmTip.value,
@@ -1018,7 +1458,14 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null) {
                 transport_price: parseFloat(container.querySelector('#km-price').value) || 0,
                 transport_currency: container.querySelector('#km-currency').value || 'EUR',
                 temperature: container.querySelector('#km-temperature').value.trim() || null,
-                lines: realLines.filter(l => (parseFloat(String(l.euro_palets).replace(',', '.')) || 0) > 0 || (parseFloat(String(l.normal_palets).replace(',', '.')) || 0) > 0)
+                lines: realLines.filter(l =>
+                    (parseFloat(String(l.euro_palets).replace(',', '.')) || 0) > 0 ||
+                    (parseFloat(String(l.normal_palets).replace(',', '.')) || 0) > 0 ||
+                    l.partner_id || l.partner_name ||
+                    l.product_id ||
+                    (l.customer && l.customer.trim()) ||
+                    (l.destination && l.destination.trim())
+                )
             };
 
             try {

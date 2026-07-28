@@ -35,7 +35,7 @@ export function renderMenedzser(container, windowManager) {
                 </label>
                 <label style="display:flex; align-items:center; gap:7px; cursor:pointer; font-size:13px; user-select:none;">
                     <input type="checkbox" id="chk-hianyzo-szla" style="width:15px;height:15px;accent-color:var(--primary);">
-                    <span>Hiányzó fuvarszámla</span>
+                    <span>Hiányzó számla</span>
                 </label>
             </div>
 

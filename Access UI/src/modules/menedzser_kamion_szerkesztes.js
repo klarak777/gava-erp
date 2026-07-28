@@ -145,10 +145,16 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                 <div class="finance-panel finance-header-grid">
                     <!-- Bal oldal: Fő adatok -->
                     <div>
-                        <div style="display:flex; align-items: baseline; gap: 12px; margin-bottom: 8px;">
-                            <div class="finance-title" id="fm-title" style="margin-bottom:0;">GHU</div>
-                            <div style="font-weight:bold; font-size:14px; margin-left: 8px;">Season: <span id="fm-season" style="font-size:16px;">25-26</span></div>
-                            <div style="font-weight:bold; font-size:14px; margin-left: 8px;">Truck No: <span id="fm-truck-no" style="font-size:16px;">209</span></div>
+                        <div style="display:flex; align-items: flex-start; gap: 24px; margin-bottom: 8px;">
+                            <div class="finance-title" id="fm-title" style="display:none; margin-bottom:0;">GHU</div>
+                            <div style="font-weight:bold; margin-left: 8px; display:flex; flex-direction:column; line-height:1.2;">
+                                <span style="color:var(--text-light, #6c757d); font-size:14px;">Season:</span>
+                                <span id="fm-season" style="font-size:18px; color:var(--text-dark, #2c3e50);">25-26</span>
+                            </div>
+                            <div style="font-weight:bold; margin-left: 8px; display:flex; flex-direction:column; line-height:1.2;">
+                                <span style="color:var(--text-light, #6c757d); font-size:14px;">Truck No:</span>
+                                <span id="fm-truck-no" style="font-size:18px; color:var(--text-dark, #2c3e50);">209</span>
+                            </div>
                         </div>
                         <hr style="margin: 8px 0;">
                         <div class="input-group">
@@ -298,7 +304,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                     <div class="tab-panel tab-panel-active" id="tab-goods">
                         <div style="display:flex; justify-content:space-between; margin-bottom: 4px; align-items:center;">
                             <div style="display:flex; align-items:center; gap: 4px;">
-                                <button class="action-btn">Delete line</button>
+                                <button class="action-btn" id="fm-delete-line">Delete line</button>
                                 <button class="action-btn">Update</button>
                                 <button class="action-btn" id="fm-add-line" style="background:#4caf50; color:white;">Add line</button>
                                 <span style="margin-left:16px; font-weight:bold;">Currency:</span>
@@ -405,7 +411,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                         <table class="grid-table" id="uc-lines-table">
                             <thead>
                                 <tr style="background:var(--bg-light); border-bottom: 2px solid var(--border);">
-                                    <th colspan="4" style="text-align:left; font-style:italic;">(Currency: <span id="uc-currency-label">HUF</span>)</th>
+                                    <th colspan="5" style="text-align:left; font-style:italic;">(Currency: <span id="uc-currency-label">HUF</span>)</th>
                                     <th><input type="text" id="uc-tot-pr" readonly style="width:80px; text-align:right; background:#eee; font-weight:bold; border:none; padding:2px;"></th>
                                     <th><input type="text" id="uc-tot-trans" readonly style="width:80px; text-align:right; background:#eee; font-weight:bold; border:none; padding:2px;"></th>
                                     <th><input type="text" id="uc-tot-vcost" readonly style="width:80px; text-align:right; background:#eee; font-weight:bold; border:none; padding:2px;"></th>
@@ -425,10 +431,11 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                                     <th>V.Cost/kg</th>
                                     <th>OH/kg</th>
                                     <th style="background:#cc99cc; color:#fff;">TotCost/kg</th>
+                                    <th style="background:#cc99cc; color:#fff;">ÁFA %</th>
                                     <th style="background:#cc99cc; color:#fff;">+VAT /kg</th>
                                     <th style="background:#993366; color:#fff;">TotCost/Box</th>
                                     <th style="background:#993366; color:#fff;">+VAT /Box</th>
-                                    <th>V.Cost/kg</th>
+                                    <th>V.Cost/kg(EUR)</th>
                                 </tr>
                             </thead>
                             <tbody id="uc-lines-tbody">
@@ -451,6 +458,8 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
         let linesData = [];
         let transportLinesData = [];
         let unitCostLinesData = [];
+        let deletedGoodsLineIds = [];
+        let transportersData = [];
 
         // === Tab váltás ===
         container.querySelectorAll('.tab-btn').forEach(btn => {
@@ -466,18 +475,20 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
         // === Lookup adatok betöltése ===
         async function loadLookups() {
             try {
-                const [prodRes, typeRes, taxRes, currRes, partnerRes] = await Promise.all([
+                const [prodRes, typeRes, taxRes, currRes, partnerRes, transpRes] = await Promise.all([
                     fetch('/api/v1/admin/products'),
                     fetch('/api/v1/admin/finance_truck_types'),
                     fetch('/api/v1/admin/finance_tax_rates'),
                     fetch('/api/v1/admin/currencies'),
-                    fetch('/api/v1/partners')
+                    fetch('/api/v1/partners'),
+                    fetch('/api/v1/transporters')
                 ]);
                 productsData = prodRes.ok ? await prodRes.json() : [];
                 financeTruckTypes = typeRes.ok ? await typeRes.json() : [];
                 taxRatesData = taxRes.ok ? await taxRes.json() : [];
                 currenciesData = currRes.ok ? await currRes.json() : [];
                 partnersData = partnerRes.ok ? await partnerRes.json() : [];
+                transportersData = transpRes.ok ? await transpRes.json() : [];
 
                 const typeSelect = container.querySelector('#fm-type-truck');
                 financeTruckTypes.forEach(t => {
@@ -525,8 +536,15 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
 
             const orderToParse = displayOrderNumber || shipmentData.order_number || '';
             const match = orderToParse.match(/^([a-zA-Z]+)\s*(.*)$/);
-            container.querySelector('#fm-title').textContent = match ? match[1].toUpperCase() : 'N/A';
-            container.querySelector('#fm-truck-no').textContent = match ? match[2] : orderToParse;
+            const idEmpr = match ? match[1].toUpperCase() : 'N/A';
+            const truckNr = match ? match[2] : orderToParse;
+            
+            container.querySelector('#fm-title').style.display = 'none';
+            container.querySelector('#fm-title').textContent = idEmpr;
+            
+            const fmTruckNo = container.querySelector('#fm-truck-no');
+            fmTruckNo.textContent = orderToParse; // Display "GHU 199"
+            fmTruckNo.dataset.trucknr = truckNr; // Keep "199" for underlying logic
 
             container.querySelector('#fm-invoice').value = (linesData.length > 0 && linesData[0].invoice_number_finance) ? linesData[0].invoice_number_finance : (shipmentData.invoice_number || '');
             container.querySelector('#fm-auto-num').value = shipmentData.plate_number || '';
@@ -535,7 +553,9 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
             container.querySelector('#fm-price-toll').value = shipmentData.price_trance_toll || '';
             container.querySelector('#fm-overhead').value = shipmentData.overhead_percent || '';
             container.querySelector('#fm-currency').value = shipmentData.goods_currency || 'EUR';
+            container.querySelector('#fm-currency-2').value = shipmentData.goods_currency || 'EUR';
             container.querySelector('#fm-exch-rt').value = shipmentData.exchange_rate || '';
+            container.querySelector('#fm-exch-rt-2').value = shipmentData.exchange_rate || '';
             container.querySelector('#fm-comments').value = shipmentData.finance_comments || '';
             container.querySelector('#fm-type-truck').value = shipmentData.finance_truck_type_id || '';
             container.querySelector('#fm-supplier').value = refName || shipmentData.supplier_name || '';
@@ -544,7 +564,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
 
             // Season és Truck info kinyerése
             const seasonVal = shipmentData.season || '25-26';
-            const truckNoVal = match ? match[2] : orderToParse;
+            const truckNoVal = truckNr;
             container.querySelector('#fm-season').textContent = seasonVal;
 
             container.querySelector('#uc-currency-label').textContent = shipmentData.goods_currency || 'HUF';
@@ -590,12 +610,12 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
             tr.setAttribute('data-line-id', line.id || '');
             tr.setAttribute('data-product-id', line.product_id || '');
             tr.innerHTML = `
-                    <td style="text-align:center;" class="row-num">${i + 1}</td>
+                    <td style="text-align:center;" class="row-num"><input type="checkbox" class="row-chk"> ${i + 1}</td>
                     <td style="display:none;"><input type="text" class="inp-prod-code" list="${dlCodeId}" value="${displayCode}" style="width:80px;"><datalist id="${dlCodeId}">${dlCodeItems}</datalist></td>
                     <td><input type="text" class="inp-prod-name" list="${dlNameId}" value="${displayName}" style="width:160px;"><datalist id="${dlNameId}">${dlNameItems}</datalist></td>
                     <td style="text-align:center;">c</td>
                     <td><input type="text" class="inp-desc" value="${line.description_finance || line.comment || ''}"></td>
-                    <td><input type="number" step="0.01" class="inp-palets" value="${line.total_palets || ''}" readonly style="background:#eee;"></td>
+                    <td><input type="number" step="0.01" class="inp-palets" value="${((parseFloat(line.euro_palets) || 0) + (parseFloat(line.normal_palets) || 0)) || ''}" readonly style="background:#eee;"></td>
                     <td style="text-align:center;">u</td>
                     <td><input type="number" step="0.01" class="inp-boxes num-calc" value="${line.boxes || ''}"></td>
                     <td><input type="number" step="0.01" class="inp-kgs num-calc" value="${line.kgs_finance || ''}"></td>
@@ -635,8 +655,16 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
             tr.querySelector('.inp-amntabt').value = netAmnt > 0 ? netAmnt.toFixed(2) : '';
             const taxPct = parseFloat(tr.querySelector('.inp-tax').value) || 0;
             const taxAmt = netAmnt * (taxPct / 100);
+            const totalInvoice = netAmnt + taxAmt;
             tr.querySelector('.inp-taxamt').value = taxAmt > 0 ? taxAmt.toFixed(2) : '';
-            tr.querySelector('.inp-amnta').value = (netAmnt + taxAmt) > 0 ? (netAmnt + taxAmt).toFixed(2) : '';
+            tr.querySelector('.inp-amnta').value = totalInvoice > 0 ? totalInvoice.toFixed(2) : '';
+
+            const index = Array.from(tr.parentNode.children).indexOf(tr);
+            const ucRow = container.querySelector(`#uc-lines-tbody tr:nth-child(${index + 1})`);
+            if (ucRow) {
+                calculateUnitCostRow(ucRow);
+                calculateUnitCostTotals();
+            }
         }
 
         function calculateTotals() {
@@ -657,7 +685,9 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
             container.querySelector('#tot-inv-abt').value = tAmntABT > 0 ? tAmntABT.toFixed(2) : '';
             container.querySelector('#tot-inv-tax').value = tTaxAmt > 0 ? tTaxAmt.toFixed(2) : '';
             container.querySelector('#tot-inv-amnta').value = tAmntA > 0 ? tAmntA.toFixed(2) : '';
-            container.querySelector('#ts-goods-inv').textContent = tNet > 0 ? tNet.toFixed(2) : '0';
+            const exchRt = parseFloat(container.querySelector('#fm-exch-rt').value) || 1;
+            const totalInvoiceHuf = tAmntA * exchRt;
+            container.querySelector('#ts-goods-inv').textContent = totalInvoiceHuf > 0 ? Math.round(totalInvoiceHuf) : '0';
             container.querySelector('#ts-goods-inv-a').textContent = tAmntA > 0 ? tAmntA.toFixed(2) : '0';
         }
 
@@ -687,6 +717,15 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
             return `<datalist id="${dlId}">${items}</datalist>`;
         }
 
+        function buildTransporterSelect(selectedVal) {
+            let opts = `<option value="">-- Válasszon --</option>`;
+            transportersData.forEach(t => {
+                const sel = (selectedVal === t.name) ? 'selected' : '';
+                opts += `<option value="${t.name}" ${sel}>${t.name}</option>`;
+            });
+            return `<select class="tr-supplier" style="width:130px;">${opts}</select>`;
+        }
+
         function buildTaxOptions(selectedVal) {
             let opts = `<option value="0">0.000</option>`;
             taxRatesData.forEach(t => {
@@ -698,14 +737,26 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
 
         function appendTransportRow(tbody, line, i, idEmprVal, seasonVal, truckNoVal) {
             const dlId = `dl-tr-supp-${i}`;
+            const isNew = line._isNew;
             const tr = document.createElement('tr');
             tr.setAttribute('data-tr-index', i);
             const currCode = line.currency_code || (currenciesData.length > 0 ? currenciesData[0].code : 'EUR');
+
+            const headerSupplier = container.querySelector('#fm-supplier') ? container.querySelector('#fm-supplier').value : '';
+            const supplierCell = isNew
+                ? buildTransporterSelect('')
+                : `<input type="text" class="tr-supplier" value="${headerSupplier}" style="width:130px;" readonly>`;
+
             tr.innerHTML = `
-                <td style="text-align:center; width:30px;">${i + 1}</td>
-                <td><input type="date" class="tr-date" value="${line.date_entry ? line.date_entry.split('T')[0] : ''}" style="width:95px;"></td>
-                <td><input type="text" class="tr-type-supp" value="${line.type_supp || ''}" style="width:80px;"></td>
-                <td>${buildPartnerDatalist(dlId)}<input type="text" class="tr-supplier" list="${dlId}" value="${line.partner_name || ''}" style="width:130px;"></td>
+                <td style="text-align:center; width:30px;"><input type="checkbox" class="tr-row-chk"> ${i + 1}</td>
+                <td><input type="date" class="tr-date" value="${isNew ? '' : (line.date_entry ? line.date_entry.split('T')[0] : (container.querySelector('#fm-dep-date').value || ''))}" style="width:95px;"></td>
+                <td>
+                    <select class="tr-type-supp" style="width:80px;">
+                        <option value="Supplier" ${line.type_supp === 'Supplier' ? 'selected' : ''}>Supplier</option>
+                        <option value="Trasport" ${line.type_supp === 'Trasport' ? 'selected' : ''}>Trasport</option>
+                    </select>
+                </td>
+                <td>${supplierCell}</td>
                 <td><input type="text" class="tr-invoice" value="${line.invoice_number || ''}" style="width:80px;"></td>
                 <td><input type="text" class="tr-type-a" value="${line.type_a || 'A'}" style="width:40px;"></td>
                 <td><input type="text" class="tr-desc" value="${line.description || ''}" style="width:100px;"></td>
@@ -739,6 +790,9 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
             tr.querySelector('.tr-tot-inv').value = totInv > 0 ? totInv.toFixed(2) : '';
             tr.querySelector('.tr-tot-local').value = totLocal > 0 ? totLocal.toFixed(2) : '';
             updateTransportSummary();
+
+            container.querySelectorAll('#uc-lines-tbody tr').forEach(ucRow => calculateUnitCostRow(ucRow));
+            calculateUnitCostTotals();
         }
 
         function updateTransportSummary() {
@@ -755,17 +809,17 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
         function renderUnitCostLines() {
             const tbody = container.querySelector('#uc-lines-tbody');
             tbody.innerHTML = '';
-            
+
             let dataSource = unitCostLinesData;
             if (unitCostLinesData.length === 0 && linesData.length > 0) {
                 dataSource = linesData.map(l => {
                     const matchedProduct = productsData.find(p => p.id === l.product_id);
                     const prodName = matchedProduct ? matchedProduct.name : (l.prod || l.productName || '');
-                    
+
                     const kgs = parseFloat(l.kgs_finance) || 0;
                     const boxes = parseFloat(l.boxes) || 0;
                     const kgsPerBox = boxes > 0 ? (kgs / boxes) : 0;
-                    
+
                     return {
                         product_name: prodName,
                         description: l.description_finance || l.comment || '',
@@ -793,20 +847,21 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
             const tr = document.createElement('tr');
             tr.setAttribute('data-uc-index', i);
             tr.innerHTML = `
-                <td style="text-align:center; width:30px;">${i + 1}</td>
+                <td style="text-align:center; width:30px;"><input type="checkbox" class="uc-row-chk"> ${i + 1}</td>
                 <td><input type="text" class="uc-product" list="${dlNameId}" value="${line.product_name || ''}" style="width:160px;"><datalist id="${dlNameId}">${dlNameItems}</datalist></td>
                 <td><input type="text" class="uc-desc" value="${line.description || ''}" style="width:120px;"></td>
-                <td><input type="number" step="0.01" class="uc-netto uc-calc" value="${line.netto_kgs || ''}" style="width:70px;"></td>
-                <td><input type="number" step="0.01" class="uc-kgs-box uc-calc" value="${line.kgs_per_box || ''}" style="width:60px;"></td>
-                <td><input type="number" step="0.001" class="uc-pr-kg uc-calc" value="${line.price_per_kg || ''}" style="width:60px;"></td>
-                <td><input type="number" step="0.001" class="uc-trans-kg uc-calc" value="${line.trans_per_kg || ''}" style="width:60px;"></td>
+                <td><input type="number" step="0.01" class="uc-netto" value="${line.netto_kgs || ''}" readonly style="background:#eee; width:70px;"></td>
+                <td><input type="number" step="0.01" class="uc-kgs-box" value="${line.kgs_per_box || ''}" readonly style="background:#eee; width:60px;"></td>
+                <td><input type="number" step="0.001" class="uc-pr-kg" value="${line.price_per_kg || ''}" readonly style="background:#eee; width:60px;"></td>
+                <td><input type="number" step="0.001" class="uc-trans-kg" value="${line.trans_per_kg || ''}" readonly style="background:#eee; width:60px;"></td>
                 <td><input type="number" step="0.001" class="uc-vcost-kg" value="${line.v_cost_per_kg || ''}" readonly style="background:#eee; width:65px;"></td>
                 <td><input type="number" step="0.001" class="uc-oh-kg" value="${line.oh_per_kg || ''}" readonly style="background:#eee; width:60px;"></td>
-                <td><input type="number" step="0.001" class="uc-totcost-kg" value="${line.tot_cost_per_kg || ''}" readonly style="background:#f0f8ff; width:70px;"></td>
-                <td><input type="number" step="0.001" class="uc-vat-kg" value="${line.vat_per_kg || ''}" readonly style="background:#f0f8ff; font-weight:bold; width:70px;"></td>
-                <td><input type="number" step="0.001" class="uc-totcost-box" value="${line.tot_cost_per_box || ''}" readonly style="background:#f0f8ff; width:80px;"></td>
-                <td><input type="number" step="0.001" class="uc-vat-box" value="${line.vat_per_box || ''}" readonly style="background:#f0f8ff; font-weight:bold; width:80px;"></td>
-                <td><input type="number" step="0.001" class="uc-vcost-kg-eur" value="${line.v_cost_per_kg_eur || ''}" readonly style="background:#eee; width:60px;"></td>
+                <td><input type="number" step="0.01" class="uc-totcost-kg" value="${line.tot_cost_per_kg || ''}" readonly style="background:#f0f8ff; width:70px;"></td>
+                <td><select class="uc-tax-pct uc-calc" style="width:60px;">${buildTaxOptions(line.tax_percent || 0)}</select></td>
+                <td><input type="number" step="0.01" class="uc-vat-kg" value="${line.vat_per_kg || ''}" readonly style="background:#f0f8ff; font-weight:bold; width:70px;"></td>
+                <td><input type="number" step="0.01" class="uc-totcost-box" value="${line.tot_cost_per_box || ''}" readonly style="background:#f0f8ff; width:80px;"></td>
+                <td><input type="number" step="0.01" class="uc-vat-box" value="${line.vat_per_box || ''}" readonly style="background:#f0f8ff; font-weight:bold; width:80px;"></td>
+                <td><input type="number" step="0.01" class="uc-vcost-kg-eur" value="${line.v_cost_per_kg_eur || ''}" readonly style="background:#eee; width:60px;"></td>
             `;
             tbody.appendChild(tr);
 
@@ -816,28 +871,79 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
         }
 
         function calculateUnitCostRow(tr) {
-            const pr = parseFloat(tr.querySelector('.uc-pr-kg').value) || 0;
-            const trans = parseFloat(tr.querySelector('.uc-trans-kg').value) || 0;
-            const kgsBox = parseFloat(tr.querySelector('.uc-kgs-box').value) || 0;
-            const overheadPct = parseFloat(container.querySelector('#fm-overhead').value) || 0;
+            const index = Array.from(tr.parentNode.children).indexOf(tr);
+            const goodsRow = container.querySelector(`#fm-lines-table tbody tr:nth-child(${index + 1})`);
+
+            let itemKg = 0;
+            let itemPallets = 0;
+            let itemBoxes = 0;
+            let itemUnitPr = 0;
+            let goodsTaxPct = 0;
+
+            if (goodsRow) {
+                itemKg = parseFloat(goodsRow.querySelector('.inp-kgs').value) || 0;
+                itemPallets = parseFloat(goodsRow.querySelector('.inp-palets').value) || 0;
+                itemBoxes = parseFloat(goodsRow.querySelector('.inp-boxes').value) || 0;
+                itemUnitPr = parseFloat(goodsRow.querySelector('.inp-unitpr').value) || 0;
+                goodsTaxPct = parseFloat(goodsRow.querySelector('.inp-tax').value) || 0;
+            }
+
             const exchRt = parseFloat(container.querySelector('#fm-exch-rt').value) || 0;
+
+            const netto = itemKg;
+            const kgsBox = itemBoxes > 0 ? (netto / itemBoxes) : 0;
+            const prKg = exchRt * itemUnitPr;
+
+            let totalTransport = 0;
+            container.querySelectorAll('#tr-lines-tbody tr').forEach(tRow => {
+                totalTransport += parseFloat(tRow.querySelector('.tr-amount').value) || 0;
+            });
+
+            let totalPallets = 0;
+            container.querySelectorAll('#fm-lines-table tbody tr').forEach(gRow => {
+                totalPallets += parseFloat(gRow.querySelector('.inp-palets').value) || 0;
+            });
+
+            let transKg = 0;
+            if (totalPallets > 0 && itemKg > 0 && itemPallets > 0) {
+                transKg = ((totalTransport / totalPallets) * exchRt) / (itemKg / itemPallets);
+            }
+
+            tr.querySelector('.uc-netto').value = netto > 0 ? netto.toFixed(2) : '';
+            tr.querySelector('.uc-kgs-box').value = kgsBox > 0 ? kgsBox.toFixed(2) : '';
+            tr.querySelector('.uc-pr-kg').value = prKg > 0 ? prKg.toFixed(2) : '';
+            tr.querySelector('.uc-trans-kg').value = transKg > 0 ? transKg.toFixed(2) : '';
+
+            const pr = prKg;
+            const trans = transKg;
+            const kgsBoxCalc = kgsBox;
+            const overheadPct = parseFloat(container.querySelector('#fm-overhead').value) || 0;
+            // exchRt is already defined above
 
             const vCost = pr + trans;
             const oh = vCost * (overheadPct / 100);
             const totCost = vCost + oh;
-            const vatKg = totCost * 1.27; // 27% ÁFA
 
-            const totCostBox = totCost * kgsBox;
-            const vatBox = vatKg * kgsBox;
+            // Sync tax dropdown with Goods tab if available, else read from UI
+            const taxDropdown = tr.querySelector('.uc-tax-pct');
+            if (goodsRow && taxDropdown.value === "0" && goodsTaxPct > 0) {
+                taxDropdown.value = goodsTaxPct;
+            }
+            const taxPct = parseFloat(taxDropdown.value) || 0;
+
+            const vatKg = totCost * (taxPct / 100);
+
+            const totCostBox = totCost * kgsBoxCalc;
+            const vatBox = totCostBox * (taxPct / 100);
             const vCostEur = exchRt > 0 ? (vCost / exchRt) : 0;
 
-            tr.querySelector('.uc-vcost-kg').value = vCost > 0 ? vCost.toFixed(3) : '';
-            tr.querySelector('.uc-oh-kg').value = oh > 0 ? oh.toFixed(3) : '';
-            tr.querySelector('.uc-totcost-kg').value = totCost > 0 ? totCost.toFixed(3) : '';
-            tr.querySelector('.uc-vat-kg').value = vatKg > 0 ? vatKg.toFixed(3) : '';
-            tr.querySelector('.uc-totcost-box').value = totCostBox > 0 ? totCostBox.toFixed(3) : '';
-            tr.querySelector('.uc-vat-box').value = vatBox > 0 ? vatBox.toFixed(3) : '';
-            tr.querySelector('.uc-vcost-kg-eur').value = vCostEur > 0 ? vCostEur.toFixed(3) : '';
+            tr.querySelector('.uc-vcost-kg').value = vCost > 0 ? vCost.toFixed(2) : '';
+            tr.querySelector('.uc-oh-kg').value = oh > 0 ? oh.toFixed(2) : '';
+            tr.querySelector('.uc-totcost-kg').value = totCost > 0 ? totCost.toFixed(2) : '';
+            tr.querySelector('.uc-vat-kg').value = vatKg > 0 ? vatKg.toFixed(2) : '';
+            tr.querySelector('.uc-totcost-box').value = totCostBox > 0 ? totCostBox.toFixed(2) : '';
+            tr.querySelector('.uc-vat-box').value = vatBox > 0 ? vatBox.toFixed(2) : '';
+            tr.querySelector('.uc-vcost-kg-eur').value = vCostEur > 0 ? vCostEur.toFixed(2) : '';
         }
 
         function calculateUnitCostTotals() {
@@ -849,10 +955,10 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                 const vcost = parseFloat(tr.querySelector('.uc-vcost-kg').value) || 0;
                 const oh = parseFloat(tr.querySelector('.uc-oh-kg').value) || 0;
 
-                tPr += (pr * netto);
-                tTrans += (trans * netto);
-                tVCost += (vcost * netto);
-                tOh += (oh * netto);
+                tPr += pr;
+                tTrans += trans;
+                tVCost += vcost;
+                tOh += oh;
             });
 
             container.querySelector('#uc-tot-pr').value = tPr > 0 ? tPr.toFixed(2) : '';
@@ -867,12 +973,45 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
             appendUnitCostRow(tbody, {}, tbody.querySelectorAll('tr').length);
         });
 
+        container.querySelector('#tr-add-line').addEventListener('click', () => {
+            const tbody = container.querySelector('#tr-lines-tbody');
+            const num = tbody.querySelectorAll('tr').length;
+            const seasonVal = container.querySelector('#fm-season').textContent || '';
+            const fmTruckNo = container.querySelector('#fm-truck-no');
+            const truckNoVal = fmTruckNo.dataset.trucknr || '';
+            const idEmprVal = linesData.length > 0 ? (linesData[0].customer || 'GHU') : 'GHU';
+            appendTransportRow(tbody, { _isNew: true }, num, idEmprVal, seasonVal, truckNoVal);
+        });
+
         // ============================
         // GOODS Add line
         // ============================
         container.querySelector('#fm-add-line').addEventListener('click', () => {
             const tbody = container.querySelector('#fm-lines-table tbody');
             appendGoodsRow(tbody, {}, tbody.querySelectorAll('tr').length);
+        });
+
+        // ============================
+        // GOODS Delete line
+        // ============================
+        container.querySelector('#fm-delete-line').addEventListener('click', () => {
+            const tbody = container.querySelector('#fm-lines-table tbody');
+            const checked = tbody.querySelectorAll('.row-chk:checked');
+            if (checked.length === 0) {
+                alert('Jelöljön ki legalább egy sort a törléshez!');
+                return;
+            }
+            if (confirm('Biztosan törli a kijelölt sor(oka)t?')) {
+                checked.forEach(chk => {
+                    const tr = chk.closest('tr');
+                    const lineId = tr.getAttribute('data-line-id');
+                    if (lineId) {
+                        deletedGoodsLineIds.push(lineId);
+                    }
+                    tr.remove();
+                });
+                calculateTotals();
+            }
         });
 
         // ============================
@@ -894,6 +1033,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                 finance_date: container.querySelector('#fm-date').value || null,
                 finance_status: container.querySelector('#fm-status').value,
                 finance_comments: container.querySelector('#fm-comments').value,
+                deletedLineIds: deletedGoodsLineIds,
                 lines: []
             };
             container.querySelectorAll('#fm-lines-table tbody tr').forEach(tr => {
@@ -1005,9 +1145,25 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
             container.querySelectorAll('#uc-lines-tbody tr').forEach(tr => calculateUnitCostRow(tr));
             calculateUnitCostTotals();
         });
-        container.querySelector('#fm-exch-rt').addEventListener('input', () => {
+        container.querySelector('#fm-exch-rt').addEventListener('input', (e) => {
+            container.querySelector('#fm-exch-rt-2').value = e.target.value;
+            container.querySelectorAll('#fm-lines-table tbody tr').forEach(tr => calculateGoodsRow(tr));
+            calculateTotals();
             container.querySelectorAll('#uc-lines-tbody tr').forEach(tr => calculateUnitCostRow(tr));
             calculateUnitCostTotals();
+        });
+
+        container.querySelector('#fm-exch-rt-2').addEventListener('input', (e) => {
+            container.querySelector('#fm-exch-rt').value = e.target.value;
+            container.querySelector('#fm-exch-rt').dispatchEvent(new Event('input'));
+        });
+
+        container.querySelector('#fm-currency').addEventListener('change', (e) => {
+            container.querySelector('#fm-currency-2').value = e.target.value;
+        });
+
+        container.querySelector('#fm-currency-2').addEventListener('change', (e) => {
+            container.querySelector('#fm-currency').value = e.target.value;
         });
 
         // Initialize

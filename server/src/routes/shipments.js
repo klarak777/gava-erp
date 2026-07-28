@@ -129,6 +129,7 @@ router.get('/:id', async (req, res, next) => {
       .leftJoin('products', 'shipment_lines.product_id', 'products.id')
       .leftJoin('partners', 'shipment_lines.partner_id', 'partners.id')
       .where('shipment_id', shipment.id)
+      .orderBy('shipment_lines.display_order', 'asc')
       .orderBy('shipment_lines.id', 'asc');
 
     if (ref_name) {
@@ -177,7 +178,11 @@ router.get('/:id', async (req, res, next) => {
       return line;
     });
 
-    res.json({ shipment, lines });
+    const season = await db('seasons').where('id', shipment.season_id).first();
+    const seasonCode = season ? season.code : '';
+
+    res.json({ shipment: { ...shipment, season_code: seasonCode }, lines });
+
   } catch (err) {
     console.error('Hiba a shipment lekérdezéskor:', err);
     res.status(500).json({ error: 'Belső szerverhiba' });
@@ -457,8 +462,17 @@ router.post('/', async (req, res) => {
     const sId = typeof shipmentId === 'object' ? shipmentId.id : shipmentId;
 
     if (lines && lines.length > 0) {
-      // Csak azokat a sorokat szúrjuk be, amiknek legalább az egyik raklapja nem 0
-      const activeLines = lines.filter(line => (parseFloat(String(line.euro_palets).replace(',', '.')) || 0) > 0 || (parseFloat(String(line.normal_palets).replace(',', '.')) || 0) > 0);
+      // Csak azokat a sorokat szúrjuk be, amiknek van raklapja VAGY más érdemi adata
+      const activeLines = lines.filter(line =>
+        (parseFloat(String(line.euro_palets).replace(',', '.')) || 0) > 0 ||
+        (parseFloat(String(line.normal_palets).replace(',', '.')) || 0) > 0 ||
+        line.partner_id ||
+        (line.partner_name && line.partner_name.trim()) ||
+        line.product_id ||
+        (line.customer && line.customer.trim()) ||
+        (line.destination && line.destination.trim())
+      );
+
 
       if (activeLines.length > 0) {
         // 3. Raklapváltó tábla betöltése
@@ -484,7 +498,7 @@ router.post('/', async (req, res) => {
         const tPrice = parseFloat(transport_price) || 0;
 
         // 5. Tételek előkészítése és mentése
-        const linesToInsert = activeLines.map(line => {
+        const linesToInsert = activeLines.map((line, idx) => {
           const lineEuro = parseFloat(String(line.euro_palets).replace(',', '.')) || 0;
           const lineNorm = parseFloat(String(line.normal_palets).replace(',', '.')) || 0;
 
@@ -518,7 +532,8 @@ router.post('/', async (req, res) => {
             comment: line.comment || '',
             truck_number_per: parseFloat(line.truck_number_per) || 0,
             transport_cost_product: calcTransportCost.toFixed(2),
-            transport_cost: calcTransportCost.toFixed(2)
+            transport_cost: calcTransportCost.toFixed(2),
+            display_order: line.display_order != null ? line.display_order : idx
           };
         });
 
@@ -532,6 +547,31 @@ router.post('/', async (req, res) => {
     await trx.rollback();
     console.error('Hiba a fuvar létrehozásakor:', err);
     res.status(500).json({ error: 'Hiba történt a mentés során: ' + err.message });
+  }
+});
+// PATCH /api/v1/shipments/:id/reorder
+// Sorok display_order-jenek frissitese (csak sorrend, nem erinti az adatokat)
+router.patch('/:id/reorder', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { orders } = req.body; // [{ lineId: 123, display_order: 0 }, ...]
+
+    if (!Array.isArray(orders)) {
+      return res.status(400).json({ error: 'Az orders tombnek kell lennie.' });
+    }
+
+    const promises = orders.map(o =>
+      db('shipment_lines')
+        .where('id', o.lineId)
+        .where('shipment_id', id)
+        .update({ display_order: o.display_order })
+    );
+    await Promise.all(promises);
+
+    res.json({ message: 'Sorrend frissitve', count: orders.length });
+  } catch (err) {
+    console.error('Hiba a sorrend frissitesekor:', err);
+    res.status(500).json({ error: 'Hiba tortent: ' + err.message });
   }
 });
 
@@ -599,13 +639,28 @@ router.put('/:id', async (req, res) => {
         temperature: temperature || null
       });
 
-    // 2. Töröljük a régi tételeket
-    await trx('shipment_lines').where('shipment_id', id).del();
+    // 2. Töröljük a régi tételeket (kivéve a pénzügyi nézetben hozzáadottakat)
+    await trx('shipment_lines')
+      .where('shipment_id', id)
+      .where(function() {
+        this.where('is_finance_only', false).orWhereNull('is_finance_only');
+      })
+      .del();
 
     // 3. Új tételek beszúrása
     if (lines && lines.length > 0) {
       // Csak azokat a sorokat szúrjuk be, amiknek legalább az egyik raklapja nem 0
-      const activeLines = lines.filter(line => (parseFloat(String(line.euro_palets).replace(',', '.')) || 0) > 0 || (parseFloat(String(line.normal_palets).replace(',', '.')) || 0) > 0);
+      // Csak azokat a sorokat szúrjuk be, amiknek van raklapja VAGY más érdemi adata
+      const activeLines = lines.filter(line =>
+        (parseFloat(String(line.euro_palets).replace(',', '.')) || 0) > 0 ||
+        (parseFloat(String(line.normal_palets).replace(',', '.')) || 0) > 0 ||
+        line.partner_id ||
+        (line.partner_name && line.partner_name.trim()) ||
+        line.product_id ||
+        (line.customer && line.customer.trim()) ||
+        (line.destination && line.destination.trim())
+      );
+
 
       if (activeLines.length > 0) {
         const conversions = await trx('pallet_conversion').select('normal_count', 'euro_equivalent');
@@ -628,7 +683,7 @@ router.put('/:id', async (req, res) => {
         const grandTotal = sumEuro + convertedNormal;
         const tPrice = parseFloat(transport_price) || 0;
 
-        const linesToInsert = activeLines.map(line => {
+        const linesToInsert = activeLines.map((line, idx) => {
           const lineEuro = parseFloat(String(line.euro_palets).replace(',', '.')) || 0;
           const lineNorm = parseFloat(String(line.normal_palets).replace(',', '.')) || 0;
 
@@ -662,7 +717,8 @@ router.put('/:id', async (req, res) => {
             comment: line.comment || '',
             truck_number_per: parseFloat(line.truck_number_per) || 0,
             transport_cost_product: calcTransportCost.toFixed(2),
-            transport_cost: calcTransportCost.toFixed(2)
+            transport_cost: calcTransportCost.toFixed(2),
+            display_order: line.display_order != null ? line.display_order : idx
           };
         });
 
@@ -688,8 +744,15 @@ router.put('/:id/finance', async (req, res) => {
     const {
       price_trance_toll, overhead_percent, goods_currency, exchange_rate,
       finance_truck_type_id, supplier_name, finance_status, finance_date, finance_comments,
-      invoice_number, loading_date, arrival_date, plate_number, lines
+      invoice_number, loading_date, arrival_date, plate_number, lines, deletedLineIds
     } = req.body;
+
+    if (deletedLineIds && deletedLineIds.length > 0) {
+      await trx('shipment_lines')
+        .where('shipment_id', id)
+        .whereIn('id', deletedLineIds)
+        .del();
+    }
 
     // 1. Fejléc frissítése (mind a régi, mind az új mezők)
     await trx('shipments')
@@ -737,6 +800,7 @@ router.put('/:id/finance', async (req, res) => {
           // Új sor hozzáadása (ha a UI-on is van Delete / Update / Add funkció)
           await trx('shipment_lines').insert({
             shipment_id: id,
+            is_finance_only: true,
             product_id: line.product_id || null,
             partner_id: line.partner_id || null, // A UI-ról bejövő partner (per fuvar) alapján!
             customer: line.customer || '',
