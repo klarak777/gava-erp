@@ -54,7 +54,7 @@ const PARTNEREK_STYLE = `
   position: absolute; top: 5vh; left: 50%; transform: translateX(-50%);
   background: #ffffff; border-radius: 16px; width: 100%; max-width: 1200px;
   border: 1px solid var(--border); box-shadow: 0 24px 80px rgba(0,0,0,0.5);
-  display: flex; flex-direction: column; height: 90vh; overflow: clip;
+  display: flex; flex-direction: column; height: 90vh; overflow: hidden;
 }
 .prt-modal.maximized {
   top: 0 !important; left: 0 !important; transform: none !important;
@@ -98,7 +98,7 @@ const PARTNEREK_STYLE = `
 }
 
 /* ── Tab Panels ─────────────────────────────────────────────── */
-.prt-panels { flex: 1 1 0px; padding: 2px 20px 40px 20px; overflow-y: scroll; overflow-x: hidden; min-height: 0; box-sizing: border-box; }
+.prt-panels { flex: 1; padding: 2px 20px 40px 20px; overflow-y: auto; overflow-x: hidden; min-height: 0; box-sizing: border-box; }
 .prt-panel { display: none; margin: 0; padding: 0; }
 .prt-panel.active { display: block; margin: 0; padding: 0; }
 
@@ -412,7 +412,7 @@ function prtBuildModal(data) {
     </div>
 
     <!-- Panel tartalmak -->
-    <div class="prt-panels" style="overflow-y: scroll !important; flex: 1 1 0px; min-height: 0;">
+    <div class="prt-panels">
       <!-- 0: Székhely -->
       <div class="prt-panel active" data-panel="0">
         ${prtBuildSzekhelyPanel(p, data)}
@@ -713,6 +713,8 @@ function prtBuildTermeszetesPanel(p) {
         ${prtField('prt-f-farmer-cert', 'Őstermelő igazolvány száma:', p.farmer_cert_number)}
         ${prtField('prt-f-farmer-act', 'Őstermelői tevékenység azon.:', p.farmer_activity_id)}
         ${prtField('prt-f-family-farm', 'Családi gazdaság azonosítója:', p.family_farm_id)}
+        <div class="prt-check-row" style="margin-top:10px;">
+          <label>
             <input type="checkbox" id="prt-f-comp-surcharge" ${p.has_compensation_surcharge?'checked':''}> Kompenzációs felárra jogosult
           </label>
         </div>
@@ -780,8 +782,8 @@ function prtBuildEgyebAdatokPanel(p, data) {
           <thead><tr><th>Jellemző</th><th>Érték</th><th><button class="prt-toolbar-btn" id="char-add-btn" style="padding:2px 6px;">➕</button> <button class="prt-toolbar-btn danger" id="char-del-btn" style="padding:2px 6px;">🗑️</button></th></tr></thead>
           <tbody>
             ${chars.map(c=>`<tr data-id="${c.id||''}">
-              <td><input type="text" class="char-name" value="${c.characteristic||''}" style="background:var(--bg-light);"></td>
-              <td><input type="text" class="char-value" value="${c.value||''}" style="background:var(--bg-light);"></td>
+              <td><input type="text" class="char-name" value="${prtEsc(c.characteristic)}" style="background:var(--bg-light);"></td>
+              <td><input type="text" class="char-value" value="${prtEsc(c.value)}" style="background:var(--bg-light);"></td>
               <td></td>
             </tr>`).join('')}
           </tbody>
@@ -895,7 +897,7 @@ function prtBuildMegjegyzesPanel(p, data) {
             <thead><tr><th>Művelet megnevezése</th><th>Tiltás kezdete</th></tr></thead>
             <tbody>
               ${restrictions.map(r=>`<tr data-id="${r.id||''}">
-                <td><input type="text" class="restr-op" value="${r.operation_name||''}"></td>
+                <td><input type="text" class="restr-op" value="${prtEsc(r.operation_name)}"></td>
                 <td><input type="date" class="restr-start" value="${r.ban_start||''}"></td>
               </tr>`).join('')}
             </tbody>
@@ -915,7 +917,7 @@ function prtBuildMegjegyzesPanel(p, data) {
             <thead><tr><th>Kategória</th></tr></thead>
             <tbody>
               ${categories.map(c=>`<tr data-id="${c.id||''}">
-                <td><input type="text" class="cat-name" value="${c.category||''}"></td>
+                <td><input type="text" class="cat-name" value="${prtEsc(c.category)}"></td>
               </tr>`).join('')}
             </tbody>
           </table>
@@ -1229,27 +1231,7 @@ function prtBindModal(overlay, listContainer, id) {
   maxBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
     modal.classList.toggle('maximized');
-    setTimeout(recalcPanelsHeight, 50);
   });
-
-  // ── Force panels scroll height calculation ──────────────────
-  // The flexbox layout doesn't constrain .prt-panels height reliably,
-  // so we calculate the available space via JS and set explicit maxHeight.
-  function recalcPanelsHeight() {
-    const panelsEl = overlay.querySelector('.prt-panels');
-    if (!panelsEl || !modal) return;
-    const modalRect = modal.getBoundingClientRect();
-    const panelsRect = panelsEl.getBoundingClientRect();
-    // Available height = bottom of modal - top of panels - small bottom padding
-    const availableH = modalRect.bottom - panelsRect.top - 4;
-    if (availableH > 50) {
-      panelsEl.style.maxHeight = availableH + 'px';
-      panelsEl.style.overflowY = 'auto';
-    }
-  }
-  // Run after a tick so the DOM has fully laid out
-  setTimeout(recalcPanelsHeight, 50);
-  window.addEventListener('resize', recalcPanelsHeight);
 
   // Fő tab váltás
   overlay.querySelectorAll('.prt-tab-main').forEach(tab => {
@@ -1261,24 +1243,8 @@ function prtBindModal(overlay, listContainer, id) {
       if (targetPanel) targetPanel.classList.add('active');
       const panelsContainer = overlay.querySelector('.prt-panels');
       if (panelsContainer) panelsContainer.scrollTop = 0;
-      // Recalc height after tab switch
-      setTimeout(recalcPanelsHeight, 30);
     });
   });
-
-  // ── Fallback: manual wheel scroll on panels ─────────────────
-  // If CSS scrollbar still fails, this ensures content scrolls on mouse wheel
-  const panelsFallback = overlay.querySelector('.prt-panels');
-  if (panelsFallback) {
-    panelsFallback.addEventListener('wheel', (e) => {
-      // Only intervene if the panels element isn't natively scrolling
-      const maxScroll = panelsFallback.scrollHeight - panelsFallback.clientHeight;
-      if (maxScroll > 0) {
-        panelsFallback.scrollTop += e.deltaY;
-        e.preventDefault();
-      }
-    }, { passive: false });
-  }
 
   // Természetes személy checkbox – Adóazonosító jel mező megjelenítése/elrejtése
   const naturalCb = overlay.querySelector('#prt-f-natural');
