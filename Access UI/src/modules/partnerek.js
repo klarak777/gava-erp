@@ -1547,7 +1547,8 @@ function prtBindModal(overlay, listContainer, id) {
             const data = await res.json();
             
             if (data.exists) {
-              alert('Már létezik aktív szerepkör ezzel a névvel egy másik partnernél. Kérjük, előbb módosítsa az azonosító nevét!');
+              const pName = data.duplicate?.partner_name || 'ismeretlen';
+              alert(`Már létezik aktív szerepkör ezzel a névvel egy másik partnernél: ${pName}. Kérjük, előbb módosítsa az azonosító nevét!`);
               return;
             }
             

@@ -282,10 +282,12 @@ router.get('/check-identifier/active', async (req, res) => {
     if (!type || !value) return res.status(400).json({ error: 'Hiányzó type vagy value' });
     
     let query = db('partner_identifiers')
-      .where('id_type', type)
-      .whereRaw('UPPER(value) = ?', [value.toUpperCase()])
+      .join('partners', 'partners.id', 'partner_identifiers.partner_id')
+      .select('partner_identifiers.*', 'partners.name as partner_name')
+      .where('partner_identifiers.id_type', type)
+      .whereRaw('UPPER(partner_identifiers.value) = ?', [value.toUpperCase()])
       .where(function() {
-         this.where('is_inactive', false).orWhereNull('is_inactive');
+         this.where('partner_identifiers.is_inactive', false).orWhereNull('partner_identifiers.is_inactive');
       });
       
     if (exclude_id && exclude_id !== 'null' && exclude_id !== 'undefined') {
