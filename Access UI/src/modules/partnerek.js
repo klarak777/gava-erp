@@ -98,7 +98,7 @@ const PARTNEREK_STYLE = `
 }
 
 /* ── Tab Panels ─────────────────────────────────────────────── */
-.prt-panels { flex: 1; padding: 2px 20px 40px 20px; overflow-y: auto; overflow-x: hidden; min-height: 0; box-sizing: border-box; }
+.prt-panels { flex: 1 1 0px; height: 0; padding: 2px 20px 40px 20px; overflow-y: auto; overflow-x: hidden; min-height: 0; box-sizing: border-box; }
 .prt-panel { display: none; margin: 0; padding: 0; }
 .prt-panel.active { display: block; margin: 0; padding: 0; }
 
