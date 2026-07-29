@@ -36,6 +36,9 @@ router.get('/', async (req, res) => {
       .join('partners as p', 'p.id', 'pi.partner_id')
       .whereIn('pi.id_type', idType)
       .andWhere('p.is_active', true)
+      .andWhere(function() {
+        this.where('pi.is_inactive', false).orWhereNull('pi.is_inactive');
+      })
       .select(
         'p.id as id',
         'p.name as name',

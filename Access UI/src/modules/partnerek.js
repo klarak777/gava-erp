@@ -751,9 +751,9 @@ function prtBuildEgyebAdatokPanel(p, data) {
       </div>
       <div class="prt-subtable-wrap" style="min-height:120px; max-height:250px; overflow-y:auto; overscroll-behavior:contain; border:1px solid var(--border); background:var(--surface); border-radius:0 0 8px 8px;">
         <table class="prt-subtable" id="ident-table">
-          <thead><tr><th>Típus</th><th>Érték</th><th>É</th><th>Ellenőrizve</th></tr></thead>
+          <thead><tr><th>Típus</th><th>Érték</th><th>É</th><th>Ellenőrizve</th><th title="Inaktív azonosítók nem jelennek meg az Admin modulban és a legördülőkben">Inaktív</th></tr></thead>
           <tbody>
-            ${idents.map(i=>`<tr data-id="${i.id||''}">
+            ${idents.map(i=>`<tr data-id="${i.id||''}" style="${i.is_inactive ? 'opacity:0.45; background:rgba(255,80,80,0.06);' : ''}">
               <td><select class="ident-type" style="background:var(--bg-light); min-width:160px;" ${i.id_type==='Adószám' ? 'disabled' : ''}>
                 <option value="Adószám" ${i.id_type==='Adószám'?'selected':''}>Adószám</option>
                 <option value="CCW + Kód" ${i.id_type==='CCW + Kód'?'selected':''}>CCW + Kód</option>
@@ -1777,6 +1777,7 @@ function prtCollectData(overlay) {
     sites: [], // Will be populated below
     identifiers: prtCollectTableRows(overlay, 'ident-table', [
       ['ident-type','id_type','str'],
+      ['ident-inactive','is_inactive','bool'],
       ['ident-value','value','str'],
       ['ident-checked-by','checked_by','str'],
       ['ident-verified','is_verified','boolstr'],
