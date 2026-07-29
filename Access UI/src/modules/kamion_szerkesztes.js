@@ -568,7 +568,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                 transporterDropdown.innerHTML = '';
                 cmbTransporter.value = ''; // clear hidden value if typed manually
                 let filtered = val ? transporters.filter(t => t.name.toLowerCase().includes(val)) : transporters;
-                filtered = filtered.slice(0, 50);
+                filtered = filtered.slice(0, 300);
                 if (filtered.length > 0) {
                     filtered.forEach(t => {
                         const div = document.createElement('div');
@@ -1021,8 +1021,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                     const val = inp.value.toLowerCase();
                     const idx = parseInt(inp.dataset.index);
                     inlineRefDropdown.innerHTML = '';
-                    let filtered = val ? references.filter(p => p.name.toLowerCase().startsWith(val)) : references;
-                    filtered = filtered.slice(0, 50);
+                    let filtered = val ? references.filter(p => p.name.toLowerCase().includes(val)) : references;
+                    filtered = filtered.slice(0, 300);
 
                     if (filtered.length > 0) {
                         filtered.forEach(p => {
@@ -1088,8 +1088,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                     const val = inp.value.toLowerCase();
                     const idx = parseInt(inp.dataset.index);
                     inlineCustDropdown.innerHTML = '';
-                    let filtered = val ? customers.filter(p => p.name.toLowerCase().startsWith(val)) : customers;
-                    filtered = filtered.slice(0, 50);
+                    let filtered = val ? customers.filter(p => p.name.toLowerCase().includes(val)) : customers;
+                    filtered = filtered.slice(0, 300);
 
                     if (filtered.length > 0) {
                         filtered.forEach(p => {

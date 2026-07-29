@@ -771,8 +771,8 @@ export function renderRakodas(container, windowManager) {
             modalEl.querySelector('#aru-add-reference-id').value = '';
             const val = refInput.value.toLowerCase();
             refDropdown.innerHTML = '';
-            let filtered = val ? referencesList.filter(p => p.name.toLowerCase().startsWith(val)) : referencesList;
-            filtered = filtered.slice(0, 50);
+            let filtered = val ? referencesList.filter(p => p.name.toLowerCase().includes(val)) : referencesList;
+            filtered = filtered.slice(0, 300);
             if (filtered.length > 0) {
                 filtered.forEach(p => {
                     const div = document.createElement('div');
@@ -810,8 +810,8 @@ export function renderRakodas(container, windowManager) {
         custInput.addEventListener('input', () => {
             const val = custInput.value.toLowerCase();
             custDropdown.innerHTML = '';
-            let filtered = val ? customersList.filter(p => p.name.toLowerCase().startsWith(val)) : customersList;
-            filtered = filtered.slice(0, 50);
+            let filtered = val ? customersList.filter(p => p.name.toLowerCase().includes(val)) : customersList;
+            filtered = filtered.slice(0, 300);
             if (filtered.length > 0) {
                 filtered.forEach(p => {
                     const div = document.createElement('div');
