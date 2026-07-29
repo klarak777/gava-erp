@@ -1307,6 +1307,8 @@ function prtBindModal(overlay, listContainer, id) {
       });
     }
     table.addEventListener('click', (e) => {
+      // Ne vegyen ki az egyszerű checkbox-kattintás sor-kijelölést
+      if (e.target.type === 'checkbox') return;
       const tr = e.target.closest('tr');
       if (!tr || !tr.parentElement.tagName === 'TBODY') return;
       table.querySelectorAll('tbody tr').forEach(r => r.classList.remove('selected'));
@@ -1441,8 +1443,7 @@ function prtBindModal(overlay, listContainer, id) {
     }
   });
   bindSubtable('ident-add-btn','ident-del-btn','ident-table', () =>
-    `<td><select class="ident-type" style="min-width:160px"><option value="Adószám">Adószám</option><option value="CCW + Kód">CCW + Kód</option><option value="Csoportos adószám">Csoportos adószám</option><option value="FELIR azonosító">FELIR azonosító</option><option value="NEBIH">NEBIH</option><option value="(Reference) Szállítók">(Reference) Szállítók</option><option value="(Customer) Vevők">(Customer) Vevők</option><option value="Fuvarozók">Fuvarozók</option></select></td><td><input type="text" class="ident-value"></td><td style="text-align:center"><span class="ident-status" style="display:none">—</span><input type="hidden" class="ident-verified" value="0"></td><td><input type="text" class="ident-checked-by" style="width:120px;display:none" readonly></td>`);
-
+    `<td><select class="ident-type" style="min-width:160px"><option value="Adószám">Adószám</option><option value="CCW + Kód">CCW + Kód</option><option value="Csoportos adószám">Csoportos adószám</option><option value="FELIR azonosító">FELIR azonosító</option><option value="NEBIH">NEBIH</option><option value="(Reference) Szállítók">(Reference) Szállítók</option><option value="(Customer) Vevők">(Customer) Vevők</option><option value="Fuvarozók">Fuvarozók</option></select></td><td><input type="text" class="ident-value"></td><td style="text-align:center"><span class="ident-status" style="display:none">—</span><input type="hidden" class="ident-verified" value="0"></td><td><input type="text" class="ident-checked-by" style="width:120px;display:none" readonly></td><td style="text-align:center"><input type="checkbox" class="ident-inactive" title="Inaktív: nem jelenik meg az Admin modulban és a legördülőkben"></td>`);
   const identTable = overlay.querySelector('#ident-table');
 
   // ── Identifiers Uniqueness Logic ──
