@@ -134,18 +134,45 @@ router.get('/:id', async (req, res, next) => {
 
     if (ref_name) {
       const normalizedRef = ref_name.trim().toUpperCase();
-      let partnerNames = [ref_name.trim()];
-      if (normalizedRef.startsWith('AGROPONIENTE')) {
-        const partners = await db('partners')
-          .whereRaw('UPPER(name) LIKE ?', ['AGROPONIENTE%']);
-        if (partners.length > 0) {
-          partnerNames = partners.map(p => p.name);
-        }
+      let partnerIds = [];
+
+      // 1. Elsőként a partner_identifiers táblában keresünk (value = ref_name)
+      // Ez az eset pl. "MALENO" → partner_identifiers.value="MALENO" → partner_id=52
+      const identMatches = await db('partner_identifiers')
+        .select('partner_id')
+        .whereRaw('UPPER(value) = ?', [normalizedRef])
+        .where('id_type', '(Reference) Szállítók');
+      
+      if (identMatches.length > 0) {
+        partnerIds = identMatches.map(r => r.partner_id);
       }
-      linesQuery = linesQuery.andWhere(function() {
-        this.whereRaw('UPPER(partners.name) = ANY(?)', [partnerNames.map(n => n.toUpperCase())]);
-      });
+
+      // 2. AGROPONIENTE különkezelés (több partner)
+      if (normalizedRef.startsWith('AGROPONIENTE')) {
+        const agro = await db('partners')
+          .select('id')
+          .whereRaw('UPPER(name) LIKE ?', ['AGROPONIENTE%']);
+        agro.forEach(p => { if (!partnerIds.includes(p.id)) partnerIds.push(p.id); });
+      }
+
+      // 3. Fallback: direkt partners.name egyezés (ha nincs identifier találat)
+      if (partnerIds.length === 0) {
+        const nameMatches = await db('partners')
+          .select('id')
+          .whereRaw('UPPER(name) = ?', [normalizedRef]);
+        partnerIds = nameMatches.map(r => r.id);
+      }
+
+      if (partnerIds.length > 0) {
+        linesQuery = linesQuery.andWhere(function() {
+          this.whereIn('shipment_lines.partner_id', partnerIds);
+        });
+      } else {
+        // Ha semmilyen partner nem található, üres eredményt adunk vissza
+        linesQuery = linesQuery.andWhereRaw('1=0');
+      }
     }
+
 
     let lines = await linesQuery;
 
