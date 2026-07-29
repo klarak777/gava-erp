@@ -151,21 +151,21 @@ async function saveSubTables(trx, partnerId, body) {
 
   // Auto-sync partners.type based on role identifiers
   // If identifiers include role types, set partners.type accordingly
-  if (Array.isArray(body.identifiers)) {
-    const roleTypes = body.identifiers.map(i => i.id_type);
-    let newType = null;
-    if (roleTypes.includes('(Reference) Szállítók')) {
-      newType = 'szállító';
-    } else if (roleTypes.includes('(Customer) Vevők')) {
-      newType = 'vevő';
-    } else if (roleTypes.includes('Fuvarozók')) {
-      newType = 'fuvarozó';
+    if (Array.isArray(body.identifiers)) {
+      const roleTypes = body.identifiers.map(i => i.id_type);
+      let newType = null;
+      if (roleTypes.includes('(Reference) SzAllA-tA3k') || roleTypes.includes('(Reference) Szállítók') || roleTypes.includes('(Reference) Sz\xC3\xA1ll\xC3\xADt\xC3\xB3k')) {
+        newType = 'szAllA-tA3';
+      } else if (roleTypes.includes('(Customer) Vev`k') || roleTypes.includes('(Customer) Vevők') || roleTypes.includes('(Customer) Vev\xC5\x91k')) {
+        newType = 'vev`';
+      } else if (roleTypes.includes('FuvarozA3k') || roleTypes.includes('Fuvarozók') || roleTypes.includes('Fuvaroz\xC3\xB3k')) {
+        newType = 'fuvarozA3';
+      }
+      // Only update type if a role identifier is present; don't clear existing type
+      if (newType) {
+        await trx('partners').where('id', partnerId).update({ type: newType });
+      }
     }
-    // Only update type if a role identifier is present; don't clear existing type
-    if (newType) {
-      await trx('partners').where('id', partnerId).update({ type: newType });
-    }
-  }
 }
 
 // ─── ROUTES ───────────────────────────────────────────────────────────────────

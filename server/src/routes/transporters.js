@@ -8,7 +8,7 @@ router.get('/', async (req, res) => {
     // Sync newly added transporters from partners table
     const partners = await db('partner_identifiers as pi')
       .join('partners as p', 'p.id', 'pi.partner_id')
-      .where('pi.id_type', 'Fuvarozók')
+      .whereIn('pi.id_type', ['Fuvarozók', 'FuvarozA3k', 'Fuvaroz\xC3\xB3k'])
       .andWhere('p.is_active', true)
       .select('p.name as name', 'pi.value as short_name');
 

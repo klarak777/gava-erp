@@ -16,9 +16,9 @@ const db = require('../db/db');
  */
 
 const ROLE_MAP = {
-  'reference': '(Reference) Szállítók',
-  'customer': '(Customer) Vevők',
-  'transporter': 'Fuvarozók',
+  'reference': ['(Reference) Szállítók', '(Reference) SzAllA-tA3k', '(Reference) SzAllA-tA3k', '(Reference) Sz\xC3\xA1ll\xC3\xADt\xC3\xB3k'],
+  'customer': ['(Customer) Vevők', '(Customer) Vev`k', '(Customer) Vev\xC5\x91k'],
+  'transporter': ['Fuvarozók', 'FuvarozA3k', 'Fuvaroz\xC3\xB3k'],
 };
 
 router.get('/', async (req, res) => {
@@ -34,7 +34,7 @@ router.get('/', async (req, res) => {
   try {
     const rows = await db('partner_identifiers as pi')
       .join('partners as p', 'p.id', 'pi.partner_id')
-      .where('pi.id_type', idType)
+      .whereIn('pi.id_type', idType)
       .andWhere('p.is_active', true)
       .select(
         'p.id as id',
