@@ -269,7 +269,7 @@ export function renderRakodas(container, windowManager) {
                         '✅ RAKODVA megerősítés\n\n' +
                         'Kamion: ' + tourName + '\n\n' +
                         'Biztosan megjelölöd rakodottként?\n' +
-                        'Az EKAER dokumentum automatikusan elkészül,\n' +
+                        'Az EKAER dokumentum és a Fuvarmegbízás (ha még nincs) automatikusan elkészül,\n' +
                         'és a kamion eltűnik a Rakodás modulból.'
                     );
 
@@ -291,13 +291,40 @@ export function renderRakodas(container, windowManager) {
                         rakData = rakData.filter(function (x) { return x.id !== id; });
                         filter();
 
+                        // Fuvarmegbízás ellenőrzése és generálása
+                        let orderMsg = '';
+                        try {
+                            const checkRes = await fetch('/api/v1/transport-orders?shipment_id=' + id);
+                            if (checkRes.ok) {
+                                const checkData = await checkRes.json();
+                                const matchingOrders = (checkData.data && checkData.data.transport_orders)
+                                    ? checkData.data.transport_orders.filter(o => o.tour === tourName)
+                                    : [];
+                                
+                                if (matchingOrders.length === 0) {
+                                    // Nem létezik, hozzuk létre
+                                    const orderRes = await fetch(`/api/v1/shipments/${id}/generate-order`, { method: 'POST' });
+                                    const orderData = await orderRes.json();
+                                    if (orderRes.ok) {
+                                        orderMsg = '\n\n📄 Fuvarmegbízás automatikusan létrehozva:\n' + orderData.path;
+                                    } else {
+                                        orderMsg = '\n\n⚠️ Fuvarmegbízás létrehozása sikertelen:\n' + orderData.error;
+                                    }
+                                } else {
+                                    orderMsg = '\n\n📄 Fuvarmegbízás már létezett a rendszerben, nem hoztunk létre újat.';
+                                }
+                            }
+                        } catch (orderErr) {
+                            console.warn('Fuvarmegbízás ellenőrzése/generálása sikertelen:', orderErr);
+                        }
+
                         // EKAER eredmény jelzése
                         if (data.ekaer && data.ekaer.path) {
-                            alert('✅ ' + tourName + ' sikeresen RAKODVA jelölték!\n\nEKAER dokumentum létrehozva:\n' + data.ekaer.path);
+                            alert('✅ ' + tourName + ' sikeresen RAKODVA jelölték!\n\nEKAER dokumentum létrehozva:\n' + data.ekaer.path + orderMsg);
                         } else if (data.ekaer && data.ekaer.error) {
-                            alert('✅ ' + tourName + ' RAKODVA\n\n⚠️ EKAER hiba (a státusz mentve):\n' + data.ekaer.error);
+                            alert('✅ ' + tourName + ' RAKODVA\n\n⚠️ EKAER hiba (a státusz mentve):\n' + data.ekaer.error + orderMsg);
                         } else {
-                            alert('✅ ' + tourName + ' sikeresen RAKODVA jelölték!');
+                            alert('✅ ' + tourName + ' sikeresen RAKODVA jelölték!' + orderMsg);
                         }
                     } catch (err) {
                         console.error('Hiba:', err);
@@ -617,7 +644,8 @@ export function renderRakodas(container, windowManager) {
         const dNorm = editRow ? (editRow.normal_palets || 0) : 0;
         const dProd = editRow ? (editRow.product_name || '') : '';
         const dProdId = editRow ? (editRow.product_id || '') : '';
-        const dRef = editRow ? (editRow.albaran_number || '') : '';
+        const dRef = editRow ? (editRow.partner_name || '') : '';
+        const dRefId = editRow ? (editRow.partner_id || '') : '';
         const dCust = editRow ? (editRow.customer_name || '') : '';
         const dDest = editRow ? (editRow.destination || '') : '';
         const dNotes = editRow ? (editRow.comment || editRow.notes || '') : '';
@@ -650,7 +678,8 @@ export function renderRakodas(container, windowManager) {
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">Reference:</label>
                         <div style="position:relative;">
                             <input type="text" id="aru-add-reference" class="access-control-input" style="font-size:12px; padding:4px 20px 4px 8px; height:28px; width:100%;" placeholder="Partner" value="${escHtml(dRef)}">
-                            <span onmousedown="event.preventDefault(); this.previousElementSibling.focus(); this.previousElementSibling.dispatchEvent(new Event('input'))" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); cursor:pointer; font-size:10px; color:#666;">▼</span>
+                            <input type="hidden" id="aru-add-reference-id" value="${dRefId}">
+                            <span onmousedown="event.preventDefault(); this.previousElementSibling.previousElementSibling.focus(); this.previousElementSibling.previousElementSibling.dispatchEvent(new Event('input'))" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); cursor:pointer; font-size:10px; color:#666;">▼</span>
                         </div>
                         <div id="aru-add-reference-dropdown" style="display:none; position:absolute; background:#fff; border:1px solid #ccc; z-index:200; width:100%; max-height:150px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); top:52px; border-radius:4px;"></div>
                     </div>
@@ -750,6 +779,7 @@ export function renderRakodas(container, windowManager) {
         const refInput = modalEl.querySelector('#aru-add-reference');
         const refDropdown = modalEl.querySelector('#aru-add-reference-dropdown');
         refInput.addEventListener('input', () => {
+            modalEl.querySelector('#aru-add-reference-id').value = '';
             const val = refInput.value.toLowerCase();
             refDropdown.innerHTML = '';
             let filtered = val ? referencesList.filter(p => p.name.toLowerCase().startsWith(val)) : referencesList;
@@ -761,6 +791,7 @@ export function renderRakodas(container, windowManager) {
                     div.textContent = p.name;
                     div.onmousedown = () => {
                         refInput.value = p.name;
+                        modalEl.querySelector('#aru-add-reference-id').value = p.id;
                         refDropdown.style.display = 'none';
                     };
                     div.onmouseover = () => div.style.backgroundColor = '#f1f5f9';
@@ -842,6 +873,7 @@ export function renderRakodas(container, windowManager) {
                     body: JSON.stringify({
                         product_id: prodIdInput.value ? parseInt(prodIdInput.value) : null,
                         product_name: pName,
+                        partner_id: parseInt(modalEl.querySelector('#aru-add-reference-id').value) || null,
                         partner_name: modalEl.querySelector('#aru-add-reference').value.trim() || null,
                         customer_name: modalEl.querySelector('#aru-add-customer').value.trim() || null,
                         euro_palets: euro,
@@ -1121,10 +1153,8 @@ export function renderRakodas(container, windowManager) {
 
     // Auto-frissítés: ha a kamion szerkesztés ablak ment, frissíti a Rakodások táblát
     const handleShipmentSaved = () => {
-        if (document.body.contains(view)) {
+        if (tbody && document.body.contains(tbody)) {
             loadRakData();
-        } else {
-            document.removeEventListener('shipmentSaved', handleShipmentSaved);
         }
     };
     document.addEventListener('shipmentSaved', handleShipmentSaved);
@@ -1133,8 +1163,9 @@ export function renderRakodas(container, windowManager) {
     async function loadRakData() {
         try {
             tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:15px; color:#666;">Betöltés...</td></tr>';
-            var url = '/api/v1/shipments?limit=10000&is_loaded=false';
-            const res = await fetch(url);
+            // Gyorsítótár elkerülése timestamp paraméterrel
+            var url = '/api/v1/shipments?limit=10000&is_loaded=false&_t=' + Date.now();
+            const res = await fetch(url, { cache: 'no-store' });
             if (res.ok) {
                 const data = await res.json();
                 rakData = data.map(function (s) {
@@ -1178,7 +1209,8 @@ export function renderRakodas(container, windowManager) {
     async function loadCargoDemandsData() {
         try {
             aruTbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:10px; color:#666; font-size:10px;">Betöltés...</td></tr>';
-            const res = await fetch('/api/v1/cargo-demands');
+            const url = '/api/v1/cargo-demands?_t=' + Date.now();
+            const res = await fetch(url, { cache: 'no-store' });
             if (res.ok) {
                 aruData = await res.json();
                 renderRight();
@@ -1206,10 +1238,8 @@ export function renderRakodas(container, windowManager) {
     loadProducts();
 
     const handleCargoUpdate = () => {
-        if (document.body.contains(view)) {
+        if (aruTbody && document.body.contains(aruTbody)) {
             loadCargoDemandsData();
-        } else {
-            document.removeEventListener('cargoDemandsUpdated', handleCargoUpdate);
         }
     };
     document.addEventListener('cargoDemandsUpdated', handleCargoUpdate);

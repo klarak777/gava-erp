@@ -65,7 +65,7 @@ router.get('/', async (req, res) => {
         // Termék és partner
         'products.name as prod',
         'products.code as prod_code',
-        'partners.name as ref',
+        db.raw("COALESCE(partner_identifiers.value, partners.name) as ref"),
 
         // Fuvar fejléc adatok (shipments táblából)
         'shipments.order_number',
@@ -90,6 +90,10 @@ router.get('/', async (req, res) => {
       .leftJoin('shipments', 'shipment_lines.shipment_id', 'shipments.id')
       .leftJoin('products', 'shipment_lines.product_id', 'products.id')
       .leftJoin('partners', 'shipment_lines.partner_id', 'partners.id')
+      .leftJoin('partner_identifiers', function() {
+        this.on('partner_identifiers.partner_id', '=', 'partners.id')
+            .andOn('partner_identifiers.id_type', '=', db.raw("?", ['(Reference) Szállítók']));
+      })
       .leftJoin('seasons', 'shipments.season_id', 'seasons.id')
       .leftJoin('transporters', 'shipments.transporter_id', 'transporters.id')
       .where('shipments.is_loaded', true)  // Csak RAKODVA fuvarok tételei jelennek meg (Fuvarok összesítő)
@@ -166,8 +170,17 @@ router.post('/:id/transfer', async (req, res) => {
     }
 
     const sourceLine = await db('shipment_lines')
-      .select('shipment_lines.*', 'products.name as productName')
+      .select(
+        'shipment_lines.*',
+        'products.name as productName',
+        db.raw('COALESCE(partner_identifiers.value, partners.name) as "partnerName"')
+      )
       .leftJoin('products', 'shipment_lines.product_id', 'products.id')
+      .leftJoin('partners', 'shipment_lines.partner_id', 'partners.id')
+      .leftJoin('partner_identifiers', function() {
+        this.on('partner_identifiers.partner_id', '=', 'partners.id')
+            .andOn('partner_identifiers.id_type', '=', db.raw("?", ['(Reference) Szállítók']));
+      })
       .where('shipment_lines.id', id)
       .first();
 
@@ -217,6 +230,8 @@ router.post('/:id/transfer', async (req, res) => {
         await trx('cargo_demands').insert({
           product_id: sourceLine.product_id || null,
           product_name: sourceLine.productName || 'Ismeretlen termék',
+          partner_id: sourceLine.partner_id || null,
+          partner_name: sourceLine.partnerName || null,
           customer_name: sourceLine.customer || null,
           euro_palets: moveEuro,
           normal_palets: moveNormal,

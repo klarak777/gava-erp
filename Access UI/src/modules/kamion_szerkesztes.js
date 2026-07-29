@@ -2,7 +2,7 @@
 const GRID_ROWS = 25; // mindig ennyi sor látszik a táblázatban
 
 export function openKamionSzerkesztesWindow(windowManager, kamionId = null, options = {}) {
-    const isNew = !kamionId;
+    let isNew = !kamionId;
     // Az ablak fejléce / taskbar szöveg: csak "Új kamion rögzítése" lesz,
     // szerkesztésnél loadExistingShipment frissíti majd a valódi kamionszámra.
     const initialTitle = isNew ? 'Új kamion rögzítése' : 'Kamion szerkesztése…';
@@ -72,11 +72,14 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                                 style="font-size:12px; padding:4px 8px; height:30px; width:100%;">
                         </div>
                         
-                        <div style="display:flex; flex-direction:column; gap:3px;">
+                        <div style="display:flex; flex-direction:column; gap:3px; position:relative; min-width:140px;">
                             <label style="font-size:11px; font-weight:600; color:var(--text-main);">Transport company:</label>
-                            <select id="km-transporter" class="access-control-input" style="font-size:12px; padding:4px 8px; height:30px; width:100%;">
-                                <option value="">Betöltés...</option>
-                            </select>
+                            <div style="position:relative;">
+                                <input type="text" id="km-transporter-display" class="access-control-input" style="font-size:12px; padding:4px 20px 4px 8px; height:30px; width:100%;" placeholder="-- Válasszon --">
+                                <input type="hidden" id="km-transporter" value="">
+                                <span onmousedown="event.preventDefault(); this.previousElementSibling.previousElementSibling.focus(); this.previousElementSibling.previousElementSibling.dispatchEvent(new Event('input'))" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); cursor:pointer; font-size:10px; color:#666;">▼</span>
+                            </div>
+                            <div id="km-transporter-dropdown" style="display:none; position:absolute; background:#fff; border:1px solid #ccc; z-index:9999; width:100%; max-height:200px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); top:48px; border-radius:4px;"></div>
                         </div>
                         <div style="display:flex; flex-direction:column; gap:3px;">
                             <label style="font-size:11px; font-weight:600; color:var(--text-main);">Loading Place:</label>
@@ -185,16 +188,6 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                 <span id="km-order-conflict-msg" style="color:#dc2626; font-size:12px; font-weight:600; display:none;">⚠ Ez a kamionszám már foglalt ebben a szezonban!</span>
                 <button class="primary-btn" id="btn-save-km" style="font-size:13px; padding:7px 20px;">Kamion létrehozása</button>
             </div>
-
-            <!-- INLINE PRODUCT DROPDOWN -->
-            <div id="inline-product-dropdown" style="display:none; position:fixed; background:#fff; border:1px solid #ccc; z-index:9999; max-height:150px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); border-radius:4px;"></div>
-
-            <!-- INLINE REFERENCE DROPDOWN -->
-            <div id="inline-reference-dropdown" style="display:none; position:fixed; background:#fff; border:1px solid #ccc; z-index:9999; max-height:150px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); border-radius:4px;"></div>
-
-            <!-- INLINE CUSTOMER DROPDOWN -->
-            <div id="inline-customer-dropdown" style="display:none; position:fixed; background:#fff; border:1px solid #ccc; z-index:9999; max-height:150px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); border-radius:4px;"></div>
-
             <!-- TÉTEL ÁTHELYEZÉSE POPUP (az overlay fölé) -->
             <div id="transfer-overlay" style="display:none; position:absolute; inset:0; background:rgba(0,0,0,0.6); z-index:600; align-items:center; justify-content:center;">
                 <div id="transfer-modal" style="background:#fff; border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,0.3); padding:24px; width:460px; max-width:95%; position:relative; transform:translate(0px, 0px); transition:none;">
@@ -301,12 +294,41 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
         const kmTip = container.querySelector('#km-tip');
         const kmOrder = container.querySelector('#km-order');
         const cmbTransporter = container.querySelector('#km-transporter');
+        const transporterDisplay = container.querySelector('#km-transporter-display');
+        const transporterDropdown = container.querySelector('#km-transporter-dropdown');
         const tbody = container.querySelector('#km-lines-tbody');
         const conflictMsg = container.querySelector('#km-order-conflict-msg');
         // Edit overlay vars removed
-        const inlineDropdown = container.querySelector('#inline-product-dropdown');
-        const inlineRefDropdown = container.querySelector('#inline-reference-dropdown');
-        const inlineCustDropdown = container.querySelector('#inline-customer-dropdown');
+        // Create inline dropdowns in document.body to avoid clipping/offset issues
+        const dropdownStyle = 'display:none; position:fixed; background:#fff; border:1px solid #ccc; z-index:99999; max-height:150px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); border-radius:4px; font-size:12px;';
+        const inlineDropdown = document.createElement('div');
+        inlineDropdown.id = 'inline-product-dropdown-' + (kamionId || 'new');
+        inlineDropdown.style.cssText = dropdownStyle;
+        document.body.appendChild(inlineDropdown);
+
+        const inlineRefDropdown = document.createElement('div');
+        inlineRefDropdown.id = 'inline-reference-dropdown-' + (kamionId || 'new');
+        inlineRefDropdown.style.cssText = dropdownStyle;
+        document.body.appendChild(inlineRefDropdown);
+
+        const inlineCustDropdown = document.createElement('div');
+        inlineCustDropdown.id = 'inline-customer-dropdown-' + (kamionId || 'new');
+        inlineCustDropdown.style.cssText = dropdownStyle;
+        document.body.appendChild(inlineCustDropdown);
+
+        // Clean up dropdowns when window is closed
+        const winEl0 = container.closest('.mdi-window');
+        if (winEl0) {
+            const observer = new MutationObserver(() => {
+                if (!document.contains(winEl0)) {
+                    inlineDropdown.remove();
+                    inlineRefDropdown.remove();
+                    inlineCustDropdown.remove();
+                    observer.disconnect();
+                }
+            });
+            observer.observe(document.body, { childList: true, subtree: false });
+        }
 
 
         const transferModal = container.querySelector('#transfer-modal');
@@ -535,12 +557,40 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                 const res = await fetch(`${API}/transporters`);
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 transporters = await res.json();
-                cmbTransporter.innerHTML = '<option value="">-- Válasszon --</option>' +
-                    transporters.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
             } catch (err) {
                 console.error('Fuvarozók betöltési hiba:', err);
-                cmbTransporter.innerHTML = '<option value="">[Betöltési hiba]</option>';
             }
+        }
+        
+        if (transporterDisplay) {
+            transporterDisplay.addEventListener('input', () => {
+                const val = transporterDisplay.value.toLowerCase();
+                transporterDropdown.innerHTML = '';
+                cmbTransporter.value = ''; // clear hidden value if typed manually
+                let filtered = val ? transporters.filter(t => t.name.toLowerCase().includes(val)) : transporters;
+                filtered = filtered.slice(0, 50);
+                if (filtered.length > 0) {
+                    filtered.forEach(t => {
+                        const div = document.createElement('div');
+                        div.style.cssText = 'padding:6px 8px; cursor:pointer; border-bottom:1px solid #eee; font-size:12px;';
+                        div.textContent = t.name;
+                        div.onmousedown = () => {
+                            transporterDisplay.value = t.name;
+                            cmbTransporter.value = t.id;
+                            transporterDropdown.style.display = 'none';
+                        };
+                        div.onmouseover = () => div.style.backgroundColor = '#f1f5f9';
+                        div.onmouseout = () => div.style.backgroundColor = 'transparent';
+                        transporterDropdown.appendChild(div);
+                    });
+                    transporterDropdown.style.display = 'block';
+                } else {
+                    transporterDropdown.style.display = 'none';
+                }
+            });
+            transporterDisplay.addEventListener('blur', () => {
+                setTimeout(() => transporterDropdown.style.display = 'none', 150);
+            });
         }
 
         async function loadProducts() {
@@ -629,6 +679,10 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                 kmTip.value = s.truck_type || '';
                 kmOrder.value = s.order_number || '';
                 cmbTransporter.value = s.transporter_id || '';
+                if (transporterDisplay) {
+                    const tObj = transporters.find(t => t.id == s.transporter_id);
+                    transporterDisplay.value = tObj ? tObj.name : '';
+                }
                 try { container.querySelector('#km-plate').value = s.plate_number || ''; } catch (e) { }
                 try { container.querySelector('#km-load-place').value = s.loading_place || ''; } catch (e) { }
                 try { container.querySelector('#km-price').value = s.transport_price || ''; } catch (e) { }
@@ -948,7 +1002,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                             inlineDropdown.appendChild(div);
                         });
                         const rect = inp.getBoundingClientRect();
-                        inlineDropdown.style.top = (rect.bottom) + 'px';
+                        inlineDropdown.style.top = rect.bottom + 'px';
                         inlineDropdown.style.left = rect.left + 'px';
                         inlineDropdown.style.width = Math.max(rect.width, 200) + 'px';
                         inlineDropdown.style.display = 'block';
@@ -990,7 +1044,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                             inlineRefDropdown.appendChild(div);
                         });
                         const rect = inp.getBoundingClientRect();
-                        inlineRefDropdown.style.top = (rect.bottom) + 'px';
+                        inlineRefDropdown.style.top = rect.bottom + 'px';
                         inlineRefDropdown.style.left = rect.left + 'px';
                         inlineRefDropdown.style.width = Math.max(rect.width, 200) + 'px';
                         inlineRefDropdown.style.display = 'block';
@@ -1056,7 +1110,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                             inlineCustDropdown.appendChild(div);
                         });
                         const rect = inp.getBoundingClientRect();
-                        inlineCustDropdown.style.top = (rect.bottom) + 'px';
+                        inlineCustDropdown.style.top = rect.bottom + 'px';
                         inlineCustDropdown.style.left = rect.left + 'px';
                         inlineCustDropdown.style.width = Math.max(rect.width, 200) + 'px';
                         inlineCustDropdown.style.display = 'block';
@@ -1393,7 +1447,6 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                     }
                 }
                 closeTransferPopup();
-                closeLineOverlay();
                 renderTable();
                 document.dispatchEvent(new CustomEvent('cargoDemandsUpdated')); // Frissíti a Rakodás nézet Áru igény részét
                 alert(`✅ ${data.message}`);
@@ -1428,23 +1481,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
             // Mentésnél csak a nem-üres sorokat küldjük
             const realLines = lines.filter(l => !l._empty);
 
-            // Validáció: legalább 1 sor raklapszámmal és 1 sor Reference-szel kell legyen
-            if (isNew) {
-                const hasAnyPallet = realLines.some(l =>
-                    (parseFloat(String(l.euro_palets).replace(',', '.')) || 0) > 0 ||
-                    (parseFloat(String(l.normal_palets).replace(',', '.')) || 0) > 0
-                );
-                const hasAnyReference = realLines.some(l => l.partner_id || (l.partner_name && l.partner_name.trim()));
-
-                const missing = [];
-                if (!hasAnyPallet) missing.push('• Legalább egy sorban meg kell adni a raklapszámot (Euro vagy Normal)');
-                if (!hasAnyReference) missing.push('• Legalább egy sorban meg kell adni a Reference (szállító) értékét');
-
-                if (missing.length > 0) {
-                    alert('⚠ A kamion nem hozható létre az alábbi hiányzó adatok miatt:\n\n' + missing.join('\n'));
-                    return;
-                }
-            }
+            // Validáció áthelyezve a Rakodva állapot módosításához (backend)
 
             const payload = {
                 order_number: orderNumber,
@@ -1547,7 +1584,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                             await Promise.all(demandPromises);
 
                             // Értesítjük a többi modult (pl. rakodas.js), hogy frissítsék a listájukat
-                            document.dispatchEvent(new CustomEvent('cargoDemandsUpdated'));
+                            try { document.dispatchEvent(new CustomEvent('cargoDemandsUpdated')); } catch (e) { console.error('cargoDemandsUpdated error:', e); }
 
                             const itemList = decreasedItems.map(it =>
                                 `• ${it.productName}: ${it.diffEuro > 0 ? it.diffEuro + ' Euró' : ''} ${it.diffNormal > 0 ? it.diffNormal + ' Normál' : ''} raklap`
@@ -1566,16 +1603,21 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                     }
 
                     // Értesítjük a Rakodás modult (és másokat) a sikeres mentésről/létrehozásról
-                    document.dispatchEvent(new CustomEvent('shipmentSaved'));
+                    try { document.dispatchEvent(new CustomEvent('shipmentSaved')); } catch (e) { console.error('shipmentSaved error:', e); }
 
                     if (currentShipmentId) {
-                        await loadExistingShipment(currentShipmentId);
+                        // Saját try-catch, hogy ne dobja a külső "Nem sikerült csatlakozni" üzenetet
+                        try {
+                            await loadExistingShipment(currentShipmentId);
+                        } catch (loadErr) {
+                            console.warn('[kamion] Kamion újratöltése sikertelen (nem kritikus):', loadErr.message);
+                        }
                     }
 
                 } else {
-                    const err = await res.json();
-                    if (err.error && err.error.toLowerCase().includes('foglalt')) conflictMsg.style.display = 'inline';
-                    alert('Hiba a mentés során: ' + (err.error || 'Ismeretlen hiba'));
+                    const errData = await res.json();
+                    if (errData.error && errData.error.toLowerCase().includes('foglalt')) conflictMsg.style.display = 'inline';
+                    alert('Hiba a mentés során: ' + (errData.error || 'Ismeretlen hiba'));
                 }
             } catch (err) {
                 console.error(err);

@@ -63,7 +63,6 @@ export function renderEkaerek(container, windowManager) {
                     '<thead><tr>' +
                         '<th style="width:40px;"></th>' +
                         '<th>Kamion szám</th>' +
-                        '<th>EKAER_FileName</th>' +
                         '<th>Load_Date</th>' +
                         '<th>Fuvarozó cég</th>' +
                         '<th style="text-align:center; width:100px;">Kiküldve</th>' +
@@ -158,7 +157,6 @@ export function renderEkaerek(container, windowManager) {
             return '<tr class="ek-row" data-id="' + r.id + '" style="cursor:pointer; ' + trStyle + '">' +
                 '<td style="text-align:center;"><input type="radio" name="ek_select" ' + (isSelected ? 'checked' : '') + ' style="cursor:pointer; pointer-events:none;"></td>' +
                 '<td class="bold">' + r.tour + '</td>' +
-                '<td>' + r.docName + '</td>' +
                 '<td>' + r.date + '</td>' +
                 '<td>' + r.transporter + '</td>' +
                 '<td style="text-align:center;" title="Kiküldve">' + sentHtml + '</td>' +
@@ -449,7 +447,7 @@ export function renderEkaerek(container, windowManager) {
 
     // --- INITIALIZATION ---
     function loadData() {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">Adatok betöltése...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">Adatok betöltése...</td></tr>';
         fetch('/api/v1/ekaer-records')
             .then(function(res) { return res.json(); })
             .then(function(data) {
@@ -458,12 +456,12 @@ export function renderEkaerek(container, windowManager) {
                     populateFuvarozok();
                     filter();
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red; padding:20px;">Hiba az adatok betöltésekor.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:red; padding:20px;">Hiba az adatok betöltésekor.</td></tr>';
                 }
             })
             .catch(function(err) {
                 console.error('Fetch error:', err);
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red; padding:20px;">Hálózati hiba az adatok betöltésekor.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:red; padding:20px;">Hálózati hiba az adatok betöltésekor.</td></tr>';
             });
     }
 

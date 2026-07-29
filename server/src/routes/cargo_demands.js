@@ -22,6 +22,7 @@ router.post('/', async (req, res) => {
     const {
       product_id,
       product_name,
+      partner_id,
       partner_name,
       customer_name,
       euro_palets,
@@ -50,6 +51,7 @@ router.post('/', async (req, res) => {
     const [newId] = await db('cargo_demands').insert({
       product_id: product_id || null,
       product_name: product_name.trim(),
+      partner_id: partner_id || null,
       partner_name: partner_name ? partner_name.trim() : null,
       customer_name: customer_name ? customer_name.trim() : null,
       euro_palets: parseFloat(String(euro_palets).replace(',', '.')) || 0,
@@ -86,6 +88,7 @@ router.put('/:id', async (req, res) => {
     const {
       product_id,
       product_name,
+      partner_id,
       partner_name,
       customer_name,
       euro_palets,
@@ -113,6 +116,7 @@ router.put('/:id', async (req, res) => {
     const updated = await db('cargo_demands').where('id', id).update({
       product_id: product_id || null,
       product_name: product_name.trim(),
+      partner_id: partner_id || null,
       partner_name: partner_name ? partner_name.trim() : null,
       customer_name: customer_name ? customer_name.trim() : null,
       euro_palets: parseFloat(String(euro_palets).replace(',', '.')) || 0,
@@ -176,10 +180,25 @@ router.patch('/:id/fulfill', async (req, res) => {
       const targetShipment = await trx('shipments').where('id', shipment_id).first();
       if (!targetShipment) throw new Error('A célkamion nem található.');
 
+      // Keresés: partner_id kikeresése (elsősorban a demand.partner_id alapján, utána név alapján visszamenőleges kompatibilitás miatt)
+      let partnerId = demand.partner_id || null;
+      if (!partnerId && demand.partner_name) {
+        const partner = await trx('partners')
+          .leftJoin('partner_identifiers', 'partners.id', 'partner_identifiers.partner_id')
+          .whereRaw('LOWER(partners.name) = ?', [demand.partner_name.toLowerCase()])
+          .orWhereRaw('LOWER(partner_identifiers.value) = ?', [demand.partner_name.toLowerCase()])
+          .select('partners.id')
+          .first();
+        if (partner) {
+          partnerId = partner.id;
+        }
+      }
+
       // 2. Új sor hozzáadása a célkamionhoz
       await trx('shipment_lines').insert({
         shipment_id: shipment_id,
         product_id: demand.product_id || null,
+        partner_id: partnerId,
         customer: demand.customer_name || '',
         euro_palets: sendEuro,
         normal_palets: sendNormal,

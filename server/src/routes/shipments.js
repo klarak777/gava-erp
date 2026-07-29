@@ -218,6 +218,26 @@ router.patch('/:id/loaded', async (req, res) => {
   try {
     const { id } = req.params;
     const { is_loaded } = req.body;
+
+    if (is_loaded) {
+      const lines = await db('shipment_lines').where('shipment_id', id);
+      if (lines.length > 0) {
+        let hasAnyPallet = false;
+        let hasAnyReference = false;
+        for (const line of lines) {
+          if ((parseFloat(line.euro_palets) || 0) > 0 || (parseFloat(line.normal_palets) || 0) > 0) hasAnyPallet = true;
+          if (line.partner_id || (line.partner_name && line.partner_name.trim())) hasAnyReference = true;
+        }
+        const missing = [];
+        if (!hasAnyPallet) missing.push('• Legalább egy sorban meg kell adni a raklapszámot (Euro vagy Normal)');
+        if (!hasAnyReference) missing.push('• Legalább egy sorban meg kell adni a Reference (szállító) értékét');
+        
+        if (missing.length > 0) {
+          return res.status(400).json({ error: 'A kamion nem rakodható az alábbi hiányzó adatok miatt:\n\n' + missing.join('\n') });
+        }
+      }
+    }
+
     await db('shipments')
       .where('id', id)
       .update({ is_loaded: is_loaded ? true : false });
@@ -269,11 +289,41 @@ async function generateEkaerForShipment(shipmentId) {
     .leftJoin('partners', 'shipment_lines.partner_id', 'partners.id')
     .where('shipment_lines.shipment_id', shipmentId);
 
-  // Referencia lista összeállítása az albaran számokból (VBA ProcessReferences logika)
-  const references = lines
-    .map(l => l.albaran_number || l.partner_name || '')
-    .filter(r => r && r.trim() !== '')
-    .join('\n');
+  // Referencia lista összeállítása - VBA ProcessReferences logika
+  const uniquePairs = new Map();
+
+  for (const l of lines) {
+    let ref = (l.partner_name || '').trim();          // Reference (E oszlop)
+    let dest = (l.destination || '').trim();          // Destination (G oszlop)
+    const customer = (l.customer || '').trim().toUpperCase(); // Customer (F oszlop)
+
+    // GHU kezelése: ha a vevő GHU, a cél legyen GAVA
+    if (customer === 'GHU') dest = 'GAVA';
+
+    // Üres párok kiszűrése
+    if (!ref && !dest) continue;
+
+    // SPAR SLO/CRO kihagyása
+    if (/^SPAR SLO/i.test(dest) || /^SPAR CRO/i.test(dest)) continue;
+
+    // SPAR HU normalizálás
+    if (/^SPAR HU/i.test(dest)) dest = 'SPAR HU';
+
+    // Egyedi párok
+    const pairKey = ref + '|' + dest;
+    if (!uniquePairs.has(pairKey)) {
+      uniquePairs.set(pairKey, { ref, dest });
+    }
+  }
+
+  // Lista formázása - sorszám nélkül, "ref - dest:" formátumban
+  const referenceLines = [];
+  for (const { ref, dest } of uniquePairs.values()) {
+    const r = ref || '-';
+    const d = dest || '-';
+    referenceLines.push(r + ' - ' + d + ':');
+  }
+  const references = referenceLines.join('\n');
 
   // Sablon és kimeneti útvonalak
   const raktarPath = process.env.RAKTAR_PATH || path.join('\\\\192.168.1.5', 'raktar');
