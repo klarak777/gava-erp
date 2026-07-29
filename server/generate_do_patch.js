@@ -1,8 +1,11 @@
 /**
  * generate_do_patch.js
  *
- * Generates a UTF-8 safe SQL patch file from the local database
+ * Generates a SQL patch from the local (correct) database
  * for running on the DO server Docker container.
+ *
+ * Key design: NO transaction wrapping (BEGIN/COMMIT) so individual
+ * statement failures don't cascade and block everything else.
  *
  * Usage: node generate_do_patch.js
  * Output: do_patch.sql
@@ -15,41 +18,23 @@ const fs = require('fs');
 
 const db = knex(knexConfig['development']);
 
-// Converts a string to PostgreSQL E-string notation (safe for any encoding)
-// e.g. "Szállítók" → E'Sz\u00e1ll\u00edt\u00f3k'
-function pgEscapeString(s) {
-  let result = '';
-  let hasEscape = false;
-  for (const ch of s) {
-    const code = ch.codePointAt(0);
-    if (code > 127) {
-      result += `\\u${code.toString(16).padStart(4, '0')}`;
-      hasEscape = true;
-    } else if (ch === "'") {
-      result += "''";
-    } else if (ch === '\\') {
-      result += '\\\\';
-      hasEscape = true;
-    } else {
-      result += ch;
-    }
-  }
-  return hasEscape ? `E'${result}'` : `'${result}'`;
+function escapeSQL(s) {
+  if (s == null) return 'NULL';
+  return "'" + String(s).replace(/'/g, "''") + "'";
 }
 
 async function main() {
   const lines = [];
   lines.push('-- =====================================================================');
-  lines.push('-- DO Server SQL Patch');
+  lines.push('-- DO Server SQL Patch (no transaction - error-tolerant)');
   lines.push(`-- Generated: ${new Date().toISOString()}`);
   lines.push('-- =====================================================================');
   lines.push('');
-  lines.push('BEGIN;');
-  lines.push('');
 
-  // === 1. partner_identifiers UPSERT ===
+  // === 1. partner_identifiers ===
   lines.push('-- -------------------------------------------------------');
   lines.push('-- 1. Partner identifiers (Reference) sync');
+  lines.push('--    DELETE existing, then re-INSERT from local DB');
   lines.push('-- -------------------------------------------------------');
 
   const identifiers = await db('partner_identifiers')
@@ -59,14 +44,14 @@ async function main() {
 
   console.log(`  ${identifiers.length} partner_identifier records exported.`);
 
-  const idTypeStr = "E'(Reference) Sz\\u00e1ll\\u00edt\\u00f3k'";
-  lines.push(`DELETE FROM partner_identifiers WHERE id_type = ${idTypeStr};`);
-  
+  // Use LIKE for robust matching regardless of encoding
+  lines.push("DELETE FROM partner_identifiers WHERE id_type LIKE '%(Reference)%';");
+  lines.push('');
+
   for (const ident of identifiers) {
-    const val = pgEscapeString(ident.value);
-    const idType = pgEscapeString(ident.id_type);
-    lines.push(`INSERT INTO partner_identifiers (partner_id, id_type, value, created_at, updated_at)`);
-    lines.push(`  VALUES (${ident.partner_id}, ${idType}, ${val}, NOW(), NOW());`);
+    const val = escapeSQL(ident.value);
+    const idType = escapeSQL(ident.id_type);
+    lines.push(`INSERT INTO partner_identifiers (partner_id, id_type, value, created_at, updated_at) VALUES (${ident.partner_id}, ${idType}, ${val}, NOW(), NOW());`);
   }
 
   lines.push('');
@@ -74,6 +59,7 @@ async function main() {
   // === 2. shipment_lines partner_id UPDATE ===
   lines.push('-- -------------------------------------------------------');
   lines.push('-- 2. Shipment lines partner_id update');
+  lines.push('--    Sets partner_id based on order_number + season + product_id');
   lines.push('-- -------------------------------------------------------');
 
   const shipLines = await db('shipment_lines')
@@ -90,46 +76,41 @@ async function main() {
     .whereNotNull('shipment_lines.product_id')
     .orderBy('shipment_lines.partner_id');
 
-  console.log(`  ${shipLines.length} shipment_line records to update.`);
+  console.log(`  ${shipLines.length} shipment_line records to process.`);
+
+  // Deduplicate: group by (order_number, season_code, product_id) → partner_id
+  // This massively reduces the number of UPDATE statements
+  const updateMap = new Map();
+  for (const sl of shipLines) {
+    if (!sl.order_number || !sl.partner_id || !sl.product_id) continue;
+    const key = `${sl.order_number}|${sl.season_code || ''}|${sl.product_id}`;
+    updateMap.set(key, sl.partner_id);
+  }
+
+  console.log(`  ${updateMap.size} unique (order+season+product) combinations.`);
 
   let updateCount = 0;
-  for (const sl of shipLines) {
-    const orderNo = sl.order_number.replace(/'/g, "''");
-    const seasonCode = sl.season_code || '';
-    lines.push(`UPDATE shipment_lines sl2`);
-    lines.push(`  SET partner_id = ${sl.partner_id}, updated_at = NOW()`);
-    lines.push(`  FROM shipments s`);
-    lines.push(`  INNER JOIN seasons se ON s.season_id = se.id`);
-    lines.push(`  WHERE sl2.shipment_id = s.id`);
-    lines.push(`    AND sl2.product_id = ${sl.product_id}`);
-    lines.push(`    AND UPPER(TRIM(s.order_number)) = UPPER('${orderNo}')`);
-    lines.push(`    AND se.code = '${seasonCode}'`);
-    lines.push(`    AND (sl2.partner_id IS NULL OR sl2.partner_id != ${sl.partner_id});`);
+  for (const [key, partnerId] of updateMap) {
+    const [orderNo, seasonCode, productId] = key.split('|');
+    const safeOrder = orderNo.replace(/'/g, "''");
+    const safeSeason = seasonCode.replace(/'/g, "''");
+    lines.push(`UPDATE shipment_lines SET partner_id = ${partnerId}, updated_at = NOW() FROM shipments s INNER JOIN seasons se ON s.season_id = se.id WHERE shipment_lines.shipment_id = s.id AND shipment_lines.product_id = ${productId} AND s.order_number = '${safeOrder}' AND se.code = '${safeSeason}' AND (shipment_lines.partner_id IS NULL OR shipment_lines.partner_id != ${partnerId});`);
     updateCount++;
   }
 
   lines.push('');
-  lines.push('COMMIT;');
-  lines.push('');
-  lines.push('-- =====================================================================');
-  lines.push(`-- Done. Records: ${identifiers.length} partner_identifiers, ${updateCount} shipment_line updates.`);
-  lines.push('-- =====================================================================');
+  lines.push(`-- Done. ${identifiers.length} identifiers + ${updateCount} line updates.`);
 
-  // Write as UTF-8 using Buffer - guaranteed correct encoding
   const content = lines.join('\n');
   fs.writeFileSync('do_patch.sql', Buffer.from(content, 'utf8'));
 
-  console.log('\n✅ do_patch.sql generated!');
-  console.log(`   - ${identifiers.length} partner_identifier INSERT/UPDATE`);
-  console.log(`   - ${updateCount} shipment_line partner_id UPDATE`);
   const sizeMB = (Buffer.byteLength(content, 'utf8') / 1024 / 1024).toFixed(2);
-  console.log(`   - File size: ${sizeMB} MB`);
-  console.log('\nNext steps on DO server:');
-  console.log('  # On your LOCAL machine (SCP to DO server):');
-  console.log('  scp do_patch.sql root@<DO_IP>:/root/do_patch.sql');
-  console.log('');
-  console.log('  # On the DO server:');
-  console.log('  docker cp /root/do_patch.sql gava_erp_prod_db:/do_patch.sql');
+  console.log(`\n✅ do_patch.sql generated! (${sizeMB} MB)`);
+  console.log(`   - ${identifiers.length} partner_identifier DELETE+INSERT`);
+  console.log(`   - ${updateCount} shipment_line UPDATE`);
+  console.log('\nDO server commands:');
+  console.log('  git pull origin master');
+  console.log('  docker cp server/do_patch.sql gava_erp_prod_db:/do_patch.sql');
   console.log('  docker exec -it gava_erp_prod_db psql -U gava_admin -d gava_erp -f /do_patch.sql');
 
   await db.destroy();
