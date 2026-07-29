@@ -10,9 +10,18 @@
  */
 exports.up = async function(knex) {
 
+  // Build a set of all valid partner IDs on this server for safe lookups
+  const allPartners = await knex('partners').select('id');
+  const validIds = new Set(allPartners.map(p => p.id));
+
   // Helper: insert or update a partner_identifier record
+  // Silently skips if the partner_id doesn't exist on this server.
   async function upsertIdentifier(partnerId, idType, value) {
     if (!partnerId) return;
+    if (!validIds.has(partnerId)) {
+      console.log(`[040] Skipping ${idType} "${value}" - partner ID ${partnerId} not found on this server.`);
+      return;
+    }
     const existing = await knex('partner_identifiers')
       .where({ partner_id: partnerId, id_type: idType })
       .first();
@@ -47,7 +56,9 @@ exports.up = async function(knex) {
   // =========================================================================
   // STEP 2: Rename RONI (ID 2999) to proper name (from apply_overrides.js)
   // =========================================================================
-  await knex('partners').where('id', 2999).update({ name: 'Roni Cargo Kft.' });
+  if (validIds.has(2999)) {
+    await knex('partners').where('id', 2999).update({ name: 'Roni Cargo Kft.' });
+  }
 
   // =========================================================================
   // STEP 3: Customer role assignments (from apply_overrides.js manual overrides)
