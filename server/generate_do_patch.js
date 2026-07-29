@@ -59,12 +59,14 @@ async function main() {
 
   console.log(`  ${identifiers.length} partner_identifier records exported.`);
 
+  const idTypeStr = "E'(Reference) Sz\\u00e1ll\\u00edt\\u00f3k'";
+  lines.push(`DELETE FROM partner_identifiers WHERE id_type = ${idTypeStr};`);
+  
   for (const ident of identifiers) {
     const val = pgEscapeString(ident.value);
     const idType = pgEscapeString(ident.id_type);
     lines.push(`INSERT INTO partner_identifiers (partner_id, id_type, value, created_at, updated_at)`);
-    lines.push(`  VALUES (${ident.partner_id}, ${idType}, ${val}, NOW(), NOW())`);
-    lines.push(`  ON CONFLICT (partner_id, id_type) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();`);
+    lines.push(`  VALUES (${ident.partner_id}, ${idType}, ${val}, NOW(), NOW());`);
   }
 
   lines.push('');
