@@ -98,7 +98,7 @@ router.get('/', async (req, res) => {
       .leftJoin('transporters', 'shipments.transporter_id', 'transporters.id')
       .where('shipments.is_loaded', true)  // Csak RAKODVA fuvarok tételei jelennek meg (Fuvarok összesítő)
       .orderBy('shipments.loading_date', 'desc')
-      .limit(100000);
+      .limit(15000);
 
     // 4. Javascript alapú Total Palets számítás (V2 logika a Wiki alapján)
     lines.forEach(line => {
