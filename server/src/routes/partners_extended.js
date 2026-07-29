@@ -275,6 +275,31 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// GET /api/v1/partners/check-identifier - ellenőrzi, hogy létezik-e már aktívként az azonosító
+router.get('/check-identifier/active', async (req, res) => {
+  try {
+    const { type, value, exclude_id } = req.query;
+    if (!type || !value) return res.status(400).json({ error: 'Hiányzó type vagy value' });
+    
+    let query = db('partner_identifiers')
+      .where('id_type', type)
+      .whereRaw('UPPER(value) = ?', [value.toUpperCase()])
+      .where(function() {
+         this.where('is_inactive', false).orWhereNull('is_inactive');
+      });
+      
+    if (exclude_id && exclude_id !== 'null' && exclude_id !== 'undefined') {
+      query = query.whereNot('partner_id', exclude_id);
+    }
+    
+    const duplicate = await query.first();
+    res.json({ exists: !!duplicate, duplicate });
+  } catch (err) {
+    console.error('Hiba az azonosító ellenőrzésekor:', err);
+    res.status(500).json({ error: 'Belső szerverhiba' });
+  }
+});
+
 // POST /api/v1/partners - új partner
 router.post('/', async (req, res) => {
   try {

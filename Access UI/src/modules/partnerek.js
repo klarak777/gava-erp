@@ -770,6 +770,9 @@ function prtBuildEgyebAdatokPanel(p, data) {
                 <input type="hidden" class="ident-verified" value="${i.is_verified ? '1' : '0'}">
               </td>
               <td><input type="text" class="ident-checked-by" value="${prtEsc(i.checked_by)}" style="width:120px; background:var(--bg-light); ${['Adószám', 'Közösségi adószám'].includes(i.id_type) ? '' : 'display:none'}" readonly></td>
+              <td style="text-align:center">
+                <input type="checkbox" class="ident-inactive" title="Inaktív: nem jelenik meg az Admin modulban és a legördülőkben" style="visibility: ${['(Reference) Szállítók', '(Customer) Vevők', 'Fuvarozók'].includes(i.id_type) ? 'visible' : 'hidden'}" ${i.is_inactive ? 'checked' : ''}>
+              </td>
             </tr>`).join('')}
           </tbody>
         </table>
@@ -1443,7 +1446,7 @@ function prtBindModal(overlay, listContainer, id) {
     }
   });
   bindSubtable('ident-add-btn','ident-del-btn','ident-table', () =>
-    `<td><select class="ident-type" style="min-width:160px"><option value="Adószám">Adószám</option><option value="CCW + Kód">CCW + Kód</option><option value="Csoportos adószám">Csoportos adószám</option><option value="FELIR azonosító">FELIR azonosító</option><option value="NEBIH">NEBIH</option><option value="(Reference) Szállítók">(Reference) Szállítók</option><option value="(Customer) Vevők">(Customer) Vevők</option><option value="Fuvarozók">Fuvarozók</option></select></td><td><input type="text" class="ident-value"></td><td style="text-align:center"><span class="ident-status" style="display:none">—</span><input type="hidden" class="ident-verified" value="0"></td><td><input type="text" class="ident-checked-by" style="width:120px;display:none" readonly></td><td style="text-align:center"><input type="checkbox" class="ident-inactive" title="Inaktív: nem jelenik meg az Admin modulban és a legördülőkben"></td>`);
+    `<td><select class="ident-type" style="min-width:160px"><option value="Adószám">Adószám</option><option value="CCW + Kód">CCW + Kód</option><option value="Csoportos adószám">Csoportos adószám</option><option value="FELIR azonosító">FELIR azonosító</option><option value="NEBIH">NEBIH</option><option value="(Reference) Szállítók">(Reference) Szállítók</option><option value="(Customer) Vevők">(Customer) Vevők</option><option value="Fuvarozók">Fuvarozók</option></select></td><td><input type="text" class="ident-value"></td><td style="text-align:center"><span class="ident-status" style="display:none">—</span><input type="hidden" class="ident-verified" value="0"></td><td><input type="text" class="ident-checked-by" style="width:120px;display:none" readonly></td><td style="text-align:center"><input type="checkbox" class="ident-inactive" title="Inaktív: nem jelenik meg az Admin modulban és a legördülőkben" style="visibility:hidden"></td>`);
   const identTable = overlay.querySelector('#ident-table');
 
   // ── Identifiers Uniqueness Logic ──
@@ -1484,6 +1487,7 @@ function prtBindModal(overlay, listContainer, id) {
         const row = e.target.closest('tr');
         const statusSpan = row.querySelector('.ident-status');
         const checkedByInput = row.querySelector('.ident-checked-by');
+        const inactiveCb = row.querySelector('.ident-inactive');
         
         if (['Adószám', 'Közösségi adószám'].includes(val)) {
           if (statusSpan) statusSpan.style.display = 'inline';
@@ -1491,6 +1495,11 @@ function prtBindModal(overlay, listContainer, id) {
         } else {
           if (statusSpan) statusSpan.style.display = 'none';
           if (checkedByInput) checkedByInput.style.display = 'none';
+        }
+
+        if (inactiveCb) {
+          const roleTypes = ['(Reference) Szállítók', '(Customer) Vevők', 'Fuvarozók'];
+          inactiveCb.style.visibility = roleTypes.includes(val) ? 'visible' : 'hidden';
         }
 
         if (uniqueTypes.includes(val)) {
@@ -1506,6 +1515,50 @@ function prtBindModal(overlay, listContainer, id) {
           }
         }
         enforceUniqueness();
+      }
+    });
+
+    identTable.addEventListener('click', async (e) => {
+      if (e.target.classList.contains('ident-inactive')) {
+        e.preventDefault();
+        const cb = e.target;
+        const row = cb.closest('tr');
+        const type = row.querySelector('.ident-type').value;
+        const val = row.querySelector('.ident-value').value.trim();
+        
+        // Jelenleg true (inaktív), be akarja pipálni (aktívvá tenni) -> ami valójában UNCHECK lenne a UI-on
+        // Wait, e.preventDefault() miatt a cb.checked a régi állapotot mutatja!
+        // Ha cb.checked == false, azaz aktív volt, inaktívvá akarja tenni.
+        if (!cb.checked) {
+          if (confirm('Biztosan inaktívvá teszi ezt a szerepkört? A partnerek legördülő listáiban nem fog megjelenni.')) {
+            cb.checked = true;
+          }
+        } else {
+          // Ha cb.checked == true, azaz inaktív volt, aktívvá akarja tenni.
+          if (!val) {
+            cb.checked = false;
+            return;
+          }
+          
+          try {
+            // Először ellenőrizzük, hogy létezik-e már máshol aktívként
+            const id = window.prtCurrentPartnerId || 'null';
+            const res = await fetch(`/api/v1/partners/check-identifier/active?type=${encodeURIComponent(type)}&value=${encodeURIComponent(val)}&exclude_id=${id}`);
+            const data = await res.json();
+            
+            if (data.exists) {
+              alert('Már létezik aktív szerepkör ezzel a névvel egy másik partnernél. Kérjük, előbb módosítsa az azonosító nevét!');
+              return;
+            }
+            
+            if (confirm('Biztosan újra aktívvá teszi ezt a szerepkört?')) {
+              cb.checked = false;
+            }
+          } catch (err) {
+            console.error('Hiba az ellenőrzés során:', err);
+            alert('Hálózati hiba történt az azonosító ellenőrzése során.');
+          }
+        }
       }
     });
 
