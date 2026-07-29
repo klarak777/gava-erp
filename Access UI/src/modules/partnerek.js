@@ -738,15 +738,16 @@ function prtBuildEgyebAdatokPanel(p, data) {
     idents.unshift({ id_type: 'Adószám', value: p.tax_id, is_verified: false, checked_by: '' });
   }
   return `
-  <div class="prt-cols-2">
-    <div>
+  <div style="display:flex; flex-direction:column; padding-bottom:30px;">
+    <div class="prt-cols-2">
+      <div>
       <div class="prt-section-title" style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:8px">Azonosítók</div>
       <div class="prt-subtable-toolbar" style="background:var(--bg-light); padding:4px; border:1px solid var(--border); border-bottom:none; border-radius:8px 8px 0 0;">
         <button class="prt-toolbar-btn" id="ident-add-btn">➕</button>
         <button class="prt-toolbar-btn danger" id="ident-del-btn">🗑️</button>
         <button class="prt-toolbar-btn" id="ident-verify-btn" style="color:var(--text-primary);">ABC Ellenőrzés</button>
       </div>
-      <div class="prt-subtable-wrap" style="height:200px; overflow-y:auto; overscroll-behavior:contain; border:1px solid var(--border); background:var(--surface); border-radius:0 0 8px 8px;">
+      <div class="prt-subtable-wrap" style="min-height:120px; max-height:250px; overflow-y:auto; overscroll-behavior:contain; border:1px solid var(--border); background:var(--surface); border-radius:0 0 8px 8px;">
         <table class="prt-subtable" id="ident-table">
           <thead><tr><th>Típus</th><th>Érték</th><th>É</th><th>Ellenőrizve</th></tr></thead>
           <tbody>
@@ -774,7 +775,7 @@ function prtBuildEgyebAdatokPanel(p, data) {
     </div>
     <div>
       <div class="prt-section-title" style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:8px">Jellemzők</div>
-      <div class="prt-subtable-wrap" style="height:235px; overflow-y:auto; overscroll-behavior:contain; border:1px solid var(--border); background:var(--surface); border-radius:8px;">
+      <div class="prt-subtable-wrap" style="min-height:120px; max-height:250px; overflow-y:auto; overscroll-behavior:contain; border:1px solid var(--border); background:var(--surface); border-radius:8px;">
         <table class="prt-subtable" id="char-table">
           <thead><tr><th>Jellemző</th><th>Érték</th><th><button class="prt-toolbar-btn" id="char-add-btn" style="padding:2px 6px;">➕</button> <button class="prt-toolbar-btn danger" id="char-del-btn" style="padding:2px 6px;">🗑️</button></th></tr></thead>
           <tbody>
@@ -869,6 +870,7 @@ function prtBuildEgyebAdatokPanel(p, data) {
         <label style="display:flex;align-items:center;gap:4px;margin-bottom:0;"><input type="radio" name="prt_print_mode" value="remote" ${p.default_print_mode==='remote'?'checked':''}> Távnyomtatás</label>
       </div>
     </div>
+  </div>
   </div>`;
 }
 
