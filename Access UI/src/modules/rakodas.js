@@ -201,26 +201,20 @@ export function renderRakodas(container, windowManager) {
     }
 
     async function initLists() {
-        if (productsList.length === 0) {
-            try {
-                const r = await fetch('/api/v1/products');
-                productsList = await r.json();
-            } catch (e) { productsList = []; }
-        }
-        if (referencesList.length === 0) {
-            try {
-                const r = await fetch('/api/v1/partners-by-role?role=reference');
-                referencesList = await r.json();
-            } catch (e) { referencesList = []; }
-        }
-        if (customersList.length === 0) {
-            try {
-                const r = await fetch('/api/v1/partners-by-role?role=customer');
-                customersList = await r.json();
-            } catch (e) { customersList = []; }
-        }
-        
-        // No autocomplete dropdown setup needed, user prefers plain typing search
+        try {
+            const r = await fetch('/api/v1/products');
+            productsList = await r.json();
+        } catch (e) { productsList = []; }
+
+        try {
+            const r = await fetch('/api/v1/partners-by-role?role=reference');
+            referencesList = await r.json();
+        } catch (e) { referencesList = []; }
+
+        try {
+            const r = await fetch('/api/v1/partners-by-role?role=customer');
+            customersList = await r.json();
+        } catch (e) { customersList = []; }
     }
     
     initLists();
@@ -616,25 +610,20 @@ export function renderRakodas(container, windowManager) {
     });
 
     async function openAruAddEditModal(editRow = null) {
-        // Termékek betöltése ha még nincs
-        if (productsList.length === 0) {
-            try {
-                const r = await fetch('/api/v1/products');
-                productsList = await r.json();
-            } catch (e) { productsList = []; }
-        }
-        if (referencesList.length === 0) {
-            try {
-                const r = await fetch('/api/v1/partners-by-role?role=reference');
-                referencesList = await r.json();
-            } catch (e) { referencesList = []; }
-        }
-        if (customersList.length === 0) {
-            try {
-                const r = await fetch('/api/v1/partners-by-role?role=customer');
-                customersList = await r.json();
-            } catch (e) { customersList = []; }
-        }
+        try {
+            const r = await fetch('/api/v1/products');
+            productsList = await r.json();
+        } catch (e) { productsList = []; }
+
+        try {
+            const r = await fetch('/api/v1/partners-by-role?role=reference');
+            referencesList = await r.json();
+        } catch (e) { referencesList = []; }
+
+        try {
+            const r = await fetch('/api/v1/partners-by-role?role=customer');
+            customersList = await r.json();
+        } catch (e) { customersList = []; }
 
         const isEdit = !!editRow;
         const modalTitle = isEdit ? '✏️ Árú igény szerkesztése' : '+ Áru igény hozzáadása';
