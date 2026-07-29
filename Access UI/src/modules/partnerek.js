@@ -1227,7 +1227,27 @@ function prtBindModal(overlay, listContainer, id) {
   maxBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
     modal.classList.toggle('maximized');
+    setTimeout(recalcPanelsHeight, 50);
   });
+
+  // ── Force panels scroll height calculation ──────────────────
+  // The flexbox layout doesn't constrain .prt-panels height reliably,
+  // so we calculate the available space via JS and set explicit maxHeight.
+  function recalcPanelsHeight() {
+    const panelsEl = overlay.querySelector('.prt-panels');
+    if (!panelsEl || !modal) return;
+    const modalRect = modal.getBoundingClientRect();
+    const panelsRect = panelsEl.getBoundingClientRect();
+    // Available height = bottom of modal - top of panels - small bottom padding
+    const availableH = modalRect.bottom - panelsRect.top - 4;
+    if (availableH > 50) {
+      panelsEl.style.maxHeight = availableH + 'px';
+      panelsEl.style.overflowY = 'auto';
+    }
+  }
+  // Run after a tick so the DOM has fully laid out
+  setTimeout(recalcPanelsHeight, 50);
+  window.addEventListener('resize', recalcPanelsHeight);
 
   // Fő tab váltás
   overlay.querySelectorAll('.prt-tab-main').forEach(tab => {
