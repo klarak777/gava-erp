@@ -65,7 +65,17 @@ router.get('/', async (req, res) => {
         // Termék és partner
         'products.name as prod',
         'products.code as prod_code',
-        db.raw("COALESCE(partner_identifiers.value, partners.name) as ref"),
+        // Subquery: pontosan 1 aktív Reference azonosítót ad vissza partnerenként
+        // (elkerüli a LEFT JOIN miatti sor-duplikálódást, ha több Reference van)
+        db.raw(`COALESCE(
+          (SELECT pi.value FROM partner_identifiers pi
+           WHERE pi.partner_id = shipment_lines.partner_id
+             AND pi.id_type = '(Reference) Szállítók'
+             AND (pi.is_inactive = false OR pi.is_inactive IS NULL)
+           ORDER BY pi.id ASC
+           LIMIT 1),
+          partners.name
+        ) as ref`),
 
         // Fuvar fejléc adatok (shipments táblából)
         'shipments.order_number',
@@ -90,10 +100,6 @@ router.get('/', async (req, res) => {
       .leftJoin('shipments', 'shipment_lines.shipment_id', 'shipments.id')
       .leftJoin('products', 'shipment_lines.product_id', 'products.id')
       .leftJoin('partners', 'shipment_lines.partner_id', 'partners.id')
-      .leftJoin('partner_identifiers', function() {
-        this.on('partner_identifiers.partner_id', '=', 'partners.id')
-            .andOn('partner_identifiers.id_type', '=', db.raw("?", ['(Reference) Szállítók']));
-      })
       .leftJoin('seasons', 'shipments.season_id', 'seasons.id')
       .leftJoin('transporters', 'shipments.transporter_id', 'transporters.id')
       .where('shipments.is_loaded', true)  // Csak RAKODVA fuvarok tételei jelennek meg (Fuvarok összesítő)
