@@ -54,7 +54,7 @@ const PARTNEREK_STYLE = `
   position: absolute; top: 5vh; left: 50%; transform: translateX(-50%);
   background: #ffffff; border-radius: 16px; width: 100%; max-width: 1200px;
   border: 1px solid var(--border); box-shadow: 0 24px 80px rgba(0,0,0,0.5);
-  display: flex; flex-direction: column; height: 90vh; overflow: hidden;
+  display: flex; flex-direction: column; height: 90vh; overflow: clip;
 }
 .prt-modal.maximized {
   top: 0 !important; left: 0 !important; transform: none !important;
@@ -98,7 +98,7 @@ const PARTNEREK_STYLE = `
 }
 
 /* ── Tab Panels ─────────────────────────────────────────────── */
-.prt-panels { flex: 1 1 0px; height: 0; padding: 2px 20px 40px 20px; overflow-y: auto; overflow-x: hidden; min-height: 0; box-sizing: border-box; }
+.prt-panels { flex: 1 1 0px; padding: 2px 20px 40px 20px; overflow-y: scroll; overflow-x: hidden; min-height: 0; box-sizing: border-box; }
 .prt-panel { display: none; margin: 0; padding: 0; }
 .prt-panel.active { display: block; margin: 0; padding: 0; }
 
@@ -412,7 +412,7 @@ function prtBuildModal(data) {
     </div>
 
     <!-- Panel tartalmak -->
-    <div class="prt-panels">
+    <div class="prt-panels" style="overflow-y: scroll !important; flex: 1 1 0px; min-height: 0;">
       <!-- 0: Székhely -->
       <div class="prt-panel active" data-panel="0">
         ${prtBuildSzekhelyPanel(p, data)}
@@ -1261,8 +1261,24 @@ function prtBindModal(overlay, listContainer, id) {
       if (targetPanel) targetPanel.classList.add('active');
       const panelsContainer = overlay.querySelector('.prt-panels');
       if (panelsContainer) panelsContainer.scrollTop = 0;
+      // Recalc height after tab switch
+      setTimeout(recalcPanelsHeight, 30);
     });
   });
+
+  // ── Fallback: manual wheel scroll on panels ─────────────────
+  // If CSS scrollbar still fails, this ensures content scrolls on mouse wheel
+  const panelsFallback = overlay.querySelector('.prt-panels');
+  if (panelsFallback) {
+    panelsFallback.addEventListener('wheel', (e) => {
+      // Only intervene if the panels element isn't natively scrolling
+      const maxScroll = panelsFallback.scrollHeight - panelsFallback.clientHeight;
+      if (maxScroll > 0) {
+        panelsFallback.scrollTop += e.deltaY;
+        e.preventDefault();
+      }
+    }, { passive: false });
+  }
 
   // Természetes személy checkbox – Adóazonosító jel mező megjelenítése/elrejtése
   const naturalCb = overlay.querySelector('#prt-f-natural');
