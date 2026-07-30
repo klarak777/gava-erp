@@ -80,6 +80,19 @@ WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('CASI AIRPOR
 AND partner_id IN (SELECT id FROM partners WHERE name = 'CASI AIRPORT');
 
 INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'AXARFUIT', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'Axarfruit'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('AXARFUIT')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('AXARFUIT') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'Axarfruit');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
 SELECT id, '(Reference) Szállítók', 'AXAFRUIT', true, false, '', NOW(), NOW()
 FROM partners WHERE name = 'Axarfruit'
 AND NOT EXISTS (
@@ -104,6 +117,19 @@ AND NOT EXISTS (
 UPDATE partner_identifiers SET is_inactive = false
 WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('AXARFRUIT') 
 AND partner_id IN (SELECT id FROM partners WHERE name = 'Axarfruit');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'EXPOLAMA', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'Expoalma S.L.'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('EXPOLAMA')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('EXPOLAMA') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'Expoalma S.L.');
 
 INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
 SELECT id, '(Reference) Szállítók', 'EXPOALMA', false, false, '', NOW(), NOW()
@@ -169,6 +195,32 @@ AND NOT EXISTS (
 UPDATE partner_identifiers SET is_inactive = true
 WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('DG69') 
 AND partner_id IN (SELECT id FROM partners WHERE name = 'DG69');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'AGROPONIENTE GUARDIAS', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'Agroponiente Natural Produce S.L.'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('AGROPONIENTE GUARDIAS')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('AGROPONIENTE GUARDIAS') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'Agroponiente Natural Produce S.L.');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'AGROPONIENTS NATURAL', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'Agroponiente Natural Produce S.L.'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('AGROPONIENTS NATURAL')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('AGROPONIENTS NATURAL') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'Agroponiente Natural Produce S.L.');
 
 INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
 SELECT id, '(Reference) Szállítók', 'AGROPONIENTE NIJAR', true, false, '', NOW(), NOW()
@@ -299,6 +351,253 @@ AND NOT EXISTS (
 UPDATE partner_identifiers SET is_inactive = false
 WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('R&M') 
 AND partner_id IN (SELECT id FROM partners WHERE name = 'R&M');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Customer) Vevők', 'SPAR HU BICSKE', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'SPAR HU'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Customer) Vevők' 
+  AND UPPER(value) = UPPER('SPAR HU BICSKE')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('SPAR HU BICSKE') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'SPAR HU');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Customer) Vevők', 'Spar Slo', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'SPAR HU'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Customer) Vevők' 
+  AND UPPER(value) = UPPER('Spar Slo')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('Spar Slo') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'SPAR HU');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Customer) Vevők', 'Spar Cro', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'SPAR HU'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Customer) Vevők' 
+  AND UPPER(value) = UPPER('Spar Cro')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('Spar Cro') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'SPAR HU');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Customer) Vevők', 'Spar Hu 102', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'SPAR HU'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Customer) Vevők' 
+  AND UPPER(value) = UPPER('Spar Hu 102')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('Spar Hu 102') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'SPAR HU');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Customer) Vevők', 'Spar Hu 101', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'SPAR HU'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Customer) Vevők' 
+  AND UPPER(value) = UPPER('Spar Hu 101')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('Spar Hu 101') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'SPAR HU');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Customer) Vevők', 'Spar Slovenia', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'SPAR HU'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Customer) Vevők' 
+  AND UPPER(value) = UPPER('Spar Slovenia')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('Spar Slovenia') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'SPAR HU');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Customer) Vevők', 'Spar Hu Üllő', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'SPAR HU'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Customer) Vevők' 
+  AND UPPER(value) = UPPER('Spar Hu Üllő')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('Spar Hu Üllő') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'SPAR HU');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Customer) Vevők', 'SPAR HU 096A', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'SPAR HU'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Customer) Vevők' 
+  AND UPPER(value) = UPPER('SPAR HU 096A')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('SPAR HU 096A') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'SPAR HU');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Customer) Vevők', 'SPAR HU 095', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'SPAR HU'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Customer) Vevők' 
+  AND UPPER(value) = UPPER('SPAR HU 095')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('SPAR HU 095') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'SPAR HU');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Customer) Vevők', 'SPAR HR 058', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'SPAR HU'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Customer) Vevők' 
+  AND UPPER(value) = UPPER('SPAR HR 058')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('SPAR HR 058') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'SPAR HU');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Customer) Vevők', 'SPAR HU 093', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'SPAR HU'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Customer) Vevők' 
+  AND UPPER(value) = UPPER('SPAR HU 093')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('SPAR HU 093') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'SPAR HU');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Customer) Vevők', 'Spar Cro 056', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'SPAR HU'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Customer) Vevők' 
+  AND UPPER(value) = UPPER('Spar Cro 056')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('Spar Cro 056') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'SPAR HU');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Customer) Vevők', 'Spar Hu 091', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'SPAR HU'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Customer) Vevők' 
+  AND UPPER(value) = UPPER('Spar Hu 091')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('Spar Hu 091') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'SPAR HU');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Customer) Vevők', 'Spar Slo 007', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'SPAR HU'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Customer) Vevők' 
+  AND UPPER(value) = UPPER('Spar Slo 007')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('Spar Slo 007') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'SPAR HU');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Customer) Vevők', 'Spar Hu 092', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'SPAR HU'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Customer) Vevők' 
+  AND UPPER(value) = UPPER('Spar Hu 092')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('Spar Hu 092') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'SPAR HU');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Customer) Vevők', 'SPAR HU 094', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'SPAR HU'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Customer) Vevők' 
+  AND UPPER(value) = UPPER('SPAR HU 094')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('SPAR HU 094') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'SPAR HU');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Customer) Vevők', 'SPAR HU 090', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'SPAR HU'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Customer) Vevők' 
+  AND UPPER(value) = UPPER('SPAR HU 090')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('SPAR HU 090') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'SPAR HU');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Customer) Vevők', 'SPAR HU 089', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'SPAR HU'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Customer) Vevők' 
+  AND UPPER(value) = UPPER('SPAR HU 089')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('SPAR HU 089') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'SPAR HU');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Customer) Vevők', 'Spar HR 057', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'SPAR HU'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Customer) Vevők' 
+  AND UPPER(value) = UPPER('Spar HR 057')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('Spar HR 057') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'SPAR HU');
 
 INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
 SELECT id, '(Customer) Vevők', 'SPAR HU', false, false, '', NOW(), NOW()
@@ -678,6 +977,175 @@ WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('GHU')
 AND partner_id IN (SELECT id FROM partners WHERE name = 'GHU');
 
 INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'COSTA', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'COSTA'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('COSTA')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('COSTA') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'COSTA');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'HORTICHUELAS', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'HORTICHUELAS'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('HORTICHUELAS')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('HORTICHUELAS') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'HORTICHUELAS');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'AGRICOLAS COCO', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'AGRICOLAS COCO'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('AGRICOLAS COCO')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('AGRICOLAS COCO') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'AGRICOLAS COCO');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'EJIDOZONE', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'EJIDOZONE'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('EJIDOZONE')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('EJIDOZONE') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'EJIDOZONE');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'ALDENOR', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'ALDENOR'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('ALDENOR')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('ALDENOR') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'ALDENOR');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'CALIFORNIA', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'CALIFORNIA'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('CALIFORNIA')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('CALIFORNIA') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'CALIFORNIA');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'SZENTESI', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'SZENTESI'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('SZENTESI')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('SZENTESI') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'SZENTESI');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'RIZOTERRA', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'RIZOTERRA'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('RIZOTERRA')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('RIZOTERRA') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'RIZOTERRA');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'PATSALAS', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'PATSALAS'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('PATSALAS')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('PATSALAS') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'PATSALAS');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'ANAGNOSTOU', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'ANAGNOSTOU'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('ANAGNOSTOU')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('ANAGNOSTOU') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'ANAGNOSTOU');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'NEA PARAGOGI', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'NEA PARAGOGI'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('NEA PARAGOGI')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('NEA PARAGOGI') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'NEA PARAGOGI');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'EXQUISITE', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'EXQUISITE'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('EXQUISITE')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('EXQUISITE') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'EXQUISITE');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'AGRICOLA GUAINOS', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'AGRICOLA GUAINOS'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('AGRICOLA GUAINOS')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('AGRICOLA GUAINOS') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'AGRICOLA GUAINOS');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
 SELECT id, '(Reference) Szállítók', 'AGRONERVION', false, false, '', NOW(), NOW()
 FROM partners WHERE name = 'Agronervion, S.L.U.'
 AND NOT EXISTS (
@@ -702,6 +1170,149 @@ AND NOT EXISTS (
 UPDATE partner_identifiers SET is_inactive = false
 WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('BERTIPACK') 
 AND partner_id IN (SELECT id FROM partners WHERE name = 'Bertipack, S.L.');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'AGRODIRECT', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'AGRODIRECT'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('AGRODIRECT')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('AGRODIRECT') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'AGRODIRECT');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'AGRUPAEJIDO', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'AGRUPAEJIDO'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('AGRUPAEJIDO')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('AGRUPAEJIDO') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'AGRUPAEJIDO');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'INICIATIVAS', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'INICIATIVAS'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('INICIATIVAS')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('INICIATIVAS') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'INICIATIVAS');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'AGROMOLINILLO', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'AGROMOLINILLO'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('AGROMOLINILLO')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('AGROMOLINILLO') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'AGROMOLINILLO');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'FONAL', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'FONAL'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('FONAL')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('FONAL') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'FONAL');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'BA-RO FRUIT', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'BA-RO FRUIT'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('BA-RO FRUIT')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('BA-RO FRUIT') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'BA-RO FRUIT');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'AZAMAFA', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'AZAMAFA'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('AZAMAFA')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('AZAMAFA') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'AZAMAFA');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'ASAMFA', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'ASAMFA'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('ASAMFA')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('ASAMFA') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'ASAMFA');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'HISPA', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'HISPA'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('HISPA')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('HISPA') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'HISPA');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'PREMIUMKERT', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'PREMIUMKERT'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('PREMIUMKERT')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('PREMIUMKERT') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'PREMIUMKERT');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'VALEX CITRUS', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'VALEX CITRUS'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('VALEX CITRUS')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('VALEX CITRUS') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'VALEX CITRUS');
 
 INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
 SELECT id, '(Reference) Szállítók', 'GEMÜSERING', false, false, '', NOW(), NOW()
@@ -808,6 +1419,32 @@ WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('ROMÁNIA')
 AND partner_id IN (SELECT id FROM partners WHERE name = 'ROMÁNIA');
 
 INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'VALEX', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'VALEX'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('VALEX')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('VALEX') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'VALEX');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'ECOINVER', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'ECOINVER'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('ECOINVER')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('ECOINVER') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'ECOINVER');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
 SELECT id, '(Customer) Vevők', 'VILLAFRUT', false, false, '', NOW(), NOW()
 FROM partners WHERE name = 'VILLAFRUT SRL'
 AND NOT EXISTS (
@@ -819,6 +1456,32 @@ AND NOT EXISTS (
 UPDATE partner_identifiers SET is_inactive = false
 WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('VILLAFRUT') 
 AND partner_id IN (SELECT id FROM partners WHERE name = 'VILLAFRUT SRL');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'PADRON', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'PADRON'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('PADRON')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('PADRON') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'PADRON');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'LOVEFRUITS', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'LOVEFRUITS'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('LOVEFRUITS')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('LOVEFRUITS') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'LOVEFRUITS');
 
 INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
 SELECT id, '(Customer) Vevők', 'ALDI AT', false, false, '', NOW(), NOW()
@@ -847,6 +1510,71 @@ WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('KV LOGISTIKA')
 AND partner_id IN (SELECT id FROM partners WHERE name = 'KV LOGISTIKA');
 
 INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'VERTIPACK', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'VERTIPACK'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('VERTIPACK')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('VERTIPACK') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'VERTIPACK');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'ESMAR FRUTAS', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'ESMAR FRUTAS'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('ESMAR FRUTAS')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('ESMAR FRUTAS') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'ESMAR FRUTAS');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'TOLEDANO', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'TOLEDANO'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('TOLEDANO')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('TOLEDANO') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'TOLEDANO');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'BONDÁR', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'BONDÁR'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('BONDÁR')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('BONDÁR') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'BONDÁR');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'LIMITED FOOTPRINT', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'LIMITED FOOTPRINT'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('LIMITED FOOTPRINT')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('LIMITED FOOTPRINT') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'LIMITED FOOTPRINT');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
 SELECT id, '(Reference) Szállítók', 'AZAFAMA', false, false, '', NOW(), NOW()
 FROM partners WHERE name = 'Azafama Tropical LDA'
 AND NOT EXISTS (
@@ -860,6 +1588,71 @@ WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('AZAFAMA')
 AND partner_id IN (SELECT id FROM partners WHERE name = 'Azafama Tropical LDA');
 
 INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'QUEEN''S LOGISTICS', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'QUEEN''S LOGISTICS'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('QUEEN''S LOGISTICS')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('QUEEN''S LOGISTICS') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'QUEEN''S LOGISTICS');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'PETRAS GROUP', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'PETRAS GROUP'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('PETRAS GROUP')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('PETRAS GROUP') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'PETRAS GROUP');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'MABE', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'MABE'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('MABE')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('MABE') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'MABE');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'NEJITE', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'NEJITE'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('NEJITE')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('NEJITE') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'NEJITE');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'GODOY', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'GODOY'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('GODOY')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('GODOY') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'GODOY');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
 SELECT id, '(Reference) Szállítók', 'BALCANIC FOOD', false, false, '', NOW(), NOW()
 FROM partners WHERE name = 'Balcanic Food Trade Company'
 AND NOT EXISTS (
@@ -871,6 +1664,45 @@ AND NOT EXISTS (
 UPDATE partner_identifiers SET is_inactive = false
 WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('BALCANIC FOOD') 
 AND partner_id IN (SELECT id FROM partners WHERE name = 'Balcanic Food Trade Company');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'ALEXANDROS', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'ALEXANDROS'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('ALEXANDROS')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('ALEXANDROS') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'ALEXANDROS');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'BRETAGNE', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'BRETAGNE'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('BRETAGNE')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('BRETAGNE') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'BRETAGNE');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'MASA MŰHELY', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'MASA MŰHELY'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('MASA MŰHELY')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('MASA MŰHELY') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'MASA MŰHELY');
 
 INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
 SELECT id, 'Fuvarozók', 'RONI', true, false, '', NOW(), NOW()
@@ -990,6 +1822,45 @@ WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('SMART')
 AND partner_id IN (SELECT id FROM partners WHERE name = 'BRAVOSMART Kft');
 
 INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'KOPFSLAT', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'KOPFSALAT TRADE SL.'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('KOPFSLAT')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('KOPFSLAT') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'KOPFSALAT TRADE SL.');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'KOPFSALT', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'KOPFSALAT TRADE SL.'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('KOPFSALT')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('KOPFSALT') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'KOPFSALAT TRADE SL.');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'KOPFALAT', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'KOPFSALAT TRADE SL.'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('KOPFALAT')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('KOPFALAT') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'KOPFSALAT TRADE SL.');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
 SELECT id, 'Fuvarozók', 'KOPFSALAT', false, false, '', NOW(), NOW()
 FROM partners WHERE name = 'KOPFSALAT TRADE SL.'
 AND NOT EXISTS (
@@ -1094,6 +1965,32 @@ WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('COCO FRUITS
 AND partner_id IN (SELECT id FROM partners WHERE name = 'Coco Fruits and Vegetables S.L.');
 
 INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'MK FESH', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'MK FRESH PRODUCT SARL'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('MK FESH')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('MK FESH') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'MK FRESH PRODUCT SARL');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'MKF FRESH', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'MK FRESH PRODUCT SARL'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('MKF FRESH')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('MKF FRESH') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'MK FRESH PRODUCT SARL');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
 SELECT id, '(Reference) Szállítók', 'MK FRESH', false, false, '', NOW(), NOW()
 FROM partners WHERE name = 'MK FRESH PRODUCT SARL'
 AND NOT EXISTS (
@@ -1196,6 +2093,19 @@ AND NOT EXISTS (
 UPDATE partner_identifiers SET is_inactive = false
 WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('ECOINVER EXPORT') 
 AND partner_id IN (SELECT id FROM partners WHERE name = 'Ecoinver Export S.L.');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'DELGARUITS', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'Delgafruits S.L.'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('DELGARUITS')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('DELGARUITS') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'Delgafruits S.L.');
 
 INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
 SELECT id, '(Reference) Szállítók', 'DELGAFRUIT', true, false, '', NOW(), NOW()
@@ -1419,6 +2329,19 @@ WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('LA CALIFORN
 AND partner_id IN (SELECT id FROM partners WHERE name = 'LA CALIFORNIA TRADING ESPANA SL.');
 
 INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'OYMPIC FRUIT', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'Olympic Fruit B.V.'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('OYMPIC FRUIT')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('OYMPIC FRUIT') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'Olympic Fruit B.V.');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
 SELECT id, '(Customer) Vevők', 'OLYMPIC', true, false, '', NOW(), NOW()
 FROM partners WHERE name = 'Olympic Fruit B.V.'
 AND NOT EXISTS (
@@ -1508,6 +2431,136 @@ AND NOT EXISTS (
 UPDATE partner_identifiers SET is_inactive = false
 WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('SMART') 
 AND partner_id IN (SELECT id FROM partners WHERE name = 'Smart Fruits S.L.');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Customer) Vevők', 'EUROGROUP SPAIN', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'EUROGROUP ESPANA FRUTAS Y VERDURAS S.A.U.'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Customer) Vevők' 
+  AND UPPER(value) = UPPER('EUROGROUP SPAIN')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('EUROGROUP SPAIN') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'EUROGROUP ESPANA FRUTAS Y VERDURAS S.A.U.');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Customer) Vevők', 'EURORGROUP DE', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'EUROGROUP ESPANA FRUTAS Y VERDURAS S.A.U.'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Customer) Vevők' 
+  AND UPPER(value) = UPPER('EURORGROUP DE')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('EURORGROUP DE') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'EUROGROUP ESPANA FRUTAS Y VERDURAS S.A.U.');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Customer) Vevők', 'EUROGROUP DETUSCHLAND', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'EUROGROUP ESPANA FRUTAS Y VERDURAS S.A.U.'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Customer) Vevők' 
+  AND UPPER(value) = UPPER('EUROGROUP DETUSCHLAND')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('EUROGROUP DETUSCHLAND') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'EUROGROUP ESPANA FRUTAS Y VERDURAS S.A.U.');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Customer) Vevők', 'EUROGROUP DEUTCHLAND', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'EUROGROUP ESPANA FRUTAS Y VERDURAS S.A.U.'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Customer) Vevők' 
+  AND UPPER(value) = UPPER('EUROGROUP DEUTCHLAND')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('EUROGROUP DEUTCHLAND') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'EUROGROUP ESPANA FRUTAS Y VERDURAS S.A.U.');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'EUROGROUP SPAIN', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'EUROGROUP ESPANA FRUTAS Y VERDURAS S.A.U.'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('EUROGROUP SPAIN')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('EUROGROUP SPAIN') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'EUROGROUP ESPANA FRUTAS Y VERDURAS S.A.U.');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'EURORGROUP DE', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'EUROGROUP ESPANA FRUTAS Y VERDURAS S.A.U.'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('EURORGROUP DE')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('EURORGROUP DE') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'EUROGROUP ESPANA FRUTAS Y VERDURAS S.A.U.');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'EUROGROUP DEUSCHLAND', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'EUROGROUP ESPANA FRUTAS Y VERDURAS S.A.U.'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('EUROGROUP DEUSCHLAND')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('EUROGROUP DEUSCHLAND') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'EUROGROUP ESPANA FRUTAS Y VERDURAS S.A.U.');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'EUROGROUP  DEUTSCHLAND', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'EUROGROUP ESPANA FRUTAS Y VERDURAS S.A.U.'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('EUROGROUP  DEUTSCHLAND')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('EUROGROUP  DEUTSCHLAND') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'EUROGROUP ESPANA FRUTAS Y VERDURAS S.A.U.');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'EUROGROUP DETUSCHLAND', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'EUROGROUP ESPANA FRUTAS Y VERDURAS S.A.U.'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('EUROGROUP DETUSCHLAND')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('EUROGROUP DETUSCHLAND') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'EUROGROUP ESPANA FRUTAS Y VERDURAS S.A.U.');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'EUROGROUP DEUTCHLAND', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'EUROGROUP ESPANA FRUTAS Y VERDURAS S.A.U.'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('EUROGROUP DEUTCHLAND')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('EUROGROUP DEUTCHLAND') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'EUROGROUP ESPANA FRUTAS Y VERDURAS S.A.U.');
 
 INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
 SELECT id, '(Reference) Szállítók', 'EUROGROUP ESPANA', false, false, '', NOW(), NOW()
@@ -1666,6 +2719,32 @@ WHERE id_type = 'Fuvarozók' AND UPPER(value) = UPPER('FRUCTUS')
 AND partner_id IN (SELECT id FROM partners WHERE name = 'Fructus Trade');
 
 INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'FRUBAMED', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'FRUBALMED SLU'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('FRUBAMED')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('FRUBAMED') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'FRUBALMED SLU');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'FRUBLMED', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'FRUBALMED SLU'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('FRUBLMED')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('FRUBLMED') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'FRUBALMED SLU');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
 SELECT id, 'Fuvarozók', 'FRUBALMED', false, false, '', NOW(), NOW()
 FROM partners WHERE name = 'FRUBALMED SLU'
 AND NOT EXISTS (
@@ -1716,6 +2795,19 @@ AND NOT EXISTS (
 UPDATE partner_identifiers SET is_inactive = false
 WHERE id_type = 'Fuvarozók' AND UPPER(value) = UPPER('BOGNÁR') 
 AND partner_id IN (SELECT id FROM partners WHERE name = 'Bognár Transport Korlátolt Felelősségű Társaság');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Customer) Vevők', 'BILEKLEVI', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'BILEK'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Customer) Vevők' 
+  AND UPPER(value) = UPPER('BILEKLEVI')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('BILEKLEVI') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'BILEK');
 
 INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
 SELECT id, 'Fuvarozók', 'BILEK', false, false, '', NOW(), NOW()
@@ -1846,6 +2938,32 @@ AND NOT EXISTS (
 UPDATE partner_identifiers SET is_inactive = false
 WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('HISPA GROUP') 
 AND partner_id IN (SELECT id FROM partners WHERE name = 'Hispa Group Spain, S.L');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Customer) Vevők', 'MERCATOR MARIBOR SLO', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'HOFER Trgovina d.o.o.'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Customer) Vevők' 
+  AND UPPER(value) = UPPER('MERCATOR MARIBOR SLO')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('MERCATOR MARIBOR SLO') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'HOFER Trgovina d.o.o.');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Customer) Vevők', 'MERCATOR SEZANA SLO', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'HOFER Trgovina d.o.o.'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Customer) Vevők' 
+  AND UPPER(value) = UPPER('MERCATOR SEZANA SLO')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Customer) Vevők' AND UPPER(value) = UPPER('MERCATOR SEZANA SLO') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'HOFER Trgovina d.o.o.');
 
 INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
 SELECT id, '(Customer) Vevők', 'HOFER', false, false, '', NOW(), NOW()
@@ -2171,6 +3289,19 @@ AND NOT EXISTS (
 UPDATE partner_identifiers SET is_inactive = false
 WHERE id_type = 'Fuvarozók' AND UPPER(value) = UPPER('KV LOG') 
 AND partner_id IN (SELECT id FROM partners WHERE name = 'KV LOG');
+
+INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
+SELECT id, '(Reference) Szállítók', 'VERMOUTH', true, false, '', NOW(), NOW()
+FROM partners WHERE name = 'VERMIO'
+AND NOT EXISTS (
+  SELECT 1 FROM partner_identifiers 
+  WHERE partner_id = partners.id 
+  AND id_type = '(Reference) Szállítók' 
+  AND UPPER(value) = UPPER('VERMOUTH')
+);
+UPDATE partner_identifiers SET is_inactive = true
+WHERE id_type = '(Reference) Szállítók' AND UPPER(value) = UPPER('VERMOUTH') 
+AND partner_id IN (SELECT id FROM partners WHERE name = 'VERMIO');
 
 INSERT INTO partner_identifiers (partner_id, id_type, value, is_inactive, is_verified, checked_by, created_at, updated_at)
 SELECT id, '(Reference) Szállítók', 'VERMIO', false, false, '', NOW(), NOW()
