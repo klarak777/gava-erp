@@ -117,14 +117,15 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                                 </select>
                             </div>
                         </div>
-                        <!-- Szállítólevél feltöltése gomb -->
-                        <div style="display:flex; flex-direction:column; justify-content:flex-end; gap:3px; flex-shrink:0; align-self:flex-end;">
-                            <label style="font-size:11px; font-weight:600; color:var(--text-main); white-space:nowrap;">Szállítólevél:</label>
-                            <button id="btn-open-delivery-note" title="Szállítólevél feltöltése" class="primary-btn"
-                                style="font-size:12px; padding:4px 12px; height:30px; background:#2563eb; border-color:#1d4ed8; display:none; align-items:center; gap:5px; white-space:nowrap;">
-                                📄 + Feltöltés
-                            </button>
-                        </div>
+                    </div>
+
+                    <!-- Szállítólevél feltöltése gomb (A fejléc aljára igazítva, a táblázat tetejénél) -->
+                    <div style="display:flex; flex-direction:column; gap:3px; flex-shrink:0; align-self:flex-end; margin-left:auto;">
+                        <label style="font-size:11px; font-weight:600; color:var(--text-main); white-space:nowrap;">Szállítólevél:</label>
+                        <button id="btn-open-delivery-note" title="Szállítólevél feltöltése" class="primary-btn"
+                            style="font-size:12px; padding:4px 12px; height:30px; background:#2563eb; border-color:#1d4ed8; display:none; align-items:center; gap:5px; white-space:nowrap;">
+                            📄 + Feltöltés
+                        </button>
                     </div>
                 </div>
 
