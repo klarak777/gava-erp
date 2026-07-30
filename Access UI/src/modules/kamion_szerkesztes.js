@@ -123,7 +123,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                     <div style="display:flex; flex-direction:column; gap:3px; flex-shrink:0; align-self:flex-end; margin-left:auto;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main); white-space:nowrap;">Szállítólevél:</label>
                         <button id="btn-open-delivery-note" title="Szállítólevél feltöltése" class="primary-btn"
-                            style="font-size:12px; padding:4px 12px; height:30px; background:#2563eb; border-color:#1d4ed8; display:none; align-items:center; gap:5px; white-space:nowrap;">
+                            style="font-size:12px; padding:4px 20px; min-width:140px; justify-content:center; height:30px; background:#2563eb; border-color:#1d4ed8; display:none; align-items:center; gap:5px; white-space:nowrap;">
                             📄 + Feltöltés
                         </button>
                     </div>
@@ -160,6 +160,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                                     <th style="text-align:right; min-width:55px;">Reloading/plt</th>
                                     <th style="text-align:right; min-width:65px;">Transport BCN/plt</th>
                                     <th style="min-width:110px;">Customer order N°</th>
+                                    <th style="min-width:100px;">Albaran</th>
                                     <th style="text-align:center; min-width:70px;">Order N° /</th>
                                 </tr>
                             </thead>
@@ -170,7 +171,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                                     <td id="km-sum-total" style="text-align:center; padding:6px 4px; color:#1e40af;">0</td>
                                     <td id="km-sum-euro" style="text-align:center; padding:6px 4px; color:var(--text-main);">0</td>
                                     <td id="km-sum-normal" style="text-align:center; padding:6px 4px; color:var(--text-main);">0</td>
-                                    <td colspan="13">
+                                    <td colspan="14">
                                         <div style="display:flex; justify-content:flex-end; gap:24px; padding-right:20px; color:#166534; font-size:11px;">
                                             <span>Szabad hely (Euro plt): <span id="km-free-euro" style="font-weight:bold; font-size:13px; color:#15803d;">33</span></span>
                                             <span>Szabad hely (Normal plt): <span id="km-free-normal" style="font-weight:bold; font-size:13px; color:#15803d;">26</span></span>
@@ -932,6 +933,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                         style="${numCellStyle} width:50px;" value="${isEmpty ? '' : escHtml(l.reloading_per_plt)}" min="0" step="0.01" placeholder="0"></td>
                     <td><input type="number" class="cell-edit" data-field="transport_bcn_per_plt" data-index="${index}"
                         style="${numCellStyle} width:60px;" value="${isEmpty ? '' : escHtml(l.transport_bcn_per_plt)}" min="0" step="0.01" placeholder="0"></td>
+                    <td><input type="text" class="cell-edit" data-field="customer_order_no" data-index="${index}"
+                        style="${cellStyle} min-width:100px;" value="${isEmpty ? '' : escHtml(l.customer_order_no)}"></td>
                     <td><input type="text" class="cell-edit" data-field="albaran_number" data-index="${index}"
                         style="${cellStyle} min-width:100px;" value="${isEmpty ? '' : escHtml(l.albaran_number)}"></td>
                     <td><input type="text" class="cell-edit" data-field="truck_number_per" data-index="${index}"

@@ -1,0 +1,342 @@
+{
+  "18-19_Fuvarok összesítő.csv": {
+    "totalRows": 1048575,
+    "stats": {
+      "reference": {
+        "total": 46,
+        "active": 15,
+        "inactive": 16,
+        "missing": 15
+      },
+      "customer": {
+        "total": 35,
+        "active": 10,
+        "inactive": 24,
+        "missing": 1
+      },
+      "transporter": {
+        "total": 0,
+        "active": 0,
+        "inactive": 0,
+        "missing": 0
+      }
+    },
+    "unmatched": {
+      "reference": [
+        "Kopfsalat Spar HR",
+        "Kopfsalat Spar HU",
+        "FRESSAN DE LEPE",
+        "Costa Cehorpa",
+        "Fressan de Lepe",
+        "COSTA Cortijos",
+        "COSTA Cehorpa",
+        "FRESSAN  DE LEPE",
+        "COCO",
+        "HORTICHELAS",
+        "FRUTAS TEJERINA",
+        "AGROIRIS",
+        "AGRICOLAS",
+        "SORIANO",
+        "SADPOL"
+      ],
+      "customer": [
+        "SPAR SL"
+      ],
+      "transporter": []
+    }
+  },
+  "19-20_Fuvarok összesítő.csv": {
+    "totalRows": 8483,
+    "stats": {
+      "reference": {
+        "total": 43,
+        "active": 19,
+        "inactive": 12,
+        "missing": 12
+      },
+      "customer": {
+        "total": 21,
+        "active": 9,
+        "inactive": 7,
+        "missing": 5
+      },
+      "transporter": {
+        "total": 0,
+        "active": 0,
+        "inactive": 0,
+        "missing": 0
+      }
+    },
+    "unmatched": {
+      "reference": [
+        "COCO",
+        "Fruta Fino",
+        "CEHORPA",
+        "Karagiannis",
+        "HISPAGROUP",
+        "KV LOGISTIC",
+        "SORIANO",
+        "CANADA SOL",
+        "TOM SPRING",
+        "GENERAL FRIGOLOG",
+        "KEREKES GYULA",
+        "FRUITIERE"
+      ],
+      "customer": [
+        "GRO",
+        "KV LOGISTIC",
+        "GENERAL FRIGOLOG",
+        "KEREKES GYULA",
+        "FRUITIERE"
+      ],
+      "transporter": []
+    }
+  },
+  "20-21_Fuvarok összesítő.csv": {
+    "totalRows": 6781,
+    "stats": {
+      "reference": {
+        "total": 46,
+        "active": 23,
+        "inactive": 18,
+        "missing": 5
+      },
+      "customer": {
+        "total": 22,
+        "active": 11,
+        "inactive": 6,
+        "missing": 5
+      },
+      "transporter": {
+        "total": 0,
+        "active": 0,
+        "inactive": 0,
+        "missing": 0
+      }
+    },
+    "unmatched": {
+      "reference": [
+        "HISPAGROUP",
+        "KEREKES GYULA",
+        "EUROCASTELL",
+        "COCO",
+        "AZAMFA"
+      ],
+      "customer": [
+        "HILLFRESH",
+        "KEREKES GYULA",
+        "EUROCASTELL",
+        "VEGS&BAGS",
+        "SPLENDID"
+      ],
+      "transporter": []
+    }
+  },
+  "22-23_Fuvarok összesítő.csv": {
+    "totalRows": 6800,
+    "stats": {
+      "reference": {
+        "total": 56,
+        "active": 40,
+        "inactive": 13,
+        "missing": 3
+      },
+      "customer": {
+        "total": 27,
+        "active": 16,
+        "inactive": 6,
+        "missing": 5
+      },
+      "transporter": {
+        "total": 0,
+        "active": 0,
+        "inactive": 0,
+        "missing": 0
+      }
+    },
+    "unmatched": {
+      "reference": [
+        "EUROCASTELL",
+        "CASI SAN ISIDRO",
+        "KONSTANTIN"
+      ],
+      "customer": [
+        "WIEN",
+        "EUROCASTELL",
+        "KONSTANTIN",
+        "TXEUQIA",
+        "SK"
+      ],
+      "transporter": []
+    }
+  },
+  "23-24_Fuvarok összesítő.csv": {
+    "totalRows": 6879,
+    "stats": {
+      "reference": {
+        "total": 66,
+        "active": 42,
+        "inactive": 18,
+        "missing": 6
+      },
+      "customer": {
+        "total": 30,
+        "active": 15,
+        "inactive": 8,
+        "missing": 7
+      },
+      "transporter": {
+        "total": 0,
+        "active": 0,
+        "inactive": 0,
+        "missing": 0
+      }
+    },
+    "unmatched": {
+      "reference": [
+        "ARVER",
+        "ECINVER BIO",
+        "MAGAR",
+        "QUEENS",
+        "MABAE",
+        "CASI SAN ISIDRO"
+      ],
+      "customer": [
+        "SK",
+        "CZ",
+        "PENNY",
+        "EUROFROST",
+        "QUEENS",
+        "GHIU",
+        "IDEALFRUITS"
+      ],
+      "transporter": []
+    }
+  },
+  "24-25 Fuvarok összesítő.csv": {
+    "totalRows": 6816,
+    "stats": {
+      "reference": {
+        "total": 80,
+        "active": 51,
+        "inactive": 19,
+        "missing": 10
+      },
+      "customer": {
+        "total": 25,
+        "active": 17,
+        "inactive": 6,
+        "missing": 2
+      },
+      "transporter": {
+        "total": 0,
+        "active": 0,
+        "inactive": 0,
+        "missing": 0
+      }
+    },
+    "unmatched": {
+      "reference": [
+        "ESCO FRESH",
+        "MAGAR",
+        "VICASOL 2",
+        "VICASOL 1",
+        "AGROPONIENTES NATURAL",
+        "CASI SAN ISIDRO",
+        "PETRAS",
+        "RELAX",
+        "VICASOL 3",
+        "EUROGROUP DEAUTSCHLAND"
+      ],
+      "customer": [
+        "OLOMUC",
+        "PETRAS"
+      ],
+      "transporter": []
+    }
+  },
+  "25-26 Fuvarok összesítö 260621.csv": {
+    "totalRows": 6870,
+    "stats": {
+      "reference": {
+        "total": 83,
+        "active": 71,
+        "inactive": 12,
+        "missing": 0
+      },
+      "customer": {
+        "total": 40,
+        "active": 32,
+        "inactive": 8,
+        "missing": 0
+      },
+      "transporter": {
+        "total": 0,
+        "active": 0,
+        "inactive": 0,
+        "missing": 0
+      }
+    },
+    "unmatched": {
+      "reference": [],
+      "customer": [],
+      "transporter": []
+    }
+  },
+  "25-26 Fuvarok összesítö V2 260617.csv": {
+    "totalRows": 6870,
+    "stats": {
+      "reference": {
+        "total": 83,
+        "active": 71,
+        "inactive": 12,
+        "missing": 0
+      },
+      "customer": {
+        "total": 40,
+        "active": 32,
+        "inactive": 8,
+        "missing": 0
+      },
+      "transporter": {
+        "total": 0,
+        "active": 0,
+        "inactive": 0,
+        "missing": 0
+      }
+    },
+    "unmatched": {
+      "reference": [],
+      "customer": [],
+      "transporter": []
+    }
+  },
+  "25-26 Fuvarok összesítö V2.4 260605.csv": {
+    "totalRows": 6867,
+    "stats": {
+      "reference": {
+        "total": 80,
+        "active": 66,
+        "inactive": 14,
+        "missing": 0
+      },
+      "customer": {
+        "total": 39,
+        "active": 29,
+        "inactive": 10,
+        "missing": 0
+      },
+      "transporter": {
+        "total": 0,
+        "active": 0,
+        "inactive": 0,
+        "missing": 0
+      }
+    },
+    "unmatched": {
+      "reference": [],
+      "customer": [],
+      "transporter": []
+    }
+  }
+}

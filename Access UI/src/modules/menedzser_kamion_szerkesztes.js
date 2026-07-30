@@ -519,6 +519,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                 if (!shipRes.ok) throw new Error('Nem sikerült betölteni a kamiont');
                 const data = await shipRes.json();
                 shipmentData = data.shipment;
+                container.dataset.transporter = shipmentData.transporter_name || '';
                 const rawLines = data.lines || [];
                 linesData = rawLines.filter(l => (l.customer || l.cust || '').toUpperCase().includes('GHU'));
                 transportLinesData = transRes.ok ? await transRes.json() : [];
@@ -743,9 +744,17 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
             const currCode = line.currency_code || (currenciesData.length > 0 ? currenciesData[0].code : 'EUR');
 
             const headerSupplier = container.querySelector('#fm-supplier') ? container.querySelector('#fm-supplier').value : '';
-            const supplierCell = isNew
-                ? buildTransporterSelect('')
-                : `<input type="text" class="tr-supplier" value="${headerSupplier}" style="width:130px;" readonly>`;
+            const transporterCompany = container.dataset.transporter || '';
+            let initialSupplier = line.partner_name || '';
+            if (isNew) {
+                initialSupplier = headerSupplier;
+            } else {
+                if (!line.partner_name) {
+                    initialSupplier = (line.type_supp === 'Trasport') ? transporterCompany : headerSupplier;
+                }
+            }
+
+            const supplierCell = `<input type="text" class="tr-supplier" value="${initialSupplier}" style="width:130px;" readonly>`;
 
             tr.innerHTML = `
                 <td style="text-align:center; width:30px;"><input type="checkbox" class="tr-row-chk"> ${i + 1}</td>
@@ -765,7 +774,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                 <td><input type="number" step="0.01" class="tr-tax-amt" value="${line.tax_amount || ''}" readonly style="background:#f0f8ff; width:70px;"></td>
                 <td><input type="number" step="0.01" class="tr-tot-inv" value="${line.tot_invoice || ''}" readonly style="background:#f0f8ff; width:80px;"></td>
                 <td><select class="tr-cur tr-calc" style="width:55px;">${buildCurrencyOptions(currCode)}</select></td>
-                <td><input type="number" step="0.001" class="tr-exch-rt tr-calc" value="${line.exchange_rate || ''}" style="width:70px;"></td>
+                <td><input type="number" step="0.001" class="tr-exch-rt tr-calc" value="${line.exchange_rate || container.querySelector('#fm-exch-rt').value || ''}" style="width:70px;"></td>
                 <td><input type="number" step="0.01" class="tr-tot-local" value="${line.total_inv_local || ''}" readonly style="background:#f0f8ff; width:90px;"></td>
                 <td><input type="text" class="tr-id-empr" value="${line.id_empr || idEmprVal}" readonly style="background:#eee; width:45px;"></td>
                 <td><input type="text" class="tr-season" value="${line.season || seasonVal}" readonly style="background:#eee; width:45px;"></td>
@@ -776,6 +785,16 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
             // Kalkulációk
             tr.querySelectorAll('.tr-calc').forEach(inp => {
                 inp.addEventListener('input', () => calculateTransportRow(tr));
+            });
+
+            // TypeSupp legördülő változása
+            tr.querySelector('.tr-type-supp').addEventListener('change', (e) => {
+                const supplierInput = tr.querySelector('.tr-supplier');
+                if (e.target.value === 'Supplier') {
+                    supplierInput.value = container.querySelector('#fm-supplier').value;
+                } else if (e.target.value === 'Trasport') {
+                    supplierInput.value = container.dataset.transporter || '';
+                }
             });
         }
 
@@ -980,7 +999,25 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
             const fmTruckNo = container.querySelector('#fm-truck-no');
             const truckNoVal = fmTruckNo.dataset.trucknr || '';
             const idEmprVal = linesData.length > 0 ? (linesData[0].customer || 'GHU') : 'GHU';
-            appendTransportRow(tbody, { _isNew: true }, num, idEmprVal, seasonVal, truckNoVal);
+            appendTransportRow(tbody, { _isNew: true, exchange_rate: container.querySelector('#fm-exch-rt').value }, num, idEmprVal, seasonVal, truckNoVal);
+        });
+
+        // ============================
+        // TRANSPORT Delete line
+        // ============================
+        container.querySelector('#tr-delete-line').addEventListener('click', () => {
+            const tbody = container.querySelector('#tr-lines-tbody');
+            const checked = tbody.querySelectorAll('.tr-row-chk:checked');
+            if (checked.length === 0) {
+                alert('Jelöljön ki legalább egy sort a törléshez!');
+                return;
+            }
+            if (confirm('Biztosan törli a kijelölt sor(oka)t?')) {
+                checked.forEach(chk => {
+                    chk.closest('tr').remove();
+                });
+                updateTransportSummary();
+            }
         });
 
         // ============================
@@ -1151,6 +1188,14 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
             calculateTotals();
             container.querySelectorAll('#uc-lines-tbody tr').forEach(tr => calculateUnitCostRow(tr));
             calculateUnitCostTotals();
+
+            container.querySelectorAll('#tr-lines-tbody tr').forEach(tr => {
+                const trExchRtInput = tr.querySelector('.tr-exch-rt');
+                if (trExchRtInput) {
+                    trExchRtInput.value = e.target.value;
+                    calculateTransportRow(tr);
+                }
+            });
         });
 
         container.querySelector('#fm-exch-rt-2').addEventListener('input', (e) => {

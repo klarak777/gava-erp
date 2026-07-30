@@ -1,0 +1,2427 @@
+{
+  "customers": [
+    {
+      "short_name_from_csv": "ALDI AT",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "ALDI AT",
+          "partner_id": 158,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "ALDI AT"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "ANTON D�RBECK",
+      "matches": [
+        {
+          "type": "name_similar",
+          "partner": "Anton Dürbeck GmbH",
+          "partner_id": 47
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "BILEK",
+      "matches": [
+        {
+          "type": "name_contains",
+          "partner": "BILEK",
+          "partner_id": 11
+        },
+        {
+          "type": "name_similar",
+          "partner": "H&H MOBILE KFT.",
+          "partner_id": 5046
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "CASAS ROYES",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "CASAS ROYES EXPORT S.L.",
+          "partner_id": 3,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "CASAS ROYES"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "CORD",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "CORD",
+          "partner_id": 16,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "CORD"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "CRETAN ROOT",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Cretan Root",
+          "partner_id": 86,
+          "id_type": "Fuvarozók",
+          "matched_value": "CRETAN ROOT"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "DG69",
+      "matches": [
+        {
+          "type": "name_similar",
+          "partner": "DG 69, d.o.o., Vrhnika",
+          "partner_id": 1007
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "EUROGROUP DEUTSCHLAND",
+      "matches": [
+        {
+          "type": "name_contains",
+          "partner": "Eurogroup Deutschland Gmbh",
+          "partner_id": 4685
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "EUROGROUP ESPANA",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "EUROGROUP ESPANA",
+          "partner_id": 31,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "EUROGROUP ESPANA"
+        },
+        {
+          "type": "name_contains",
+          "partner": "EUROGROUP ESPANA FRUTAS Y VERDURAS S.A.U.",
+          "partner_id": 23
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "EXOTIC FRESH",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "EXOTIC FRESH",
+          "partner_id": 33,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "EXOTIC FRESH"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "FRUBALMED",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "FRUBALMED SLU",
+          "partner_id": 4,
+          "id_type": "Fuvarozók",
+          "matched_value": "FRUBALMED"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "GAVA",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "GAVA TXEQUIA S.R.O.",
+          "partner_id": 62,
+          "id_type": "Fuvarozók",
+          "matched_value": "GAVA"
+        },
+        {
+          "type": "identifier_exact",
+          "partner": "GAVA GMBH.",
+          "partner_id": 4910,
+          "id_type": "CCW + Kód",
+          "matched_value": "GAVA"
+        },
+        {
+          "type": "name_contains",
+          "partner": "FRUTAS GAVA",
+          "partner_id": 48
+        },
+        {
+          "type": "name_contains",
+          "partner": "Gava Polska Sp. z o.o.",
+          "partner_id": 22
+        },
+        {
+          "type": "name_contains",
+          "partner": "GAVA SLOVAKIA S.R.O.",
+          "partner_id": 4912
+        },
+        {
+          "type": "name_contains",
+          "partner": "KOPFSALAT/GAVA SA",
+          "partner_id": 5455
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "GEM�SERING",
+      "matches": [
+        {
+          "type": "name_similar",
+          "partner": "GEMÜSERING",
+          "partner_id": 82
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "GHU",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "GHU",
+          "partner_id": 8,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "GHU"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "GLOBAL BERRY",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Global Berry S.L.",
+          "partner_id": 6,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "GLOBAL BERRY"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "GREENCOOP",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "GREENCOOP",
+          "partner_id": 83,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "GREENCOOP"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "GREENYARD",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Greenyard Fresh Spain SA",
+          "partner_id": 66,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "GREENYARD"
+        },
+        {
+          "type": "name_contains",
+          "partner": "GREENYARD FRESH ITALY SPA",
+          "partner_id": 4989
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "GY�M�LCS�RT",
+      "matches": [
+        {
+          "type": "name_similar",
+          "partner": "Gyümölcsért Kft.",
+          "partner_id": 18
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "HOFER",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "HOFER Trgovina d.o.o.",
+          "partner_id": 176,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "HOFER"
+        },
+        {
+          "type": "name_contains",
+          "partner": "HOFER KG",
+          "partner_id": 5140
+        },
+        {
+          "type": "name_contains",
+          "partner": "HOFER KG ship",
+          "partner_id": 5141
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "IDEAL FRUITS",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Ideal Fruits, S.l.",
+          "partner_id": 29,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "IDEAL FRUITS"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "K�NYA",
+      "matches": [
+        {
+          "type": "name_similar",
+          "partner": "Kónya Trans Korlátolt Felelősségű Társaság",
+          "partner_id": 2051
+        },
+        {
+          "type": "name_similar",
+          "partner": "IMANOV / KÓNYA",
+          "partner_id": 3866
+        },
+        {
+          "type": "name_similar",
+          "partner": "KÓNYA ZOLTÁNNÉ",
+          "partner_id": 25
+        },
+        {
+          "type": "name_similar",
+          "partner": "DÉKÁNY  ANDRÁS",
+          "partner_id": 4498
+        },
+        {
+          "type": "name_similar",
+          "partner": "Kónya György Lajosné",
+          "partner_id": 5450
+        },
+        {
+          "type": "name_similar",
+          "partner": "Kónya István",
+          "partner_id": 5452
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "KOPFSALAT",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "KOPFSALAT TRADE SL.",
+          "partner_id": 5,
+          "id_type": "Fuvarozók",
+          "matched_value": "KOPFSALAT"
+        },
+        {
+          "type": "name_contains",
+          "partner": "Kopfsalat Trade Sl",
+          "partner_id": 6951
+        },
+        {
+          "type": "name_contains",
+          "partner": "KOPFSALAT/GAVA SA",
+          "partner_id": 5455
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "KV LOGISTIKA",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "KV LOGISTIKA",
+          "partner_id": 180,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "KV LOGISTIKA"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "LEHMANN & TROOST",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "LEHMANN & TROOST B.V.",
+          "partner_id": 76,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "LEHMANN & TROOST"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "LEVENTE",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "LEVENTE",
+          "partner_id": 73,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "LEVENTE"
+        },
+        {
+          "type": "name_contains",
+          "partner": "Asztalos Levente",
+          "partner_id": 510
+        },
+        {
+          "type": "name_contains",
+          "partner": "Kis-Bocz Levente Ec.",
+          "partner_id": 1991
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "MANDERSLOOT",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Mandersloot Expeditiebedrijf B.V.",
+          "partner_id": 68,
+          "id_type": "Fuvarozók",
+          "matched_value": "MANDERSLOOT"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "OLYMPIC FRUIT",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Olympic Fruit B.V.",
+          "partner_id": 14,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "OLYMPIC FRUIT"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "R&M",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "R&M",
+          "partner_id": 15,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "R&M"
+        },
+        {
+          "type": "name_contains",
+          "partner": "R&M Forwarding B.V.",
+          "partner_id": 2923
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "ROM�NIA",
+      "matches": [
+        {
+          "type": "name_similar",
+          "partner": "ROMÁNIA",
+          "partner_id": 69
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "SAN NICOLA",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "SAN NICOLA GROUP S.R.L.",
+          "partner_id": 77,
+          "id_type": "Fuvarozók",
+          "matched_value": "SAN NICOLA"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "SPAR HU",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "SPAR HU",
+          "partner_id": 12,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "SPAR HU"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "SYLVAN",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Sylvan Hungária Zrt.",
+          "partner_id": 1,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "SYLVAN"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "VILLAFRUT",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "VILLAFRUT SRL",
+          "partner_id": 190,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "VILLAFRUT"
+        }
+      ]
+    }
+  ],
+  "references": [
+    {
+      "short_name_from_csv": "AGRONERVION",
+      "matches": [
+        {
+          "type": "name_contains",
+          "partner": "Agronervion, S.L.U.",
+          "partner_id": 51
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "AGROPONIENTE",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Agroponiente Natural Produce S.L.",
+          "partner_id": 27,
+          "id_type": "(Reference) Szállítók",
+          "matched_value": "AGROPONIENTE"
+        },
+        {
+          "type": "name_contains",
+          "partner": "AGROPONIENTE S.A.",
+          "partner_id": 3977
+        },
+        {
+          "type": "name_contains",
+          "partner": "Agroponiente VegaCanada S.A.",
+          "partner_id": 3978
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "AGROPONIENTE NATURAL",
+      "matches": [
+        {
+          "type": "name_contains",
+          "partner": "Agroponiente Natural Produce S.L.",
+          "partner_id": 27
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "AGROPONIENTE NIJAR",
+      "matches": []
+    },
+    {
+      "short_name_from_csv": "ANTON DÜRBECK",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Anton Dürbeck GmbH",
+          "partner_id": 47,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "ANTON DÜRBECK"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "AXARFRUIT",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Axarfruit",
+          "partner_id": 34,
+          "id_type": "(Reference) Szállítók",
+          "matched_value": "AXARFRUIT"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "BERTIPACK",
+      "matches": [
+        {
+          "type": "name_contains",
+          "partner": "Bertipack, S.L.",
+          "partner_id": 71
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "BILEK",
+      "matches": [
+        {
+          "type": "name_contains",
+          "partner": "BILEK",
+          "partner_id": 11
+        },
+        {
+          "type": "name_similar",
+          "partner": "H&H MOBILE KFT.",
+          "partner_id": 5046
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "CASAS ROYES",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "CASAS ROYES EXPORT S.L.",
+          "partner_id": 3,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "CASAS ROYES"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "CASI",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "CASI",
+          "partner_id": 41,
+          "id_type": "(Reference) Szállítók",
+          "matched_value": "CASI"
+        },
+        {
+          "type": "name_contains",
+          "partner": "CASI PARTIDORES",
+          "partner_id": 45
+        },
+        {
+          "type": "name_contains",
+          "partner": "CASI Cooperativa Provincial Agraria Y Ganadera San Isidro S. Coop. And.",
+          "partner_id": 4357
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "CASI AEROPORTO",
+      "matches": []
+    },
+    {
+      "short_name_from_csv": "CASI AIRPORT",
+      "matches": []
+    },
+    {
+      "short_name_from_csv": "CASI PARTIDORES",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "CASI PARTIDORES",
+          "partner_id": 45,
+          "id_type": "(Reference) Szállítók",
+          "matched_value": "CASI PARTIDORES"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "CLARA",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "CLARA EXPORT, S.L.",
+          "partner_id": 13,
+          "id_type": "(Reference) Szállítók",
+          "matched_value": "CLARA"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "COMPAGRI",
+      "matches": []
+    },
+    {
+      "short_name_from_csv": "CORD",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "CORD",
+          "partner_id": 16,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "CORD"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "CRETAN ROOT",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Cretan Root",
+          "partner_id": 86,
+          "id_type": "Fuvarozók",
+          "matched_value": "CRETAN ROOT"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "DELGAFRUITS",
+      "matches": [
+        {
+          "type": "name_contains",
+          "partner": "Delgafruits S.L.",
+          "partner_id": 20
+        },
+        {
+          "type": "name_contains",
+          "partner": "NE HASZNÁLD Delgafruits, S.L",
+          "partner_id": 5905
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "DG69",
+      "matches": [
+        {
+          "type": "name_similar",
+          "partner": "DG 69, d.o.o., Vrhnika",
+          "partner_id": 1007
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "ECOINVER BIO",
+      "matches": [
+        {
+          "type": "name_contains",
+          "partner": "Ecoinver Bio S.L",
+          "partner_id": 84
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "ESCOBAR",
+      "matches": [
+        {
+          "type": "name_contains",
+          "partner": "Escobar Reyes, S.L.",
+          "partner_id": 56
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "ESCOFRESH",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "ESCOFRESH",
+          "partner_id": 46,
+          "id_type": "(Reference) Szállítók",
+          "matched_value": "ESCOFRESH"
+        },
+        {
+          "type": "name_similar",
+          "partner": "Esco Fresh Iberica, S.L.",
+          "partner_id": 1157
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "ESMAR",
+      "matches": [
+        {
+          "type": "name_contains",
+          "partner": "Esmar Frutas Imp-Exp. SL",
+          "partner_id": 288
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "EUROGROUP DEUTSCHLAND",
+      "matches": [
+        {
+          "type": "name_contains",
+          "partner": "Eurogroup Deutschland Gmbh",
+          "partner_id": 4685
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "EUROGROUP ESPANA",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "EUROGROUP ESPANA",
+          "partner_id": 31,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "EUROGROUP ESPANA"
+        },
+        {
+          "type": "name_contains",
+          "partner": "EUROGROUP ESPANA FRUTAS Y VERDURAS S.A.U.",
+          "partner_id": 23
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "EXOTIC FRESH",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "EXOTIC FRESH",
+          "partner_id": 33,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "EXOTIC FRESH"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "EXPOALMA",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Expoalma S.L.",
+          "partner_id": 40,
+          "id_type": "(Reference) Szállítók",
+          "matched_value": "EXPOALMA"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "FA. DE JONG",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Fa. De Jong - Fruit",
+          "partner_id": 38,
+          "id_type": "(Reference) Szállítók",
+          "matched_value": "FA. DE JONG"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "FARAON",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "FARAON EGIPCIO SL",
+          "partner_id": 54,
+          "id_type": "Fuvarozók",
+          "matched_value": "FARAON"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "FRANIAL",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "FRANIAL",
+          "partner_id": 9,
+          "id_type": "(Reference) Szállítók",
+          "matched_value": "FRANIAL"
+        },
+        {
+          "type": "name_contains",
+          "partner": "Franial Export S.L.",
+          "partner_id": 4810
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "FRESSAN",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "FRESSAN",
+          "partner_id": 35,
+          "id_type": "(Reference) Szállítók",
+          "matched_value": "FRESSAN"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "FRUBALMED",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "FRUBALMED SLU",
+          "partner_id": 4,
+          "id_type": "Fuvarozók",
+          "matched_value": "FRUBALMED"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "FRUTAS GAVA",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "FRUTAS GAVA",
+          "partner_id": 48,
+          "id_type": "(Reference) Szállítók",
+          "matched_value": "FRUTAS GAVA"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "GALLARDO",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "GALLARDO",
+          "partner_id": 7,
+          "id_type": "(Reference) Szállítók",
+          "matched_value": "GALLARDO"
+        },
+        {
+          "type": "name_contains",
+          "partner": "AJOS GALLARDO S.L.",
+          "partner_id": 410
+        },
+        {
+          "type": "name_contains",
+          "partner": "MARÍA GALLARDO SERRANO",
+          "partner_id": 5670
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "GAVA",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "GAVA TXEQUIA S.R.O.",
+          "partner_id": 62,
+          "id_type": "Fuvarozók",
+          "matched_value": "GAVA"
+        },
+        {
+          "type": "identifier_exact",
+          "partner": "GAVA GMBH.",
+          "partner_id": 4910,
+          "id_type": "CCW + Kód",
+          "matched_value": "GAVA"
+        },
+        {
+          "type": "name_contains",
+          "partner": "FRUTAS GAVA",
+          "partner_id": 48
+        },
+        {
+          "type": "name_contains",
+          "partner": "Gava Polska Sp. z o.o.",
+          "partner_id": 22
+        },
+        {
+          "type": "name_contains",
+          "partner": "GAVA SLOVAKIA S.R.O.",
+          "partner_id": 4912
+        },
+        {
+          "type": "name_contains",
+          "partner": "KOPFSALAT/GAVA SA",
+          "partner_id": 5455
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "GAVA POLSKA",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Gava Polska Sp. z o.o.",
+          "partner_id": 22,
+          "id_type": "Fuvarozók",
+          "matched_value": "GAVA POLSKA"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "GEMÜSERING",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "GEMÜSERING",
+          "partner_id": 82,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "GEMÜSERING"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "GLOBAL BERRY",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Global Berry S.L.",
+          "partner_id": 6,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "GLOBAL BERRY"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "GREEN QUALITY",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "GREEN QUALITY",
+          "partner_id": 39,
+          "id_type": "(Reference) Szállítók",
+          "matched_value": "GREEN QUALITY"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "GREENCOOP",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "GREENCOOP",
+          "partner_id": 83,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "GREENCOOP"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "GREENYARD",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Greenyard Fresh Spain SA",
+          "partner_id": 66,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "GREENYARD"
+        },
+        {
+          "type": "name_contains",
+          "partner": "GREENYARD FRESH ITALY SPA",
+          "partner_id": 4989
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "GYÜMÖLCSÉRT",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Gyümölcsért Kft.",
+          "partner_id": 18,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "GYÜMÖLCSÉRT"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "IDEAL FRUITS",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Ideal Fruits, S.l.",
+          "partner_id": 29,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "IDEAL FRUITS"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "KOMPAGRI",
+      "matches": [
+        {
+          "type": "name_contains",
+          "partner": "KOMPAGRI ESPANA SL",
+          "partner_id": 59
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "KÓNYA",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "KÓNYA ZOLTÁNNÉ",
+          "partner_id": 25,
+          "id_type": "Fuvarozók",
+          "matched_value": "KÓNYA"
+        },
+        {
+          "type": "identifier_exact",
+          "partner": "Kónya István",
+          "partner_id": 5452,
+          "id_type": "CCW + Kód",
+          "matched_value": "kónya"
+        },
+        {
+          "type": "name_contains",
+          "partner": "Kónya Trans Korlátolt Felelősségű Társaság",
+          "partner_id": 2051
+        },
+        {
+          "type": "name_contains",
+          "partner": "IMANOV / KÓNYA",
+          "partner_id": 3866
+        },
+        {
+          "type": "name_similar",
+          "partner": "DÉKÁNY  ANDRÁS",
+          "partner_id": 4498
+        },
+        {
+          "type": "name_contains",
+          "partner": "Kónya György Lajosné",
+          "partner_id": 5450
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "KOPALMERIA",
+      "matches": [
+        {
+          "type": "name_contains",
+          "partner": "KOPALMERIA S.L.",
+          "partner_id": 79
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "KOPFSALAT",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "KOPFSALAT TRADE SL.",
+          "partner_id": 5,
+          "id_type": "Fuvarozók",
+          "matched_value": "KOPFSALAT"
+        },
+        {
+          "type": "name_contains",
+          "partner": "Kopfsalat Trade Sl",
+          "partner_id": 6951
+        },
+        {
+          "type": "name_contains",
+          "partner": "KOPFSALAT/GAVA SA",
+          "partner_id": 5455
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "KUSEK",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "KUSEK",
+          "partner_id": 2,
+          "id_type": "Fuvarozók",
+          "matched_value": "KUSEK"
+        },
+        {
+          "type": "name_contains",
+          "partner": "S.Kusek & co. OE \"Seven 7 Star Fruit\"",
+          "partner_id": 3025
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "LA CALIFORNIA",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "LA CALIFORNIA TRADING ESPANA SL.",
+          "partner_id": 28,
+          "id_type": "(Reference) Szállítók",
+          "matched_value": "LA CALIFORNIA"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "LEHMANN & TROOST",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "LEHMANN & TROOST B.V.",
+          "partner_id": 76,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "LEHMANN & TROOST"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "LEVENTE",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "LEVENTE",
+          "partner_id": 73,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "LEVENTE"
+        },
+        {
+          "type": "name_contains",
+          "partner": "Asztalos Levente",
+          "partner_id": 510
+        },
+        {
+          "type": "name_contains",
+          "partner": "Kis-Bocz Levente Ec.",
+          "partner_id": 1991
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "MALENO",
+      "matches": [
+        {
+          "type": "name_contains",
+          "partner": "Maleno Y Torres Exportación S.L.",
+          "partner_id": 52
+        },
+        {
+          "type": "name_contains",
+          "partner": "Francisco Maleno Garcia",
+          "partner_id": 1331
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "MALENO Y TORRES",
+      "matches": [
+        {
+          "type": "name_contains",
+          "partner": "Maleno Y Torres Exportación S.L.",
+          "partner_id": 52
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "MANDERSLOOT",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Mandersloot Expeditiebedrijf B.V.",
+          "partner_id": 68,
+          "id_type": "Fuvarozók",
+          "matched_value": "MANDERSLOOT"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "NATURINDA",
+      "matches": [
+        {
+          "type": "name_contains",
+          "partner": "NATURINDA, SLNE",
+          "partner_id": 2592
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "NATURNAR",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "NATURNAR KRYLUAN SL.",
+          "partner_id": 43,
+          "id_type": "(Reference) Szállítók",
+          "matched_value": "NATURNAR"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "OLASO",
+      "matches": []
+    },
+    {
+      "short_name_from_csv": "OLYMPIC FRUIT",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Olympic Fruit B.V.",
+          "partner_id": 14,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "OLYMPIC FRUIT"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "R&M",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "R&M",
+          "partner_id": 15,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "R&M"
+        },
+        {
+          "type": "name_contains",
+          "partner": "R&M Forwarding B.V.",
+          "partner_id": 2923
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "ROMÁNIA",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "ROMÁNIA",
+          "partner_id": 69,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "ROMÁNIA"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "SAN NICOLA",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "SAN NICOLA GROUP S.R.L.",
+          "partner_id": 77,
+          "id_type": "Fuvarozók",
+          "matched_value": "SAN NICOLA"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "SENOR TOMATE",
+      "matches": [
+        {
+          "type": "name_contains",
+          "partner": "Senor Tomate Kereskedelmi Korlátolt Felelősségű Társaság",
+          "partner_id": 74
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "SHEBA",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "SHEBA",
+          "partner_id": 42,
+          "id_type": "Fuvarozók",
+          "matched_value": "SHEBA"
+        },
+        {
+          "type": "name_contains",
+          "partner": "SHEBA Fresh",
+          "partner_id": 320
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "SMART",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Smart Fruits S.L.",
+          "partner_id": 17,
+          "id_type": "(Reference) Szállítók",
+          "matched_value": "SMART"
+        },
+        {
+          "type": "name_contains",
+          "partner": "BRAVOSMART Kft",
+          "partner_id": 772
+        },
+        {
+          "type": "name_contains",
+          "partner": "Smartindy Kft.",
+          "partner_id": 3119
+        },
+        {
+          "type": "name_similar",
+          "partner": "Nicolas Martin Linan",
+          "partner_id": 5946
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "SOLHERBS",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "SOLHERBS, S.L.U.",
+          "partner_id": 24,
+          "id_type": "(Reference) Szállítók",
+          "matched_value": "SOLHERBS"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "SPAR HU",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "SPAR HU",
+          "partner_id": 12,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "SPAR HU"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "SYLVAN",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Sylvan Hungária Zrt.",
+          "partner_id": 1,
+          "id_type": "(Customer) Vevők",
+          "matched_value": "SYLVAN"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "TOMATO-AL",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Tomato-Al",
+          "partner_id": 36,
+          "id_type": "Fuvarozók",
+          "matched_value": "TOMATO-AL"
+        },
+        {
+          "type": "name_similar",
+          "partner": "TOMATO AL",
+          "partner_id": 3925
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "VEGACANADA",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "VEGACANADA",
+          "partner_id": 49,
+          "id_type": "(Reference) Szállítók",
+          "matched_value": "VEGACANADA"
+        },
+        {
+          "type": "name_contains",
+          "partner": "Agroponiente VegaCanada S.A.",
+          "partner_id": 3978
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "VERMION",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "VERMION",
+          "partner_id": 85,
+          "id_type": "Fuvarozók",
+          "matched_value": "VERMION"
+        },
+        {
+          "type": "name_contains",
+          "partner": "Vermion Fresh S.A.",
+          "partner_id": 317
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "WRAPPING",
+      "matches": []
+    }
+  ],
+  "transporters": [
+    {
+      "short_name_from_csv": "ALL FRESH",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "All Fresh Logistics GmbH",
+          "partner_id": 436,
+          "id_type": "Fuvarozók",
+          "matched_value": "ALL FRESH"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "BILEK",
+      "matches": [
+        {
+          "type": "name_contains",
+          "partner": "BILEK",
+          "partner_id": 11
+        },
+        {
+          "type": "name_similar",
+          "partner": "H&H MOBILE KFT.",
+          "partner_id": 5046
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "BOGNÁR",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Bognár Transport Korlátolt Felelősségű Társaság",
+          "partner_id": 739,
+          "id_type": "Fuvarozók",
+          "matched_value": "BOGNÁR"
+        },
+        {
+          "type": "name_contains",
+          "partner": "Bognárné Gyöngyösi Enikő",
+          "partner_id": 741
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "BUGYI FERENC",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Bugyi Ferenc Kft.",
+          "partner_id": 793,
+          "id_type": "Fuvarozók",
+          "matched_value": "BUGYI FERENC"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "BVT",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "BVT",
+          "partner_id": 3835,
+          "id_type": "Fuvarozók",
+          "matched_value": "BVT"
+        },
+        {
+          "type": "name_contains",
+          "partner": "Bvt Trans KFT - NE HASZNÁLD",
+          "partner_id": 813
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "CRETAN ROOT",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Cretan Root",
+          "partner_id": 86,
+          "id_type": "Fuvarozók",
+          "matched_value": "CRETAN ROOT"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "DERBY",
+      "matches": [
+        {
+          "type": "name_contains",
+          "partner": "Derby Trans Kft - NE HASZNÁLD",
+          "partner_id": 1005
+        },
+        {
+          "type": "name_contains",
+          "partner": "DERBY FRUIT TRADE KFT.",
+          "partner_id": 4512
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "ESKADA",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "ESKADA",
+          "partner_id": 3852,
+          "id_type": "Fuvarozók",
+          "matched_value": "ESKADA"
+        },
+        {
+          "type": "name_contains",
+          "partner": "ESKADA, a.s.",
+          "partner_id": 1158
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "FARAON",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "FARAON EGIPCIO SL",
+          "partner_id": 54,
+          "id_type": "Fuvarozók",
+          "matched_value": "FARAON"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "FER TRANS",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Fer Trans '96 Szállítási Szolgáltató Korlátolt Felelősségű Társaság",
+          "partner_id": 1267,
+          "id_type": "Fuvarozók",
+          "matched_value": "FER TRANS"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "FRIGOSPED",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "FRIGOSPED",
+          "partner_id": 3854,
+          "id_type": "Fuvarozók",
+          "matched_value": "FRIGOSPED"
+        },
+        {
+          "type": "name_similar",
+          "partner": "Frigo Sped SK s.r.o.",
+          "partner_id": 1354
+        },
+        {
+          "type": "name_contains",
+          "partner": "FRIGOSPED SK",
+          "partner_id": 3855
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "FRUBALMED",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "FRUBALMED SLU",
+          "partner_id": 4,
+          "id_type": "Fuvarozók",
+          "matched_value": "FRUBALMED"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "FRUCTUS",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Fructus Trade",
+          "partner_id": 1364,
+          "id_type": "Fuvarozók",
+          "matched_value": "FRUCTUS"
+        },
+        {
+          "type": "name_contains",
+          "partner": "Fructus Trade s.r.o.",
+          "partner_id": 1365
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "FUSTER",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "FUSTER",
+          "partner_id": 3856,
+          "id_type": "Fuvarozók",
+          "matched_value": "FUSTER"
+        },
+        {
+          "type": "name_contains",
+          "partner": "TRANSPORTS INTERNACIONALS R FUSTER SL",
+          "partner_id": 3454
+        },
+        {
+          "type": "name_contains",
+          "partner": "TRANSPORTS INTERNACIONALS R.FUSTER,S.L",
+          "partner_id": 6676
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "GAVA",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "GAVA TXEQUIA S.R.O.",
+          "partner_id": 62,
+          "id_type": "Fuvarozók",
+          "matched_value": "GAVA"
+        },
+        {
+          "type": "identifier_exact",
+          "partner": "GAVA GMBH.",
+          "partner_id": 4910,
+          "id_type": "CCW + Kód",
+          "matched_value": "GAVA"
+        },
+        {
+          "type": "name_contains",
+          "partner": "FRUTAS GAVA",
+          "partner_id": 48
+        },
+        {
+          "type": "name_contains",
+          "partner": "Gava Polska Sp. z o.o.",
+          "partner_id": 22
+        },
+        {
+          "type": "name_contains",
+          "partner": "GAVA SLOVAKIA S.R.O.",
+          "partner_id": 4912
+        },
+        {
+          "type": "name_contains",
+          "partner": "KOPFSALAT/GAVA SA",
+          "partner_id": 5455
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "GAVA POLSKA",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Gava Polska Sp. z o.o.",
+          "partner_id": 22,
+          "id_type": "Fuvarozók",
+          "matched_value": "GAVA POLSKA"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "HANKA",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Hanka Sped KFT. NE HASZNÁLD",
+          "partner_id": 325,
+          "id_type": "Fuvarozók",
+          "matched_value": "HANKA"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "HILLTOP",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Hilltop Logisztikai Kft",
+          "partner_id": 1692,
+          "id_type": "Fuvarozók",
+          "matched_value": "HILLTOP"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "HZ",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "HZ",
+          "partner_id": 3862,
+          "id_type": "Fuvarozók",
+          "matched_value": "HZ"
+        },
+        {
+          "type": "name_contains",
+          "partner": "HZ LOG",
+          "partner_id": 3863
+        },
+        {
+          "type": "name_contains",
+          "partner": "HZ LOGISTICS",
+          "partner_id": 3864
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "KERMOR",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Kermor Bt.......",
+          "partner_id": 1957,
+          "id_type": "Fuvarozók",
+          "matched_value": "KERMOR"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "KÓNYA",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "KÓNYA ZOLTÁNNÉ",
+          "partner_id": 25,
+          "id_type": "Fuvarozók",
+          "matched_value": "KÓNYA"
+        },
+        {
+          "type": "identifier_exact",
+          "partner": "Kónya István",
+          "partner_id": 5452,
+          "id_type": "CCW + Kód",
+          "matched_value": "kónya"
+        },
+        {
+          "type": "name_contains",
+          "partner": "Kónya Trans Korlátolt Felelősségű Társaság",
+          "partner_id": 2051
+        },
+        {
+          "type": "name_contains",
+          "partner": "IMANOV / KÓNYA",
+          "partner_id": 3866
+        },
+        {
+          "type": "name_similar",
+          "partner": "DÉKÁNY  ANDRÁS",
+          "partner_id": 4498
+        },
+        {
+          "type": "name_contains",
+          "partner": "Kónya György Lajosné",
+          "partner_id": 5450
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "KUSEK",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "KUSEK",
+          "partner_id": 2,
+          "id_type": "Fuvarozók",
+          "matched_value": "KUSEK"
+        },
+        {
+          "type": "name_contains",
+          "partner": "S.Kusek & co. OE \"Seven 7 Star Fruit\"",
+          "partner_id": 3025
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "KV LOG",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "KV LOG",
+          "partner_id": 3875,
+          "id_type": "Fuvarozók",
+          "matched_value": "KV LOG"
+        },
+        {
+          "type": "name_contains",
+          "partner": "KV LOGISTIKA",
+          "partner_id": 180
+        },
+        {
+          "type": "name_contains",
+          "partner": "KV LOGISTICA DOO",
+          "partner_id": 2158
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "LIVIU",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "LIVIU",
+          "partner_id": 261,
+          "id_type": "Fuvarozók",
+          "matched_value": "LIVIU"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "LOGISTICHOME",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "LOGISTICHOME",
+          "partner_id": 3919,
+          "id_type": "Fuvarozók",
+          "matched_value": "LOGISTICHOME"
+        },
+        {
+          "type": "name_similar",
+          "partner": "Logistic Home Kft.",
+          "partner_id": 2238
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "MANDERSLOOT",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Mandersloot Expeditiebedrijf B.V.",
+          "partner_id": 68,
+          "id_type": "Fuvarozók",
+          "matched_value": "MANDERSLOOT"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "MESAVERDE",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "MESAVERDE KFT.",
+          "partner_id": 2401,
+          "id_type": "Fuvarozók",
+          "matched_value": "MESAVERDE"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "MÜLLER",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "MÜLLER",
+          "partner_id": 3880,
+          "id_type": "Fuvarozók",
+          "matched_value": "MÜLLER"
+        },
+        {
+          "type": "name_contains",
+          "partner": "Müller-Transporte Gesellschaft m.b.H.",
+          "partner_id": 2535
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "NH CARGO",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "NH Cargo Kft",
+          "partner_id": 2617,
+          "id_type": "Fuvarozók",
+          "matched_value": "NH CARGO"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "PAP JÓZSEFNÉ",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Pap Józsefné",
+          "partner_id": 2766,
+          "id_type": "Fuvarozók",
+          "matched_value": "PAP JÓZSEFNÉ"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "PET-IMPEX",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "PET-IMPEX",
+          "partner_id": 3885,
+          "id_type": "Fuvarozók",
+          "matched_value": "PET-IMPEX"
+        },
+        {
+          "type": "name_contains",
+          "partner": "Pet-Impex Cargo Doo",
+          "partner_id": 6096
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "RAINBOW",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "RAINBOW",
+          "partner_id": 3889,
+          "id_type": "Fuvarozók",
+          "matched_value": "RAINBOW"
+        },
+        {
+          "type": "name_contains",
+          "partner": "Rainbow Logistics, s.r.o.",
+          "partner_id": 6199
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "RENACRIS",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "RENACRIS",
+          "partner_id": 3891,
+          "id_type": "Fuvarozók",
+          "matched_value": "RENACRIS"
+        },
+        {
+          "type": "name_contains",
+          "partner": "S.C. Renacris Trans S.R.L.",
+          "partner_id": 3024
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "RONI",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Roni Cargo Kft.NE HASZNÁLD",
+          "partner_id": 2999,
+          "id_type": "Fuvarozók",
+          "matched_value": "RONI"
+        },
+        {
+          "type": "name_contains",
+          "partner": "Békési Veronika",
+          "partner_id": 641
+        },
+        {
+          "type": "name_contains",
+          "partner": "Duna Elektronika Kft",
+          "partner_id": 1075
+        },
+        {
+          "type": "name_contains",
+          "partner": "EURONICS",
+          "partner_id": 1176
+        },
+        {
+          "type": "name_contains",
+          "partner": "Horváth Veronika",
+          "partner_id": 1730
+        },
+        {
+          "type": "name_contains",
+          "partner": "Perfekt-Consent Pénzügyi, Elektronikai És Logisztikai Korlátolt Felelősségű Társ",
+          "partner_id": 2821
+        },
+        {
+          "type": "name_contains",
+          "partner": "Szántó Veronika",
+          "partner_id": 3225
+        },
+        {
+          "type": "name_contains",
+          "partner": "Zöld Ronin Korlátolt Felelősségű Társaság",
+          "partner_id": 3780
+        },
+        {
+          "type": "name_contains",
+          "partner": "ART Class Electronics S.R.L.",
+          "partner_id": 4064
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "SHEBA",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "SHEBA",
+          "partner_id": 42,
+          "id_type": "Fuvarozók",
+          "matched_value": "SHEBA"
+        },
+        {
+          "type": "name_contains",
+          "partner": "SHEBA Fresh",
+          "partner_id": 320
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "STI",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "STI",
+          "partner_id": 3923,
+          "id_type": "Fuvarozók",
+          "matched_value": "STI"
+        },
+        {
+          "type": "name_contains",
+          "partner": "Budapesti Nagybani Piac Zrt. NE HASZNÁLD!!",
+          "partner_id": 791
+        },
+        {
+          "type": "name_contains",
+          "partner": "LOGISTIC CONCEPT Kft. - NE HASZNÁLD 2022",
+          "partner_id": 2237
+        },
+        {
+          "type": "name_contains",
+          "partner": "KV LOGISTIKA",
+          "partner_id": 180
+        },
+        {
+          "type": "name_contains",
+          "partner": "ATAR-PLASTIC KFT.",
+          "partner_id": 512
+        },
+        {
+          "type": "name_contains",
+          "partner": "Augustin Frefrigo SRL",
+          "partner_id": 520
+        },
+        {
+          "type": "name_contains",
+          "partner": "BS Plastic Trade Kft.",
+          "partner_id": 781
+        },
+        {
+          "type": "name_contains",
+          "partner": "Queens Logistics Services, Lda",
+          "partner_id": 307
+        },
+        {
+          "type": "name_contains",
+          "partner": "AGRIFA LOGISTIC",
+          "partner_id": 3832
+        },
+        {
+          "type": "name_contains",
+          "partner": "EASTWEST Fresh Services & Logistics GmbH",
+          "partner_id": 1090
+        },
+        {
+          "type": "name_contains",
+          "partner": "ER LOGISTICS",
+          "partner_id": 1141
+        },
+        {
+          "type": "name_contains",
+          "partner": "Eurofins Food and Feed Testing Budapest Kft",
+          "partner_id": 1170
+        },
+        {
+          "type": "name_contains",
+          "partner": "Eursud Logistique Sarl",
+          "partner_id": 1178
+        },
+        {
+          "type": "name_contains",
+          "partner": "Gls General Logistics Systems",
+          "partner_id": 1494
+        },
+        {
+          "type": "name_contains",
+          "partner": "H.Z. LOGISTIC S B.V.",
+          "partner_id": 1605
+        },
+        {
+          "type": "name_contains",
+          "partner": "KV LOGISTICA DOO",
+          "partner_id": 2158
+        },
+        {
+          "type": "name_contains",
+          "partner": "Lesti Akku Kft.",
+          "partner_id": 2212
+        },
+        {
+          "type": "name_contains",
+          "partner": "Logistic Home Kft.",
+          "partner_id": 2238
+        },
+        {
+          "type": "name_contains",
+          "partner": "Magyar Plastic Kft.",
+          "partner_id": 2288
+        },
+        {
+          "type": "name_contains",
+          "partner": "Manzano Castilla, S.L",
+          "partner_id": 2320
+        },
+        {
+          "type": "name_contains",
+          "partner": "MAROSE LOGISTICS SL",
+          "partner_id": 2333
+        },
+        {
+          "type": "name_contains",
+          "partner": "Mediterrán Frutta Trade & Logistics Korlátolt Felelősségű Társaság",
+          "partner_id": 2372
+        },
+        {
+          "type": "name_contains",
+          "partner": "Palásti Józsefné",
+          "partner_id": 2747
+        },
+        {
+          "type": "name_contains",
+          "partner": "POLAVI LOGISTIKA D.O.O.",
+          "partner_id": 2854
+        },
+        {
+          "type": "name_contains",
+          "partner": "Qlm Logistics Solutions Kft. - NE HASZNÁLD",
+          "partner_id": 2920
+        },
+        {
+          "type": "name_contains",
+          "partner": "Steel Plastic Centrum Line Korlátolt Felelősségű Társaság",
+          "partner_id": 3155
+        },
+        {
+          "type": "name_contains",
+          "partner": "STILETH NORBERT",
+          "partner_id": 3158
+        },
+        {
+          "type": "name_contains",
+          "partner": "VS Vind Ligistik Dooel",
+          "partner_id": 3704
+        },
+        {
+          "type": "name_contains",
+          "partner": "Waibel Floristik GmbH",
+          "partner_id": 3710
+        },
+        {
+          "type": "name_contains",
+          "partner": "All Fresh Logistics GmbH",
+          "partner_id": 436
+        },
+        {
+          "type": "name_contains",
+          "partner": "HZ LOGISTICS",
+          "partner_id": 3864
+        },
+        {
+          "type": "name_contains",
+          "partner": "LOGISTICHOME",
+          "partner_id": 3919
+        },
+        {
+          "type": "name_contains",
+          "partner": "LOGISTICSHOME",
+          "partner_id": 3877
+        },
+        {
+          "type": "name_contains",
+          "partner": "Swiss Temp Logistics GmbH",
+          "partner_id": 3182
+        },
+        {
+          "type": "name_contains",
+          "partner": "A-LOGISTIC KFT",
+          "partner_id": 4011
+        },
+        {
+          "type": "name_contains",
+          "partner": "BEST PLASTIC KFT.",
+          "partner_id": 4221
+        },
+        {
+          "type": "name_contains",
+          "partner": "BSPLASTIC BT.",
+          "partner_id": 4318
+        },
+        {
+          "type": "name_contains",
+          "partner": "Cross Cargo Logistics G.m.b.h",
+          "partner_id": 4400
+        },
+        {
+          "type": "name_contains",
+          "partner": "Diania Logistics S.L.",
+          "partner_id": 4520
+        },
+        {
+          "type": "name_contains",
+          "partner": "ESTIKÉK IDŐSEK OTTHONA",
+          "partner_id": 4677
+        },
+        {
+          "type": "name_contains",
+          "partner": "GIRTEKA LOGISTICS",
+          "partner_id": 4935
+        },
+        {
+          "type": "name_contains",
+          "partner": "GONZALEZ TERUEL LOGISTIK",
+          "partner_id": 4966
+        },
+        {
+          "type": "name_contains",
+          "partner": "KOPLOGISTIC JARDINOVA S.L.",
+          "partner_id": 5458
+        },
+        {
+          "type": "name_contains",
+          "partner": "LINPAC PLASTIC KFT.",
+          "partner_id": 5595
+        },
+        {
+          "type": "name_contains",
+          "partner": "ME-KO PESTI KFT.",
+          "partner_id": 5720
+        },
+        {
+          "type": "name_contains",
+          "partner": "PALÁSTI JÁNOS",
+          "partner_id": 6021
+        },
+        {
+          "type": "name_contains",
+          "partner": "Rainbow Logistics, s.r.o.",
+          "partner_id": 6199
+        },
+        {
+          "type": "name_contains",
+          "partner": "WPC WOOD & PLASTIC Kft.",
+          "partner_id": 6863
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "S-TRANSPORT",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "S-Transport",
+          "partner_id": 3162,
+          "id_type": "Fuvarozók",
+          "matched_value": "S-TRANSPORT"
+        },
+        {
+          "type": "name_contains",
+          "partner": "S-Transport Dooel",
+          "partner_id": 3163
+        },
+        {
+          "type": "name_similar",
+          "partner": "TDS TRANSPORT  S.R.O",
+          "partner_id": 3345
+        },
+        {
+          "type": "name_similar",
+          "partner": "S TRANSPORT",
+          "partner_id": 3920
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "SWISS",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Swiss Temp Logistics GmbH",
+          "partner_id": 3182,
+          "id_type": "Fuvarozók",
+          "matched_value": "SWISS"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "SZÉKESI",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Székesi Kft.",
+          "partner_id": 3244,
+          "id_type": "Fuvarozók",
+          "matched_value": "SZÉKESI"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "THERMO FRUCHT",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "THERMO FRUCHT Kft.",
+          "partner_id": 3372,
+          "id_type": "Fuvarozók",
+          "matched_value": "THERMO FRUCHT"
+        },
+        {
+          "type": "name_contains",
+          "partner": "THERMO FRUCHT KFT",
+          "partner_id": 3924
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "TÓTH FRIGO",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "TÓTH FRIGO",
+          "partner_id": 3911,
+          "id_type": "Fuvarozók",
+          "matched_value": "TÓTH FRIGO"
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "TRANS-SPED",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "Trans-Sped Kft.",
+          "partner_id": 3456,
+          "id_type": "Fuvarozók",
+          "matched_value": "TRANS-SPED"
+        },
+        {
+          "type": "name_similar",
+          "partner": "Kádár Trans Sped Korlátolt Felelősségű Társaság",
+          "partner_id": 1885
+        },
+        {
+          "type": "name_similar",
+          "partner": "TRANS SPED",
+          "partner_id": 3926
+        }
+      ]
+    },
+    {
+      "short_name_from_csv": "VERMION",
+      "matches": [
+        {
+          "type": "identifier_exact",
+          "partner": "VERMION",
+          "partner_id": 85,
+          "id_type": "Fuvarozók",
+          "matched_value": "VERMION"
+        },
+        {
+          "type": "name_contains",
+          "partner": "Vermion Fresh S.A.",
+          "partner_id": 317
+        }
+      ]
+    }
+  ]
+}

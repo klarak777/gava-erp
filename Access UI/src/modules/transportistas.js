@@ -39,22 +39,22 @@ export function renderTransportistas(container, windowManager) {
             </div>
 
             <!-- Sor 2: Szövegdobozok + Legördülők -->
-            <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:10px; align-items:end;">
-                <div>
-                    <label class="access-control-label" for="filter-order-num" style="display:block;font-size:11px;margin-bottom:4px;">Order Number (Kamion szám)</label>
-                    <input type="text" id="filter-order-num" class="access-control-input" placeholder="LOG356, GHU 382..." style="width:100%;box-sizing:border-box;">
+            <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:end;">
+                <div style="width:200px;">
+                    <label class="access-control-label" for="filter-order-num" style="display:block;font-size:11px;margin-bottom:4px;text-align:left;">Order Number (Kamion szám)</label>
+                    <input type="text" id="filter-order-num" class="access-control-input" placeholder="LOG356, GHU 382..." style="width:100%;box-sizing:border-box;height:30px;font-size:12px;">
                 </div>
-                <div>
-                    <label class="access-control-label" for="filter-kamion" style="display:block;font-size:11px;margin-bottom:4px;">Rendszám</label>
-                    <input type="text" id="filter-kamion" class="access-control-input" placeholder="Rendszám..." style="width:100%;box-sizing:border-box;">
+                <div style="width:160px;">
+                    <label class="access-control-label" for="filter-kamion" style="display:block;font-size:11px;margin-bottom:4px;text-align:left;">Rendszám</label>
+                    <input type="text" id="filter-kamion" class="access-control-input" placeholder="Rendszám..." style="width:100%;box-sizing:border-box;height:30px;font-size:12px;">
                 </div>
-                <div>
-                    <label class="access-control-label" for="filter-hely" style="display:block;font-size:11px;margin-bottom:4px;">Rakodási hely</label>
-                    <input type="text" id="filter-hely" class="access-control-input" placeholder="Telephely..." style="width:100%;box-sizing:border-box;">
+                <div style="width:160px;">
+                    <label class="access-control-label" for="filter-hely" style="display:block;font-size:11px;margin-bottom:4px;text-align:left;">Ország</label>
+                    <input type="text" id="filter-hely" class="access-control-input" placeholder="Ország..." style="width:100%;box-sizing:border-box;height:30px;font-size:12px;">
                 </div>
-                <div>
-                    <label class="access-control-label" for="filter-szezon" style="display:block;font-size:11px;margin-bottom:4px;">Szezon</label>
-                    <select id="filter-szezon" class="access-control-input" style="width:100%;box-sizing:border-box;">
+                <div style="width:160px;">
+                    <label class="access-control-label" for="filter-szezon" style="display:block;font-size:11px;margin-bottom:4px;text-align:left;">Szezon</label>
+                    <select id="filter-szezon" class="access-control-input" style="width:100%;box-sizing:border-box;height:30px;font-size:12px;">
                         <option value="">-- Összes --</option>
                         <option value="18-19">Season 18-19</option>
                         <option value="19-20">Season 19-20</option>
@@ -65,16 +65,16 @@ export function renderTransportistas(container, windowManager) {
                         <option value="24-25">Season 24-25</option>
                         <option value="25-26" selected>Season 25-26</option>
                     </select>
-                    </div>
-                    <div style="flex:1; min-width:160px; max-width:240px;">
-                        <label class="access-control-label" for="filter-fuvarozo" style="display:block;font-size:11px;margin-bottom:4px;">Fuvarozó cég</label>
-                        <select id="filter-fuvarozo" class="access-control-input" style="width:100%;box-sizing:border-box;">
-                            <option value="">Mind</option>
+                </div>
+                <div style="width:240px;">
+                    <label class="access-control-label" for="filter-fuvarozo" style="display:block;font-size:11px;margin-bottom:4px;text-align:left;">Fuvarozó cég</label>
+                    <select id="filter-fuvarozo" class="access-control-input" style="width:100%;box-sizing:border-box;height:30px;font-size:12px;">
+                        <option value="">Mind</option>
                     </select>
                 </div>
-                <div>
-                    <label class="access-control-label" for="filter-ev" style="display:block;font-size:11px;margin-bottom:4px;">Rakodási év</label>
-                    <select id="filter-ev" class="access-control-input" style="width:100%;box-sizing:border-box;">
+                <div style="width:150px;">
+                    <label class="access-control-label" for="filter-ev" style="display:block;font-size:11px;margin-bottom:4px;text-align:left;">Rakodási év</label>
+                    <select id="filter-ev" class="access-control-input" style="width:100%;box-sizing:border-box;height:30px;font-size:12px;">
                         <option value="">-- Összes --</option>
                         <option value="2018">2018</option>
                         <option value="2019">2019</option>
@@ -113,23 +113,23 @@ export function renderTransportistas(container, windowManager) {
                 <span id="record-count" style="font-size:12px; font-weight:400; color:var(--text-muted);"></span>
             </div>
             <div id="table-scroll-area" style="overflow:auto; flex:1 1 auto; min-height:0;">
-                <table class="access-subform-table" id="transport-table" style="min-width:1700px;">
+                <table class="access-subform-table" id="transport-table" style="min-width:1850px;">
                     <thead style="position:sticky; top:0; background:var(--bg-light); z-index:2;">
                         <tr>
                             <th style="min-width:110px;">Loading date</th>
                             <th style="min-width:120px;">Loading place</th>
                             <th style="min-width:110px;">Order number</th>
-                            <th style="min-width:110px;">Transporter</th>
-                            <th style="min-width:160px;">Plate number</th>
+                            <th style="min-width:130px;">Transporter</th>
+                            <th style="min-width:150px;">Plate number</th>
                             <th style="min-width:120px; text-align:right;">Transport price</th>
                             <th style="min-width:105px;">Arrival date</th>
-                            <th style="min-width:110px; text-align:right;">K-B</th>
-                            <th style="min-width:110px; text-align:right;">B</th>
-                            <th style="min-width:110px; text-align:right;">T</th>
-                            <th style="min-width:190px;">Comment</th>
-                            <th style="min-width:105px; text-align:right;">Amount HUF</th>
-                            <th style="min-width:135px;">Invoice number</th>
-                            <th style="min-width:105px; text-align:right;">Amount EUR</th>
+                            <th style="min-width:100px; text-align:right;">K-B</th>
+                            <th style="min-width:100px; text-align:right;">B</th>
+                            <th style="min-width:100px; text-align:right;">T</th>
+                            <th style="min-width:320px;">Comment</th>
+                            <th style="min-width:125px; text-align:right;">Amount HUF</th>
+                            <th style="min-width:220px;">Invoice number</th>
+                            <th style="min-width:125px; text-align:right;">Amount EUR</th>
                             <th style="min-width:50px; text-align:center;">Művelet</th>
                         </tr>
                     </thead>

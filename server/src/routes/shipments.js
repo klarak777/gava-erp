@@ -114,7 +114,9 @@ router.get('/:id', async (req, res, next) => {
       return next();
     }
     const shipment = await db('shipments')
-      .where('id', id)
+      .select('shipments.*', 'transporters.name as transporter_name')
+      .leftJoin('transporters', 'shipments.transporter_id', 'transporters.id')
+      .where('shipments.id', id)
       .first();
 
     if (!shipment) return res.status(404).json({ error: 'Kamion nem található: id=' + id });
