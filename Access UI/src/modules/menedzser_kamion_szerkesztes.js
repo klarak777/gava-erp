@@ -404,7 +404,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                         <table class="grid-table" id="uc-lines-table">
                             <thead>
                                 <tr style="background:var(--bg-light); border-bottom: 2px solid var(--border);">
-                                    <th colspan="5" style="text-align:left; font-style:italic;">(Currency: <span id="uc-currency-label">HUF</span>)</th>
+                                    <th colspan="5"></th>
                                     <th><input type="text" id="uc-tot-pr" readonly style="width:80px; text-align:right; background:#eee; font-weight:bold; border:none; padding:2px;"></th>
                                     <th><input type="text" id="uc-tot-trans" readonly style="width:80px; text-align:right; background:#eee; font-weight:bold; border:none; padding:2px;"></th>
                                     <th><input type="text" id="uc-tot-vcost" readonly style="width:80px; text-align:right; background:#eee; font-weight:bold; border:none; padding:2px;"></th>
@@ -561,7 +561,9 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
             const truckNoVal = truckNr;
             container.querySelector('#fm-season').textContent = seasonVal;
 
-            container.querySelector('#uc-currency-label').textContent = shipmentData.goods_currency || 'HUF';
+            if (container.querySelector('#uc-currency-label')) {
+                container.querySelector('#uc-currency-label').textContent = shipmentData.goods_currency || 'HUF';
+            }
 
             renderLines();
             renderTransportLines(seasonVal, truckNoVal);
