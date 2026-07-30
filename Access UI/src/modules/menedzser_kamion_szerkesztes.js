@@ -982,10 +982,10 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
             }
             const taxPct = parseFloat(taxDropdown.value) || 0;
 
-            const vatKg = totCost * (taxPct / 100);
+            const vatKg = totCost * (1 + taxPct / 100);
 
             const totCostBox = totCost * kgsBoxCalc;
-            const vatBox = totCostBox * (taxPct / 100);
+            const vatBox = totCostBox * (1 + taxPct / 100);
             const vCostEur = exchRt > 0 ? (vCost / exchRt) : 0;
 
             tr.querySelector('.uc-vcost-kg').value = vCost > 0 ? vCost.toFixed(2) : '';
