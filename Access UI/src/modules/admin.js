@@ -186,8 +186,8 @@ export function openAdminTable(wm, title, tableName, columns, extraPayload = {},
         function renderTable() {
             const query = (searchInput?.value || '').toLowerCase().trim();
             const filtered = query ? items.filter(item => {
-                return columns.some(c => String(item[c.field] || '').toLowerCase().includes(query)) ||
-                       String(item.id || '').toLowerCase().includes(query);
+                return columns.some(c => String(item[c.field] || '').toLowerCase().startsWith(query)) ||
+                       String(item.id || '').toLowerCase().startsWith(query);
             }) : items;
 
             if (filtered.length === 0) {

@@ -747,9 +747,9 @@ export function renderRakodas(container, windowManager) {
 
             let filtered = val 
                 ? sortedProducts.filter(p => 
-                    (p.name || '').toLowerCase().includes(val) || 
-                    (p.name_hu || '').toLowerCase().includes(val) || 
-                    (p.code || '').toLowerCase().includes(val)
+                    (p.name || '').toLowerCase().startsWith(val) || 
+                    (p.name_hu || '').toLowerCase().startsWith(val) || 
+                    (p.code || '').toLowerCase().startsWith(val)
                   ) 
                 : sortedProducts;
 
