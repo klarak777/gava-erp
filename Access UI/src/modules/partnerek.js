@@ -1520,23 +1520,21 @@ function prtBindModal(overlay, listContainer, id) {
 
     identTable.addEventListener('click', async (e) => {
       if (e.target.classList.contains('ident-inactive')) {
-        e.preventDefault();
         const cb = e.target;
         const row = cb.closest('tr');
         const type = row.querySelector('.ident-type').value;
         const val = row.querySelector('.ident-value').value.trim();
         
-        // Jelenleg true (inaktív), be akarja pipálni (aktívvá tenni) -> ami valójában UNCHECK lenne a UI-on
-        // Wait, e.preventDefault() miatt a cb.checked a régi állapotot mutatja!
-        // Ha cb.checked == false, azaz aktív volt, inaktívvá akarja tenni.
-        if (!cb.checked) {
-          if (confirm('Biztosan inaktívvá teszi ezt a szerepkört? A partnerek legördülő listáiban nem fog megjelenni.')) {
-            cb.checked = true;
+        // cb.checked most a már módosított (ÚJ) állapotot mutatja, mert nem hívtunk preventDefault-ot.
+        // Ha true, akkor INAKTÍV-vá tette a UI-on.
+        if (cb.checked) {
+          if (!confirm('Biztosan inaktívvá teszi ezt a szerepkört? A partnerek legördülő listáiban nem fog megjelenni.')) {
+            cb.checked = false; // Visszavonjuk
           }
         } else {
-          // Ha cb.checked == true, azaz inaktív volt, aktívvá akarja tenni.
+          // Ha false, akkor AKTÍV-vá tette a UI-on.
           if (!val) {
-            cb.checked = false;
+            cb.checked = true; // Visszavonjuk
             return;
           }
           
@@ -1549,15 +1547,17 @@ function prtBindModal(overlay, listContainer, id) {
             if (data.exists) {
               const pName = data.duplicate?.partner_name || 'ismeretlen';
               alert(`Már létezik aktív szerepkör ezzel a névvel egy másik partnernél: ${pName}. Kérjük, előbb módosítsa az azonosító nevét!`);
+              cb.checked = true; // Visszavonjuk
               return;
             }
             
-            if (confirm('Biztosan újra aktívvá teszi ezt a szerepkört?')) {
-              cb.checked = false;
+            if (!confirm('Biztosan újra aktívvá teszi ezt a szerepkört?')) {
+              cb.checked = true; // Visszavonjuk
             }
           } catch (err) {
             console.error('Hiba az ellenőrzés során:', err);
             alert('Hálózati hiba történt az azonosító ellenőrzése során.');
+            cb.checked = true; // Visszavonjuk
           }
         }
       }
