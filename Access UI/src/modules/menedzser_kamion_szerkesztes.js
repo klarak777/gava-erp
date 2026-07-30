@@ -695,11 +695,16 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
         // ============================
         // TRANSPORT & OTHER tábla
         // ============================
+        function getOrderPrefix() {
+            const orderToParse = displayOrderNumber || (shipmentData ? shipmentData.order_number : '') || '';
+            const match = orderToParse.match(/^([a-zA-Z]+)/);
+            return match ? match[1].toUpperCase() : 'GHU';
+        }
+
         function renderTransportLines(seasonVal, truckNoVal) {
             const tbody = container.querySelector('#tr-lines-tbody');
             tbody.innerHTML = '';
-            // Auto-fill alapértelmezett Customer/Season/TruckNr értékek
-            const idEmprVal = linesData.length > 0 ? (linesData[0].customer || 'GHU') : 'GHU';
+            const idEmprVal = getOrderPrefix();
             const numRows = Math.max(1, transportLinesData.length);
             for (let i = 0; i < numRows; i++) {
                 const line = transportLinesData[i] || {};
@@ -776,7 +781,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                 <td><select class="tr-cur tr-calc" style="width:55px;">${buildCurrencyOptions(currCode)}</select></td>
                 <td><input type="number" step="0.001" class="tr-exch-rt tr-calc" value="${line.exchange_rate || container.querySelector('#fm-exch-rt').value || ''}" style="width:70px;"></td>
                 <td><input type="number" step="0.01" class="tr-tot-local" value="${line.total_inv_local || ''}" readonly style="background:#f0f8ff; width:90px;"></td>
-                <td><input type="text" class="tr-id-empr" value="${line.id_empr || idEmprVal}" readonly style="background:#eee; width:45px;"></td>
+                <td><input type="text" class="tr-id-empr" value="${line.id_empr ? (String(line.id_empr).match(/^([a-zA-Z]+)/) ? String(line.id_empr).match(/^([a-zA-Z]+)/)[1].toUpperCase() : idEmprVal) : idEmprVal}" readonly style="background:#eee; width:45px;"></td>
                 <td><input type="text" class="tr-season" value="${line.season || seasonVal}" readonly style="background:#eee; width:45px;"></td>
                 <td><input type="text" class="tr-truck-nr" value="${line.truck_nr || truckNoVal}" readonly style="background:#eee; width:55px;"></td>
             `;
@@ -998,7 +1003,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
             const seasonVal = container.querySelector('#fm-season').textContent || '';
             const fmTruckNo = container.querySelector('#fm-truck-no');
             const truckNoVal = fmTruckNo.dataset.trucknr || '';
-            const idEmprVal = linesData.length > 0 ? (linesData[0].customer || 'GHU') : 'GHU';
+            const idEmprVal = getOrderPrefix();
             appendTransportRow(tbody, { _isNew: true, exchange_rate: container.querySelector('#fm-exch-rt').value }, num, idEmprVal, seasonVal, truckNoVal);
         });
 
