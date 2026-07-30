@@ -12,6 +12,20 @@ router.get('/', async (req, res) => {
     const conversionMap = {};
     conversions.forEach(c => { conversionMap[c.normal_count] = c.euro_equivalent; });
 
+    // 1b. Partner identifiers betöltése in-memory kereséshez (gyorsítás subquery helyett)
+    const refIdentifiers = await db('partner_identifiers')
+      .select('partner_id', 'value')
+      .where('id_type', '(Reference) Szállítók')
+      .where(builder => builder.where('is_inactive', false).orWhereNull('is_inactive'))
+      .orderBy('id', 'asc');
+    
+    const partnerRefMap = {};
+    refIdentifiers.forEach(pi => {
+      if (!partnerRefMap[pi.partner_id]) {
+        partnerRefMap[pi.partner_id] = pi.value;
+      }
+    });
+
     // 2. Fuvaronkénti összesítők: sum_euro, sum_normal - pontosan shipment_id szerint
     const shipmentTotalsRaw = await db('shipment_lines')
       .select('shipment_id')
@@ -32,6 +46,7 @@ router.get('/', async (req, res) => {
       .select(
         'shipment_lines.id as line_id',
         'shipment_lines.shipment_id',
+        'shipment_lines.partner_id',
         'shipment_lines.euro_palets as euro',
         'shipment_lines.normal_palets as norm',
         'shipment_lines.customer as cust',
@@ -65,17 +80,7 @@ router.get('/', async (req, res) => {
         // Termék és partner
         'products.name as prod',
         'products.code as prod_code',
-        // Subquery: pontosan 1 aktív Reference azonosítót ad vissza partnerenként
-        // (elkerüli a LEFT JOIN miatti sor-duplikálódást, ha több Reference van)
-        db.raw(`COALESCE(
-          (SELECT pi.value FROM partner_identifiers pi
-           WHERE pi.partner_id = shipment_lines.partner_id
-             AND pi.id_type = '(Reference) Szállítók'
-             AND (pi.is_inactive = false OR pi.is_inactive IS NULL)
-           ORDER BY pi.id ASC
-           LIMIT 1),
-          partners.name
-        ) as ref`),
+        'partners.name as partner_name',
 
         // Fuvar fejléc adatok (shipments táblából)
         'shipments.order_number',
@@ -108,6 +113,8 @@ router.get('/', async (req, res) => {
 
     // 4. Javascript alapú Total Palets számítás (V2 logika a Wiki alapján)
     lines.forEach(line => {
+      line.ref = partnerRefMap[line.partner_id] || line.partner_name || '';
+      delete line.partner_name;
       const st = shipmentTotals[line.shipment_id] || { sum_euro: 0, sum_normal: 0 };
       const sumNormal = st.sum_normal;
       const sumEuro = st.sum_euro;
