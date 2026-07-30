@@ -21,6 +21,46 @@ const ROLE_MAP = {
   'transporter': ['Fuvarozók', 'FuvarozA3k', 'Fuvaroz\xC3\xB3k'],
 };
 
+// ============================================================
+// Jóváhagyott (aktív) partnerek listája szerepkörönként CSV alapján
+// Csak ezek fognak megjelenni a legördülőkben.
+// ============================================================
+const ALLOWED_REFERENCES = new Set([
+  'AGRONERVION', 'AGROPONIENTE', 'AGROPONIENTE NATURAL', 'AGROPONIENTE NIJAR', 
+  'ANTON DÜRBECK', 'ANTON DURBECK', 'AXARFRUIT', 'BERTIPACK', 'BILEK', 'CASAS ROYES',
+  'CASI', 'CASI AEROPORTO', 'CASI AIRPORT', 'CASI PARTIDORES', 'CLARA', 'COMPAGRI', 
+  'CORD', 'CRETAN ROOT', 'DELGAFRUITS', 'DG69', 'ECOINVER BIO', 'ESCOBAR', 
+  'ESCOFRESH', 'ESMAR', 'EUROGROUP DEUTSCHLAND', 'EUROGROUP ESPANA', 'EXOTIC FRESH', 
+  'EXPOALMA', 'FA. DE JONG', 'FARAON', 'FRANIAL', 'FRESSAN', 'FRUBALMED', 
+  'FRUTAS GAVA', 'GALLARDO', 'GAVA', 'GAVA POLSKA', 'GEMÜSERING', 'GEMUSERING', 
+  'GLOBAL BERRY', 'GREEN QUALITY', 'GREENCOOP', 'GREENYARD', 'GYÜMÖLCSÉRT', 
+  'IDEAL FRUITS', 'KOMPAGRI', 'KONYA', 'KÓNYA', 'KOPALMERIA', 'KOPFSALAT', 'KUSEK', 
+  'LA CALIFORNIA', 'LEHMANN & TROOST', 'LEVENTE', 'MALENO', 'MALENO Y TORRES', 
+  'MANDERSLOOT', 'NATURINDA', 'NATURNAR', 'OLASO', 'OLYMPIC FRUIT', 'R&M', 
+  'ROMANIA', 'SAN NICOLA', 'SENOR TOMATE', 'SHEBA', 'SMART', 'SOLHERBS', 
+  'SPAR HU', 'SYLVAN', 'TOMATO-AL', 'VEGACANADA', 'VERMION', 'WRAPPING'
+].map(s => s.toUpperCase()));
+
+const ALLOWED_CUSTOMERS = new Set([
+  'ALDI AT', 'ANTON DÜRBECK', 'ANTON DURBECK', 'BILEK', 'CASAS ROYES', 'CORD', 
+  'CRETAN ROOT', 'DG69', 'EUROGROUP DEUTSCHLAND', 'EUROGROUP ESPANA', 'EXOTIC FRESH', 
+  'FRUBALMED', 'GAVA', 'GEMÜSERING', 'GEMUSERING', 'GHU', 'GLOBAL BERRY', 
+  'GREENCOOP', 'GREENYARD', 'GYÜMÖLCSÉRT', 'HOFER', 'IDEAL FRUITS', 'KONYA', 'KÓNYA', 
+  'KOPFSALAT', 'KV LOGISTIKA', 'LEHMANN & TROOST', 'LEVENTE', 'MANDERSLOOT', 
+  'OLYMPIC FRUIT', 'R&M', 'ROMANIA', 'SAN NICOLA', 'SPAR HU', 'SYLVAN', 'VILLAFRUT'
+].map(s => s.toUpperCase()));
+
+const ALLOWED_TRANSPORTERS = new Set([
+  'ALL FRESH', 'BILEK', 'BOGNÁR', 'BUGYI FERENC', 'BVT', 'CRETAN ROOT',
+  'DERBY', 'ESKADA', 'FARAON', 'FER TRANS', 'FRIGOSPED', 'FRUBALMED',
+  'FRUCTUS', 'FUSTER', 'GAVA', 'GAVA POLSKA', 'HANKA', 'HILLTOP', 'HZ',
+  'KERMOR', 'KÓNYA', 'KUSEK', 'KV LOG', 'LIVIU', 'LOGISTICHOME',
+  'MANDERSLOOT', 'MESAVERDE', 'MÜLLER', 'NH CARGO', 'PAP JÓZSEFNÉ',
+  'PET-IMPEX', 'RAINBOW', 'RENACRIS', 'RONI', 'SHEBA', 'STI',
+  'S-TRANSPORT', 'SWISS', 'SZÉKESI', 'THERMO FRUCHT', 'TÓTH FRIGO',
+  'TRANS-SPED', 'VERMION'
+].map(s => s.toUpperCase()));
+
 router.get('/', async (req, res) => {
   const role = req.query.role;
   if (!role || !ROLE_MAP[role]) {
@@ -48,12 +88,21 @@ router.get('/', async (req, res) => {
 
     // Return in a format compatible with the existing frontend expectations
     // The frontend currently expects { id, name } where name is the short/display name
-    const result = rows.map(r => ({
+    let result = rows.map(r => ({
       id: r.id,
       name: r.short_name || r.name, // Use short_name as primary display name
       full_name: r.name,
       short_name: r.short_name || r.name,
     }));
+
+    // Filter by allowed lists
+    if (role === 'reference') {
+      result = result.filter(r => ALLOWED_REFERENCES.has((r.name || '').toUpperCase().trim()));
+    } else if (role === 'customer') {
+      result = result.filter(r => ALLOWED_CUSTOMERS.has((r.name || '').toUpperCase().trim()));
+    } else if (role === 'transporter') {
+      result = result.filter(r => ALLOWED_TRANSPORTERS.has((r.name || '').toUpperCase().trim()));
+    }
 
     res.json(result);
   } catch (err) {
