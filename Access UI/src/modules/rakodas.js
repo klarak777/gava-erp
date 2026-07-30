@@ -659,14 +659,14 @@ export function renderRakodas(container, windowManager) {
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px; flex:3; min-width:180px; position:relative;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">Products: <span style="color:red;">*</span></label>
-                        <input type="text" id="aru-add-product" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Gépeljen..." value="${escHtml(dProd)}">
+                        <input type="text" id="aru-add-product" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Gépeljen..." autocomplete="off" value="${escHtml(dProd)}">
                         <input type="hidden" id="aru-add-product-id" value="${dProdId}">
                         <div id="aru-add-product-dropdown" style="display:none; position:absolute; background:#fff; border:1px solid #ccc; z-index:200; width:100%; max-height:150px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); top:52px; border-radius:4px;"></div>
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:110px; position:relative;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">Reference:</label>
                         <div style="position:relative;">
-                            <input type="text" id="aru-add-reference" class="access-control-input" style="font-size:12px; padding:4px 20px 4px 8px; height:28px; width:100%;" placeholder="Partner" value="${escHtml(dRef)}">
+                            <input type="text" id="aru-add-reference" class="access-control-input" style="font-size:12px; padding:4px 20px 4px 8px; height:28px; width:100%;" placeholder="Partner" autocomplete="off" value="${escHtml(dRef)}">
                             <input type="hidden" id="aru-add-reference-id" value="${dRefId}">
                             <span onmousedown="event.preventDefault(); this.previousElementSibling.previousElementSibling.focus(); this.previousElementSibling.previousElementSibling.dispatchEvent(new Event('input'))" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); cursor:pointer; font-size:10px; color:#666;">▼</span>
                         </div>
@@ -675,7 +675,7 @@ export function renderRakodas(container, windowManager) {
                     <div style="display:flex; flex-direction:column; gap:3px; flex:2; min-width:110px; position:relative;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">Customer:</label>
                         <div style="position:relative;">
-                            <input type="text" id="aru-add-customer" class="access-control-input" style="font-size:12px; padding:4px 20px 4px 8px; height:28px; width:100%;" placeholder="Vevő" value="${escHtml(dCust)}">
+                            <input type="text" id="aru-add-customer" class="access-control-input" style="font-size:12px; padding:4px 20px 4px 8px; height:28px; width:100%;" placeholder="Vevő" autocomplete="off" value="${escHtml(dCust)}">
                             <span onmousedown="event.preventDefault(); this.previousElementSibling.focus(); this.previousElementSibling.dispatchEvent(new Event('input'))" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); cursor:pointer; font-size:10px; color:#666;">▼</span>
                         </div>
                         <div id="aru-add-customer-dropdown" style="display:none; position:absolute; background:#fff; border:1px solid #ccc; z-index:200; width:100%; max-height:150px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); top:52px; border-radius:4px;"></div>
