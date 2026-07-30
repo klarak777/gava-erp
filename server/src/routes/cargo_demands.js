@@ -193,11 +193,43 @@ router.patch('/:id/fulfill', async (req, res) => {
           partnerId = partner.id;
         }
       }
+      
+      // Keresés: product_id ellenőrzése - ha a product_id nem érvényes, keressük névvel is
+      let productId = demand.product_id || null;
+      if (productId) {
+        const productExists = await trx('products').where('id', productId).first();
+        if (!productExists) {
+          productId = null; // Érvénytelen product_id, nullázzuk
+        }
+      }
+      if (!productId && demand.product_name) {
+        // Keresés termék neve alapján (case insensitive)
+        const productByName = await trx('products')
+          .whereRaw('UPPER(name) = ?', [demand.product_name.toUpperCase().trim()])
+          .orWhereRaw('UPPER(code) = ?', [demand.product_name.toUpperCase().trim()])
+          .select('id')
+          .first();
+        if (productByName) {
+          productId = productByName.id;
+        }
+      }
+
+      // Partner azonosító név (ref) keresése az aktív identifier-ek alapján
+      let partnerRefName = null;
+      if (partnerId) {
+        const activeRef = await trx('partner_identifiers')
+          .where('partner_id', partnerId)
+          .where('id_type', '(Reference) Szállítók')
+          .where(function() { this.where('is_inactive', false).orWhereNull('is_inactive'); })
+          .select('value')
+          .first();
+        partnerRefName = activeRef ? activeRef.value : null;
+      }
 
       // 2. Új sor hozzáadása a célkamionhoz
       await trx('shipment_lines').insert({
         shipment_id: shipment_id,
-        product_id: demand.product_id || null,
+        product_id: productId || null,
         partner_id: partnerId,
         customer: demand.customer_name || '',
         euro_palets: sendEuro,

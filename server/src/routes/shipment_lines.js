@@ -186,13 +186,14 @@ router.post('/:id/transfer', async (req, res) => {
       .select(
         'shipment_lines.*',
         'products.name as productName',
-        db.raw('COALESCE(partner_identifiers.value, partners.name) as "partnerName"')
+        db.raw('COALESCE(pi_active.value, partners.name) as "partnerName"')
       )
       .leftJoin('products', 'shipment_lines.product_id', 'products.id')
       .leftJoin('partners', 'shipment_lines.partner_id', 'partners.id')
-      .leftJoin('partner_identifiers', function() {
-        this.on('partner_identifiers.partner_id', '=', 'partners.id')
-            .andOn('partner_identifiers.id_type', '=', db.raw("?", ['(Reference) Szállítók']));
+      .leftJoin('partner_identifiers as pi_active', function() {
+        this.on('pi_active.partner_id', '=', 'partners.id')
+            .andOn('pi_active.id_type', '=', db.raw("?", ['(Reference) Szállítók']))
+            .andOn(db.raw('(pi_active.is_inactive IS NULL OR pi_active.is_inactive = false)'));
       })
       .where('shipment_lines.id', id)
       .first();
