@@ -400,13 +400,6 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
 
                     <!-- ===== UNIT COSTS FÜL ===== -->
                     <div class="tab-panel" id="tab-unitcosts">
-                        <div style="display:flex; justify-content:space-between; margin-bottom: 4px; align-items:center;">
-                            <div style="display:flex; align-items:center; gap: 4px;">
-                                <button class="action-btn" id="uc-delete-line">Delete line</button>
-                                <button class="action-btn" id="uc-update">Update</button>
-                                <button class="action-btn" id="uc-add-line" style="background:#4caf50; color:white;">Add line</button>
-                            </div>
-                        </div>
                         <div style="overflow-x:auto;">
                         <table class="grid-table" id="uc-lines-table">
                             <thead>
@@ -573,6 +566,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
             renderLines();
             renderTransportLines(seasonVal, truckNoVal);
             renderUnitCostLines();
+            updateSummaryTable();
         }
 
         // ============================
@@ -669,27 +663,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
         }
 
         function calculateTotals() {
-            let tPal = 0, tBox = 0, tKg = 0, tNet = 0, tAmntABT = 0, tTaxAmt = 0, tAmntA = 0;
-            container.querySelectorAll('#fm-lines-table tbody tr').forEach(tr => {
-                tPal += parseFloat(tr.querySelector('.inp-palets').value) || 0;
-                tBox += parseFloat(tr.querySelector('.inp-boxes').value) || 0;
-                tKg += parseFloat(tr.querySelector('.inp-kgs').value) || 0;
-                tNet += parseFloat(tr.querySelector('.inp-netamnt').value) || 0;
-                tAmntABT += parseFloat(tr.querySelector('.inp-amntabt').value) || 0;
-                tTaxAmt += parseFloat(tr.querySelector('.inp-taxamt').value) || 0;
-                tAmntA += parseFloat(tr.querySelector('.inp-amnta').value) || 0;
-            });
-            container.querySelector('#tot-palets').value = tPal > 0 ? tPal.toFixed(2) : '';
-            container.querySelector('#tot-boxes').value = tBox > 0 ? tBox.toFixed(2) : '';
-            container.querySelector('#tot-kgs').value = tKg > 0 ? tKg.toFixed(2) : '';
-            container.querySelector('#tot-net').value = tNet > 0 ? tNet.toFixed(2) : '';
-            container.querySelector('#tot-inv-abt').value = tAmntABT > 0 ? tAmntABT.toFixed(2) : '';
-            container.querySelector('#tot-inv-tax').value = tTaxAmt > 0 ? tTaxAmt.toFixed(2) : '';
-            container.querySelector('#tot-inv-amnta').value = tAmntA > 0 ? tAmntA.toFixed(2) : '';
-            const exchRt = parseFloat(container.querySelector('#fm-exch-rt').value) || 1;
-            const totalInvoiceHuf = tAmntA * exchRt;
-            container.querySelector('#ts-goods-inv').textContent = totalInvoiceHuf > 0 ? Math.round(totalInvoiceHuf) : '0';
-            container.querySelector('#ts-goods-inv-a').textContent = tAmntA > 0 ? tAmntA.toFixed(2) : '0';
+            updateSummaryTable();
         }
 
         // ============================
@@ -820,11 +794,64 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
         }
 
         function updateTransportSummary() {
-            let totTrans = 0;
-            container.querySelectorAll('#tr-lines-tbody tr').forEach(tr => {
-                totTrans += parseFloat(tr.querySelector('.tr-tot-inv')?.value) || 0;
+            updateSummaryTable();
+        }
+
+        function updateSummaryTable() {
+            // Goods calculations
+            let tPal = 0, tBox = 0, tKg = 0, tNet = 0, tAmntABT = 0, tTaxAmt = 0, tAmntA = 0;
+            container.querySelectorAll('#fm-lines-table tbody tr').forEach(tr => {
+                tPal += parseFloat(tr.querySelector('.inp-palets')?.value) || 0;
+                tBox += parseFloat(tr.querySelector('.inp-boxes')?.value) || 0;
+                tKg += parseFloat(tr.querySelector('.inp-kgs')?.value) || 0;
+                tNet += parseFloat(tr.querySelector('.inp-netamnt')?.value) || 0;
+                tAmntABT += parseFloat(tr.querySelector('.inp-amntabt')?.value) || 0;
+                tTaxAmt += parseFloat(tr.querySelector('.inp-taxamt')?.value) || 0;
+                tAmntA += parseFloat(tr.querySelector('.inp-amnta')?.value) || 0;
             });
-            container.querySelector('#ts-trans-inv').textContent = totTrans > 0 ? totTrans.toFixed(2) : '0';
+            container.querySelector('#tot-palets').value = tPal > 0 ? tPal.toFixed(2) : '';
+            container.querySelector('#tot-boxes').value = tBox > 0 ? tBox.toFixed(2) : '';
+            container.querySelector('#tot-kgs').value = tKg > 0 ? tKg.toFixed(2) : '';
+            container.querySelector('#tot-net').value = tNet > 0 ? tNet.toFixed(2) : '';
+            container.querySelector('#tot-inv-abt').value = tAmntABT > 0 ? tAmntABT.toFixed(2) : '';
+            container.querySelector('#tot-inv-tax').value = tTaxAmt > 0 ? tTaxAmt.toFixed(2) : '';
+            container.querySelector('#tot-inv-amnta').value = tAmntA > 0 ? tAmntA.toFixed(2) : '';
+
+            const exchRt = parseFloat(container.querySelector('#fm-exch-rt')?.value) || 1;
+            const goodsInvHuf = tAmntA * exchRt;
+            
+            container.querySelector('#ts-goods-inv').textContent = goodsInvHuf > 0 ? Math.round(goodsInvHuf) : '0';
+            container.querySelector('#ts-goods-inv-a').textContent = tAmntA > 0 ? tAmntA.toFixed(2) : '0';
+            container.querySelector('#ts-goods-bal-a').textContent = tAmntA > 0 ? tAmntA.toFixed(2) : '0';
+
+            // Transport & Other calculations
+            let totTransA = 0;
+            container.querySelectorAll('#tr-lines-tbody tr').forEach(tr => {
+                totTransA += parseFloat(tr.querySelector('.tr-tot-inv')?.value) || 0;
+            });
+            const transInvHuf = totTransA * exchRt;
+
+            container.querySelector('#ts-trans-inv').textContent = transInvHuf > 0 ? Math.round(transInvHuf) : '0';
+            container.querySelector('#ts-trans-inv-a').textContent = totTransA > 0 ? totTransA.toFixed(2) : '0';
+            container.querySelector('#ts-trans-bal-a').textContent = totTransA > 0 ? totTransA.toFixed(2) : '0';
+
+            // Totals row calculations
+            const totInvHuf = goodsInvHuf + transInvHuf;
+            const totInvA = tAmntA + totTransA;
+            const totBalA = tAmntA + totTransA;
+
+            container.querySelector('#ts-tot-inv').textContent = totInvHuf > 0 ? Math.round(totInvHuf) : '0';
+            container.querySelector('#ts-tot-inv-a').textContent = totInvA > 0 ? totInvA.toFixed(2) : '0';
+            container.querySelector('#ts-tot-bal-a').textContent = totBalA > 0 ? totBalA.toFixed(2) : '0';
+
+            // Transfers Totals (EUR)
+            const totalTransfersEur = tAmntA + totTransA;
+            if (container.querySelector('#ts-transf-inv')) {
+                container.querySelector('#ts-transf-inv').textContent = totalTransfersEur > 0 ? totalTransfersEur.toFixed(2) : '0';
+            }
+            if (container.querySelector('#ts-transf-inv-a')) {
+                container.querySelector('#ts-transf-inv-a').textContent = totalTransfersEur > 0 ? totalTransfersEur.toFixed(2) : '0';
+            }
         }
 
         // ============================
@@ -991,12 +1018,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
             container.querySelector('#uc-tot-oh').value = tOh > 0 ? tOh.toFixed(2) : '';
         }
 
-        // Add line – Unit Costs
-        container.querySelector('#uc-add-line').addEventListener('click', () => {
-            const tbody = container.querySelector('#uc-lines-tbody');
-            appendUnitCostRow(tbody, {}, tbody.querySelectorAll('tr').length);
-        });
-
+        // Add line – Transport
         container.querySelector('#tr-add-line').addEventListener('click', () => {
             const tbody = container.querySelector('#tr-lines-tbody');
             const num = tbody.querySelectorAll('tr').length;
