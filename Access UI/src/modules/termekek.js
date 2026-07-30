@@ -17,5 +17,5 @@ export function renderTermekek(container, wm) {
         { field: 'code', label: 'Code Prod' },
         { field: 'name', label: 'Products (English)' },
         { field: 'name_hu', label: 'Products:Magyar (Hungarian)' }
-    ], {}, target);
+    ], { sortBy: 'name' }, target);
 }

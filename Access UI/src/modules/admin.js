@@ -102,12 +102,16 @@ export function openAdminTable(wm, title, tableName, columns, extraPayload = {},
             <div style="padding:16px; display:flex; flex-direction:column; height:100%;">
                 ${extraPayload.isReadonly ? 
                     '<div style="margin-bottom:12px; padding:8px; background-color:#eff6ff; color:#1e3a8a; border-radius:4px; font-size:12px;">ℹ️ Ezek a szerepkörök (Azonosítók) a "Partnerek" modulban kezelhetők.</div>' : ''}
-                ${extraPayload.isReadonly ? '' : `
-                <div style="margin-bottom:12px; display:flex; gap:8px;">
-                    <button class="primary-btn" id="btn-add">Új hozzáadása</button>
-                    <button class="secondary-btn" id="btn-refresh">Frissítés</button>
+                <div style="margin-bottom:12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    ${extraPayload.isReadonly ? '' : `
+                        <button class="primary-btn" id="btn-add">Új hozzáadása</button>
+                        <button class="secondary-btn" id="btn-refresh">Frissítés</button>
+                    `}
+                    <div style="margin-left:auto; display:flex; align-items:center; gap:6px;">
+                        <label style="font-size:12px; font-weight:600; color:var(--text-muted);">Keresés:</label>
+                        <input type="text" id="admin-search" placeholder="Cikkszám, név..." class="access-control-input" style="width:220px; padding:4px 8px; font-size:12px; height:30px;">
+                    </div>
                 </div>
-                `}
                 <div style="flex:1; overflow:auto; border:1px solid var(--border-color);">
                     <table class="access-subform-table admin-compact-table">
                         <thead>
@@ -146,6 +150,11 @@ export function openAdminTable(wm, title, tableName, columns, extraPayload = {},
         const tbody = winContainer.querySelector('#admin-tbody');
         const dialog = winContainer.querySelector('#admin-dialog');
         const form = winContainer.querySelector('#admin-form');
+        const searchInput = winContainer.querySelector('#admin-search');
+
+        if (searchInput) {
+            searchInput.addEventListener('input', () => renderTable());
+        }
 
         async function loadData() {
             tbody.innerHTML = `<tr><td colspan="${columns.length + 2}" style="text-align:center;">Betöltés...</td></tr>`;
@@ -157,9 +166,9 @@ export function openAdminTable(wm, title, tableName, columns, extraPayload = {},
                 const res = await fetch(url);
                 items = await res.json();
                 
-                // ABC sorrendbe rendezés az első oszlop mezője alapján
-                if (items && items.length > 0 && columns[0]) {
-                    const sortField = columns[0].field;
+                // ABC sorrendbe rendezés: ha extraPayload.sortBy meg van adva, az alapján, egyébként az első oszlop mezője alapján
+                if (items && items.length > 0) {
+                    const sortField = extraPayload.sortBy || (columns[0] ? columns[0].field : 'id');
                     items.sort((a, b) => {
                         const valA = String(a[sortField] || '').trim();
                         const valB = String(b[sortField] || '').trim();
@@ -175,11 +184,17 @@ export function openAdminTable(wm, title, tableName, columns, extraPayload = {},
         }
 
         function renderTable() {
-            if (items.length === 0) {
+            const query = (searchInput?.value || '').toLowerCase().trim();
+            const filtered = query ? items.filter(item => {
+                return columns.some(c => String(item[c.field] || '').toLowerCase().includes(query)) ||
+                       String(item.id || '').toLowerCase().includes(query);
+            }) : items;
+
+            if (filtered.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="${columns.length + 2}" style="text-align:center;">Nincs megjeleníthető adat.</td></tr>`;
                 return;
             }
-            tbody.innerHTML = items.map(item => `
+            tbody.innerHTML = filtered.map(item => `
                 <tr>
                     <td>${item.id}</td>
                     ${columns.map(c => `<td>${item[c.field] || ''}</td>`).join('')}

@@ -737,17 +737,30 @@ export function renderRakodas(container, windowManager) {
         const prodDropdown = modalEl.querySelector('#aru-add-product-dropdown');
 
         // Autocomplete
-        prodInput.addEventListener('input', () => {
-            const val = prodInput.value.toLowerCase();
-            prodIdInput.value = '';
+        const renderProdDropdown = () => {
+            const val = prodInput.value.toLowerCase().trim();
             prodDropdown.innerHTML = '';
-            if (!val) { prodDropdown.style.display = 'none'; return; }
-            const filtered = productsList.filter(p => p.name.toLowerCase().startsWith(val)).slice(0, 8);
+            
+            const sortedProducts = [...productsList].sort((a, b) => 
+                (a.name || '').localeCompare(b.name || '', 'hu', { sensitivity: 'base' })
+            );
+
+            let filtered = val 
+                ? sortedProducts.filter(p => 
+                    (p.name || '').toLowerCase().includes(val) || 
+                    (p.name_hu || '').toLowerCase().includes(val) || 
+                    (p.code || '').toLowerCase().includes(val)
+                  ) 
+                : sortedProducts;
+
+            filtered = filtered.slice(0, 300);
+
             if (filtered.length > 0) {
                 filtered.forEach(p => {
                     const div = document.createElement('div');
                     div.style.cssText = 'padding:6px 8px; cursor:pointer; border-bottom:1px solid #eee; font-size:12px;';
-                    div.textContent = p.name;
+                    const codeDisplay = p.code ? ` (${p.code})` : '';
+                    div.textContent = (p.name || '') + codeDisplay;
                     div.onmousedown = () => {
                         prodInput.value = p.name;
                         prodIdInput.value = p.id;
@@ -761,6 +774,14 @@ export function renderRakodas(container, windowManager) {
             } else {
                 prodDropdown.style.display = 'none';
             }
+        };
+
+        prodInput.addEventListener('input', () => {
+            prodIdInput.value = '';
+            renderProdDropdown();
+        });
+        prodInput.addEventListener('focus', () => {
+            renderProdDropdown();
         });
         prodInput.addEventListener('blur', () => { setTimeout(() => { prodDropdown.style.display = 'none'; }, 200); });
 
