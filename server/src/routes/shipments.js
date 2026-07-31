@@ -131,8 +131,7 @@ router.get('/:id', async (req, res, next) => {
         'shipment_lines.*',
         'products.name as productName',
         'products.code as product_code',
-        'partners.name as partner_name' // Remove the COALESCE and partner_identifiers join to prevent row multiplication
-      )
+        db.raw(`COALESCE((SELECT value FROM partner_identifiers WHERE partner_identifiers.partner_id = shipment_lines.partner_id AND id_type = '(Reference) Szállítók' AND (is_inactive IS NULL OR is_inactive = false) LIMIT 1), partners.name) as partner_name`)      )
       .leftJoin('products', 'shipment_lines.product_id', 'products.id')
       .leftJoin('partners', 'shipment_lines.partner_id', 'partners.id')
       .where('shipment_id', shipment.id)
