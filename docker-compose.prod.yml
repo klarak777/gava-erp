@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   # PostgreSQL adatbázis (Meglévő adatbázis ne zavarjuk, külön porton / hálózaton)
