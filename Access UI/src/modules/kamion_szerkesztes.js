@@ -985,7 +985,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                     inlineDropdown.innerHTML = '';
                     if (!val) { inlineDropdown.style.display = 'none'; return; }
 
-                    const filtered = products.filter(p => p.name.toLowerCase().startsWith(val)).slice(0, 10);
+                    const filtered = products.filter(p => p.name.toLowerCase().startsWith(val)).slice(0, 300);
                     if (filtered.length > 0) {
                         filtered.forEach(p => {
                             const div = document.createElement('div');
