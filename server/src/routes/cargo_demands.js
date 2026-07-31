@@ -7,7 +7,8 @@ const db = require('../db/db');
 router.get('/', async (req, res) => {
   try {
     const rows = await db('cargo_demands')
-      .orderBy('id', 'asc');
+      .where('is_fulfilled', false)
+      .orderBy('id', 'desc');
     res.json(rows);
   } catch (err) {
     console.error('Hiba a cargo_demands lekérdezésekor:', err);
