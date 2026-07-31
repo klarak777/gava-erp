@@ -158,24 +158,27 @@ router.patch('/:id/fulfill', async (req, res) => {
       return res.status(400).json({ error: 'A célkamion (shipment_id) megadása kötelező.' });
     }
 
-    const demand = await db('cargo_demands').where('id', id).first();
-    if (!demand) {
-      return res.status(404).json({ error: 'Az áru igény tétel nem található.' });
-    }
-
-    const sendEuro = Math.min(parseFloat(String(euro_palets).replace(',', '.')) || 0, demand.euro_palets);
-    const sendNormal = Math.min(parseFloat(String(normal_palets).replace(',', '.')) || 0, demand.normal_palets);
-
-    if (sendEuro === 0 && sendNormal === 0) {
-      return res.status(400).json({ error: 'Legalább 1 raklapot meg kell adni.' });
-    }
-
-    const remainEuro = demand.euro_palets - sendEuro;
-    const remainNormal = demand.normal_palets - sendNormal;
-    const isFulfilled = (remainEuro === 0 && remainNormal === 0);
-
     const trx = await db.transaction();
     try {
+      const demand = await trx('cargo_demands').where('id', id).forUpdate().first();
+      if (!demand) {
+        throw new Error('Az áru igény tétel nem található.');
+      }
+      if (demand.is_fulfilled) {
+        throw new Error('Ez a tétel már teljesítve lett egy másik művelet által (dupla kattintás védelem).');
+      }
+
+      const sendEuro = Math.min(parseFloat(String(euro_palets).replace(',', '.')) || 0, demand.euro_palets);
+      const sendNormal = Math.min(parseFloat(String(normal_palets).replace(',', '.')) || 0, demand.normal_palets);
+
+      if (sendEuro === 0 && sendNormal === 0) {
+        throw new Error('Legalább 1 raklapot meg kell adni (vagy már elfogyott).');
+      }
+
+      const remainEuro = demand.euro_palets - sendEuro;
+      const remainNormal = demand.normal_palets - sendNormal;
+      const isFulfilled = (remainEuro === 0 && remainNormal === 0);
+
       // 1. Célkamion meglévő tételeinek betöltése (az átvált számításhoz)
       const targetShipment = await trx('shipments').where('id', shipment_id).first();
       if (!targetShipment) throw new Error('A célkamion nem található.');
@@ -271,11 +274,13 @@ router.patch('/:id/fulfill', async (req, res) => {
       });
     } catch (err) {
       await trx.rollback();
-      throw err;
+      console.error('Hiba az áru igény teljesítésekor:', err);
+      // Ha ez az error a tranzakció elején lett dobva stringgel (new Error), azt küldjük:
+      res.status(500).json({ error: err.message || 'Belső szerverhiba' });
     }
   } catch (err) {
-    console.error('Hiba a cargo_demands fulfill-kor:', err);
-    res.status(500).json({ error: 'Belső szerverhiba: ' + err.message });
+    console.error('Fulfill hálózati/egyéb hiba:', err);
+    res.status(500).json({ error: 'Belső szerverhiba' });
   }
 });
 
