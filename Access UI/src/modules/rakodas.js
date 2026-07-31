@@ -176,7 +176,7 @@ export function renderRakodas(container, windowManager) {
             const val = inpElement.value.toLowerCase();
             dropElement.innerHTML = '';
             if (!val) { dropElement.style.display = 'none'; return; }
-            const filtered = list.filter(p => p[listField].toLowerCase().startsWith(val)).slice(0, 8);
+            const filtered = list.filter(p => p[listField].toLowerCase().startsWith(val));
             if (filtered.length > 0) {
                 filtered.forEach(p => {
                     const div = document.createElement('div');

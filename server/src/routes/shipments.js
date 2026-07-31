@@ -89,10 +89,15 @@ router.get('/by-order/:orderNumber', async (req, res) => {
         'shipment_lines.*',
         'products.name as productName',
         'products.code as product_code',
-        'partners.name as partner_name'
+        db.raw('COALESCE(pi_active.value, partners.name) as partner_name')
       )
       .leftJoin('products', 'shipment_lines.product_id', 'products.id')
       .leftJoin('partners', 'shipment_lines.partner_id', 'partners.id')
+      .leftJoin('partner_identifiers as pi_active', function() {
+        this.on('pi_active.partner_id', '=', 'shipment_lines.partner_id')
+          .andOn(db.raw("pi_active.id_type = '(Reference) Szállítók'"))
+          .andOn(db.raw('(pi_active.is_inactive IS NULL OR pi_active.is_inactive = false)'));
+      })
       .where('shipment_id', shipment.id)
       .orderBy('shipment_lines.id', 'asc');
 
@@ -126,10 +131,15 @@ router.get('/:id', async (req, res, next) => {
         'shipment_lines.*',
         'products.name as productName',
         'products.code as product_code',
-        'partners.name as partner_name'
+        db.raw('COALESCE(pi_active.value, partners.name) as partner_name')
       )
       .leftJoin('products', 'shipment_lines.product_id', 'products.id')
       .leftJoin('partners', 'shipment_lines.partner_id', 'partners.id')
+      .leftJoin('partner_identifiers as pi_active', function() {
+        this.on('pi_active.partner_id', '=', 'shipment_lines.partner_id')
+          .andOn(db.raw("pi_active.id_type = '(Reference) Szállítók'"))
+          .andOn(db.raw('(pi_active.is_inactive IS NULL OR pi_active.is_inactive = false)'));
+      })
       .where('shipment_id', shipment.id)
       .orderBy('shipment_lines.display_order', 'asc')
       .orderBy('shipment_lines.id', 'asc');

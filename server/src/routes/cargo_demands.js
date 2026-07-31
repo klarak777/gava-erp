@@ -214,17 +214,8 @@ router.patch('/:id/fulfill', async (req, res) => {
         }
       }
 
-      // Partner azonosító név (ref) keresése az aktív identifier-ek alapján
-      let partnerRefName = null;
-      if (partnerId) {
-        const activeRef = await trx('partner_identifiers')
-          .where('partner_id', partnerId)
-          .where('id_type', '(Reference) Szállítók')
-          .where(function() { this.where('is_inactive', false).orWhereNull('is_inactive'); })
-          .select('value')
-          .first();
-        partnerRefName = activeRef ? activeRef.value : null;
-      }
+      // Partner azonosító név: a demand.partner_name már tartalmazza a felhasználó által begépelt azonosítót (pl. "CASI AEROPORTO")
+      // Ezt használjuk közvetlenül és nem keressük újra az adatbázisból (ami más aktív identifier-t adhatna vissza)
 
       // 2. Új sor hozzáadása a célkamionhoz
       await trx('shipment_lines').insert({
@@ -232,6 +223,7 @@ router.patch('/:id/fulfill', async (req, res) => {
         product_id: productId || null,
         partner_id: partnerId,
         customer: demand.customer_name || '',
+        destination: demand.destination || '',
         euro_palets: sendEuro,
         normal_palets: sendNormal,
         total_palets: sendEuro + sendNormal,
