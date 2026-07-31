@@ -1509,6 +1509,9 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                 )
             };
 
+            const saveBtn = container.querySelector('#btn-save-km');
+            saveBtn.disabled = true;
+
             try {
                 let res;
                 if (isNew) {
@@ -1626,6 +1629,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
             } catch (err) {
                 console.error(err);
                 alert('Nem sikerült csatlakozni a szerverhez.');
+            } finally {
+                if (saveBtn) saveBtn.disabled = false;
             }
         });
 

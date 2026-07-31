@@ -585,6 +585,9 @@ export function renderRakodas(container, windowManager) {
                 `${(sendEuro < (demandRow.euro_palets || 0) || sendNormal < (demandRow.normal_palets || 0)) ? '⚠️ Részleges küldés – a maradék az Áru igény táblában marad.' : '✅ Teljes mennyiség'}`;
             if (!confirm(confirmMsg)) return;
 
+            const btnConfirm = modalEl.querySelector('.btn-send-confirm');
+            btnConfirm.disabled = true;
+
             try {
                 const res = await fetch(`/api/v1/cargo-demands/${demandRow.id}/fulfill`, {
                     method: 'PATCH',
@@ -598,7 +601,9 @@ export function renderRakodas(container, windowManager) {
                 alert(`✅ ${data.message}`);
                 await loadCargoDemandsData();
             } catch (err) {
-                alert('Hálózati hiba: ' + err.message);
+                alert('Hiba a küldés során: ' + err.message);
+            } finally {
+                if (btnConfirm) btnConfirm.disabled = false;
             }
         });
     }
