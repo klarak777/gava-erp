@@ -540,7 +540,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
             fmTruckNo.textContent = orderToParse; // Display "GHU 199"
             fmTruckNo.dataset.trucknr = truckNr; // Keep "199" for underlying logic
 
-            container.querySelector('#fm-invoice').value = (linesData.length > 0 && linesData[0].invoice_number_finance) ? linesData[0].invoice_number_finance : (shipmentData.invoice_number || '');
+            container.querySelector('#fm-invoice').value = (linesData.length > 0 && linesData[0].invoice_number_finance) ? linesData[0].invoice_number_finance : '';
             container.querySelector('#fm-auto-num').value = shipmentData.plate_number || '';
             container.querySelector('#fm-dep-date').value = shipmentData.loading_date ? shipmentData.loading_date.split('T')[0] : '';
             container.querySelector('#fm-arr-date').value = shipmentData.arrival_date ? shipmentData.arrival_date.split('T')[0] : '';

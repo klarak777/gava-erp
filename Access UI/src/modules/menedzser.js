@@ -215,6 +215,15 @@ export function renderMenedzser(container, windowManager) {
         loadRealData(true);
     });
 
+    const handleKamionSaved = () => {
+        if (!document.body.contains(container)) {
+            window.removeEventListener('kamion-saved', handleKamionSaved);
+            return;
+        }
+        loadRealData(true);
+    };
+    window.addEventListener('kamion-saved', handleKamionSaved);
+
     async function loadRealData(force = false) {
         if (!force && cachedMenedzserData) {
             tableData = cachedMenedzserData;
@@ -300,7 +309,7 @@ export function renderMenedzser(container, windowManager) {
                             loading_date: shipment.loading_date,
                             arrival_date: shipment.arrival_date,
                             is_received: val.is_received,
-                            invoice_number: shipment.allLines.find(l => (l.ref || '').trim().toUpperCase() === val.originalRef.trim().toUpperCase() || (l.ref || '').trim().toUpperCase() === val.ref_name)?.invoice_number_finance || ''
+                            invoice_number: ghuLines.find(l => (l.ref || '').trim().toUpperCase() === val.originalRef.trim().toUpperCase() || (l.ref || '').trim().toUpperCase() === val.ref_name)?.invoice_number_finance || ''
                         });
                     });
                 });
