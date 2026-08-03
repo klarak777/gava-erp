@@ -2,6 +2,23 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/db');
 
+// GET /api/v1/admin/export-identifiers
+router.get('/export-identifiers', async (req, res) => {
+    try {
+        const data = await db('partner_identifiers')
+            .join('partners', 'partner_identifiers.partner_id', 'partners.id')
+            .where('partner_identifiers.is_inactive', false)
+            .select('partners.name as partner_name', 'partner_identifiers.id_type', 'partner_identifiers.value')
+            .orderBy('partners.name', 'asc');
+        
+        res.setHeader('Content-disposition', 'attachment; filename=active_identifiers_export.json');
+        res.setHeader('Content-type', 'application/json');
+        res.send(JSON.stringify(data, null, 2));
+    } catch (err) {
+        res.status(500).json({ error: 'Szerverhiba' });
+    }
+});
+
 // Engedélyezett táblák a generic végpontokhoz biztonsági okokból
 const ALLOWED_TABLES = ['products', 'partners', 'transporters', 'finance_truck_types', 'finance_tax_rates', 'currencies'];
 
