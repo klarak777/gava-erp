@@ -403,8 +403,8 @@ router.put('/identifiers/:id/reassign', async (req, res) => {
             return res.status(400).json({ error: 'Aktív azonosítót nem lehet inaktív partnerhez rendelni!' });
         }
 
-        // Aktív szerepkör áthelyezésekor a globális névegyediség itt is érvényes:
-        // a célpartnernél (vagy bárhol máshol) nem lehet már aktív ugyanez a név.
+        // Aktív szerepkör áthelyezésekor a globális névegyediség érvényes:
+        // (Bárhol máshol a rendszerben nem lehet aktív ugyanez a név)
         if (!identifier.is_inactive && ROLE_ID_TYPES.includes(identifier.id_type)) {
             const conflict = await db('partner_identifiers as pi')
                 .join('partners as p', 'p.id', 'pi.partner_id')
@@ -423,12 +423,48 @@ router.put('/identifiers/:id/reassign', async (req, res) => {
             }
         }
 
+        // Inaktív azonosítók áthelyezésekor lokális egyediség érvényes:
+        // A CÉLPARTNERNÉL nem létezhet ugyanezzel a névvel és szerepkörrel azonosító (legyen az aktív vagy inaktív)
+        if (identifier.is_inactive && ROLE_ID_TYPES.includes(identifier.id_type)) {
+            const localConflict = await db('partner_identifiers')
+                .where('partner_id', target_partner_id)
+                .where('id_type', identifier.id_type)
+                .whereRaw('UPPER(TRIM(value)) = ?', [normalizeIdentifierValue(identifier.value)])
+                .andWhereNot('id', identifier.id)
+                .first();
+            
+            if (localConflict) {
+                return res.status(400).json({
+                    error: `A célpartnernél ("${targetPartner.name}") már létezik egy "${identifier.value}" nevű azonosító a(z) "${identifier.id_type}" szerepkörben!`
+                });
+            }
+        }
+
         if (req.query.dry_run === 'true') {
             return res.json({ success: true, message: 'Valid' });
         }
 
         await db('partner_identifiers').where('id', id).update({ partner_id: target_partner_id, updated_at: new Date() });
         res.json({ success: true });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Szerverhiba' });
+    }
+});
+
+// DELETE /api/v1/partners/identifiers/:id
+router.delete('/identifiers/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const identifier = await db('partner_identifiers').where('id', id).first();
+        if (!identifier) return res.status(404).json({ error: 'Azonosító nem található' });
+        
+        if (!identifier.is_inactive) {
+            return res.status(400).json({ error: 'Csak inaktív azonosítók törölhetők véglegesen!' });
+        }
+
+        await db('partner_identifiers').where('id', id).del();
+        res.json({ success: true, message: 'Azonosító törölve' });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Szerverhiba' });

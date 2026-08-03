@@ -473,7 +473,7 @@ export function openArchivedPartnersTable(wm) {
                                 <td class="arch-row-iden">↳ Azonosító</td>
                                 <td>${iden.value}</td>
                                 <td>${iden.id_type}</td>
-                                <td>
+                                <td style="display: flex; gap: 8px;">
                                     <button class="arch-btn activate btn-activate-iden" data-id="${iden.id}">Aktiválás</button>
                                     <div class="arch-reassign-container">
                                         <button class="arch-btn btn-reassign" data-id="${iden.id}" data-inactive="${iden.is_inactive}" title="Áthelyezés másik partnerhez">🔄 Áthelyez</button>
@@ -482,6 +482,7 @@ export function openArchivedPartnersTable(wm) {
                                             <ul class="arch-reassign-list"></ul>
                                         </div>
                                     </div>
+                                    <button class="arch-btn btn-delete-iden" data-id="${iden.id}" style="background: #ef4444;" title="Végleges törlés">🗑️ Törlés</button>
                                 </td>
                             </tr>
                         `;
@@ -499,6 +500,9 @@ export function openArchivedPartnersTable(wm) {
             });
             tbody.querySelectorAll('.btn-activate-iden').forEach(btn => {
                 btn.addEventListener('click', () => activateIdentifier(btn.dataset.id));
+            });
+            tbody.querySelectorAll('.btn-delete-iden').forEach(btn => {
+                btn.addEventListener('click', () => deleteIdentifier(btn.dataset.id));
             });
             
             tbody.querySelectorAll('.btn-reassign').forEach(btn => {
@@ -564,6 +568,18 @@ export function openArchivedPartnersTable(wm) {
                 const data = await res.json();
                 if (data.error) throw new Error(data.error);
                 alert('Azonosító sikeresen aktiválva!');
+                loadData();
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+        async function deleteIdentifier(id) {
+            if (!confirm('Biztosan véglegesen törlöd ezt az inaktív azonosítót? Ez a művelet nem vonható vissza!')) return;
+            try {
+                const res = await fetch(`/api/v1/partners/identifiers/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
                 loadData();
             } catch (e) {
                 alert(e.message);
