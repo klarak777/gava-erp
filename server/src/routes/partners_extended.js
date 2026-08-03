@@ -452,25 +452,6 @@ router.put('/identifiers/:id/reassign', async (req, res) => {
     }
 });
 
-// DELETE /api/v1/partners/identifiers/:id
-router.delete('/identifiers/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const identifier = await db('partner_identifiers').where('id', id).first();
-        if (!identifier) return res.status(404).json({ error: 'Azonosító nem található' });
-        
-        if (!identifier.is_inactive) {
-            return res.status(400).json({ error: 'Csak inaktív azonosítók törölhetők véglegesen!' });
-        }
-
-        await db('partner_identifiers').where('id', id).del();
-        res.json({ success: true, message: 'Azonosító törölve' });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Szerverhiba' });
-    }
-});
-
 // PUT /api/v1/partners/identifiers/:id/activate
 router.put('/identifiers/:id/activate', async (req, res) => {
     try {
