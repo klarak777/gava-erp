@@ -1,0 +1,48 @@
+# Archív partnerek modul és Inaktíválás implementációs terv (Módosított)
+
+A feladat célja a partnerek és azonosítóik (szerepköreik) teljes körű archiválási, átmozgatási és státuszkezelési logikájának kialakítása, az általad adott legújabb visszajelzések és szigorú érvényesítési szabályok (validációk) alapján.
+
+## User Review Required
+> [!IMPORTANT]
+> Kérlek, olvasd át a véglegesített, kibővített tervet. Ha a logikával (különösen a duplikáció és szerepkör korlátozásokkal) egyetértesz, kérlek nyomj a **Proceed** gombra, és elkezdem a megvalósítást.
+
+## Proposed Changes
+
+### 1. Modulok és Megjelenítési Szabályok (Láthatóság)
+- **Fő Partnerek Modul:** 
+  - **Kizárólag aktív partnereket** jelenít meg.
+  - A partnerek szerkesztőjében **csak az aktív azonosítóikat** mutatja. 
+- **Archív Partnerek Modul (Új Admin modul):**
+  - Megjeleníti az **inaktív partnereket** az összes inaktív azonosítójukkal.
+  - Megjeleníti azokat az **aktív partnereket is**, akiknek van inaktív azonosítója, de esetükben **kizárólag az inaktív azonosítóikat** mutatja.
+  - *Dinamikus frissítés:* Ha egy aktív partner utolsó inaktív azonosítóját is aktiválod, a partner automatikusan eltűnik az Archív modulból (hiszen már nincs mit archívként mutatni róla).
+
+### 2. Azonosítók (Szerepkörök) Aktiválási Szabályai (ÚJ Validációk)
+Amikor az Archív modulból megpróbálsz aktívra állítani egy inaktív azonosítót, az alábbi szigorú ellenőrzések futnak le:
+1. **Inaktív Partner Tiltás:** Nem lehet aktiválni egy inaktív azonosítót, ha maga a szülő partner is inaktív. Egy inaktív partnernek nem lehet aktív szerepköre.
+2. **"Egy Partner - Egy Szerepkör" Szabály:** Egy partnernek kategóriánként legfeljebb **csak 1 aktív szerepköre lehet**. Tehát nem aktiválhatsz egy "Szállító" azonosítót, ha az adott partnernek már van egy másik aktív "Szállító" azonosítója.
+3. **Globális Név Egyediség Szabály:** Nem aktiválhatsz egy azonosítót, ha abban a szerepkör kategóriában **már létezik egy ugyanilyen nevű aktív azonosító** a rendszerben (akár másik partnernél). Ha ilyet próbálsz, a rendszer hibaüzenetet ad, kiírva, hogy: *"Ilyen névvel már van aktív azonosító a rendszerben, a [Partner Neve] partnerhez rendelve!"*
+
+### 3. Azonosítók Áthelyezése és Törlése
+- **Áthelyezés keresővel:** A szerkesztőben (és az Archívumban) egy ikonra kattintva egy legördülő, karakterre keresős mező (autocomplete) jelenik meg, amellyel egy azonosító egy másik partnerhez rendelhető.
+  - *Szabály:* Aktív azonosítót tilos inaktív partnerhez rendelni. Inaktív azonosítót viszont lehet.
+- **Törlés korlátozással:** Azonosítót csak akkor lehet törölni, ha az újonnan lett létrehozva, és még sosem lett felhasználva fuvarhoz. A törlés előtt egy adatbázis lekérdezés lefut a fuvar és tétel táblákon; ha az azonosító név/érték szerepel historikus adatban, a törlés blokkolva lesz.
+
+### 4. Partner inaktíválása (Archiválás)
+- A Partnerek főmoduljában elhelyezünk egy "Inaktív (Archiválás)" pipát a partner szerkesztőjében.
+- Egy partnert **csak akkor lehet archiválni, ha nincsenek aktív szerepkörei** (se aktív szállító, vevő vagy fuvarozó).
+- Ha van aktív szerepköre, hibaüzenet figyelmeztet.
+- Ha nincs, egy felugró megerősítés (confirm) után a partner inaktívvá válik, eltűnik a főlistából, és átkerül az Archívba.
+
+### 5. API és Backend módosítások
+- **Új végpont:** `GET /api/v1/partners/archived` (csak az inaktív adatok lekérésére).
+- **Meglévő lekérdezések módosítása:** A `GET /api/v1/partners` végpont kiegészítése `?status=active` szűrővel.
+- **Aktiválási és áthelyezési végpontok:** A fenti komplex üzleti logikát és validációs lekérdezéseket (név egyediség, szerepkör szám, fuvar kapcsolatok) a szerver oldalon (API szinten) implementáljuk a biztonság érdekében.
+
+## Verification Plan
+1. **Automated Tests:** Nincs.
+2. **Manual Verification:** 
+   - A leírt 3 fő validációs szabály tesztelése aktiváláskor (Partner inaktív-e, Van-e már ilyen szerepköre, Foglalt-e a név máshol).
+   - Törlési feltétel ellenőrzése fuvarhoz kötött, illetve vadonatúj azonosító esetén.
+   - Áthelyezési legördülő lista tesztelése karakteres kereséssel, és annak tesztelése, hogy inaktív partnerhez ne engedjen aktív azonosítót áthelyezni.
+   - Archív modul nézet tesztelése (eltűnik-e a partner, ha minden azonosítóját aktiváljuk).

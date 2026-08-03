@@ -259,9 +259,9 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                     <!-- Drag & Drop zóna -->
                     <div id="dn-dropzone" style="border:2px dashed #93c5fd; border-radius:8px; padding:24px 16px; text-align:center; cursor:pointer; background:#f0f9ff; margin-bottom:14px; transition:background 0.2s, border-color 0.2s;">
                         <div style="font-size:28px; margin-bottom:6px;">📂</div>
-                        <div style="font-size:12px; color:#1d4ed8; font-weight:600;">Húzza ide a fájlt, vagy kattintson a tallózáshoz</div>
+                        <div style="font-size:12px; color:#1d4ed8; font-weight:600;">Húzza ide a fájlokat, vagy kattintson a tallózáshoz</div>
                         <div style="font-size:11px; color:#64748b; margin-top:4px;">PDF, JPG, PNG, stb.</div>
-                        <input type="file" id="dn-file-input" style="display:none;" accept="*/*">
+                        <input type="file" id="dn-file-input" style="display:none;" accept="*/*" multiple>
                     </div>
 
                     <!-- Kiválasztott fájl neve -->
@@ -361,12 +361,12 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
         const dnFileNameEl = container.querySelector('#dn-file-name');
         const dnStatusEl = container.querySelector('#dn-status');
 
-        let dnSelectedFile = null;
+        let dnSelectedFiles = [];
         const resetDnDrag = initDraggable(dnModal, dnHeader);
 
         function openDeliveryNoteModal() {
             resetDnDrag();
-            dnSelectedFile = null;
+            dnSelectedFiles = [];
             dnFileNameEl.textContent = '';
             dnStatusEl.textContent = '';
             dnCustomerOrderInput.value = '';
@@ -416,17 +416,16 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
             e.preventDefault();
             dnDropzone.style.background = '#f0f9ff';
             dnDropzone.style.borderColor = '#93c5fd';
-            const file = e.dataTransfer.files[0];
-            if (file) {
-                dnSelectedFile = file;
-                dnFileNameEl.textContent = '📎 ' + file.name;
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                dnSelectedFiles = Array.from(e.dataTransfer.files).slice(0, 10);
+                dnFileNameEl.textContent = '📎 ' + dnSelectedFiles.map(f => f.name).join(', ');
             }
         });
         dnDropzone.addEventListener('click', () => dnFileInput.click());
         dnFileInput.addEventListener('change', () => {
-            if (dnFileInput.files[0]) {
-                dnSelectedFile = dnFileInput.files[0];
-                dnFileNameEl.textContent = '📎 ' + dnSelectedFile.name;
+            if (dnFileInput.files && dnFileInput.files.length > 0) {
+                dnSelectedFiles = Array.from(dnFileInput.files).slice(0, 10);
+                dnFileNameEl.textContent = '📎 ' + dnSelectedFiles.map(f => f.name).join(', ');
             }
         });
 
@@ -446,9 +445,9 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                 dnStatusEl.textContent = '⚠ A Customer order N° megadása kötelező!';
                 return;
             }
-            if (!dnSelectedFile) {
+            if (dnSelectedFiles.length === 0) {
                 dnStatusEl.style.color = '#dc2626';
-                dnStatusEl.textContent = '⚠ Kérlek válassz ki egy fájlt!';
+                dnStatusEl.textContent = '⚠ Kérlek válassz ki legalább egy fájlt!';
                 return;
             }
 
@@ -480,9 +479,10 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
 
             try {
                 const formData = new FormData();
-                formData.append('file', dnSelectedFile);
+                dnSelectedFiles.forEach(f => formData.append('files', f));
                 formData.append('season', seasonLabel);
                 formData.append('orderNumber', orderNumber);
+                formData.append('customerOrderNo', customerOrderNo);
 
                 const uploadRes = await fetch('/api/v1/uploads/delivery-note', {
                     method: 'POST',
@@ -861,7 +861,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
         }
 
         // ===== SZÁLLÍTÓLEVÉL MEGJELENÍTŐ =====
-        async function openDeliveryNoteViewer() {
+        async function openDeliveryNoteViewer(customerOrderNo = 'none') {
             const orderNumber = kmOrder.value.trim();
             if (!orderNumber || orderNumber === 'Betöltés...') {
                 alert('Nincs érvényes kamionszám megadva.');
@@ -882,72 +882,99 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
 
             try {
                 // Check if delivery note exists
-                const checkRes = await fetch(`/api/v1/uploads/delivery-note/${encodeURIComponent(seasonLabel)}/${encodeURIComponent(orderNumber)}/check`);
+                const checkRes = await fetch(`/api/v1/uploads/delivery-note/${encodeURIComponent(seasonLabel)}/${encodeURIComponent(orderNumber)}/${encodeURIComponent(customerOrderNo)}/check`);
                 const checkData = await checkRes.json();
 
-                if (!checkRes.ok || !checkData.exists) {
+                if (!checkRes.ok || !checkData.exists || !checkData.files || checkData.files.length === 0) {
                     alert('Még nem történt szállítólevél feltöltés ehhez a kamionhoz.');
                     openDeliveryNoteModal();
                     return;
                 }
 
                 // File exists, open viewer modal
-                const fileName = checkData.fileName;
-                const fileUrl = `/api/v1/uploads/delivery-note/${encodeURIComponent(seasonLabel)}/${encodeURIComponent(orderNumber)}/${encodeURIComponent(fileName)}`;
-                const ext = fileName.split('.').pop().toLowerCase();
+                const files = checkData.files;
+                let currentIndex = 0;
+                const modalId = 'dn-viewer-' + Date.now();
 
-                let previewHtml = '';
-                if (['pdf'].includes(ext)) {
-                    previewHtml = `<iframe src="${fileUrl}" style="width:100%; height:100%; border:none;"></iframe>`;
-                } else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
-                    previewHtml = `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:auto; background:#f8fafc;"><img src="${fileUrl}" style="max-width:100%; max-height:100%; object-fit:contain;"></div>`;
-                } else if (['docx'].includes(ext)) {
-                    previewHtml = `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; flex-direction:column; background:#f8fafc; gap:16px;" id="docx-container-preview">
-                        <div style="width:36px; height:36px; border:3px solid #cbd5e1; border-top-color:#2563eb; border-radius:50%; animation:spin 1s linear infinite;"></div>
-                        <span style="font-size:13px; color:#64748b;">DOCX betöltése...</span>
-                    </div>`;
-
-                    // Asynchronously fetch HTML and inject it
-                    setTimeout(async () => {
-                        try {
-                            const docxRes = await fetch(`${fileUrl}/html`);
-                            const docxData = await docxRes.json();
-                            const container = document.getElementById('docx-container-preview');
-                            if (container) {
-                                if (docxRes.ok && docxData.html) {
-                                    container.innerHTML = `<div style="padding: 24px; font-family: 'Segoe UI', sans-serif; background: #fff; color: #1e293b; line-height: 1.6; height: 100%; box-sizing: border-box; text-align: left;">${docxData.html}</div>`;
-                                    container.style.display = 'block'; // remove flex centering
-                                } else {
-                                    container.innerHTML = `<div style="padding: 24px; color: #dc2626;">Hiba a DOCX előnézet generálásakor: ${docxData.error || 'Ismeretlen hiba'}</div>`;
+                function getPreviewHtml(fileName) {
+                    const fileUrl = `/api/v1/uploads/delivery-note/${encodeURIComponent(seasonLabel)}/${encodeURIComponent(orderNumber)}/${encodeURIComponent(customerOrderNo)}/${encodeURIComponent(fileName)}`;
+                    const ext = fileName.split('.').pop().toLowerCase();
+                    
+                    if (['pdf'].includes(ext)) {
+                        return `<iframe src="${fileUrl}" style="width:100%; height:100%; border:none;"></iframe>`;
+                    } else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
+                        return `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:auto; background:#f8fafc;"><img src="${fileUrl}" style="max-width:100%; max-height:100%; object-fit:contain;"></div>`;
+                    } else if (['docx'].includes(ext)) {
+                        const docxId = 'docx-' + Date.now();
+                        setTimeout(async () => {
+                            try {
+                                const docxRes = await fetch(`${fileUrl}/html`);
+                                const docxData = await docxRes.json();
+                                const container = document.getElementById(docxId);
+                                if (container) {
+                                    if (docxRes.ok && docxData.html) {
+                                        container.innerHTML = `<div style="padding: 24px; font-family: 'Segoe UI', sans-serif; background: #fff; color: #1e293b; line-height: 1.6; height: 100%; box-sizing: border-box; text-align: left;">${docxData.html}</div>`;
+                                        container.style.display = 'block';
+                                    } else {
+                                        container.innerHTML = `<div style="padding: 24px; color: #dc2626;">Hiba a DOCX előnézet generálásakor: ${docxData.error || 'Ismeretlen hiba'}</div>`;
+                                    }
                                 }
+                            } catch (err) {
+                                const container = document.getElementById(docxId);
+                                if (container) container.innerHTML = `<div style="padding: 24px; color: #dc2626;">Hálózati hiba a DOCX betöltésekor.</div>`;
                             }
-                        } catch (err) {
-                            const container = document.getElementById('docx-container-preview');
-                            if (container) container.innerHTML = `<div style="padding: 24px; color: #dc2626;">Hálózati hiba a DOCX betöltésekor.</div>`;
-                        }
-                    }, 100);
+                        }, 100);
+                        return `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; flex-direction:column; background:#f8fafc; gap:16px;" id="${docxId}">
+                            <div style="width:36px; height:36px; border:3px solid #cbd5e1; border-top-color:#2563eb; border-radius:50%; animation:spin 1s linear infinite;"></div>
+                            <span style="font-size:13px; color:#64748b;">DOCX betöltése...</span>
+                        </div>`;
+                    } else {
+                        return `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:16px;">
+                            <span style="font-size:48px;">📄</span>
+                            <p style="font-size:14px; color:#334155;">A ${ext.toUpperCase()} fájl előnézete nem támogatott a böngészőben.</p>
+                            <a href="${fileUrl}" download class="primary-btn" style="text-decoration:none;">Fájl letöltése</a>
+                        </div>`;
+                    }
+                }
 
-                } else {
-                    previewHtml = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:16px;">
-                        <span style="font-size:48px;">📄</span>
-                        <p style="font-size:14px; color:#334155;">A ${ext.toUpperCase()} fájl előnézete nem támogatott a böngészőben.</p>
-                        <a href="${fileUrl}" download class="primary-btn" style="text-decoration:none;">Fájl letöltése</a>
-                    </div>`;
+                function getHeaderHtml(fileName, index, totalFiles) {
+                    const fileUrl = `/api/v1/uploads/delivery-note/${encodeURIComponent(seasonLabel)}/${encodeURIComponent(orderNumber)}/${encodeURIComponent(customerOrderNo)}/${encodeURIComponent(fileName)}`;
+                    
+                    let navHtml = '';
+                    if (totalFiles > 1) {
+                        const optionsHtml = files.map((f, i) => `<option value="${i}" ${i === index ? 'selected' : ''}>${f}</option>`).join('');
+                        navHtml = `
+                            <div style="display:flex; align-items:center; gap:12px; background:rgba(255,255,255,0.1); padding:4px 8px; border-radius:6px;">
+                                <button class="dn-nav-btn" data-action="prev" style="background:none; border:none; color:#fff; cursor:pointer; padding:4px 8px; font-weight:bold;">◀</button>
+                                <select class="dn-nav-select" style="background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.3); border-radius:4px; padding:2px 6px; font-size:13px; max-width:250px; cursor:pointer; outline:none;">
+                                    ${optionsHtml}
+                                </select>
+                                <span style="font-size:12px; color:rgba(255,255,255,0.8);">${index + 1} / ${totalFiles}</span>
+                                <button class="dn-nav-btn" data-action="next" style="background:none; border:none; color:#fff; cursor:pointer; padding:4px 8px; font-weight:bold;">▶</button>
+                            </div>
+                        `;
+                    } else {
+                        navHtml = `<div style="font-size:14px; color:#fff; font-weight:700; margin-top:2px;">${fileName}</div>`;
+                    }
+
+                    return `
+                        <div>
+                            <div style="font-size:11px; color:rgba(255,255,255,0.7); font-weight:500; letter-spacing:0.5px; text-transform:uppercase;">Szállítólevél${totalFiles > 1 ? 'ek' : ''}</div>
+                            ${navHtml}
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <a href="${fileUrl}" download style="display:flex; align-items:center; gap:6px; background:#22c55e; color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer; text-decoration:none; transition:all 0.2s;">⬇️ Letöltés</a>
+                        </div>
+                    `;
                 }
 
                 const modalContent = `
-                    <div style="display:flex; flex-direction:column; height:100%;">
-                        <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 20px; background:linear-gradient(135deg,#1e3a5f,#2563eb); border-radius:8px; margin-bottom:16px; flex-shrink:0;">
-                            <div>
-                                <div style="font-size:11px; color:rgba(255,255,255,0.7); font-weight:500; letter-spacing:0.5px; text-transform:uppercase;">Szállítólevél</div>
-                                <div style="font-size:14px; color:#fff; font-weight:700; margin-top:2px;">${fileName}</div>
-                            </div>
-                            <div style="display:flex; gap:8px; align-items:center;">
-                                <a href="${fileUrl}" download style="display:flex; align-items:center; gap:6px; background:#22c55e; color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer; text-decoration:none; transition:all 0.2s;">⬇️ Letöltés</a>
-                            </div>
+                    <div id="${modalId}" style="display:flex; flex-direction:column; height:100%;">
+                        <div class="dn-viewer-header" style="display:flex; align-items:center; justify-content:space-between; padding:12px 20px; background:linear-gradient(135deg,#1e3a5f,#2563eb); border-radius:8px; margin-bottom:16px; flex-shrink:0;">
+                            ${getHeaderHtml(files[currentIndex], currentIndex, files.length)}
                         </div>
-                        <div style="flex:1; overflow:hidden; border-radius:8px; border:1px solid #e2e8f0; background:#fff;">
-                            ${previewHtml}
+                        <div class="dn-viewer-body" style="flex:1; overflow:hidden; border-radius:8px; border:1px solid #e2e8f0; background:#fff;">
+                            ${getPreviewHtml(files[currentIndex])}
                         </div>
                     </div>`;
 
@@ -957,6 +984,50 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                     height: 660,
                     content: modalContent
                 });
+
+                // Attach event listeners after modal creation
+                setTimeout(() => {
+                    const container = document.getElementById(modalId);
+                    if (!container) return;
+
+                    const attachEvents = () => {
+                        const btnPrev = container.querySelector('.dn-nav-btn[data-action="prev"]');
+                        const btnNext = container.querySelector('.dn-nav-btn[data-action="next"]');
+                        const selectEl = container.querySelector('.dn-nav-select');
+
+                        const updateView = () => {
+                            container.querySelector('.dn-viewer-header').innerHTML = getHeaderHtml(files[currentIndex], currentIndex, files.length);
+                            container.querySelector('.dn-viewer-body').innerHTML = getPreviewHtml(files[currentIndex]);
+                            attachEvents(); // reattach events because innerHTML replaced them
+                        };
+
+                        if (btnPrev) {
+                            btnPrev.addEventListener('click', () => {
+                                currentIndex = (currentIndex - 1 + files.length) % files.length;
+                                updateView();
+                            });
+                        }
+                        if (btnNext) {
+                            btnNext.addEventListener('click', () => {
+                                currentIndex = (currentIndex + 1) % files.length;
+                                updateView();
+                            });
+                        }
+                        if (selectEl) {
+                            selectEl.addEventListener('change', (e) => {
+                                currentIndex = parseInt(e.target.value, 10);
+                                updateView();
+                            });
+                            // styling for select options
+                            selectEl.querySelectorAll('option').forEach(opt => {
+                                opt.style.color = '#000';
+                                opt.style.background = '#fff';
+                            });
+                        }
+                    };
+
+                    attachEvents();
+                }, 100);
 
             } catch (err) {
                 console.error(err);
@@ -1083,7 +1154,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
             tbody.querySelectorAll('.cell-edit[data-field="customer_order_no"]').forEach(inp => {
                 inp.addEventListener('click', (e) => {
                     if (inp.value.trim() !== '') {
-                        openDeliveryNoteViewer();
+                        openDeliveryNoteViewer(inp.value.trim());
                     }
                 });
             });
