@@ -882,7 +882,12 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
 
             try {
                 // Check if delivery note exists
-                const checkRes = await fetch(`/api/v1/uploads/delivery-note/${encodeURIComponent(seasonLabel)}/${encodeURIComponent(orderNumber)}/${encodeURIComponent(customerOrderNo)}/check`);
+                const queryParams = new URLSearchParams({
+                    season: seasonLabel,
+                    orderNumber: orderNumber,
+                    customerOrderNo: customerOrderNo
+                }).toString();
+                const checkRes = await fetch(`/api/v1/uploads/delivery-note/check?${queryParams}`);
                 const checkData = await checkRes.json();
 
                 if (!checkRes.ok || !checkData.exists || !checkData.files || checkData.files.length === 0) {
@@ -897,7 +902,14 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                 const modalId = 'dn-viewer-' + Date.now();
 
                 function getPreviewHtml(fileName) {
-                    const fileUrl = `/api/v1/uploads/delivery-note/${encodeURIComponent(seasonLabel)}/${encodeURIComponent(orderNumber)}/${encodeURIComponent(customerOrderNo)}/${encodeURIComponent(fileName)}`;
+                    const fileParams = new URLSearchParams({
+                        season: seasonLabel,
+                        orderNumber: orderNumber,
+                        customerOrderNo: customerOrderNo,
+                        fileName: fileName
+                    }).toString();
+                    const fileUrl = `/api/v1/uploads/delivery-note/file?${fileParams}`;
+                    const htmlUrl = `/api/v1/uploads/delivery-note/html?${fileParams}`;
                     const ext = fileName.split('.').pop().toLowerCase();
                     
                     if (['pdf'].includes(ext)) {
@@ -908,7 +920,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                         const docxId = 'docx-' + Date.now();
                         setTimeout(async () => {
                             try {
-                                const docxRes = await fetch(`${fileUrl}/html`);
+                                const docxRes = await fetch(htmlUrl);
                                 const docxData = await docxRes.json();
                                 const container = document.getElementById(docxId);
                                 if (container) {
@@ -938,7 +950,13 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                 }
 
                 function getHeaderHtml(fileName, index, totalFiles) {
-                    const fileUrl = `/api/v1/uploads/delivery-note/${encodeURIComponent(seasonLabel)}/${encodeURIComponent(orderNumber)}/${encodeURIComponent(customerOrderNo)}/${encodeURIComponent(fileName)}`;
+                    const fileParams = new URLSearchParams({
+                        season: seasonLabel,
+                        orderNumber: orderNumber,
+                        customerOrderNo: customerOrderNo,
+                        fileName: fileName
+                    }).toString();
+                    const fileUrl = `/api/v1/uploads/delivery-note/file?${fileParams}`;
                     
                     let navHtml = '';
                     if (totalFiles > 1) {

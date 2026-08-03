@@ -97,9 +97,9 @@ router.post('/delivery-note', upload.array('files', 10), async (req, res) => {
  * GET /api/v1/uploads/delivery-note/:season/:orderNumber/:customerOrderNo/check
  * Ellenőrzi, hogy van-e feltöltött szállítólevél az adott kamionhoz/tételhez.
  */
-router.get('/delivery-note/:season/:orderNumber/:customerOrderNo/check', async (req, res) => {
+router.get('/delivery-note/check', async (req, res) => {
     try {
-        const { season, orderNumber, customerOrderNo } = req.params;
+        const { season, orderNumber, customerOrderNo } = req.query;
         const seasonFolder = `Season ${season}`;
         
         // Ha a customerOrderNo = "none", akkor az alap kamion mappát nézzük (visszafele kompatibilitás)
@@ -128,9 +128,9 @@ router.get('/delivery-note/:season/:orderNumber/:customerOrderNo/check', async (
  * GET /api/v1/uploads/delivery-note/:season/:orderNumber/:customerOrderNo/:fileName
  * Letölti vagy megjeleníti a kiválasztott szállítólevelet.
  */
-router.get('/delivery-note/:season/:orderNumber/:customerOrderNo/:fileName', async (req, res) => {
+router.get('/delivery-note/file', async (req, res) => {
     try {
-        const { season, orderNumber, customerOrderNo, fileName } = req.params;
+        const { season, orderNumber, customerOrderNo, fileName } = req.query;
         const seasonFolder = `Season ${season}`;
         
         let targetDir = path.join(ERP_FUVAROK_PATH, seasonFolder, orderNumber);
@@ -154,9 +154,9 @@ router.get('/delivery-note/:season/:orderNumber/:customerOrderNo/:fileName', asy
  * GET /api/v1/uploads/delivery-note/:season/:orderNumber/:customerOrderNo/:fileName/html
  * DOCX fájl HTML nézetének lekérése mammoth segítségével
  */
-router.get('/delivery-note/:season/:orderNumber/:customerOrderNo/:fileName/html', async (req, res) => {
+router.get('/delivery-note/html', async (req, res) => {
     try {
-        const { season, orderNumber, customerOrderNo, fileName } = req.params;
+        const { season, orderNumber, customerOrderNo, fileName } = req.query;
         const seasonFolder = `Season ${season}`;
         
         let targetDir = path.join(ERP_FUVAROK_PATH, seasonFolder, orderNumber);
