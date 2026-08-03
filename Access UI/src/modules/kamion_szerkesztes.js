@@ -860,6 +860,110 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
             }
         }
 
+        // ===== SZÁLLÍTÓLEVÉL MEGJELENÍTŐ =====
+        async function openDeliveryNoteViewer() {
+            const orderNumber = kmOrder.value.trim();
+            if (!orderNumber || orderNumber === 'Betöltés...') {
+                alert('Nincs érvényes kamionszám megadva.');
+                return;
+            }
+
+            let seasonLabel = '';
+            try {
+                if (currentShipmentId) {
+                    const sRes = await fetch(`/api/v1/shipments/${currentShipmentId}`);
+                    if (sRes.ok) {
+                        const sData = await sRes.json();
+                        seasonLabel = sData.shipment?.season_code || '';
+                    }
+                }
+            } catch (e) {}
+            if (!seasonLabel) seasonLabel = '25-26';
+
+            try {
+                // Check if delivery note exists
+                const checkRes = await fetch(`/api/v1/uploads/delivery-note/${encodeURIComponent(seasonLabel)}/${encodeURIComponent(orderNumber)}/check`);
+                const checkData = await checkRes.json();
+
+                if (!checkRes.ok || !checkData.exists) {
+                    alert('Még nem történt szállítólevél feltöltés ehhez a kamionhoz.');
+                    openDeliveryNoteModal();
+                    return;
+                }
+
+                // File exists, open viewer modal
+                const fileName = checkData.fileName;
+                const fileUrl = `/api/v1/uploads/delivery-note/${encodeURIComponent(seasonLabel)}/${encodeURIComponent(orderNumber)}/${encodeURIComponent(fileName)}`;
+                const ext = fileName.split('.').pop().toLowerCase();
+
+                let previewHtml = '';
+                if (['pdf'].includes(ext)) {
+                    previewHtml = `<iframe src="${fileUrl}" style="width:100%; height:100%; border:none;"></iframe>`;
+                } else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
+                    previewHtml = `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:auto; background:#f8fafc;"><img src="${fileUrl}" style="max-width:100%; max-height:100%; object-fit:contain;"></div>`;
+                } else if (['docx'].includes(ext)) {
+                    previewHtml = `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; flex-direction:column; background:#f8fafc; gap:16px;" id="docx-container-preview">
+                        <div style="width:36px; height:36px; border:3px solid #cbd5e1; border-top-color:#2563eb; border-radius:50%; animation:spin 1s linear infinite;"></div>
+                        <span style="font-size:13px; color:#64748b;">DOCX betöltése...</span>
+                    </div>`;
+
+                    // Asynchronously fetch HTML and inject it
+                    setTimeout(async () => {
+                        try {
+                            const docxRes = await fetch(`${fileUrl}/html`);
+                            const docxData = await docxRes.json();
+                            const container = document.getElementById('docx-container-preview');
+                            if (container) {
+                                if (docxRes.ok && docxData.html) {
+                                    container.innerHTML = `<div style="padding: 24px; font-family: 'Segoe UI', sans-serif; background: #fff; color: #1e293b; line-height: 1.6; height: 100%; box-sizing: border-box; text-align: left;">${docxData.html}</div>`;
+                                    container.style.display = 'block'; // remove flex centering
+                                } else {
+                                    container.innerHTML = `<div style="padding: 24px; color: #dc2626;">Hiba a DOCX előnézet generálásakor: ${docxData.error || 'Ismeretlen hiba'}</div>`;
+                                }
+                            }
+                        } catch (err) {
+                            const container = document.getElementById('docx-container-preview');
+                            if (container) container.innerHTML = `<div style="padding: 24px; color: #dc2626;">Hálózati hiba a DOCX betöltésekor.</div>`;
+                        }
+                    }, 100);
+
+                } else {
+                    previewHtml = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:16px;">
+                        <span style="font-size:48px;">📄</span>
+                        <p style="font-size:14px; color:#334155;">A ${ext.toUpperCase()} fájl előnézete nem támogatott a böngészőben.</p>
+                        <a href="${fileUrl}" download class="primary-btn" style="text-decoration:none;">Fájl letöltése</a>
+                    </div>`;
+                }
+
+                const modalContent = `
+                    <div style="display:flex; flex-direction:column; height:100%;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 20px; background:linear-gradient(135deg,#1e3a5f,#2563eb); border-radius:8px; margin-bottom:16px; flex-shrink:0;">
+                            <div>
+                                <div style="font-size:11px; color:rgba(255,255,255,0.7); font-weight:500; letter-spacing:0.5px; text-transform:uppercase;">Szállítólevél</div>
+                                <div style="font-size:14px; color:#fff; font-weight:700; margin-top:2px;">${fileName}</div>
+                            </div>
+                            <div style="display:flex; gap:8px; align-items:center;">
+                                <a href="${fileUrl}" download style="display:flex; align-items:center; gap:6px; background:#22c55e; color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer; text-decoration:none; transition:all 0.2s;">⬇️ Letöltés</a>
+                            </div>
+                        </div>
+                        <div style="flex:1; overflow:hidden; border-radius:8px; border:1px solid #e2e8f0; background:#fff;">
+                            ${previewHtml}
+                        </div>
+                    </div>`;
+
+                windowManager.createModal({
+                    title: '📄 Szállítólevél',
+                    width: 820,
+                    height: 660,
+                    content: modalContent
+                });
+
+            } catch (err) {
+                console.error(err);
+                alert('Hiba történt a szállítólevél lekérdezésekor: ' + err.message);
+            }
+        }
+
         let refFilter = ''; // aktív Reference szűrő
 
         function renderTable() {
@@ -934,7 +1038,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                     <td><input type="number" class="cell-edit" data-field="transport_bcn_per_plt" data-index="${index}"
                         style="${numCellStyle} width:60px;" value="${isEmpty ? '' : escHtml(l.transport_bcn_per_plt)}" min="0" step="0.01" placeholder="0"></td>
                     <td><input type="text" class="cell-edit" data-field="customer_order_no" data-index="${index}"
-                        style="${cellStyle} min-width:100px;" value="${isEmpty ? '' : escHtml(l.customer_order_no)}"></td>
+                        style="${cellStyle} min-width:100px; ${!isEmpty && l.customer_order_no ? 'color:#2563eb; text-decoration:underline; cursor:pointer; font-weight:600;' : ''}" value="${isEmpty ? '' : escHtml(l.customer_order_no)}" title="${!isEmpty && l.customer_order_no ? 'Kattints a szállítólevél megnyitásához' : ''}"></td>
                     <td><input type="text" class="cell-edit" data-field="albaran_number" data-index="${index}"
                         style="${cellStyle} min-width:100px;" value="${isEmpty ? '' : escHtml(l.albaran_number)}"></td>
                     <td><input type="text" class="cell-edit" data-field="truck_number_per" data-index="${index}"
@@ -972,6 +1076,15 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                         }
                     }
                     updateTableTotals(updated);
+                });
+            });
+
+            // Kattintás esemény a Customer order N° (szállítólevél) megnyitásához
+            tbody.querySelectorAll('.cell-edit[data-field="customer_order_no"]').forEach(inp => {
+                inp.addEventListener('click', (e) => {
+                    if (inp.value.trim() !== '') {
+                        openDeliveryNoteViewer();
+                    }
                 });
             });
 

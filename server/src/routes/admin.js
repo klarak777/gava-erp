@@ -80,6 +80,18 @@ router.put('/:table/:id', async (req, res) => {
 
   try {
     const payload = req.body;
+    
+    // Partner szerkesztésénél a frontend `full_name` mezőt küld a partner nevére
+    if (table === 'partners') {
+        if (payload.full_name !== undefined) {
+            payload.name = payload.full_name;
+            delete payload.full_name;
+        }
+        if (payload.short_name !== undefined) {
+            delete payload.short_name;
+        }
+    }
+    
     await db(table).where('id', id).update(payload);
     const updatedRecord = await db(table).where('id', id).first();
     res.json(updatedRecord);

@@ -23,6 +23,73 @@ const upload = multer({ storage });
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+// A három fő szerepkör-kategória. Ezekre érvényes a globális névegyediség:
+// egy néven belül kategóriánként csak EGY aktív azonosító létezhet a rendszerben.
+// Ugyanazon a partneren belül több alias megengedett (pl. CASI / CASI AIRPORT).
+const ROLE_ID_TYPES = ['(Reference) Szállítók', '(Customer) Vevők', 'Fuvarozók'];
+
+function normalizeIdentifierValue(value) {
+  return (value || '').trim().toUpperCase();
+}
+
+/**
+ * Ellenőrzi, hogy a partnerhez menteni kívánt aktív szerepkör-azonosítók
+ * nem ütköznek-e egymással, illetve más partner már aktív azonosítójával.
+ * Ütközés esetén 400-as hibát dob, így a mentés tranzakciója visszagördül.
+ *
+ * A `partner_identifiers` táblán ugyanezt a szabályt egy részleges egyedi index is
+ * védi (042 migráció) — ez a függvény adja hozzá az érthető magyar hibaüzenetet.
+ */
+async function assertRoleIdentifiersUnique(trx, partnerId, identifiers) {
+  if (!Array.isArray(identifiers)) return;
+
+  const active = identifiers.filter(i =>
+    ROLE_ID_TYPES.includes(i.id_type) && !i.is_inactive && normalizeIdentifierValue(i.value)
+  );
+  if (active.length === 0) return;
+
+  // 1. Ütközés a beküldött listán belül
+  const seen = new Map();
+  for (const i of active) {
+    const key = `${i.id_type}::${normalizeIdentifierValue(i.value)}`;
+    if (seen.has(key)) {
+      const err = new Error(
+        `A(z) "${i.value}" név kétszer szerepel aktívként a "${i.id_type}" szerepkörben. ` +
+        `Egy néven belül csak egy aktív azonosító lehet.`
+      );
+      err.statusCode = 400;
+      throw err;
+    }
+    seen.set(key, i);
+  }
+
+  // 2. Ütközés másik partner aktív azonosítójával
+  const conflicts = await trx('partner_identifiers as pi')
+    .join('partners as p', 'p.id', 'pi.partner_id')
+    .whereIn('pi.id_type', ROLE_ID_TYPES)
+    .andWhere('pi.is_inactive', false)
+    .andWhereNot('pi.partner_id', partnerId)
+    .select('pi.id_type', 'pi.value', 'p.id as partner_id', 'p.name as partner_name');
+
+  const taken = new Map();
+  for (const c of conflicts) {
+    taken.set(`${c.id_type}::${normalizeIdentifierValue(c.value)}`, c);
+  }
+
+  for (const i of active) {
+    const hit = taken.get(`${i.id_type}::${normalizeIdentifierValue(i.value)}`);
+    if (hit) {
+      const err = new Error(
+        `Ilyen névvel ("${i.value}") már van aktív azonosító a "${i.id_type}" szerepkörben, ` +
+        `a(z) "${hit.partner_name}" partnerhez rendelve (ID: ${hit.partner_id}). ` +
+        `Módosítsa a nevet, vagy előbb tegye inaktívvá a másikat.`
+      );
+      err.statusCode = 400;
+      throw err;
+    }
+  }
+}
+
 async function getPartnerFull(partnerId, trx) {
   const db_ = trx || db;
   const [partner, sites, communications, contacts, agents, identifiers,
@@ -63,8 +130,12 @@ async function getPartnerFull(partnerId, trx) {
 }
 
 async function saveSubTables(trx, partnerId, body) {
+  // Szerepkör-azonosítók egyediségének ellenőrzése MÉG a törlés-újraírás előtt,
+  // hogy ütközés esetén a teljes mentés visszagörduljön.
+  await assertRoleIdentifiersUnique(trx, partnerId, body.identifiers);
+
   const siteTempMap = {};
-  
+
   // 1. Sites: save first to get database IDs
   if (Array.isArray(body.sites)) {
     for (const site of body.sites) {
@@ -173,8 +244,17 @@ async function saveSubTables(trx, partnerId, body) {
 // GET /api/v1/partners?searchName=...&searchTax=...&searchCity=...&limit=100
 router.get('/', async (req, res) => {
   try {
-    const { searchName, searchTax, searchCity, limit = 200, offset = 0 } = req.query;
+    const { searchName, searchTax, searchCity, limit = 200, offset = 0, status } = req.query;
     let query = db('partners')
+      .modify(function(qb) {
+        if (status === 'active') {
+          qb.where(function() {
+            this.where('partners.is_inactive', false).orWhereNull('partners.is_inactive');
+          });
+        } else if (status === 'inactive') {
+          qb.where('partners.is_inactive', true);
+        }
+      })
       .leftJoin('partner_identifiers as pi_eu', function() {
         this.on('partners.id', '=', 'pi_eu.partner_id')
             .andOnVal('pi_eu.id_type', '=', 'Közösségi adószám');
@@ -259,6 +339,193 @@ router.get('/verify-vat/:vatNumber', async (req, res) => {
     console.error('VIES API hiba:', err);
     res.status(500).json({ error: 'Hiba a VIES ellenőrzés során: ' + err.message });
   }
+});
+
+// GET /api/v1/partners/archived/list - inaktív partnerek és aktív partnerek inaktív azonosítói
+router.get('/archived/list', async (req, res) => {
+  try {
+    const inactiveIdentifiers = await db('partner_identifiers').where('is_inactive', true);
+    const inactivePartners = await db('partners').where('is_inactive', true);
+    
+    const activePartnerIdsWithInactiveIdentifiers = [...new Set(inactiveIdentifiers.map(i => i.partner_id))];
+    const activePartnersWithInactiveIdens = await db('partners')
+        .where(b => b.where('is_inactive', false).orWhereNull('is_inactive'))
+        .whereIn('id', activePartnerIdsWithInactiveIdentifiers);
+
+    const allPartners = [...inactivePartners, ...activePartnersWithInactiveIdens];
+
+    const result = allPartners.map(p => ({
+        ...p,
+        identifiers: inactiveIdentifiers.filter(i => i.partner_id === p.id)
+    }));
+    result.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    res.json(result);
+  } catch (err) {
+    console.error('Hiba archív lekérdezésekor:', err);
+    res.status(500).json({ error: 'Belső szerverhiba' });
+  }
+});
+
+// GET /api/v1/partners/active/search - karakteres keresés partner reassignhez
+router.get('/active/search', async (req, res) => {
+    try {
+        const q = req.query.q || '';
+        const includeInactive = req.query.include_inactive === 'true';
+        let query = db('partners');
+        
+        if (!includeInactive) {
+            query = query.where(b => b.where('is_inactive', false).orWhereNull('is_inactive'));
+        }
+        
+        const partners = await query
+            .andWhereRaw('LOWER(name) LIKE ?', [`${q.toLowerCase()}%`])
+            .select('id', 'name', 'is_inactive')
+            .limit(50);
+        res.json(partners);
+    } catch (err) {
+        res.status(500).json({ error: 'Belső szerverhiba' });
+    }
+});
+
+// PUT /api/v1/partners/identifiers/:id/reassign
+router.put('/identifiers/:id/reassign', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { target_partner_id } = req.body;
+        
+        const identifier = await db('partner_identifiers').where('id', id).first();
+        if (!identifier) return res.status(404).json({ error: 'Azonosító nem található' });
+
+        const targetPartner = await db('partners').where('id', target_partner_id).first();
+        if (!targetPartner) return res.status(404).json({ error: 'Cél partner nem található' });
+
+        if (!identifier.is_inactive && targetPartner.is_inactive) {
+            return res.status(400).json({ error: 'Aktív azonosítót nem lehet inaktív partnerhez rendelni!' });
+        }
+
+        // Aktív szerepkör áthelyezésekor a globális névegyediség itt is érvényes:
+        // a célpartnernél (vagy bárhol máshol) nem lehet már aktív ugyanez a név.
+        if (!identifier.is_inactive && ROLE_ID_TYPES.includes(identifier.id_type)) {
+            const conflict = await db('partner_identifiers as pi')
+                .join('partners as p', 'p.id', 'pi.partner_id')
+                .where('pi.id_type', identifier.id_type)
+                .whereRaw('UPPER(TRIM(pi.value)) = ?', [normalizeIdentifierValue(identifier.value)])
+                .andWhere('pi.is_inactive', false)
+                .andWhereNot('pi.id', identifier.id)
+                .select('p.name as partner_name')
+                .first();
+
+            if (conflict) {
+                return res.status(400).json({
+                    error: `Ilyen névvel ("${identifier.value}") már van aktív azonosító a "${identifier.id_type}" ` +
+                           `szerepkörben, a(z) "${conflict.partner_name}" partnerhez rendelve!`
+                });
+            }
+        }
+
+        if (req.query.dry_run === 'true') {
+            return res.json({ success: true, message: 'Valid' });
+        }
+
+        await db('partner_identifiers').where('id', id).update({ partner_id: target_partner_id, updated_at: new Date() });
+        res.json({ success: true });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Szerverhiba' });
+    }
+});
+
+// PUT /api/v1/partners/identifiers/:id/activate
+router.put('/identifiers/:id/activate', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const identifier = await db('partner_identifiers').where('id', id).first();
+        if (!identifier) return res.status(404).json({ error: 'Azonosító nem található' });
+
+        const partner = await db('partners').where('id', identifier.partner_id).first();
+        if (partner.is_inactive) {
+            return res.status(400).json({ error: 'Inaktív partner azonosítóját nem lehet aktiválni! Előbb a partnert kell aktiválni.' });
+        }
+
+        const roleCategory = identifier.id_type;
+        if (ROLE_ID_TYPES.includes(roleCategory)) {
+            // Globális névegyediség: ugyanazon a partneren belül több alias megengedett
+            // (pl. CASI / CASI AIRPORT), de két különböző partner nem viselheti
+            // ugyanazt az aktív szerepkör-nevet.
+            const globallyExisting = await db('partner_identifiers')
+                .join('partners', 'partners.id', 'partner_identifiers.partner_id')
+                .where('partner_identifiers.id_type', roleCategory)
+                .whereRaw('UPPER(TRIM(partner_identifiers.value)) = ?', [normalizeIdentifierValue(identifier.value)])
+                .andWhere('partner_identifiers.is_inactive', false)
+                .andWhereNot('partner_identifiers.id', identifier.id)
+                .select('partners.name')
+                .first();
+
+            if (globallyExisting) {
+                return res.status(400).json({ error: `Ilyen névvel ("${identifier.value}") már van aktív azonosító a rendszerben, a(z) "${globallyExisting.name}" partnerhez rendelve!` });
+            }
+        }
+
+        await db('partner_identifiers').where('id', id).update({ is_inactive: false, updated_at: new Date() });
+        res.json({ success: true });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Szerverhiba' });
+    }
+});
+
+// PUT /api/v1/partners/identifiers/:id/deactivate
+router.put('/identifiers/:id/deactivate', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const identifier = await db('partner_identifiers').where('id', id).first();
+        if (!identifier) return res.status(404).json({ error: 'Azonosító nem található' });
+
+        await db('partner_identifiers').where('id', id).update({ is_inactive: true, updated_at: new Date() });
+        res.json({ success: true });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Szerverhiba' });
+    }
+});
+
+// DELETE /api/v1/partners/identifiers/:id
+router.delete('/identifiers/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const identifier = await db('partner_identifiers').where('id', id).first();
+        if (!identifier) return res.status(404).json({ error: 'Azonosító nem található' });
+
+        const val = (identifier.value || '').trim().toLowerCase();
+
+        // Fuvar ellenőrzések. A historikus táblák NÉV szerint hivatkoznak az
+        // azonosítóra (az albaran_number mező is a partner rövid nevét tárolja),
+        // ezért minden érintett szöveges oszlopot vizsgálunk.
+        const [usedInShipments, usedInShipmentLines, usedInCargo] = await Promise.all([
+            db('shipments').where('transporter_id', identifier.partner_id).first(),
+            db('shipment_lines')
+                .whereRaw('LOWER(TRIM(customer)) = ?', [val])
+                .orWhereRaw('LOWER(TRIM(destination)) = ?', [val])
+                .orWhereRaw('LOWER(TRIM(COALESCE(albaran_number, \'\'))) = ?', [val])
+                .first(),
+            db('cargo_demands')
+                .whereRaw('LOWER(TRIM(COALESCE(partner_name, \'\'))) = ?', [val])
+                .orWhereRaw('LOWER(TRIM(COALESCE(customer_name, \'\'))) = ?', [val])
+                .orWhereRaw('LOWER(TRIM(COALESCE(albaran_number, \'\'))) = ?', [val])
+                .orWhereRaw('LOWER(TRIM(COALESCE(destination, \'\'))) = ?', [val])
+                .first(),
+        ]);
+
+        if (usedInShipments || usedInShipmentLines || usedInCargo) {
+            return res.status(400).json({ error: 'Ezt az azonosítót nem lehet törölni, mert már hozzá van kötve korábbi fuvarokhoz vagy áru igényekhez! Tegye inkább inaktívvá — így az Archív partnerek modulban megmarad.' });
+        }
+
+        await db('partner_identifiers').where('id', id).del();
+        res.json({ success: true });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Szerverhiba' });
+    }
 });
 
 // GET /api/v1/partners/:id - teljes partner adat
@@ -373,6 +640,7 @@ router.post('/', async (req, res) => {
     const data = await getPartnerFull(partnerId);
     res.status(201).json(data);
   } catch (err) {
+    if (err.statusCode === 400) return res.status(400).json({ error: err.message });
     console.error('Hiba a partner mentésekor:', err);
     res.status(500).json({ error: 'Belső szerverhiba: ' + err.message });
   }
@@ -447,9 +715,42 @@ router.put('/:id', async (req, res) => {
     const data = await getPartnerFull(id);
     res.json(data);
   } catch (err) {
+    if (err.statusCode === 400) return res.status(400).json({ error: err.message });
     console.error('Hiba a partner frissítésekor:', err);
     res.status(500).json({ error: 'Belső szerverhiba: ' + err.message });
   }
+});
+
+// PUT /api/v1/partners/:id/status
+router.put('/:id/status', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { is_inactive } = req.body;
+        
+        const partner = await db('partners').where('id', id).first();
+        if (!partner) return res.status(404).json({ error: 'Partner nem található' });
+
+        if (is_inactive) {
+            // Check if there is any active identifier before archiving
+            const activeIdentifiers = await db('partner_identifiers')
+                .where('partner_id', id)
+                .where(b => b.where('is_inactive', false).orWhereNull('is_inactive'))
+                .select('id_type');
+            
+            const mainRoles = ['(Reference) Szállítók', '(Customer) Vevők', 'Fuvarozók'];
+            const hasActiveRole = activeIdentifiers.some(i => mainRoles.includes(i.id_type));
+            
+            if (hasActiveRole) {
+                return res.status(400).json({ error: 'Nem archiválható a partner, mert még van aktív fő szerepköre (Szállító / Vevő / Fuvarozó)!' });
+            }
+        }
+
+        await db('partners').where('id', id).update({ is_inactive: is_inactive ? true : false, updated_at: new Date() });
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Hiba a partner státuszának módosításakor:', err);
+        res.status(500).json({ error: 'Belső szerverhiba' });
+    }
 });
 
 // DELETE /api/v1/partners/:id

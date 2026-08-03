@@ -36,13 +36,20 @@ router.get('/', async (req, res) => {
       .join('partners as p', 'p.id', 'pi.partner_id')
       .whereIn('pi.id_type', idType)
       .andWhere('p.is_active', true)
+      // Az archivált partnerek (is_inactive) szerepkörei sem jelenhetnek meg.
+      // A partners táblán két külön oszlop létezik: az is_active a régi generic
+      // admin törléshez tartozik, az is_inactive az Archív partnerek moduléhoz.
+      .andWhere(function() {
+        this.where('p.is_inactive', false).orWhereNull('p.is_inactive');
+      })
       .andWhere(function() {
         this.where('pi.is_inactive', false).orWhereNull('pi.is_inactive');
       })
       .select(
         'p.id as id',
         'p.name as name',
-        'pi.value as short_name'
+        'pi.value as short_name',
+        'pi.id as identifier_id'
       )
       .orderBy('pi.value', 'asc');
 
@@ -53,6 +60,7 @@ router.get('/', async (req, res) => {
       name: r.short_name || r.name, // Use short_name as primary display name
       full_name: r.name,
       short_name: r.short_name || r.name,
+      identifier_id: r.identifier_id
     }));
 
     res.json(result);

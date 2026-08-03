@@ -36,6 +36,7 @@ export const NAV_CATEGORIES = [
                     { id: 'admin-references', label: 'Reference', icon: '🏢', desc: 'Szállítók / Partnerek' },
                     { id: 'admin-customers', label: 'Customer', icon: '🛒', desc: 'Vevők' },
                     { id: 'admin-transporters', label: 'Fuvarozó cég', icon: '🚚', desc: 'Fuvarozók' },
+                    { id: 'admin-archived-partners', label: 'Archív partnerek', icon: '🗄️', desc: 'Inaktív partnerek és szerepköreik' },
                     { id: 'admin-finance-trucks', label: 'Type Truck (Pénzügyi)', icon: '🚛', desc: 'Pénzügyi kamion típusok' },
                     { id: 'admin-finance-tax-rates', label: 'TpTAX (Adókulcsok)', icon: '💰', desc: 'Pénzügyi adókulcsok' },
                     { id: 'admin-currencies', label: 'Currencies (Devizák)', icon: '💱', desc: 'Pénznemek kezelése' },

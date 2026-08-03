@@ -357,7 +357,7 @@ function prtBindListEvents(container) {
 }
 
 async function prtLoadList(searchName = '', searchTax = '', searchCity = '') {
-  let url = `?limit=300`;
+  let url = `?limit=300&status=active`;
   if (searchName) url += `&searchName=${encodeURIComponent(searchName)}`;
   if (searchTax) url += `&searchTax=${encodeURIComponent(searchTax)}`;
   if (searchCity) url += `&searchCity=${encodeURIComponent(searchCity)}`;
@@ -749,11 +749,11 @@ function prtBuildEgyebAdatokPanel(p, data) {
         <button class="prt-toolbar-btn danger" id="ident-del-btn">🗑️</button>
         <button class="prt-toolbar-btn" id="ident-verify-btn" style="color:var(--text-primary);">ABC Ellenőrzés</button>
       </div>
-      <div class="prt-subtable-wrap" style="min-height:120px; max-height:250px; overflow-y:auto; overscroll-behavior:contain; border:1px solid var(--border); background:var(--surface); border-radius:0 0 8px 8px;">
-        <table class="prt-subtable" id="ident-table">
-          <thead><tr><th>Típus</th><th>Érték</th><th>É</th><th>Ellenőrizve</th><th title="Inaktív azonosítók nem jelennek meg az Admin modulban és a legördülőkben">Inaktív</th></tr></thead>
+      <div class="prt-subtable-wrap" style="min-height:120px; max-height:250px; overflow-y:auto; overscroll-behavior:contain; border:1px solid var(--border); background:var(--surface); border-radius:0 0 8px 8px; position:relative; overflow:visible;">
+        <table class="prt-subtable" id="ident-table" style="position:relative;">
+          <thead><tr><th>Típus</th><th>Érték</th><th>É</th><th>Ellenőrizve</th><th title="Inaktív azonosítók nem jelennek meg az Admin modulban és a legördülőkben">Inaktív</th><th>Művelet</th></tr></thead>
           <tbody>
-            ${idents.map(i=>`<tr data-id="${i.id||''}" style="${i.is_inactive ? 'opacity:0.45; background:rgba(255,80,80,0.06);' : ''}">
+            ${idents.map(i=>`<tr data-id="${i.id||''}" style="${i.is_inactive ? 'display:none;' : ''}">
               <td><select class="ident-type" style="background:var(--bg-light); min-width:160px;" ${i.id_type==='Adószám' ? 'disabled' : ''}>
                 <option value="Adószám" ${i.id_type==='Adószám'?'selected':''}>Adószám</option>
                 <option value="CCW + Kód" ${i.id_type==='CCW + Kód'?'selected':''}>CCW + Kód</option>
@@ -772,6 +772,13 @@ function prtBuildEgyebAdatokPanel(p, data) {
               <td><input type="text" class="ident-checked-by" value="${prtEsc(i.checked_by)}" style="width:120px; background:var(--bg-light); ${['Adószám', 'Közösségi adószám'].includes(i.id_type) ? '' : 'display:none'}" readonly></td>
               <td style="text-align:center">
                 <input type="checkbox" class="ident-inactive" title="Inaktív: nem jelenik meg az Admin modulban és a legördülőkben" style="visibility: ${['(Reference) Szállítók', '(Customer) Vevők', 'Fuvarozók'].includes(i.id_type) ? 'visible' : 'hidden'}" ${i.is_inactive ? 'checked' : ''}>
+              </td>
+              <td style="position:relative;">
+                <button class="prt-toolbar-btn ident-reassign-btn" title="Áthelyezés másik partnerhez" style="padding:2px 6px;">🔄</button>
+                <div class="ident-reassign-dropdown" style="position:absolute; right:100%; top:0; background:white; border:1px solid #ccc; border-radius:4px; box-shadow:0 4px 6px rgba(0,0,0,0.1); width:200px; z-index:100; display:none; flex-direction:column; padding:8px;">
+                    <input type="text" class="ident-reassign-input" placeholder="Partner keresése..." style="width:100%; padding:4px; font-size:11px; box-sizing:border-box; margin-bottom:4px;">
+                    <ul class="ident-reassign-list" style="max-height:120px; overflow-y:auto; list-style:none; margin:0; padding:0;"></ul>
+                </div>
               </td>
             </tr>`).join('')}
           </tbody>
@@ -1264,6 +1271,65 @@ function prtBindModal(overlay, listContainer, id) {
   naturalCb?.addEventListener('change', updateTaxIdField);
   updateTaxIdField(); // Kezdeti állapot beállítása
 
+  // ── Partner archiválás ──
+  const inactiveCb = overlay.querySelector('#prt-f-inactive');
+  if (inactiveCb) {
+    inactiveCb.addEventListener('click', async (e) => {
+      e.preventDefault();
+      if (!id) {
+        alert('Új partnert nem lehet azonnal archiválni! Előbb mentsd el.');
+        return;
+      }
+      
+      const willBeInactive = inactiveCb.checked;
+
+      if (willBeInactive) {
+        // Validate local rows for active roles
+        let hasActive = false;
+        overlay.querySelectorAll('#ident-table tbody tr').forEach(tr => {
+            const isInactive = tr.querySelector('.ident-inactive')?.checked;
+            const role = tr.querySelector('.ident-type')?.value;
+            if (!isInactive && ['(Reference) Szállítók', '(Customer) Vevők', 'Fuvarozók'].includes(role)) {
+                hasActive = true;
+            }
+        });
+        if (hasActive) {
+            alert('Nem archiválható a partner, mert még van aktív fő szerepköre (Szállító / Vevő / Fuvarozó)!');
+            return;
+        }
+        
+        if (!confirm('Biztosan inaktív státuszba (Archívba) helyezed ezt a partnert?')) return;
+      } else {
+        if (!confirm('Biztosan aktiválod ezt a partnert?')) return;
+      }
+      
+      try {
+        const res = await fetch(`/api/v1/partners/${id}/status`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ is_inactive: willBeInactive })
+        });
+        const result = await res.json();
+        if (result.error) throw new Error(result.error);
+        
+        inactiveCb.checked = willBeInactive;
+        alert(willBeInactive ? 'Partner archiválva!' : 'Partner aktiválva!');
+        
+        // Refresh list
+        if (listContainer) {
+            const sName = listContainer.querySelector('#prt-search-name').value;
+            const sTax = listContainer.querySelector('#prt-search-tax').value;
+            const sCity = listContainer.querySelector('#prt-search-city').value;
+            await prtLoadList(sName, sTax, sCity);
+            listContainer.querySelector('#prt-tbody').innerHTML = prtGetRowsHtml();
+            prtBindListEvents(listContainer);
+        }
+      } catch (err) {
+        alert('Hiba: ' + err.message);
+      }
+    });
+  }
+
   // Alfülek (subtab) – általános kötés
   function bindSubtabs(scope) {
     scope.querySelectorAll('.prt-subtab').forEach(tab => {
@@ -1445,9 +1511,37 @@ function prtBindModal(overlay, listContainer, id) {
       prtSaveActiveSiteToMemory(overlay, selectedSiteIndex);
     }
   });
-  bindSubtable('ident-add-btn','ident-del-btn','ident-table', () =>
-    `<td><select class="ident-type" style="min-width:160px"><option value="Adószám">Adószám</option><option value="CCW + Kód">CCW + Kód</option><option value="Csoportos adószám">Csoportos adószám</option><option value="FELIR azonosító">FELIR azonosító</option><option value="NEBIH">NEBIH</option><option value="(Reference) Szállítók">(Reference) Szállítók</option><option value="(Customer) Vevők">(Customer) Vevők</option><option value="Fuvarozók">Fuvarozók</option></select></td><td><input type="text" class="ident-value"></td><td style="text-align:center"><span class="ident-status" style="display:none">—</span><input type="hidden" class="ident-verified" value="0"></td><td><input type="text" class="ident-checked-by" style="width:120px;display:none" readonly></td><td style="text-align:center"><input type="checkbox" class="ident-inactive" title="Inaktív: nem jelenik meg az Admin modulban és a legördülőkben" style="visibility:hidden"></td>`);
+  bindSubtable('ident-add-btn',null,'ident-table', () =>
+    `<td><select class="ident-type" style="min-width:160px"><option value="Adószám">Adószám</option><option value="CCW + Kód">CCW + Kód</option><option value="Csoportos adószám">Csoportos adószám</option><option value="FELIR azonosító">FELIR azonosító</option><option value="NEBIH">NEBIH</option><option value="(Reference) Szállítók">(Reference) Szállítók</option><option value="(Customer) Vevők">(Customer) Vevők</option><option value="Fuvarozók">Fuvarozók</option></select></td><td><input type="text" class="ident-value"></td><td style="text-align:center"><span class="ident-status" style="display:none">—</span><input type="hidden" class="ident-verified" value="0"></td><td><input type="text" class="ident-checked-by" style="width:120px;display:none" readonly></td><td style="text-align:center"><input type="checkbox" class="ident-inactive" title="Inaktív: nem jelenik meg az Admin modulban és a legördülőkben" style="visibility:hidden"></td><td style="position:relative;"></td>`);
   const identTable = overlay.querySelector('#ident-table');
+  const identDelBtn = overlay.querySelector('#ident-del-btn');
+  if (identDelBtn && identTable) {
+      identDelBtn.addEventListener('click', async () => {
+          const selected = identTable.querySelector('tr.selected');
+          if (!selected) {
+              alert('Válassz ki egy sort a törléshez (kattints rá)!');
+              return;
+          }
+          const id = selected.dataset.id;
+          if (!id) {
+              selected.remove();
+              return;
+          }
+          if (!confirm('Biztosan törlöd ezt az azonosítót az adatbázisból? A törlés nem vonható vissza!')) return;
+          try {
+              const res = await fetch(`/api/v1/partners/identifiers/${id}`, { method: 'DELETE' });
+              const data = await res.json();
+              if (data.error) {
+                  alert(data.error);
+                  return;
+              }
+              selected.remove();
+              alert('Sikeres törlés!');
+          } catch (err) {
+              alert('Hiba a törlés során: ' + err.message);
+          }
+      });
+  }
 
   // ── Identifiers Uniqueness Logic ──
   if (identTable) {
@@ -1519,20 +1613,40 @@ function prtBindModal(overlay, listContainer, id) {
     });
 
     identTable.addEventListener('click', async (e) => {
+      // ── Inaktív checkbox toggle ──
       if (e.target.classList.contains('ident-inactive')) {
         const cb = e.target;
         const row = cb.closest('tr');
+        const id = row.dataset.id;
         const type = row.querySelector('.ident-type').value;
         const val = row.querySelector('.ident-value').value.trim();
         
-        // cb.checked most a már módosított (ÚJ) állapotot mutatja, mert nem hívtunk preventDefault-ot.
-        // Ha true, akkor INAKTÍV-vá tette a UI-on.
+        // Ha nincs mentve, csak simán billenjen a checkbox, ne hívjon API-t
+        if (!id) {
+            if (cb.checked) {
+                if (!confirm('Biztosan inaktívvá teszi ezt a szerepkört? A partnerek legördülő listáiban nem fog megjelenni.')) {
+                    cb.checked = false;
+                }
+            }
+            return;
+        }
+
         if (cb.checked) {
           if (!confirm('Biztosan inaktívvá teszi ezt a szerepkört? A partnerek legördülő listáiban nem fog megjelenni.')) {
             cb.checked = false; // Visszavonjuk
+            return;
+          }
+          // API hívás inaktiválásra
+          try {
+             const res = await fetch(`/api/v1/partners/identifiers/${id}/deactivate`, { method: 'PUT' });
+             const data = await res.json();
+             if (data.error) throw new Error(data.error);
+             row.style.opacity = '0.45'; row.style.background = 'rgba(255,80,80,0.06)';
+          } catch (err) {
+             alert(err.message);
+             cb.checked = false;
           }
         } else {
-          // Ha false, akkor AKTÍV-vá tette a UI-on.
           if (!val) {
             cb.checked = true; // Visszavonjuk
             return;
@@ -1540,12 +1654,12 @@ function prtBindModal(overlay, listContainer, id) {
           
           try {
             // Először ellenőrizzük, hogy létezik-e már máshol aktívként
-            const id = window.prtCurrentPartnerId || 'null';
-            const res = await fetch(`/api/v1/partners/check-identifier/active?type=${encodeURIComponent(type)}&value=${encodeURIComponent(val)}&exclude_id=${id}`);
-            const data = await res.json();
+            const pid = window.prtCurrentPartnerId || 'null';
+            const checkRes = await fetch(`/api/v1/partners/check-identifier/active?type=${encodeURIComponent(type)}&value=${encodeURIComponent(val)}&exclude_id=${pid}`);
+            const checkData = await checkRes.json();
             
-            if (data.exists) {
-              const pName = data.duplicate?.partner_name || 'ismeretlen';
+            if (checkData.exists) {
+              const pName = checkData.duplicate?.partner_name || 'ismeretlen';
               alert(`Már létezik aktív szerepkör ezzel a névvel egy másik partnernél: ${pName}. Kérjük, előbb módosítsa az azonosító nevét!`);
               cb.checked = true; // Visszavonjuk
               return;
@@ -1553,14 +1667,87 @@ function prtBindModal(overlay, listContainer, id) {
             
             if (!confirm('Biztosan újra aktívvá teszi ezt a szerepkört?')) {
               cb.checked = true; // Visszavonjuk
+              return;
             }
+
+            // API hívás aktiválásra
+            const res = await fetch(`/api/v1/partners/identifiers/${id}/activate`, { method: 'PUT' });
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+            row.style.opacity = '1'; row.style.background = '';
           } catch (err) {
-            console.error('Hiba az ellenőrzés során:', err);
-            alert('Hálózati hiba történt az azonosító ellenőrzése során.');
+            console.error('Hiba az ellenőrzés/aktiválás során:', err);
+            alert(err.message || 'Hálózati hiba történt.');
             cb.checked = true; // Visszavonjuk
           }
         }
       }
+
+      // ── Áthelyezés gomb ──
+      if (e.target.closest('.ident-reassign-btn')) {
+          e.stopPropagation();
+          const btn = e.target.closest('.ident-reassign-btn');
+          const row = btn.closest('tr');
+          const id = row.dataset.id;
+          if (!id) {
+              alert('Kérjük, előbb mentse el a partnert, mielőtt azonosítót helyezne át!');
+              return;
+          }
+          
+          identTable.querySelectorAll('.ident-reassign-dropdown').forEach(d => d.style.display = 'none');
+          const drop = row.querySelector('.ident-reassign-dropdown');
+          drop.style.display = 'flex';
+          const inp = drop.querySelector('input');
+          inp.focus();
+          
+          let searchTimeout;
+          inp.oninput = () => {
+              clearTimeout(searchTimeout);
+              searchTimeout = setTimeout(async () => {
+                  const query = inp.value;
+                  const ul = drop.querySelector('ul');
+                  if (query.length < 2) {
+                      ul.innerHTML = '<li style="padding:4px; font-size:11px;">Gépelj legalább 2 karaktert...</li>';
+                      return;
+                  }
+                  try {
+                      const res = await fetch(`/api/v1/partners/active/search?q=${encodeURIComponent(query)}`);
+                      const items = await res.json();
+                      if (!items.length) {
+                          ul.innerHTML = '<li style="padding:4px; font-size:11px;">Nincs találat</li>';
+                          return;
+                      }
+                      ul.innerHTML = items.map(i => `<li data-pid="${i.id}" style="padding:4px; font-size:11px; cursor:pointer; border-bottom:1px solid #f1f1f1;">${i.name}</li>`).join('');
+                      ul.querySelectorAll('li').forEach(li => {
+                          li.addEventListener('click', async (ev) => {
+                              ev.stopPropagation();
+                              if (!confirm('Biztosan áthelyezed az azonosítót a kiválasztott partnerhez?')) return;
+                              try {
+                                  const rRes = await fetch(`/api/v1/partners/identifiers/${id}/reassign`, {
+                                      method: 'PUT',
+                                      headers: {'Content-Type': 'application/json'},
+                                      body: JSON.stringify({ target_partner_id: li.dataset.pid })
+                                  });
+                                  const rData = await rRes.json();
+                                  if (rData.error) throw new Error(rData.error);
+                                  alert('Sikeres áthelyezés!');
+                                  row.remove();
+                              } catch (err) {
+                                  alert(err.message);
+                              }
+                          });
+                      });
+                  } catch (err) {
+                      ul.innerHTML = '<li style="padding:4px; font-size:11px;">Hiba a kereséskor</li>';
+                  }
+              }, 300);
+          };
+      }
+    });
+
+    // Close dropdowns on outside click
+    document.addEventListener('click', () => {
+        identTable?.querySelectorAll('.ident-reassign-dropdown').forEach(d => d.style.display = 'none');
     });
 
     // Run initially and after adding a row
