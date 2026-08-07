@@ -676,13 +676,26 @@ export function initAiChat() {
         const windows = window.gavaWindowManager.getWindows();
         windows.forEach(win => {
             const formData = {};
+            const gridData = {};
             if (win.contentElement) {
                 const inputs = win.contentElement.querySelectorAll('input, select, textarea');
                 inputs.forEach(input => {
-                    if (input.name || input.id) {
+                    if (input.dataset && input.dataset.index !== undefined && input.dataset.field) {
+                        const idx = input.dataset.index;
+                        const field = input.dataset.field;
+                        if (input.value && input.value.trim() !== '') {
+                            if (!gridData[idx]) gridData[idx] = {};
+                            gridData[idx][field] = input.value;
+                        }
+                    } else if (input.name || input.id) {
                         formData[input.name || input.id] = input.value;
                     }
                 });
+            }
+            
+            const tableRows = Object.values(gridData).filter(row => Object.keys(row).length > 0);
+            if (tableRows.length > 0) {
+                formData['table_rows'] = tableRows;
             }
             context.push({
                 id: win.id,
