@@ -95,7 +95,7 @@ ${contextText}
         }
         historyAndUser.push({ role: 'user', content: userPrompt });
 
-        const model = process.env.AI_CHAT_MODEL || 'gpt-4o';
+        const model = process.env.AI_CHAT_MODEL || 'gpt-5.5';
 
         return await runWithTools({
             openai: this.openai,

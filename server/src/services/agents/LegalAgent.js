@@ -142,7 +142,7 @@ ${contextText}
         }
         messages.push({ role: 'user', content: userPrompt });
 
-        const model = process.env.AI_CHAT_MODEL || 'gpt-4o';
+        const model = process.env.AI_CHAT_MODEL || 'gpt-5.5';
 
         if (onEvent) {
             const stream = await this.openai.chat.completions.create({

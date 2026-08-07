@@ -102,7 +102,7 @@ class AgentManager {
 
         if (onEvent) {
             const stream = await this.openai.chat.completions.create({
-                model: process.env.AI_CHAT_MODEL || 'gpt-4o',
+                model: process.env.AI_CHAT_MODEL || 'gpt-5.5',
                 messages,
                 stream: true
             });
@@ -118,7 +118,7 @@ class AgentManager {
         }
 
         const response = await this.openai.chat.completions.create({
-            model: process.env.AI_CHAT_MODEL || 'gpt-4o',
+            model: process.env.AI_CHAT_MODEL || 'gpt-5.5',
             messages
         });
         return response.choices[0].message.content;
