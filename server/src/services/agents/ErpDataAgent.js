@@ -33,10 +33,15 @@ Gyorsgombok (quick replies):
             systemPrompt += `\n\nUI Kontextus (A felhasználó jelenleg megnyitott ablakai):\n`;
             uiContext.forEach(win => {
                 systemPrompt += `- Ablak címe: ${win.title} (Aktív: ${win.isActive ? 'Igen' : 'Nem'})\n`;
+                if (win.shipmentData) {
+                    systemPrompt += `  TÉNYLEGES FUVAR/KAMION ADATOK A KÉPERNYŐN (DOM független, pontos JS adat):\n`;
+                    systemPrompt += `  ${JSON.stringify(win.shipmentData, null, 2).replace(/\n/g, '\n  ')}\n`;
+                }
                 if (win.formData && Object.keys(win.formData).length > 0) {
                     systemPrompt += `  Űrlapmezők:\n`;
                     for (const [key, value] of Object.entries(win.formData)) {
-                        systemPrompt += `    ${key}: ${value}\n`;
+                        const valStr = typeof value === 'object' ? JSON.stringify(value) : value;
+                        systemPrompt += `    ${key}: ${valStr}\n`;
                     }
                 }
             });
