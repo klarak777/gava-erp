@@ -21,12 +21,15 @@ services:
       dockerfile: Dockerfile
     container_name: gava_erp_prod_api
     restart: always
+    env_file:
+      - ./server/.env.prod
     environment:
       DATABASE_URL: postgresql://gava_admin:adminpassword123@gava_db:5432/gava_erp
       NODE_ENV: production
       PORT: 3000
       NODE_OPTIONS: '--max-old-space-size=512'
       RAKTAR_PATH: /mnt/raktar
+      JWT_SECRET: super_secret_jwt_key_for_gava
     volumes:
       - /mnt/raktar:/mnt/raktar
     depends_on:

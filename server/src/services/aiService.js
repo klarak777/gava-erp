@@ -5,9 +5,12 @@ const xlsx = require('xlsx');
 const mammoth = require('mammoth');
 const AgentManager = require('./agents/AgentManager');
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openai = null;
+if (process.env.OPENAI_API_KEY) {
+  openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+} else {
+  console.warn('⚠️  OPENAI_API_KEY nincs beállítva – az MI Asszisztens modul nem lesz elérhető.');
+}
 
 /**
  * Split text into roughly max length chunks.
