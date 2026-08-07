@@ -75,4 +75,11 @@ app.use('/api/v1/ai', aiRouter);
 // Szerver indítása
 app.listen(PORT, () => {
   console.log(`[SERVER] A backend API elindult a http://localhost:${PORT} címen`);
+  
+  // Időszakos takarítás: elinduláskor és 6 óránként törli az 1 napnál régebbi ideiglenes MI fájlokat
+  const aiService = require('./src/services/aiService');
+  aiService.cleanupOldTemporaryDocuments(24);
+  setInterval(() => {
+    aiService.cleanupOldTemporaryDocuments(24);
+  }, 6 * 60 * 60 * 1000);
 });

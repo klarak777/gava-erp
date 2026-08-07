@@ -221,6 +221,29 @@ async function deleteDocument(documentId) {
 }
 
 /**
+ * Automatikus takarítás: Törli az 1 napnál régebbi ideiglenes (nem állandó) feltöltött dokumentumokat
+ */
+async function cleanupOldTemporaryDocuments(hoursOld = 24) {
+  try {
+    const cutoff = new Date(Date.now() - hoursOld * 60 * 60 * 1000);
+    const oldDocs = await db('ai_documents')
+      .where(function() {
+        this.where('is_permanent', false).orWhereNull('is_permanent');
+      })
+      .andWhere('created_at', '<', cutoff);
+
+    for (const doc of oldDocs) {
+      await deleteDocument(doc.id);
+    }
+    if (oldDocs.length > 0) {
+      console.log(`🧹 ${oldDocs.length} db régi ideiglenes MI dokumentum törölve az adatbázisból.`);
+    }
+  } catch (err) {
+    console.error('Hiba az ideiglenes dokumentumok takarításakor:', err);
+  }
+}
+
+/**
  * Execute or log an AI proposed action
  */
 async function executeAiAction(actionName, payload, decision, userId) {
@@ -267,5 +290,6 @@ module.exports = {
   getOptionsForDocument,
   generateChatResponse,
   deleteDocument,
+  cleanupOldTemporaryDocuments,
   executeAiAction
 };

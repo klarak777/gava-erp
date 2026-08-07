@@ -610,14 +610,24 @@ export function initAiChat() {
         }
     });
 
-    // Aktív dokumentum leválasztása – az általános kérdések ismét RAG nélkül futnak
-    detachDocBtn.addEventListener('click', () => {
-        currentDocumentId = null;
-        activeDocDiv.style.display = 'none';
-        activeDocName.textContent = '';
-        optionsSection.style.display = 'none';
-        optionsSection.innerHTML = '';
-        addMessage('📄 Dokumentum leválasztva. Általános kérdésekre is tudok válaszolni.', 'system');
+    // Aktív dokumentum leválasztása – töröljük a fizikai adatbázisból is a temporary vektort!
+    detachDocBtn.addEventListener('click', async () => {
+        if (currentDocumentId) {
+            const docIdToDelete = currentDocumentId;
+            currentDocumentId = null;
+            activeDocDiv.style.display = 'none';
+            activeDocName.textContent = '';
+            optionsSection.style.display = 'none';
+            optionsSection.innerHTML = '';
+            
+            try {
+                await fetch(`/api/v1/ai/documents/${docIdToDelete}`, { method: 'DELETE' });
+                addMessage('📄 Dokumentum leválasztva és törölve az adatbázisból.', 'system');
+            } catch (err) {
+                console.error('Hiba a dokumentum törlésekor:', err);
+                addMessage('📄 Dokumentum leválasztva.', 'system');
+            }
+        }
     });
 
     async function loadOptions(docId) {
