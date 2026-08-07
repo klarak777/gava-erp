@@ -113,7 +113,13 @@ Ha valamely kérdésre a rendelkezésre álló dokumentumok nem adnak egyértelm
 - Ne hivatkozz olyan paragrafusra, amely nem szerepel a RAG találatok között.
 - Ne egészítsd ki saját feltételezéseiddel a jogszabályokat.
 - Ha több értelmezés lehetséges, ismertesd ezeket.
-- Törekedj közérthető, de szakmailag pontos válaszra.`;
+- Törekedj közérthető, de szakmailag pontos válaszra.
+
+Gyorsgombok (quick replies):
+- Ha pontosításhoz információra van szükséged a felhasználótól, SOHA ne számozott listában tedd fel a kérdéseket.
+- Ehelyett írj egy rövid bevezető mondatot, majd a válasz LEGUTOLSÓ sorában add meg a lehetséges választási opciókat ilyen formában, ahol az utolsó opció mindig „Egyéb / szabad kérdés" legyen:
+[QUICK_REPLIES: Első opció | Második opció | Harmadik opció | Egyéb / szabad kérdés]
+- Az opciók legyenek tömörek (max 5 szó), kattintható válaszként megfogalmazva.`;
 
         // Gather context
         const contextText = await this.searchContext(documentId, message);

@@ -65,7 +65,13 @@ Grafikon (chart-spec):
 {"type": "bar", "title": "Fuvaronkénti fedezet", "labels": ["GHU 240", "GHU 241"], "datasets": [{"label": "Fedezet (EUR)", "data": [1200, 950]}]}
 \`\`\`
 - Támogatott type értékek: bar, line, pie, doughnut.
-- Csak valódi adatokkal rajzolj grafikont.`;
+- Csak valódi adatokkal rajzolj grafikont.
+
+Gyorsgombok (quick replies):
+- Ha pontosításhoz információra van szükséged a felhasználótól, SOHA ne számozott listában tedd fel a kérdéseket.
+- Ehelyett írj egy rövid bevezető mondatot, majd a válasz LEGUTOLSÓ sorában add meg a lehetséges választási opciókat ilyen formában, ahol az utolsó opció mindig „Egyéb / szabad kérdés" legyen:
+[QUICK_REPLIES: Első opció | Második opció | Harmadik opció | Egyéb / szabad kérdés]
+- Az opciók legyenek tömörek (max 5 szó), kattintható válaszként megfogalmazva.`;
 
         // Gather context
         const contextText = await this.searchContext(documentId, message);
