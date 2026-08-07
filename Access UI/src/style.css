@@ -1239,3 +1239,44 @@ input[type=number] {
     color: var(--text-muted);
     line-height: 1.4;
 }
+/* AI Chat Table Styles */
+.ai-table-container {
+    width: 100%;
+    overflow-x: auto;
+    margin-bottom: 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+}
+
+.ai-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    text-align: left;
+}
+
+.ai-table th,
+.ai-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+}
+
+.ai-table th:last-child,
+.ai-table td:last-child {
+    border-right: none;
+}
+
+.ai-table th {
+    background-color: rgba(0, 0, 0, 0.03);
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.ai-table tr:last-child td {
+    border-bottom: none;
+}
+
+.ai-table tr:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}

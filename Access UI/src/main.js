@@ -35,6 +35,7 @@ import { renderAssets } from './modules/assets.js';
 import { renderTransport } from './modules/transport.js';
 import { renderAdmin } from './modules/admin.js';
 import { NAV_CATEGORIES } from './data/nav-structure.js';
+import { initAiChat } from './modules/ai-chat.js?v=7';
 
 const mainNav = document.getElementById('main-nav');
 const contentView = document.getElementById('content-view');
@@ -47,6 +48,7 @@ windowLayer.id = 'window-layer';
 mainContainer.appendChild(windowLayer);
 
 const windowManager = new WindowManager(windowLayer);
+window.gavaWindowManager = windowManager;
 
 const modules = {
     dashboard: { render: renderDashboard, title: 'Dashboard' },
@@ -186,7 +188,7 @@ mainNav.addEventListener('click', (e) => {
                     if (h) h.setAttribute('aria-expanded', 'false');
                 }
             });
-            
+
             const isExpanded = categoryEl.classList.toggle('expanded');
             categoryHeader.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
         }
@@ -211,6 +213,7 @@ window.addEventListener('app:navigate', (e) => {
 });
 
 function init() {
+    initAiChat();
     renderNavCategories();
     initAuth(() => {
         navigateTo('dashboard');

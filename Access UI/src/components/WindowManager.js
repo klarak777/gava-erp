@@ -15,6 +15,21 @@ export class WindowManager {
         this.container.appendChild(this.taskbar);
     }
 
+    getWindows() {
+        const result = [];
+        this.windows.forEach((el, id) => {
+            const titleEl = el.querySelector('.window-title');
+            const contentEl = el.querySelector('.window-content');
+            result.push({
+                id: id,
+                title: titleEl ? titleEl.textContent : '',
+                isActive: this.activeWindowId === id,
+                contentElement: contentEl
+            });
+        });
+        return result;
+    }
+
     open(moduleId, title, renderCallback) {
         // Check if window already exists (singleton per module for now)
         const existingWindowId = Array.from(this.windows.keys()).find(id => id.startsWith(moduleId));

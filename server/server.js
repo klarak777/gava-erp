@@ -44,6 +44,7 @@ const financeTransportLinesRouter = require('./src/routes/finance_transport_line
 const financeUnitCostLinesRouter = require('./src/routes/finance_unit_cost_lines');
 const partnersByRoleRouter = require('./src/routes/partners_by_role');
 const uploadsRouter = require('./src/routes/uploads');
+const aiRouter = require('./src/routes/ai');
 
 // Egyszerű teszt végpont
 app.get('/api/v1/status', (req, res) => {
@@ -69,6 +70,7 @@ app.use('/api/v1/finance-transport-lines', financeTransportLinesRouter);
 app.use('/api/v1/finance-unit-cost-lines', financeUnitCostLinesRouter);
 app.use('/api/v1/partners-by-role', partnersByRoleRouter);
 app.use('/api/v1/uploads', uploadsRouter);
+app.use('/api/v1/ai', aiRouter);
 
 // Szerver indítása
 app.listen(PORT, () => {

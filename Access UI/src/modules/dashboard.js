@@ -58,6 +58,7 @@ export function renderDashboard(container, wm, subModuleId = null) {
                                 <span class="ql-icon">🧾</span>
                                 <span>Számla kiállítás</span>
                             </button>
+
                              <button class="quick-link" data-module="partners">
                                 <span class="ql-icon">🤝</span>
                                 <span>Partner keresés</span>
@@ -328,6 +329,7 @@ export function renderDashboard(container, wm, subModuleId = null) {
         const quickLinks = container.querySelectorAll('.quick-link');
         quickLinks.forEach(btn => {
             btn.addEventListener('click', () => {
+
                 const moduleId = btn.dataset.module;
                 if (moduleId) {
                     window.dispatchEvent(new CustomEvent('app:navigate', {
