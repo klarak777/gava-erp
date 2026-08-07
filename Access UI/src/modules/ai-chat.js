@@ -587,7 +587,7 @@ export function initAiChat() {
         formData.append('file', file);
 
         try {
-            const res = await fetch('http://localhost:3000/api/v1/ai/upload', {
+            const res = await fetch('/api/v1/ai/upload', {
                 method: 'POST',
                 body: formData
             });
@@ -622,7 +622,7 @@ export function initAiChat() {
 
     async function loadOptions(docId) {
         try {
-            const res = await fetch(`http://localhost:3000/api/v1/ai/options/${docId}`);
+            const res = await fetch(`/api/v1/ai/options/${docId}`);
             const data = await res.json();
 
             if (data.success && data.options.length > 0) {
@@ -727,7 +727,7 @@ export function initAiChat() {
         buttons.forEach(b => b.disabled = true);
         
         try {
-            const res = await fetch('http://localhost:3000/api/v1/ai/actions/execute', {
+            const res = await fetch('/api/v1/ai/actions/execute', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action_name: actionName, payload, decision })
@@ -764,7 +764,7 @@ export function initAiChat() {
         let streamStarted = false;
 
         try {
-            const res = await fetch('http://localhost:3000/api/v1/ai/chat', {
+            const res = await fetch('/api/v1/ai/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
