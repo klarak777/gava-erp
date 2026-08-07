@@ -1,6 +1,6 @@
 // A routinghoz kis, gyors modellt használunk – a nagy reasoning modell
 // feleslegesen lassítaná az egyszerű kérdéseket is.
-const ROUTER_MODEL = process.env.AI_ROUTER_MODEL || 'gpt-5-nano';
+const ROUTER_MODEL = process.env.AI_ROUTER_MODEL || 'gpt-4o-mini';
 
 // Reasoning modelleknél alacsony erőfeszítésre állítjuk a routert,
 // más modelleknél ezt a paramétert nem küldjük (400-as hibát okozna).
