@@ -697,11 +697,30 @@ export function initAiChat() {
             if (tableRows.length > 0) {
                 formData['table_rows'] = tableRows;
             }
+
+            // Fuvar szerkesztő JS-állapotból is beolvassuk a termék/raklap adatokat
+            // a gavaShipmentRegistry globális tárból (nem DOM input alapú)
+            let shipmentData = null;
+            if (window.gavaShipmentRegistry) {
+                // Azonosítóra keresünk: az ablak kamionId-je vagy order_number-e egyezik
+                const regEntries = Object.values(window.gavaShipmentRegistry);
+                // Az ablak title-jét (pl. "LOG356") egyeztetjük az order_number-rel
+                const match = regEntries.find(e =>
+                    e.order_number && win.title && win.title.includes(e.order_number.replace(/\s+/g, ''))
+                ) || regEntries.find(e =>
+                    e.order_number && win.title && win.title.trim() === e.order_number.trim()
+                );
+                if (match) {
+                    shipmentData = match;
+                }
+            }
+
             context.push({
                 id: win.id,
                 title: win.title,
                 isActive: win.isActive,
-                formData: Object.keys(formData).length > 0 ? formData : null
+                formData: Object.keys(formData).length > 0 ? formData : null,
+                shipmentData: shipmentData || undefined
             });
         });
         return context;

@@ -281,6 +281,9 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
         `;
 
         // ===== ÁLLAPOT =====
+        // Globális registry az AI kontextusnak
+        if (!window.gavaShipmentRegistry) window.gavaShipmentRegistry = {};
+        const registryKey = kamionId || ('new_' + Date.now());
         let lines = [];           // csak az adatsorokat tároljuk (max GRID_ROWS)
         let products = [];
         let references = [];
@@ -744,6 +747,30 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                 }
                 normalizeLines(); // ① feltölt 25 sorra
                 try { renderTable(); } catch (e) { console.error('Táblázat renderelési hiba:', e); }
+                // Regisztrálás az AI globális registry-be
+                window.gavaShipmentRegistry[registryKey] = {
+                    order_number: s.order_number,
+                    shipment_id: s.id,
+                    transporter: transporterDisplay ? transporterDisplay.value : '',
+                    loading_place: s.loading_place,
+                    loading_date: s.loading_date,
+                    arrival_date: s.arrival_date,
+                    plate_number: s.plate_number,
+                    transport_price: s.transport_price,
+                    transport_currency: s.transport_currency,
+                    lines: lines.filter(l => !l._empty).map(l => ({
+                        product: l.productName,
+                        reference: l.partner_name,
+                        customer: l.customer,
+                        destination: l.destination,
+                        euro_palets: l.euro_palets,
+                        normal_palets: l.normal_palets,
+                        gross_weight_kg: l.gross_weight_kg,
+                        price_eur: l.price_eur,
+                        comment: l.comment,
+                        albaran_number: l.albaran_number
+                    }))
+                };
             } catch (err) {
                 console.error('Kamion betöltési hiba:', err);
                 alert('Nem sikerült betölteni a kamion adatait!\nRészletek: ' + err.message);
