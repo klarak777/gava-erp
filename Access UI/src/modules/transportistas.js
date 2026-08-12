@@ -11,6 +11,49 @@ export function renderTransportistas(container, windowManager) {
 
 
     // ============================================================
+    // INVOICE MODAL INJECTION
+    // ============================================================
+    const invoiceModalHtml = `
+    <div id="invoice-modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:#fff; padding:24px; border-radius:8px; width:450px; box-shadow:0 10px 25px rgba(0,0,0,0.2); font-family:Inter, sans-serif;">
+            <h3 style="margin-top:0; color:#1e293b;">Számla (Invoice) feltöltése</h3>
+            
+            <div style="margin-bottom:12px;">
+                <label style="display:block; font-size:12px; font-weight:600; margin-bottom:4px; color:#475569;">Invoice Number</label>
+                <input type="text" id="invoice-modal-number" class="access-control-input" style="width:100%; height:32px; font-size:14px; padding:4px 8px; box-sizing:border-box;">
+            </div>
+
+            <div id="invoice-modal-dropzone" style="border:2px dashed #cbd5e1; border-radius:6px; padding:20px; text-align:center; background:#f8fafc; cursor:pointer; margin-bottom:12px; transition:all 0.2s;">
+                <div style="font-size:24px; margin-bottom:8px;">📄</div>
+                <div style="font-size:13px; color:#64748b;">Húzd ide a fájlokat, vagy kattints a tallózáshoz.</div>
+                <div id="invoice-modal-filename" style="margin-top:8px; font-size:12px; font-weight:600; color:#0f172a; word-break:break-all;"></div>
+            </div>
+            <input type="file" id="invoice-modal-fileinput" multiple style="display:none;">
+            
+            <div id="invoice-modal-status" style="font-size:12px; font-weight:600; margin-bottom:12px; min-height:16px;"></div>
+
+            <div style="display:flex; justify-content:flex-end; gap:8px;">
+                <button id="invoice-modal-cancel" class="secondary-btn" style="padding:6px 16px;">Mégsem</button>
+                <button id="invoice-modal-save" class="primary-btn" style="padding:6px 16px; background:#2563eb;">Feltöltés</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="invoice-view-modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:#fff; padding:24px; border-radius:8px; width:450px; box-shadow:0 10px 25px rgba(0,0,0,0.2); font-family:Inter, sans-serif;">
+            <h3 style="margin-top:0; color:#1e293b;">Feltöltött számlák</h3>
+            <div id="invoice-view-list" style="max-height:300px; overflow-y:auto; margin-bottom:16px; display:flex; flex-direction:column; gap:8px;"></div>
+            <div style="display:flex; justify-content:flex-end;">
+                <button id="invoice-view-close" class="secondary-btn" style="padding:6px 16px;">Bezárás</button>
+            </div>
+        </div>
+    </div>`;
+    
+    if (!document.getElementById('invoice-modal-overlay')) {
+        document.body.insertAdjacentHTML('beforeend', invoiceModalHtml);
+    }
+
+    // ============================================================
     // 1. KONTÉNER: Fejléc + Szűrők (FIX, nem gördül, flex-shrink:0)
     // ============================================================
     const filterPanel = document.createElement('div');
@@ -194,7 +237,12 @@ export function renderTransportistas(container, windowManager) {
                 <td style="text-align:right;white-space:nowrap;"><input type="number" step="any" class="edit-input" data-field="t" data-id="${row.id}" style="${inputStyle} text-align:right;" value="${escHtml(row.t)}"></td>
                 <td style="font-size:12px;color:var(--text-muted);"><input type="text" class="edit-input" data-field="comment" data-id="${row.id}" style="${inputStyle}" value="${escHtml(row.comment)}"></td>
                 <td style="text-align:right;white-space:nowrap;"><input type="number" step="any" class="edit-input" data-field="invoice_amount_huf" data-id="${row.id}" style="${inputStyle} text-align:right;" value="${escHtml(row.amountHuf)}"></td>
-                <td style="white-space:nowrap;"><input type="text" class="edit-input" data-field="invoice_number" data-id="${row.id}" style="${inputStyle}" value="${escHtml(row.invoiceNumber)}"></td>
+                <td style="white-space:nowrap;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:4px;">
+                        <input type="text" class="edit-input invoice-input" data-field="invoice_number" data-id="${row.id}" style="${inputStyle} flex:1; ${row.invoiceFiles && row.invoiceFiles.length > 0 ? 'color:#2563eb; font-weight:600; cursor:pointer; text-decoration:underline;' : ''}" value="${escHtml(row.invoiceNumber)}" ${row.invoiceFiles && row.invoiceFiles.length > 0 ? 'readonly' : ''} title="${row.invoiceFiles && row.invoiceFiles.length > 0 ? 'Kattints a fájlok megtekintéséhez' : ''}">
+                        <span class="invoice-upload-btn" data-id="${row.id}" data-invoice="${escHtml(row.invoiceNumber)}" data-season="${escHtml(row.seasonCode)}" data-order="${escHtml(row.orderNumber)}" title="Számla feltöltése" style="cursor:pointer; font-size:14px; padding:0 2px;">📄</span>
+                    </div>
+                </td>
                 <td style="text-align:right;white-space:nowrap;font-weight:600;"><input type="number" step="any" class="edit-input" data-field="invoice_amount_eur" data-id="${row.id}" style="${inputStyle} text-align:right;" value="${escHtml(row.amountEur)}"></td>
                 <td style="text-align:center;">
                     <button class="delete-fuvar-btn" data-id="${row.id}" title="Törlés" style="background:transparent;border:none;cursor:pointer;font-size:14px;">🗑️</button>
@@ -210,8 +258,37 @@ export function renderTransportistas(container, windowManager) {
             badge.addEventListener('click', function(e) {
                 const id = this.getAttribute('data-id');
                 if (id) {
-                    openKamionSzerkesztesWindow(windowManager, id, { showDeliveryNoteBtn: true });
+                    openKamionSzerkesztesWindow(windowManager, id, { showDeliveryNoteBtn: true, fromTransportistas: true });
                 }
+            });
+        });
+
+        // Invoice View and Upload listeners
+        tbody.querySelectorAll('.invoice-input').forEach(inp => {
+            inp.addEventListener('click', function(e) {
+                const id = this.getAttribute('data-id');
+                const rowData = data.find(d => d.id == id);
+                if (rowData && rowData.invoiceFiles && rowData.invoiceFiles.length > 0) {
+                    openInvoiceViewModal(id, rowData.invoiceFiles);
+                }
+            });
+        });
+
+        tbody.querySelectorAll('.invoice-upload-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const id = this.getAttribute('data-id');
+                // Ha nincs kitöltve a számlaszám, elkérjük az input mezőből az aktuálisat (ha épp írta be, de még nem mentette)
+                let inv = this.getAttribute('data-invoice');
+                if (!inv) {
+                    const rowInput = this.closest('td').querySelector('.invoice-input');
+                    if (rowInput && rowInput.value) {
+                        inv = rowInput.value;
+                    }
+                }
+                const season = this.getAttribute('data-season');
+                const order = this.getAttribute('data-order');
+                openInvoiceUploadModal(id, inv, season, order);
             });
         });
 
@@ -371,6 +448,7 @@ export function renderTransportistas(container, windowManager) {
                     comment: d.comment || '',
                     amountHuf: d.invoice_amount_huf != null ? d.invoice_amount_huf : '',
                     invoiceNumber: d.invoice_number || '',
+                    invoiceFiles: d.invoice_files ? (typeof d.invoice_files === 'string' ? JSON.parse(d.invoice_files) : d.invoice_files) : null,
                     amountEur: d.invoice_amount_eur != null ? d.invoice_amount_eur : ''
                 }));
                 filterData();
@@ -400,6 +478,135 @@ export function renderTransportistas(container, windowManager) {
 
     loadTransporters();
     loadRealData();
+
+    // ============================================================
+    // MODAL LOGIC FOR INVOICE UPLOAD & VIEW
+    // ============================================================
+    const invModalOverlay = document.getElementById('invoice-modal-overlay');
+    const invModalNumber = document.getElementById('invoice-modal-number');
+    const invModalDropzone = document.getElementById('invoice-modal-dropzone');
+    const invModalFileinput = document.getElementById('invoice-modal-fileinput');
+    const invModalFilename = document.getElementById('invoice-modal-filename');
+    const invModalStatus = document.getElementById('invoice-modal-status');
+    const invModalCancel = document.getElementById('invoice-modal-cancel');
+    const invModalSave = document.getElementById('invoice-modal-save');
+    
+    let currentInvoiceUploadId = null;
+    let currentInvoiceSeason = null;
+    let currentInvoiceOrder = null;
+    let invSelectedFiles = [];
+
+    window.openInvoiceUploadModal = function(id, invoiceNumber, season, orderNumber) {
+        currentInvoiceUploadId = id;
+        currentInvoiceSeason = season;
+        currentInvoiceOrder = orderNumber;
+        invModalNumber.value = invoiceNumber || '';
+        invSelectedFiles = [];
+        invModalFilename.textContent = '';
+        invModalStatus.textContent = '';
+        invModalOverlay.style.display = 'flex';
+    };
+
+    invModalCancel.addEventListener('click', () => { invModalOverlay.style.display = 'none'; });
+    invModalOverlay.addEventListener('click', (e) => { if (e.target === invModalOverlay) invModalOverlay.style.display = 'none'; });
+
+    invModalDropzone.addEventListener('dragover', e => { e.preventDefault(); invModalDropzone.style.background = '#e2e8f0'; });
+    invModalDropzone.addEventListener('dragleave', () => { invModalDropzone.style.background = '#f8fafc'; });
+    invModalDropzone.addEventListener('drop', e => {
+        e.preventDefault();
+        invModalDropzone.style.background = '#f8fafc';
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            invSelectedFiles = Array.from(e.dataTransfer.files).slice(0, 10);
+            invModalFilename.textContent = '📎 ' + invSelectedFiles.map(f => f.name).join(', ');
+        }
+    });
+    invModalDropzone.addEventListener('click', () => invModalFileinput.click());
+    invModalFileinput.addEventListener('change', () => {
+        if (invModalFileinput.files && invModalFileinput.files.length > 0) {
+            invSelectedFiles = Array.from(invModalFileinput.files).slice(0, 10);
+            invModalFilename.textContent = '📎 ' + invSelectedFiles.map(f => f.name).join(', ');
+        }
+    });
+
+    invModalSave.addEventListener('click', async () => {
+        const invNumber = invModalNumber.value.trim();
+        if (!invNumber) {
+            invModalStatus.style.color = '#dc2626';
+            invModalStatus.textContent = '⚠ Kérlek add meg az Invoice Number-t!';
+            return;
+        }
+        if (invSelectedFiles.length === 0) {
+            invModalStatus.style.color = '#dc2626';
+            invModalStatus.textContent = '⚠ Kérlek válassz ki legalább egy fájlt!';
+            return;
+        }
+
+        invModalStatus.style.color = '#2563eb';
+        invModalStatus.textContent = '⏳ Feltöltés folyamatban...';
+        invModalSave.disabled = true;
+
+        try {
+            const formData = new FormData();
+            invSelectedFiles.forEach(f => formData.append('files', f));
+            formData.append('season', currentInvoiceSeason);
+            formData.append('orderNumber', currentInvoiceOrder);
+            formData.append('invoiceNumber', invNumber);
+            formData.append('shipmentId', currentInvoiceUploadId);
+
+            const uploadRes = await fetch('/api/v1/uploads/invoice', { method: 'POST', body: formData });
+            const uploadData = await uploadRes.json();
+
+            if (!uploadRes.ok) throw new Error(uploadData.error || 'Hiba a feltöltés során');
+
+            const rowData = tableData.find(d => d.id == currentInvoiceUploadId);
+            if (rowData && rowData.invoiceNumber !== invNumber) {
+                await fetch(`/api/v1/shipments/${currentInvoiceUploadId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ invoice_number: invNumber })
+                });
+            }
+
+            invModalStatus.style.color = '#16a34a';
+            invModalStatus.textContent = '✅ Sikeres feltöltés!';
+            
+            setTimeout(() => {
+                invModalOverlay.style.display = 'none';
+                invModalSave.disabled = false;
+                loadRealData();
+            }, 1000);
+        } catch (err) {
+            console.error(err);
+            invModalStatus.style.color = '#dc2626';
+            invModalStatus.textContent = '❌ Hiba: ' + err.message;
+            invModalSave.disabled = false;
+        }
+    });
+
+    const viewModalOverlay = document.getElementById('invoice-view-modal-overlay');
+    const viewModalList = document.getElementById('invoice-view-list');
+    const viewModalClose = document.getElementById('invoice-view-close');
+
+    window.openInvoiceViewModal = function(id, files) {
+        viewModalList.innerHTML = '';
+        files.forEach(f => {
+            const item = document.createElement('div');
+            item.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:10px; border:1px solid #e2e8f0; border-radius:4px; background:#f8fafc;';
+            item.innerHTML = `
+                <span style="font-size:13px; font-weight:500; color:#0f172a; word-break:break-all;">📄 ${f.fileName}</span>
+                <button class="primary-btn btn-dense" style="padding:4px 10px; font-size:12px;">Megnyitás</button>
+            `;
+            item.querySelector('button').addEventListener('click', () => {
+                const url = `/api/v1/uploads/invoice/file?shipmentId=${id}&fileName=${encodeURIComponent(f.fileName)}`;
+                window.open(url, '_blank');
+            });
+            viewModalList.appendChild(item);
+        });
+        viewModalOverlay.style.display = 'flex';
+    };
+
+    viewModalClose.addEventListener('click', () => { viewModalOverlay.style.display = 'none'; });
+    viewModalOverlay.addEventListener('click', (e) => { if (e.target === viewModalOverlay) viewModalOverlay.style.display = 'none'; });
 
     // --- Navigáció védelem ---
     function unsavedWarningHandler(e) {

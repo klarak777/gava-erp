@@ -47,7 +47,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                 <div style="flex-shrink:0; display:flex; gap:8px; flex-wrap:wrap; padding:12px 14px; background:#fff; border-radius:8px; border:1px solid var(--border); box-shadow:0 1px 3px rgba(0,0,0,0.05); align-items:flex-start;">
                     
                     <!-- Kamionszám tip (kicsit keskenyebb, bal felső sarok) -->
-                    <div style="display:flex; flex-direction:column; gap:3px; flex:1; min-width:80px; max-width:100px;">
+                    <div id="km-tip-group" style="display:flex; flex-direction:column; gap:3px; flex:1; min-width:80px; max-width:100px;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">KamionszámTip.:</label>
                         <select id="km-tip" class="access-control-input" style="font-size:12px; padding:4px 8px; height:30px; width:100%;">
                             <option value="">-- Válasszon --</option>
@@ -99,6 +99,15 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                         </div>
                     </div>
 
+                    <!-- Szállítólevél feltöltése gomb (A 'Temperature' mellé, alulra igazítva) -->
+                    <div style="display:flex; flex-direction:column; gap:3px; flex-shrink:0; align-self:flex-end;">
+                        <label style="font-size:11px; font-weight:600; color:var(--text-main); white-space:nowrap;">Szállítólevél:</label>
+                        <button id="btn-open-delivery-note" title="Szállítólevél feltöltése" class="primary-btn"
+                            style="font-size:12px; padding:4px 20px; min-width:140px; justify-content:center; height:30px; background:#2563eb; border-color:#1d4ed8; display:none; align-items:center; gap:5px; white-space:nowrap;">
+                            📄 + Feltöltés
+                        </button>
+                    </div>
+
                     <!-- Többi vezérlő (Lerakodás dátum, Fuvar költség) az eredeti flexbox elrendezéssel -->
                     <div style="display:flex; gap:8px; flex-wrap:wrap; flex:1; min-width:200px; align-items:flex-start;">
                         <div style="display:flex; flex-direction:column; gap:3px; flex:1; min-width:120px; max-width:155px;">
@@ -117,15 +126,6 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                                 </select>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Szállítólevél feltöltése gomb (A fejléc aljára igazítva, a táblázat tetejénél) -->
-                    <div style="display:flex; flex-direction:column; gap:3px; flex-shrink:0; align-self:flex-end; margin-left:auto;">
-                        <label style="font-size:11px; font-weight:600; color:var(--text-main); white-space:nowrap;">Szállítólevél:</label>
-                        <button id="btn-open-delivery-note" title="Szállítólevél feltöltése" class="primary-btn"
-                            style="font-size:12px; padding:4px 20px; min-width:140px; justify-content:center; height:30px; background:#2563eb; border-color:#1d4ed8; display:none; align-items:center; gap:5px; white-space:nowrap;">
-                            📄 + Feltöltés
-                        </button>
                     </div>
                 </div>
 
@@ -160,7 +160,6 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                                     <th style="text-align:right; min-width:55px;">Reloading/plt</th>
                                     <th style="text-align:right; min-width:65px;">Transport BCN/plt</th>
                                     <th style="min-width:110px;">Customer order N°</th>
-                                    <th style="min-width:100px;">Albaran</th>
                                     <th style="text-align:center; min-width:70px;">Order N° /</th>
                                 </tr>
                             </thead>
@@ -171,7 +170,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                                     <td id="km-sum-total" style="text-align:center; padding:6px 4px; color:#1e40af;">0</td>
                                     <td id="km-sum-euro" style="text-align:center; padding:6px 4px; color:var(--text-main);">0</td>
                                     <td id="km-sum-normal" style="text-align:center; padding:6px 4px; color:var(--text-main);">0</td>
-                                    <td colspan="14">
+                                    <td colspan="13">
                                         <div style="display:flex; justify-content:flex-end; gap:24px; padding-right:20px; color:#166534; font-size:11px;">
                                             <span>Szabad hely (Euro plt): <span id="km-free-euro" style="font-weight:bold; font-size:13px; color:#15803d;">33</span></span>
                                             <span>Szabad hely (Normal plt): <span id="km-free-normal" style="font-weight:bold; font-size:13px; color:#15803d;">26</span></span>
@@ -344,9 +343,12 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
 
         // Szallitolevel gomb: csak Transzportistasbol nyitva jelenik meg
         const dnBtnWrapper = container.querySelector('#btn-open-delivery-note')?.closest('div[style*="flex-shrink:0"]');
-        if (options.showDeliveryNoteBtn) {
+        if (options.showDeliveryNoteBtn || options.fromTransportistas) {
             const dnBtn = container.querySelector('#btn-open-delivery-note');
             if (dnBtn) dnBtn.style.display = 'flex';
+            // Transportistas-ból nyitva nincs szükség a KamionszámTip vezérlőre (már rakodott fuvar)
+            const kmTipGroup = container.querySelector('#km-tip-group');
+            if (kmTipGroup) kmTipGroup.style.display = 'none';
         } else {
             // Elrejtjuk a szulo div-et is, hogy ne maradjon ures hely
             if (dnBtnWrapper) dnBtnWrapper.style.display = 'none';
@@ -546,7 +548,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
         // ① Mindig GRID_ROWS sort biztosít (adat + üres feltöltés)
         function normalizeLines() {
             // A foghíjak elkerülése végett kiszűrjük a teljesen üres sorokat és a csak pénzügyi (Finance) sorokat
-            let filled = lines.filter(l => !l.is_finance_only && (l.product_id || parseFloat(String(l.euro_palets).replace(',', '.')) > 0 || parseFloat(String(l.normal_palets).replace(',', '.')) > 0));
+            let filled = lines.filter(l => !l.is_finance_only && (l._forceKeep || l.product_id || l.productName || parseFloat(String(l.euro_palets).replace(',', '.')) > 0 || parseFloat(String(l.normal_palets).replace(',', '.')) > 0));
 
             // _empty flag törlése a kitöltött sorokon
             filled = filled.map(l => { const r = { ...l }; delete r._empty; return r; });
@@ -667,7 +669,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
 
                 const s = data.shipment;
                 currentShipmentId = s.id;
-                currentShipmentIsLoaded = s.is_loaded === true || s.is_loaded === 1;
+                // Transportistas-ból nyitva minden oszlop szerkeszthető marad
+                currentShipmentIsLoaded = (s.is_loaded === true || s.is_loaded === 1) && !options.fromTransportistas;
 
                 // 🟢 Ablak fejléce és taskbar-t is frissítjük a VALÓDI kamionszámra
                 const realTitle = s.order_number || 'Ismeretlen';
@@ -1118,6 +1121,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                 <tr data-index="${index}" style="${isEmpty ? 'background:#fafafa;' : ''}">
                     <td style="text-align:center; white-space:nowrap; padding:1px 2px;">
                         <span class="drag-handle" data-index="${index}" title="Sor mozgatása (húzza fel/le)" style="cursor:grab; font-size:13px; color:#94a3b8; padding:1px 2px; user-select:none; display:inline-block;">☰</span>
+                        <button class="split-line" data-index="${index}" title='Sor duplikálás "split"'
+                            style="background:none; border:none; cursor:pointer; font-size:14px; padding:1px 3px; color:${(isEmpty) ? '#94a3b8' : '#10b981'};" ${(isEmpty) ? 'disabled' : ''}>➕</button>
                         <button class="transfer-line" data-index="${index}" title="Tétel áthelyezése másik fuvarra"
                             style="background:none; border:none; cursor:pointer; font-size:14px; padding:1px 3px; color:${(isEmpty || currentShipmentIsLoaded || !l._dbId) ? '#94a3b8' : '#f59e0b'};" ${(isEmpty || currentShipmentIsLoaded || !l._dbId) ? 'disabled' : ''}>🔀</button>
                         <button class="clear-line" data-index="${index}" title="Sor törlése (adatok törlése)"
@@ -1155,10 +1160,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                         style="${numCellStyle} width:60px;" value="${isEmpty ? '' : escHtml(l.transport_bcn_per_plt)}" min="0" step="0.01" placeholder="0"></td>
                     <td><input type="text" class="cell-edit" data-field="customer_order_no" data-index="${index}"
                         style="${cellStyle} min-width:100px; ${!isEmpty && l.customer_order_no ? 'color:#2563eb; text-decoration:underline; cursor:pointer; font-weight:600;' : ''}" value="${isEmpty ? '' : escHtml(l.customer_order_no)}" title="${!isEmpty && l.customer_order_no ? 'Kattints a szállítólevél megnyitásához' : ''}"></td>
-                    <td><input type="text" class="cell-edit" data-field="albaran_number" data-index="${index}"
-                        style="${cellStyle} min-width:100px;" value="${isEmpty ? '' : escHtml(l.albaran_number)}"></td>
                     <td><input type="text" class="cell-edit" data-field="truck_number_per" data-index="${index}"
-                        style="${cellStyle} width:60px; text-align:center; background-color:#f8fafc; font-weight:bold;" value="${isEmpty ? '' : (l.truck_number_per !== '' && l.truck_number_per != null ? escHtml(parseInt(l.truck_number_per, 10)) : '')}" readonly placeholder=""></td>
+                        style="${cellStyle} width:60px; text-align:center; background-color:#f8fafc; font-weight:bold;" value="${isEmpty ? '' : (l.truck_number_per !== '' && l.truck_number_per != null ? escHtml(parseInt(l.truck_number_per, 10)) : '')}" ${currentShipmentIsLoaded ? 'readonly' : ''} placeholder=""></td>
                 </tr>`;
 
             }).join('');
@@ -1403,6 +1406,29 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                     }
 
                     lines.splice(idx, 1);
+                    normalizeLines();
+                    renderTable();
+                });
+            });
+
+            // ➕ Split / Duplikálás
+            tbody.querySelectorAll('.split-line').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const idx = parseInt(btn.dataset.index);
+                    if (lines[idx]._empty) return;
+                    
+                    const usedRowsCount = lines.filter(l => !l._empty).length;
+                    if (usedRowsCount >= GRID_ROWS) {
+                        alert('A kamion tele van, nem adható hozzá több tétel (maximum ' + GRID_ROWS + ' sor)!');
+                        return;
+                    }
+                    
+                    const duplicatedRow = { ...lines[idx], _forceKeep: true };
+                    delete duplicatedRow._dbId;
+                    duplicatedRow.euro_palets = 0;
+                    duplicatedRow.normal_palets = 0;
+                    
+                    lines.splice(idx + 1, 0, duplicatedRow);
                     normalizeLines();
                     renderTable();
                 });

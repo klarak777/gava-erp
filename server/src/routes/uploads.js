@@ -4,6 +4,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const db = require('../db/db');
 
 // ─── Konfiguráció ────────────────────────────────────────────────────────────
 // Hálózati meghajtó alapútvonala (env-ből vagy alapértelmezett)
@@ -92,6 +93,80 @@ router.post('/delivery-note', upload.array('files', 10), async (req, res) => {
         res.status(500).json({ error: 'Szerver hiba a feltöltés során.', detail: err.message });
     }
 });
+
+/**
+ * POST /api/v1/uploads/invoice
+ * Számla (Invoice) feltöltése hálózati meghajtóra és adatbázisba.
+ */
+router.post('/invoice', upload.array('files', 10), async (req, res) => {
+    try {
+        const { season, orderNumber, invoiceNumber, shipmentId } = req.body;
+
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ error: 'Nincs feltöltött fájl.' });
+        }
+        if (!season || !orderNumber || !invoiceNumber || !shipmentId) {
+            return res.status(400).json({ error: 'A season, orderNumber, invoiceNumber és shipmentId mezők kötelezők.' });
+        }
+
+        const seasonFolder = `Season ${season}`;
+        // Almappa a kérés szerint: kamionszám (orderNumber) azon belül invoiceNumber
+        const targetDir = path.join(ERP_FUVAROK_PATH, seasonFolder, orderNumber, invoiceNumber.trim());
+
+        try {
+            fs.mkdirSync(targetDir, { recursive: true });
+        } catch (mkdirErr) {
+            console.error('[uploads] Számla mappa létrehozási hiba:', mkdirErr);
+            return res.status(500).json({ error: `Nem sikerült létrehozni a mappát: ${targetDir}`, detail: mkdirErr.message });
+        }
+
+        const uploadedFiles = [];
+        const newDbEntries = [];
+
+        try {
+            for (const file of req.files) {
+                const safeFileName = file.originalname.replace(/[<>:"/\\|?*]/g, '_');
+                const targetFilePath = path.join(targetDir, safeFileName);
+                fs.writeFileSync(targetFilePath, file.buffer);
+                uploadedFiles.push(safeFileName);
+                newDbEntries.push({
+                    fileName: safeFileName,
+                    filePath: targetFilePath
+                });
+            }
+        } catch (writeErr) {
+            console.error('[uploads] Számla fájl írási hiba:', writeErr);
+            return res.status(500).json({ error: `Nem sikerült a fájlokat elmenteni.`, detail: writeErr.message });
+        }
+
+        // Adatbázis frissítése
+        const shipment = await db('shipments').where('id', shipmentId).first();
+        let currentFiles = [];
+        if (shipment && shipment.invoice_files) {
+            currentFiles = typeof shipment.invoice_files === 'string' ? JSON.parse(shipment.invoice_files) : shipment.invoice_files;
+        }
+        if (!Array.isArray(currentFiles)) currentFiles = [];
+        
+        currentFiles.push(...newDbEntries);
+        
+        await db('shipments').where('id', shipmentId).update({
+            invoice_files: JSON.stringify(currentFiles)
+        });
+
+        console.log(`[uploads] Számlák feltöltve és adatbázisba mentve: ${uploadedFiles.join(', ')}`);
+
+        res.json({
+            success: true,
+            files: currentFiles,
+            message: `${uploadedFiles.length} fájl sikeresen feltöltve.`
+        });
+
+    } catch (err) {
+        console.error('[uploads] Általános hiba számla feltöltéskor:', err);
+        res.status(500).json({ error: 'Szerver hiba a feltöltés során.', detail: err.message });
+    }
+});
+
 
 /**
  * GET /api/v1/uploads/delivery-note/:season/:orderNumber/:customerOrderNo/check
@@ -254,5 +329,40 @@ async function handleHtml(season, orderNumber, customerOrderNo, fileName, req, r
     const result = await mammoth.convertToHtml({ path: targetFilePath });
     res.json({ html: result.value });
 }
+
+/**
+ * GET /api/v1/uploads/invoice/file
+ * Letölti vagy megjeleníti a kiválasztott számlát (Invoice).
+ */
+router.get('/invoice/file', async (req, res) => {
+    try {
+        const { shipmentId, fileName } = req.query;
+        if (!shipmentId || !fileName) {
+            return res.status(400).send('Hiányzó paraméterek.');
+        }
+
+        const shipment = await db('shipments').where('id', shipmentId).first();
+        if (!shipment || !shipment.invoice_files) {
+            return res.status(404).send('Nem található számla fájl az adatbázisban.');
+        }
+
+        let files = typeof shipment.invoice_files === 'string' ? JSON.parse(shipment.invoice_files) : shipment.invoice_files;
+        if (!Array.isArray(files)) files = [];
+
+        const fileRecord = files.find(f => f.fileName === fileName);
+        if (!fileRecord) {
+            return res.status(404).send('A kért fájl nem található a nyilvántartásban.');
+        }
+
+        if (!fs.existsSync(fileRecord.filePath)) {
+            return res.status(404).send('A kért fájl fizikailag nem található a lemezen.');
+        }
+
+        res.sendFile(fileRecord.filePath);
+    } catch (err) {
+        console.error('[uploads invoice get] Általános hiba:', err);
+        res.status(500).send('Szerver hiba a fájl lekérése során.');
+    }
+});
 
 module.exports = router;
