@@ -61,7 +61,7 @@ export const NAV_CATEGORIES = [
     },
     {
         id: 'penny',
-        label: '<span style="display:inline-block; background:#cc0000; color:#f7d000; padding:2px 4px; border-radius:3px; font-size:10px; font-weight:900; line-height:1; vertical-align:middle; margin-right:4px; letter-spacing:0.5px;">PENNY</span> PENNY',
+        label: '<img src="Penny logo.jpg" alt="PENNY" style="height:16px; margin-right:5px; vertical-align:-3px; border-radius: 2px;"> PENNY',
         groups: [],
     }
 ];
