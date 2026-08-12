@@ -20,15 +20,15 @@
 
 ---
 
-## 🚀 Telepítési útmutató a DigitalOcean (DO) szerverhez
+## 🚀 Telepítési útmutató a DigitalOcean (DO) szerverhez (Docker környezetben)
 
-Mivel a fejlesztés adatbázis sémát érintett, a szerver frissítésekor **MINDENKÉPPEN** le kell futtatni az adatbázis migrációt.
+Mivel a fejlesztés adatbázis sémát érintett, a szerver frissítésekor **MINDENKÉPPEN** le kell futtatni az adatbázis migrációt a backend konténeren belül.
 
 **Lépések a DO szerveren:**
 
-1. Navigálj a projekt szerver mappájába (pl. ahol a backend kód fut):
+1. Navigálj a projekt szerver mappájába, ahol a `docker-compose.yml` található:
    ```bash
-   cd /path/to/your/project/server
+   cd /path/to/your/project
    ```
 
 2. Frissítsd a kódot a GitHub-ról:
@@ -36,13 +36,14 @@ Mivel a fejlesztés adatbázis sémát érintett, a szerver frissítésekor **MI
    git pull origin main
    ```
 
-3. Futtasd le az adatbázis migrációt az új oszlop létrehozásához:
+3. Állítsd újra össze a konténereket (ha a package.json módosult volna), és indítsd el:
    ```bash
-   npm run migrate
+   docker-compose up -d --build
    ```
+   *(Megjegyzés: Ha csak kódváltozás történt, elég lehet a konténer újraindítása is: `docker-compose restart backend`)*
 
-4. Indítsd újra a backend szolgáltatást (pl. PM2-vel):
+4. **Futtasd le az adatbázis migrációt a futó backend konténerben:**
    ```bash
-   pm2 restart all
+   docker-compose exec backend npm run migrate
    ```
-   *(Cseréld le a parancsot arra, ahogy a szerveren indítani szoktátok a node appot, pl. `pm2 restart gava-erp-server`)*
+   *(A `backend` helyére a saját konténered nevét írd be, pl. `gava-server` vagy `api`)*

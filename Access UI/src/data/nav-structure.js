@@ -60,8 +60,8 @@ export const NAV_CATEGORIES = [
         groups: [],
     },
     {
-        id: 'eurogroup',
-        label: 'EUROGROUP',
+        id: 'penny',
+        label: '<img src="https://upload.wikimedia.org/wikipedia/commons/4/4b/Penny-Logo.svg" alt="PENNY" style="height:16px; margin-right:5px; vertical-align:-3px;"> PENNY',
         groups: [],
     }
 ];
