@@ -94,7 +94,7 @@ async function getPartnerFull(partnerId, trx) {
   const db_ = trx || db;
   const [partner, sites, communications, contacts, agents, identifiers,
     characteristics, restrictions, categories, bankAccounts, discounts,
-    creditSettings, events, attachments] = await Promise.all([
+    creditSettings, events, attachments, chainLabels] = await Promise.all([
     db_('partners').where('id', partnerId).first(),
     db_('partner_sites').where('partner_id', partnerId).orderBy('id'),
     db_('partner_communications').where('partner_id', partnerId).orderBy('id'),
@@ -109,6 +109,7 @@ async function getPartnerFull(partnerId, trx) {
     db_('partner_credit_settings').where('partner_id', partnerId).first(),
     db_('partner_events').where('partner_id', partnerId).orderBy('event_date', 'desc'),
     db_('partner_attachments').where('partner_id', partnerId).orderBy('id'),
+    db_('partner_chain_labels').where('partner_id', partnerId).orderBy('id'),
   ]);
 
   return {
@@ -125,7 +126,8 @@ async function getPartnerFull(partnerId, trx) {
     discounts,
     creditSettings: creditSettings || null,
     events,
-    attachments: (attachments || []).map(a => ({ ...a, file_path: undefined })) // Ne küldjük ki az elérési utat
+    attachments: (attachments || []).map(a => ({ ...a, file_path: undefined })), // Ne küldjük ki az elérési utat
+    chainLabels: chainLabels || [],
   };
 }
 
@@ -198,6 +200,7 @@ async function saveSubTables(trx, partnerId, body) {
     { table: 'partner_categories', data: body.categories },
     { table: 'partner_bank_accounts', data: body.bankAccounts },
     { table: 'partner_discounts', data: body.discounts },
+    { table: 'partner_chain_labels', data: body.chainLabels },
   ];
 
   for (const { table, data } of sub) {
@@ -244,7 +247,7 @@ async function saveSubTables(trx, partnerId, body) {
 // GET /api/v1/partners?searchName=...&searchTax=...&searchCity=...&limit=100
 router.get('/', async (req, res) => {
   try {
-    const { searchName, searchTax, searchCity, limit = 200, offset = 0, status } = req.query;
+    const { searchName, searchTax, searchCity, limit = 200, offset = 0, status, chain } = req.query;
     let query = db('partners')
       .modify(function(qb) {
         if (status === 'active') {
@@ -253,6 +256,21 @@ router.get('/', async (req, res) => {
           });
         } else if (status === 'inactive') {
           qb.where('partners.is_inactive', true);
+        }
+        if (chain) {
+          qb.whereExists(function() {
+            this.select('*')
+              .from('partner_characteristics as pc_filter')
+              .whereRaw('pc_filter.partner_id = partners.id')
+              .andWhere(function() {
+                this.where(function() {
+                  this.where('pc_filter.characteristic', 'Partnerlánc jellemzők')
+                      .andWhereRaw('LOWER(pc_filter.value) = ?', [chain.toLowerCase()]);
+                }).orWhere(function() {
+                  this.whereRaw('LOWER(pc_filter.characteristic) = ?', [chain.toLowerCase()]);
+                });
+              });
+          });
         }
       })
       .leftJoin('partner_identifiers as pi_eu', function() {
@@ -267,7 +285,13 @@ router.get('/', async (req, res) => {
         'partners.id', 'partners.name', 'partners.invoice_name', 'partners.type',
         'partners.is_inactive', 'partners.country', 'partners.city', 'partners.zip',
         'partners.street_name', 'partners.street_number', 'partners.tax_id',
-        'partners.is_natural_person', 'pi_eu.value as eu_tax_id', 'pi_tax.value as pi_tax_id'
+        'partners.is_natural_person', 'pi_eu.value as eu_tax_id', 'pi_tax.value as pi_tax_id',
+        db.raw(`(
+          SELECT STRING_AGG(DISTINCT COALESCE(NULLIF(pc.value, ''), pc.characteristic), ', ')
+          FROM partner_characteristics pc
+          WHERE pc.partner_id = partners.id
+            AND (pc.characteristic = 'Partnerlánc jellemzők' OR pc.characteristic IN ('Penny', 'Spar', 'Tesco', 'Aldi'))
+        ) as partner_chain`)
       )
       .orderBy('partners.name');
 

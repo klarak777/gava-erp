@@ -46,22 +46,26 @@ export const NAV_CATEGORIES = [
     },
     {
         id: 'aldi',
-        label: 'ALDI',
+        label: '<img src="AldiNord-WorldwideLogo.svg" alt="ALDI" style="height:16px; margin-right:5px; vertical-align:-3px; border-radius: 2px;"> ALDI',
         groups: [],
     },
     {
         id: 'spar',
-        label: 'SPAR',
+        label: '<img src="Sparlogo.png" alt="SPAR" style="height:16px; margin-right:5px; vertical-align:-3px; border-radius: 2px;"> SPAR',
         groups: [],
     },
     {
         id: 'tesco',
-        label: 'TESCO',
+        label: '<img src="TescoLogo.jpg" alt="TESCO" style="height:16px; margin-right:5px; vertical-align:-3px; border-radius: 2px;"> TESCO',
         groups: [],
     },
     {
         id: 'penny',
         label: '<img src="Penny logo.jpg" alt="PENNY" style="height:16px; margin-right:5px; vertical-align:-3px; border-radius: 2px;"> PENNY',
-        groups: [],
+        groups: [
+            { id: 'penny_stock', title: 'Stock', icon: '📊', moduleId: 'penny_stock', items: [] },
+            { id: 'penny_belfoldi_fuvarok', title: 'Belföldi fuvarok', icon: '🚚', moduleId: 'penny_belfoldi_fuvarok', items: [] },
+            { id: 'penny_komissios_utasitas', title: 'Komissiós utasítás', icon: '📋', moduleId: 'penny_komissios_utasitas', items: [] },
+        ],
     }
 ];

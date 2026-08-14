@@ -407,9 +407,15 @@ export function openArchivedPartnersTable(wm) {
                 .arch-reassign-list li:hover { background: #eff6ff; }
             </style>
             <div class="arch-container">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                     <h2 style="margin:0; font-size:16px;">Archív partnerek és azonosítók</h2>
-                    <button id="arch-refresh" class="secondary-btn">Frissítés</button>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <label style="font-size:12px; font-weight:600; color:var(--text-muted);">Keresés:</label>
+                            <input type="text" id="arch-search" placeholder="Keresés névre, azonosítóra..." class="access-control-input" style="width:220px; padding:4px 8px; font-size:12px; height:30px;">
+                        </div>
+                        <button id="arch-refresh" class="secondary-btn">Frissítés</button>
+                    </div>
                 </div>
                 <div class="arch-table-wrap">
                     <table class="arch-table">
@@ -430,7 +436,12 @@ export function openArchivedPartnersTable(wm) {
         `;
 
         const tbody = winContainer.querySelector('#arch-tbody');
+        const searchInput = winContainer.querySelector('#arch-search');
         let archivedData = [];
+
+        if (searchInput) {
+            searchInput.addEventListener('input', () => renderData());
+        }
 
         async function loadData() {
             tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Betöltés...</td></tr>';
@@ -445,13 +456,31 @@ export function openArchivedPartnersTable(wm) {
         }
 
         function renderData() {
-            if (!archivedData.length) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Nincsenek archivált adatok.</td></tr>';
+            const query = (searchInput?.value || '').toLowerCase().trim();
+
+            let displayList = archivedData;
+            if (query) {
+                displayList = archivedData.filter(p => {
+                    const pName = (p.name || '').toLowerCase();
+                    const pInvName = (p.invoice_name || '').toLowerCase();
+                    const pMatches = pName.startsWith(query) || pInvName.startsWith(query);
+                    const idenMatches = (p.identifiers || []).some(iden =>
+                        (iden.value || '').toLowerCase().startsWith(query) ||
+                        (iden.id_type || '').toLowerCase().startsWith(query)
+                    );
+                    return pMatches || idenMatches;
+                });
+            }
+
+            if (!displayList.length) {
+                tbody.innerHTML = query
+                    ? '<tr><td colspan="4" style="text-align:center;">Nincs a keresésnek megfelelő adat.</td></tr>'
+                    : '<tr><td colspan="4" style="text-align:center;">Nincsenek archivált adatok.</td></tr>';
                 return;
             }
 
             let html = '';
-            archivedData.forEach(p => {
+            displayList.forEach(p => {
                 const isPActive = !p.is_inactive;
                 const renameBtn = `<button class="arch-btn btn-edit-partner-name" data-id="${p.id}" data-name="${p.name || ''}">✏️ Átnevezés</button>`;
                 const pBadge = isPActive ? '<span style="color:#2563eb; font-size:10px;">(Aktív partner, de van inaktív azonosítója)</span>' : '';

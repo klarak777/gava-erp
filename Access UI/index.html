@@ -19,21 +19,29 @@
     <div id="login-overlay" class="login-overlay">
         <div class="login-box premium-glass">
             <div class="login-header">
-                <img src="logo.ico" alt="Gava Logo" class="logo-img" style="width: 64px; height: 64px; margin-bottom: 16px;">
-                <h2 style="margin-bottom: 8px;">GAVA <span class="logo-accent">Access UI</span> <span style="font-size:13px; font-weight:400; color:var(--text-muted); vertical-align:middle; margin-left:6px;">V0.7.3</span></h2>
+                <img src="logo.ico" alt="Gava Logo" class="logo-img"
+                    style="width: 64px; height: 64px; margin-bottom: 16px;">
+                <h2 style="margin-bottom: 8px;">GAVA <span class="logo-accent">Access UI</span> <span
+                        style="font-size:13px; font-weight:400; color:var(--text-muted); vertical-align:middle; margin-left:6px;">V0.7.3</span>
+                </h2>
                 <p style="color: var(--text-muted); margin-bottom: 24px;">Bejelentkezés a rendszerbe</p>
             </div>
             <form id="login-form">
                 <div class="input-group" style="margin-bottom: 16px; text-align: left;">
-                    <label for="username" style="display: block; margin-bottom: 8px; font-weight: 500;">Felhasználónév</label>
-                    <input type="text" id="username" class="access-input" placeholder="Pl. admin" required style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-light);">
+                    <label for="username"
+                        style="display: block; margin-bottom: 8px; font-weight: 500;">Felhasználónév</label>
+                    <input type="text" id="username" class="access-input" placeholder="Pl. admin" required
+                        style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-light);">
                 </div>
                 <div class="input-group" style="margin-bottom: 24px; text-align: left;">
                     <label for="password" style="display: block; margin-bottom: 8px; font-weight: 500;">Jelszó</label>
-                    <input type="password" id="password" class="access-input" placeholder="••••••••" required style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-light);">
+                    <input type="password" id="password" class="access-input" placeholder="••••••••" required
+                        style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-light);">
                 </div>
-                <button type="button" id="login-btn" class="primary-btn" style="width: 100%; padding: 12px; font-size: 16px;">Belépés</button>
-                <div id="login-error" style="color: #dc2626; margin-top: 16px; display: none; font-size: 14px;">Adj meg egy felhasználónevet!</div>
+                <button type="button" id="login-btn" class="primary-btn"
+                    style="width: 100%; padding: 12px; font-size: 16px;">Belépés</button>
+                <div id="login-error" style="color: #dc2626; margin-top: 16px; display: none; font-size: 14px;">Adj meg
+                    egy felhasználónevet!</div>
             </form>
         </div>
     </div>
@@ -42,7 +50,8 @@
         <aside id="sidebar" class="premium-glass">
             <div class="logo-container">
                 <img src="logo.ico" alt="Gava Logo" class="logo-img" style="width: 32px; height: 32px;">
-                <span class="logo-text">GAVA <span class="logo-accent">Access UI</span> <span style="font-size:10px; font-weight:500; color:var(--text-muted); margin-left:4px; opacity:0.8;">V0.7.3</span></span>
+                <span class="logo-text">GAVA <span class="logo-accent">Access UI</span> <span
+                        style="font-size:10px; font-weight:500; color:var(--text-muted); margin-left:4px; opacity:0.8;">V0.7.3</span></span>
             </div>
             <nav id="main-nav">
                 <a href="#" data-module="dashboard" class="nav-item active">
@@ -55,7 +64,8 @@
             </nav>
             <div class="sidebar-footer">
                 <div class="search-bar" style="margin-right: 10px; flex-grow: 0;">
-                    <input type="text" placeholder="Gyorskeresés..." style="font-size:12px; padding:6px 12px; border-radius:4px; border:1px solid rgba(255,255,255,0.2); background:rgba(0,0,0,0.2); color:#fff; width:140px;">
+                    <input type="text" placeholder="Gyorskeresés..."
+                        style="font-size:12px; padding:6px 12px; border-radius:4px; border:1px solid rgba(255,255,255,0.2); background:rgba(0,0,0,0.2); color:#fff; width:140px;">
                 </div>
                 <div class="user-profile" style="display:none;">
                     <div class="avatar">BH</div>
@@ -64,7 +74,8 @@
                         <span class="user-role" id="logged-user-role">Administrator</span>
                     </div>
                 </div>
-                <button id="logout-btn" class="secondary-btn" style="padding: 6px 12px; font-size:12px;">Kijelentkezés</button>
+                <button id="logout-btn" class="secondary-btn"
+                    style="padding: 6px 12px; font-size:12px;">Kijelentkezés</button>
             </div>
         </aside>
 
@@ -78,7 +89,7 @@
     <script>
         // Inline fallback login handler - runs independently of ES modules
         // This ensures login works even if main.js module loading fails
-        (function() {
+        (function () {
             function attachLogin() {
                 var loginBtn = document.getElementById('login-btn');
                 var loginForm = document.getElementById('login-form');
@@ -119,11 +130,11 @@
                     loginBtn.addEventListener('click', doLogin);
                 }
                 if (loginForm) {
-                    loginForm.addEventListener('submit', function(e) {
+                    loginForm.addEventListener('submit', function (e) {
                         e.preventDefault();
                         doLogin();
                     });
-                    loginForm.addEventListener('keydown', function(e) {
+                    loginForm.addEventListener('keydown', function (e) {
                         if (e.key === 'Enter') {
                             e.preventDefault();
                             doLogin();
@@ -131,7 +142,7 @@
                     });
                 }
                 if (logoutBtn) {
-                    logoutBtn.addEventListener('click', function() {
+                    logoutBtn.addEventListener('click', function () {
                         sessionStorage.removeItem('gava_user');
                         if (loginOverlay) loginOverlay.style.display = 'flex';
                         if (appContainer) appContainer.style.display = 'none';
@@ -153,4 +164,3 @@
 </body>
 
 </html>
-

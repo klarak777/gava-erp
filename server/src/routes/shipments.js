@@ -119,8 +119,9 @@ router.get('/:id', async (req, res, next) => {
       return next();
     }
     const shipment = await db('shipments')
-      .select('shipments.*', 'transporters.name as transporter_name')
+      .select('shipments.*', 'transporters.name as transporter_name', 'billing_partners.name as billing_partner_name')
       .leftJoin('transporters', 'shipments.transporter_id', 'transporters.id')
+      .leftJoin('partners as billing_partners', 'shipments.billing_partner_id', 'billing_partners.id')
       .where('shipments.id', id)
       .first();
 
@@ -517,7 +518,8 @@ router.post('/', async (req, res) => {
   try {
     const {
       order_number, truck_type, truck_seq_number, transporter_id, plate_number,
-      loading_place, loading_date, arrival_date, transport_price, transport_currency, temperature, lines
+      loading_place, loading_date, arrival_date, transport_price, transport_currency, temperature, lines,
+      billing_partner_id, billing_amount, billing_currency
     } = req.body;
 
     // 1. Kikeresi a legfrissebb szezont
@@ -539,7 +541,10 @@ router.post('/', async (req, res) => {
       arrival_date: arrival_date || null,
       transport_price: parseFloat(transport_price) || 0,
       transport_currency: transport_currency || 'EUR',
-      temperature: temperature || null
+      temperature: temperature || null,
+      billing_partner_id: billing_partner_id || null,
+      billing_amount: billing_amount != null ? (parseFloat(billing_amount) || null) : null,
+      billing_currency: billing_currency || 'EUR'
     }).returning('id');
 
     const sId = typeof shipmentId === 'object' ? shipmentId.id : shipmentId;
@@ -704,7 +709,8 @@ router.put('/:id', async (req, res) => {
     const { id } = req.params;
     const {
       truck_type, transporter_id, plate_number,
-      loading_place, loading_date, arrival_date, transport_price, transport_currency, temperature, lines
+      loading_place, loading_date, arrival_date, transport_price, transport_currency, temperature, lines,
+      billing_partner_id, billing_amount, billing_currency
     } = req.body;
 
     // 1. Fejléc frissítése (az order_number és season_id nem változik itt)
@@ -719,7 +725,10 @@ router.put('/:id', async (req, res) => {
         arrival_date: arrival_date || null,
         transport_price: parseFloat(transport_price) || 0,
         transport_currency: transport_currency || 'EUR',
-        temperature: temperature || null
+        temperature: temperature || null,
+        billing_partner_id: billing_partner_id || null,
+        billing_amount: billing_amount != null ? (parseFloat(billing_amount) || null) : null,
+        billing_currency: billing_currency || 'EUR'
       });
 
     // 2. Töröljük a régi tételeket (kivéve a pénzügyi nézetben hozzáadottakat)

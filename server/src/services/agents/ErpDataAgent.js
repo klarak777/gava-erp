@@ -103,7 +103,9 @@ Gyorsgombok (quick replies):
                         properties: {
                             id: { type: "number", description: "A partner ID-ja." },
                             name: { type: "string" },
-                            status: { type: "string", enum: ["active", "inactive"] }
+                            invoice_name: { type: "string" },
+                            type: { type: "string" },
+                            is_inactive: { type: "boolean", description: "Inaktív státusz (true ha inaktív, false ha aktív)." }
                         },
                         required: ["id"]
                     }
@@ -181,9 +183,12 @@ Gyorsgombok (quick replies):
                     if (functionName === 'search_partners') {
                         if (onEvent) onEvent({ delta: `\n\n*(Adatbázis keresés: partnerek keresése '${functionArgs.name}' kifejezésre)...*\n\n` });
                         const rows = await db('partners')
-                            .where('name', 'ilike', `%${functionArgs.name}%`)
-                            .limit(10)
-                            .select('id', 'name', 'status', 'is_forwarder', 'is_carrier');
+                            .where(function() {
+                                this.where('name', 'ilike', `%${functionArgs.name}%`)
+                                    .orWhere('invoice_name', 'ilike', `%${functionArgs.name}%`);
+                            })
+                            .limit(15)
+                            .select('id', 'name', 'invoice_name', 'type', 'is_inactive', 'city', 'country', 'tax_id');
                         functionResult = JSON.stringify(rows);
                     } else if (functionName === 'get_partner_details') {
                         if (onEvent) onEvent({ delta: `\n\n*(Adatbázis keresés: partner adatok betöltése ID:${functionArgs.id})...*\n\n` });

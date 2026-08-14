@@ -240,6 +240,7 @@ function prtGetRowsHtml() {
       <td>${prtEsc(euTaxId)}</td>
       <td><span class="prt-badge prt-badge-other">${orgUnit}</span></td>
       <td>${prtEsc(address)}</td>
+      <td>${p.partner_chain ? `<span class="prt-badge prt-badge-customer" style="font-weight:600;">${prtEsc(p.partner_chain)}</span>` : '-'}</td>
       <td style="text-align:center; padding: 2px 8px;">
         <button class="prt-row-del-btn" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:16px; padding:4px;" title="Törlés">🗑️</button>
       </td>
@@ -266,7 +267,7 @@ function prtRenderList(container) {
         <table class="prt-table">
           <thead>
             <tr>
-              <th>#</th><th>Név</th><th>Név a bizonylaton</th><th>Adószám</th><th>Közösségi adószám</th><th>Szervezeti egység</th><th>Cím</th><th style="width:70px; text-align:center">Művelet</th>
+              <th>#</th><th>Név</th><th>Név a bizonylaton</th><th>Adószám</th><th>Közösségi adószám</th><th>Szervezeti egység</th><th>Cím</th><th>Partnerlánc</th><th style="width:70px; text-align:center">Művelet</th>
             </tr>
           </thead>
           <tbody id="prt-tbody">${prtGetRowsHtml()}</tbody>
@@ -787,15 +788,45 @@ function prtBuildEgyebAdatokPanel(p, data) {
     </div>
     <div>
       <div class="prt-section-title" style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:8px">Jellemzők</div>
-      <div class="prt-subtable-wrap" style="min-height:120px; max-height:250px; overflow-y:auto; overscroll-behavior:contain; border:1px solid var(--border); background:var(--surface); border-radius:8px;">
+      <div class="prt-subtable-toolbar" style="background:var(--bg-light); padding:4px; border:1px solid var(--border); border-bottom:none; border-radius:8px 8px 0 0;">
+        <button class="prt-toolbar-btn" id="char-add-btn">➕</button>
+        <button class="prt-toolbar-btn danger" id="char-del-btn">🗑️</button>
+      </div>
+      <div class="prt-subtable-wrap" style="min-height:120px; max-height:250px; overflow-y:auto; overscroll-behavior:contain; border:1px solid var(--border); background:var(--surface); border-radius:0 0 8px 8px;">
         <table class="prt-subtable" id="char-table">
-          <thead><tr><th>Jellemző</th><th>Érték</th><th><button class="prt-toolbar-btn" id="char-add-btn" style="padding:2px 6px;">➕</button> <button class="prt-toolbar-btn danger" id="char-del-btn" style="padding:2px 6px;">🗑️</button></th></tr></thead>
+          <thead><tr><th style="min-width:160px;">Jellemző</th><th>Érték</th></tr></thead>
           <tbody>
-            ${chars.map(c=>`<tr data-id="${c.id||''}">
-              <td><input type="text" class="char-name" value="${prtEsc(c.characteristic)}" style="background:var(--bg-light);"></td>
-              <td><input type="text" class="char-value" value="${prtEsc(c.value)}" style="background:var(--bg-light);"></td>
-              <td></td>
-            </tr>`).join('')}
+            ${chars.map(c => {
+              let charName = c.characteristic || 'Partnerlánc jellemzők';
+              let val = c.value || '';
+              if (['Penny', 'Spar', 'Tesco', 'Aldi'].includes(charName) && !val) {
+                val = charName;
+                charName = 'Partnerlánc jellemzők';
+              }
+              const isChain = charName === 'Partnerlánc jellemzők';
+              return `<tr data-id="${c.id||''}">
+                <td>
+                  <select class="char-name" style="background:var(--bg-light); width:100%;">
+                    <option value="Partnerlánc jellemzők" ${charName==='Partnerlánc jellemzők'?'selected':''}>Partnerlánc jellemzők</option>
+                    <option value="Egyéb" ${charName==='Egyéb'||charName==='egyéb'?'selected':''}>Egyéb</option>
+                    ${(charName && !['Partnerlánc jellemzők','Egyéb','egyéb'].includes(charName)) ? `<option value="${prtEsc(charName)}" selected>${prtEsc(charName)}</option>` : ''}
+                  </select>
+                </td>
+                <td>
+                  ${isChain ? `
+                    <select class="char-value" style="background:var(--bg-light); width:100%;">
+                      <option value="Penny" ${val==='Penny'?'selected':''}>Penny</option>
+                      <option value="Spar" ${val==='Spar'?'selected':''}>Spar</option>
+                      <option value="Tesco" ${val==='Tesco'?'selected':''}>Tesco</option>
+                      <option value="Aldi" ${val==='Aldi'?'selected':''}>Aldi</option>
+                      ${(val && !['Penny','Spar','Tesco','Aldi'].includes(val)) ? `<option value="${prtEsc(val)}" selected>${prtEsc(val)}</option>` : ''}
+                    </select>
+                  ` : `
+                    <input type="text" class="char-value" value="${prtEsc(val)}" style="background:var(--bg-light); width:100%;">
+                  `}
+                </td>
+              </tr>`;
+            }).join('')}
           </tbody>
         </table>
       </div>
@@ -1757,7 +1788,51 @@ function prtBindModal(overlay, listContainer, id) {
     });
   }
   bindSubtable('char-add-btn','char-del-btn','char-table', () =>
-    `<td><input type="text" class="char-name"></td><td><input type="text" class="char-value"></td>`);
+    `<td>
+      <select class="char-name" style="background:var(--bg-light); width:100%;">
+        <option value="Partnerlánc jellemzők" selected>Partnerlánc jellemzők</option>
+        <option value="Egyéb">Egyéb</option>
+      </select>
+    </td>
+    <td>
+      <select class="char-value" style="background:var(--bg-light); width:100%;">
+        <option value="Penny" selected>Penny</option>
+        <option value="Spar">Spar</option>
+        <option value="Tesco">Tesco</option>
+        <option value="Aldi">Aldi</option>
+      </select>
+    </td>`);
+
+  const charTable = overlay.querySelector('#char-table');
+  if (charTable) {
+    charTable.addEventListener('change', (e) => {
+      if (e.target.classList.contains('char-name')) {
+        const tr = e.target.closest('tr');
+        if (!tr) return;
+        const valueCell = tr.querySelector('td:nth-child(2)');
+        if (!valueCell) return;
+        const selectedType = e.target.value;
+        const currentVal = valueCell.querySelector('.char-value')?.value || '';
+
+        if (selectedType === 'Partnerlánc jellemzők') {
+          const defaultVal = ['Penny', 'Spar', 'Tesco', 'Aldi'].includes(currentVal) ? currentVal : 'Penny';
+          valueCell.innerHTML = `
+            <select class="char-value" style="background:var(--bg-light); width:100%;">
+              <option value="Penny" ${defaultVal === 'Penny' ? 'selected' : ''}>Penny</option>
+              <option value="Spar" ${defaultVal === 'Spar' ? 'selected' : ''}>Spar</option>
+              <option value="Tesco" ${defaultVal === 'Tesco' ? 'selected' : ''}>Tesco</option>
+              <option value="Aldi" ${defaultVal === 'Aldi' ? 'selected' : ''}>Aldi</option>
+            </select>
+          `;
+        } else {
+          const textVal = ['Penny', 'Spar', 'Tesco', 'Aldi'].includes(currentVal) ? '' : currentVal;
+          valueCell.innerHTML = `
+            <input type="text" class="char-value" value="${prtEsc(textVal)}" placeholder="Érték..." style="background:var(--bg-light); width:100%;">
+          `;
+        }
+      }
+    });
+  }
   bindSubtable('restr-add-btn','restr-del-btn','restr-table', () =>
     `<td><input type="text" class="restr-op"></td><td><input type="date" class="restr-start"></td>`);
   bindSubtable('cat-add-btn','cat-del-btn','cat-table', () =>
@@ -1767,7 +1842,6 @@ function prtBindModal(overlay, listContainer, id) {
   bindSubtable('disc-add-btn','disc-del-btn','disc-table', () =>
     `<td><input type="text" class="disc-group"></td><td><input type="number" class="disc-pct" step="0.01"></td>`);
 
-  // ── VIES Ellenőrzés ──
   const verifyBtn = overlay.querySelector('#ident-verify-btn');
   if (verifyBtn) {
     verifyBtn.addEventListener('click', async () => {

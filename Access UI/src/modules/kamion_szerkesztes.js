@@ -44,10 +44,10 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                 <div id="ks-scroll-wrap" style="flex:1; overflow:hidden; padding:12px 14px; display:flex; flex-direction:column; gap:10px;">
 
                 <!-- FEJLÉC ADATOK -->
-                <div style="flex-shrink:0; display:flex; gap:8px; flex-wrap:wrap; padding:12px 14px; background:#fff; border-radius:8px; border:1px solid var(--border); box-shadow:0 1px 3px rgba(0,0,0,0.05); align-items:flex-start;">
+                <div style="flex-shrink:0; display:flex; gap:16px; flex-wrap:wrap; padding:12px 14px; background:#fff; border-radius:8px; border:1px solid var(--border); box-shadow:0 1px 3px rgba(0,0,0,0.05); align-items:flex-start;">
                     
                     <!-- Kamionszám tip (kicsit keskenyebb, bal felső sarok) -->
-                    <div id="km-tip-group" style="display:flex; flex-direction:column; gap:3px; flex:1; min-width:80px; max-width:100px;">
+                    <div id="km-tip-group" style="display:flex; flex-direction:column; gap:3px; flex-shrink:0; min-width:80px; max-width:100px;">
                         <label style="font-size:11px; font-weight:600; color:var(--text-main);">KamionszámTip.:</label>
                         <select id="km-tip" class="access-control-input" style="font-size:12px; padding:4px 8px; height:30px; width:100%;">
                             <option value="">-- Válasszon --</option>
@@ -59,8 +59,9 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                         </select>
                     </div>
 
-                    <!-- Kétszer hármas blokk (2 oszlop, 3 sor) a képi elrendezés mintájára, de eredeti vezérlőkkel -->
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px 16px; flex:2; min-width:340px; max-width:420px;">
+                    <!-- Fő vezérlő rács (3 oszlop x 3 sor) -->
+                    <div style="display:grid; grid-template-columns: minmax(140px, 180px) minmax(140px, 180px) minmax(180px, 220px); gap:8px 16px; align-items:flex-end;">
+                        <!-- 1. sor -->
                         <div style="display:flex; flex-direction:column; gap:3px;">
                             <label style="font-size:11px; font-weight:600; color:var(--text-main);">Order number:</label>
                             <input type="text" id="km-order" class="access-control-input" readonly
@@ -71,7 +72,13 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                             <input type="date" id="km-load-date" class="access-control-input"
                                 style="font-size:12px; padding:4px 8px; height:30px; width:100%;">
                         </div>
-                        
+                        <div style="display:flex; flex-direction:column; gap:3px;">
+                            <label style="font-size:11px; font-weight:600; color:var(--text-main);">Arrival date:</label>
+                            <input type="date" id="km-arr-date" class="access-control-input"
+                                style="font-size:12px; padding:4px 8px; height:30px; width:100%;">
+                        </div>
+
+                        <!-- 2. sor -->
                         <div style="display:flex; flex-direction:column; gap:3px; position:relative; min-width:140px;">
                             <label style="font-size:11px; font-weight:600; color:var(--text-main);">Transport company:</label>
                             <div style="position:relative;">
@@ -86,7 +93,9 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                             <input type="text" id="km-load-place" class="access-control-input"
                                 style="font-size:12px; padding:4px 8px; height:30px; width:100%;" placeholder="Pl. Budapest">
                         </div>
-                        
+                        <div></div>
+
+                        <!-- 3. sor -->
                         <div style="display:flex; flex-direction:column; gap:3px;">
                             <label style="font-size:11px; font-weight:600; color:var(--text-main);">Plate number:</label>
                             <input type="text" id="km-plate" class="access-control-input"
@@ -97,30 +106,44 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                             <input type="text" id="km-temperature" class="access-control-input"
                                 style="font-size:12px; padding:4px 6px; height:30px; width:100%;" placeholder="2-8°C" maxlength="8">
                         </div>
-                    </div>
-
-                    <!-- Szállítólevél feltöltése gomb (A 'Temperature' mellé, alulra igazítva) -->
-                    <div style="display:flex; flex-direction:column; gap:3px; flex-shrink:0; align-self:flex-end;">
-                        <label style="font-size:11px; font-weight:600; color:var(--text-main); white-space:nowrap;">Szállítólevél:</label>
-                        <button id="btn-open-delivery-note" title="Szállítólevél feltöltése" class="primary-btn"
-                            style="font-size:12px; padding:4px 20px; min-width:140px; justify-content:center; height:30px; background:#2563eb; border-color:#1d4ed8; display:none; align-items:center; gap:5px; white-space:nowrap;">
-                            📄 + Feltöltés
-                        </button>
-                    </div>
-
-                    <!-- Többi vezérlő (Lerakodás dátum, Fuvar költség) az eredeti flexbox elrendezéssel -->
-                    <div style="display:flex; gap:8px; flex-wrap:wrap; flex:1; min-width:200px; align-items:flex-start;">
-                        <div style="display:flex; flex-direction:column; gap:3px; flex:1; min-width:120px; max-width:155px;">
-                            <label style="font-size:11px; font-weight:600; color:var(--text-main);">Arrival date:</label>
-                            <input type="date" id="km-arr-date" class="access-control-input"
-                                style="font-size:12px; padding:4px 8px; height:30px; width:100%;">
+                        <!-- Szállítólevelek feltöltése gomb (Cimke nélkül, Arrival date-tel egy vonalban) -->
+                        <div id="km-delivery-note-group" style="display:flex; flex-direction:column; justify-content:flex-end;">
+                            <button id="btn-open-delivery-note" title="Szállítólevelek feltöltése" class="primary-btn"
+                                style="font-size:12px; padding:4px 14px; width:100%; justify-content:center; height:30px; background:#2563eb; border-color:#1d4ed8; display:none; align-items:center; gap:5px; white-space:nowrap;">
+                                📄 Szállítólevelek feltöltése
+                            </button>
                         </div>
-                        <div style="display:flex; flex-direction:column; gap:3px; flex:1; min-width:145px; max-width:180px; margin-left:auto;">
+                    </div>
+
+                    <!-- Jobb szélen: Transport price + Számlázunk -->
+                    <div style="display:flex; flex-direction:column; gap:8px; min-width:300px; max-width:380px; margin-left:auto;">
+                        <!-- Transport price -->
+                        <div style="display:flex; flex-direction:column; gap:3px;">
                             <label style="font-size:11px; font-weight:600; color:var(--text-main);">Transport price:</label>
                             <div style="display:flex; gap:4px;">
                                 <input type="number" id="km-price" class="access-control-input"
                                     style="font-size:12px; padding:4px 8px; height:30px; flex:1; min-width:0;" placeholder="0.00" step="0.01">
                                 <select id="km-currency" class="access-control-input" style="font-size:12px; padding:4px; height:30px; width:55px; flex-shrink:0;">
+                                    <option value="EUR">EUR</option>
+                                    <option value="HUF">HUF</option>
+                                </select>
+                            </div>
+                        </div>
+                        <!-- Számlázunk partner + összeg/deviza -->
+                        <div style="display:flex; align-items:flex-end; gap:8px;">
+                            <div style="display:flex; flex-direction:column; gap:3px; flex:1; min-width:0; position:relative;">
+                                <label style="font-size:11px; font-weight:600; color:var(--text-main); white-space:nowrap;">Számlázunk:</label>
+                                <div style="position:relative;">
+                                    <input type="text" id="km-billing-partner-display" class="access-control-input"
+                                        style="font-size:12px; padding:4px 8px; height:30px; width:100%;" placeholder="Partner neve..." autocomplete="off">
+                                    <input type="hidden" id="km-billing-partner-id" value="">
+                                </div>
+                                <div id="km-billing-partner-dropdown" style="display:none; position:absolute; background:#fff; border:1px solid #ccc; z-index:9999; width:100%; max-height:200px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1); top:48px; border-radius:4px;"></div>
+                            </div>
+                            <div style="display:flex; gap:4px; flex-shrink:0;">
+                                <input type="number" id="km-billing-amount" class="access-control-input"
+                                    style="font-size:12px; padding:4px 8px; height:30px; width:90px;" placeholder="0.00" step="0.01">
+                                <select id="km-billing-currency" class="access-control-input" style="font-size:12px; padding:4px; height:30px; width:55px; flex-shrink:0;">
                                     <option value="EUR">EUR</option>
                                     <option value="HUF">HUF</option>
                                 </select>
@@ -342,16 +365,16 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
         const resetTransferDrag = initDraggable(transferModal, transferHeader);
 
         // Szallitolevel gomb: csak Transzportistasbol nyitva jelenik meg
-        const dnBtnWrapper = container.querySelector('#btn-open-delivery-note')?.closest('div[style*="flex-shrink:0"]');
+        const dnBtnGroup = container.querySelector('#km-delivery-note-group');
+        const dnBtn = container.querySelector('#btn-open-delivery-note');
         if (options.showDeliveryNoteBtn || options.fromTransportistas) {
-            const dnBtn = container.querySelector('#btn-open-delivery-note');
             if (dnBtn) dnBtn.style.display = 'flex';
+            if (dnBtnGroup) dnBtnGroup.style.display = 'flex';
             // Transportistas-ból nyitva nincs szükség a KamionszámTip vezérlőre (már rakodott fuvar)
             const kmTipGroup = container.querySelector('#km-tip-group');
             if (kmTipGroup) kmTipGroup.style.display = 'none';
         } else {
-            // Elrejtjuk a szulo div-et is, hogy ne maradjon ures hely
-            if (dnBtnWrapper) dnBtnWrapper.style.display = 'none';
+            if (dnBtnGroup) dnBtnGroup.style.display = 'none';
         }
 
         // ===== SZALLITOLEVEL FELTOLTESE MODAL =====
@@ -600,6 +623,55 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
             });
         }
 
+        // ===== SZÁMLÁZUNK PARTNER AUTOCOMPLETE =====
+        const billingPartnerDisplay = container.querySelector('#km-billing-partner-display');
+        const billingPartnerId = container.querySelector('#km-billing-partner-id');
+        const billingPartnerDropdown = container.querySelector('#km-billing-partner-dropdown');
+
+        let billingSearchTimer = null;
+        if (billingPartnerDisplay) {
+            billingPartnerDisplay.addEventListener('input', () => {
+                clearTimeout(billingSearchTimer);
+                const val = billingPartnerDisplay.value.trim();
+                billingPartnerId.value = '';
+                if (!val) {
+                    billingPartnerDropdown.style.display = 'none';
+                    return;
+                }
+                billingSearchTimer = setTimeout(async () => {
+                    try {
+                        const res = await fetch(`/api/v1/partners?searchName=${encodeURIComponent(val)}&status=active&limit=50`);
+                        if (!res.ok) return;
+                        const list = await res.json();
+                        billingPartnerDropdown.innerHTML = '';
+                        if (list.length === 0) {
+                            billingPartnerDropdown.style.display = 'none';
+                            return;
+                        }
+                        list.forEach(p => {
+                            const div = document.createElement('div');
+                            div.style.cssText = 'padding:6px 8px; cursor:pointer; border-bottom:1px solid #eee; font-size:12px;';
+                            div.textContent = p.name;
+                            div.onmousedown = () => {
+                                billingPartnerDisplay.value = p.name;
+                                billingPartnerId.value = p.id;
+                                billingPartnerDropdown.style.display = 'none';
+                            };
+                            div.onmouseover = () => div.style.backgroundColor = '#f1f5f9';
+                            div.onmouseout = () => div.style.backgroundColor = 'transparent';
+                            billingPartnerDropdown.appendChild(div);
+                        });
+                        billingPartnerDropdown.style.display = 'block';
+                    } catch (e) {
+                        billingPartnerDropdown.style.display = 'none';
+                    }
+                }, 200);
+            });
+            billingPartnerDisplay.addEventListener('blur', () => {
+                setTimeout(() => billingPartnerDropdown.style.display = 'none', 200);
+            });
+        }
+
         async function loadProducts() {
             try {
                 const res = await fetch(`${API}/products`);
@@ -696,6 +768,13 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                 try { container.querySelector('#km-price').value = s.transport_price || ''; } catch (e) { }
                 try { container.querySelector('#km-currency').value = s.transport_currency || 'EUR'; } catch (e) { }
                 try { container.querySelector('#km-temperature').value = s.temperature || ''; } catch (e) { }
+                // Számlázunk mezők betöltése
+                try {
+                    container.querySelector('#km-billing-partner-display').value = s.billing_partner_name || '';
+                    container.querySelector('#km-billing-partner-id').value = s.billing_partner_id || '';
+                    container.querySelector('#km-billing-amount').value = s.billing_amount || '';
+                    container.querySelector('#km-billing-currency').value = s.billing_currency || 'EUR';
+                } catch (e) { }
 
                 function extractLocalDate(d) {
                     if (!d) return '';
@@ -1754,6 +1833,9 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                 transport_price: parseFloat(container.querySelector('#km-price').value) || 0,
                 transport_currency: container.querySelector('#km-currency').value || 'EUR',
                 temperature: container.querySelector('#km-temperature').value.trim() || null,
+                billing_partner_id: parseInt(container.querySelector('#km-billing-partner-id').value) || null,
+                billing_amount: parseFloat(container.querySelector('#km-billing-amount').value) || null,
+                billing_currency: container.querySelector('#km-billing-currency').value || 'EUR',
                 lines: realLines.filter(l =>
                     (parseFloat(String(l.euro_palets).replace(',', '.')) || 0) > 0 ||
                     (parseFloat(String(l.normal_palets).replace(',', '.')) || 0) > 0 ||

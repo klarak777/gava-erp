@@ -34,6 +34,9 @@ import { renderReports } from './modules/reports.js';
 import { renderAssets } from './modules/assets.js';
 import { renderTransport } from './modules/transport.js';
 import { renderAdmin } from './modules/admin.js';
+import { renderPennyStock } from './modules/penny_stock.js';
+import { renderPennyBelfoldiFuvarok } from './modules/penny_belfoldi_fuvarok.js';
+import { renderPennyKomissiosUtasitas } from './modules/penny_komissios_utasitas.js';
 import { NAV_CATEGORIES } from './data/nav-structure.js';
 import { initAiChat } from './modules/ai-chat.js?v=7';
 
@@ -80,7 +83,10 @@ const modules = {
     admin: { render: renderAdmin, title: 'Rendszer' },
     menedzser: { render: renderMenedzser, title: 'Menedzser' },
     logisztika: { render: renderLogisztika, title: 'Logisztika' },
-    partnerek: { render: (container) => partnerekModule(container), title: 'Partnerek' }
+    partnerek: { render: (container) => partnerekModule(container), title: 'Partnerek' },
+    penny_stock: { render: renderPennyStock, title: 'PENNY – Stock' },
+    penny_belfoldi_fuvarok: { render: renderPennyBelfoldiFuvarok, title: 'PENNY – Belföldi fuvarok' },
+    penny_komissios_utasitas: { render: renderPennyKomissiosUtasitas, title: 'PENNY – Komissiós utasítás' }
 };
 
 function navigateTo(moduleId, subModuleId = null) {
