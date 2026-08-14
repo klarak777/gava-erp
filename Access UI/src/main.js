@@ -37,6 +37,9 @@ import { renderAdmin } from './modules/admin.js';
 import { renderPennyStock } from './modules/penny_stock.js';
 import { renderPennyBelfoldiFuvarok } from './modules/penny_belfoldi_fuvarok.js';
 import { renderPennyKomissiosUtasitas } from './modules/penny_komissios_utasitas.js';
+import { renderAldiRendelesek } from './modules/aldi_rendelesek.js';
+import { renderAldiStock } from './modules/aldi_stock.js';
+import { renderAldiQuality } from './modules/aldi_quality.js';
 import { NAV_CATEGORIES } from './data/nav-structure.js';
 import { initAiChat } from './modules/ai-chat.js?v=7';
 
@@ -86,7 +89,10 @@ const modules = {
     partnerek: { render: (container) => partnerekModule(container), title: 'Partnerek' },
     penny_stock: { render: renderPennyStock, title: 'PENNY – Stock' },
     penny_belfoldi_fuvarok: { render: renderPennyBelfoldiFuvarok, title: 'PENNY – Belföldi fuvarok' },
-    penny_komissios_utasitas: { render: renderPennyKomissiosUtasitas, title: 'PENNY – Komissiós utasítás' }
+    penny_komissios_utasitas: { render: renderPennyKomissiosUtasitas, title: 'PENNY – Komissiós utasítás' },
+    aldi_rendelesek: { render: renderAldiRendelesek, title: 'ALDI – Rendelések' },
+    aldi_stock: { render: renderAldiStock, title: 'ALDI – Stock' },
+    aldi_quality: { render: renderAldiQuality, title: 'ALDI – Quality' }
 };
 
 function navigateTo(moduleId, subModuleId = null) {

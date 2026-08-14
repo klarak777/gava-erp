@@ -47,7 +47,11 @@ export const NAV_CATEGORIES = [
     {
         id: 'aldi',
         label: '<img src="AldiNord-WorldwideLogo.svg" alt="ALDI" style="height:16px; margin-right:5px; vertical-align:-3px; border-radius: 2px;"> ALDI',
-        groups: [],
+        groups: [
+            { id: 'aldi_rendelesek', title: 'Rendelések', icon: '📝', moduleId: 'aldi_rendelesek', items: [] },
+            { id: 'aldi_stock', title: 'Stock', icon: '📊', moduleId: 'aldi_stock', items: [] },
+            { id: 'aldi_quality', title: 'Quality', icon: '✨', moduleId: 'aldi_quality', items: [] },
+        ],
     },
     {
         id: 'spar',
