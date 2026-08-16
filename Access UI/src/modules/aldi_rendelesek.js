@@ -1,6 +1,6 @@
 /**
  * GAVA ERP – ALDI Rendelések modul
- * v1.1.0 – ALDI Napi rendelések, Heti lekötés és Termékek adat tábla (dinamikus bővítéssel)
+ * v1.2.0 – ALDI Napi rendelések, Heti lekötés és Termékek adat tábla (PostgreSQL adatbázis integrációval)
  */
 
 export function renderAldiRendelesek(container, windowManager) {
@@ -12,32 +12,23 @@ export function renderAldiRendelesek(container, windowManager) {
   container.style.background = 'var(--bg-main, #ffffff)';
 
   const DEFAULT_PRODUCTS = [
-    { articleNo: '330166', name: 'Nektarin 7kg', gtin: '4061462848056', ean: '', label: '' },
-    { articleNo: '330171', name: 'Nektarin 10*1kg', gtin: '4061462848001', ean: '', label: '' },
-    { articleNo: '329885', name: 'Őszibarack 7kg', gtin: '4061462851506', ean: '', label: '' },
-    { articleNo: '330173', name: 'Őszibarack 10*1kg', gtin: '4061462847981', ean: '', label: '' },
-    { articleNo: '330167', name: 'Sárgabarack 5kg', gtin: '4061462848049', ean: '', label: '' },
-    { articleNo: '330117', name: 'Sárgabarack 10*500g', gtin: '4061462848544', ean: '', label: '' },
-    { articleNo: '330165', name: 'Lapos barack 5kg', gtin: '4061462848704', ean: '', label: '' },
-    { articleNo: '530766', name: 'Körte Limonera 12kg', gtin: '4061459877144', ean: '', label: '' },
-    { articleNo: '597477', name: 'Petrezselyem 10*100g', gtin: '4061462789717', ean: '', label: '' },
-    { articleNo: '666998', name: 'Kapor 6*100g', gtin: '4061463554338', ean: '', label: '' },
-    { articleNo: '330088', name: 'Fürtös uborka 5kg', gtin: '4061462846892', ean: '', label: '' },
-    { articleNo: '687493', name: 'Cukkini 10kg', gtin: '4069365093832', ean: '', label: '' },
-    { articleNo: '658525', name: 'Padlizsán 6kg', gtin: '4061463243454', ean: '', label: '' },
-    { articleNo: '768144', name: 'Fokhagyma 5kg', gtin: '4069366402930', ean: '', label: '' },
-    { articleNo: '329758', name: 'Paprika Palermo 12*300g', gtin: '4061462850196', ean: '', label: '' },
-    { articleNo: '279530', name: 'Kalif Piros 5kg', gtin: '4061461995188', ean: '', label: '' }
+    { id: 'tmp-1', articleNo: '330166', name: 'Nektarin 7kg', gtin: '4061462848056', ean: '', label: '' },
+    { id: 'tmp-2', articleNo: '330171', name: 'Nektarin 10*1kg', gtin: '4061462848001', ean: '', label: '' },
+    { id: 'tmp-3', articleNo: '329885', name: 'Őszibarack 7kg', gtin: '4061462851506', ean: '', label: '' },
+    { id: 'tmp-4', articleNo: '330173', name: 'Őszibarack 10*1kg', gtin: '4061462847981', ean: '', label: '' },
+    { id: 'tmp-5', articleNo: '330167', name: 'Sárgabarack 5kg', gtin: '4061462848049', ean: '', label: '' },
+    { id: 'tmp-6', articleNo: '330117', name: 'Sárgabarack 10*500g', gtin: '4061462848544', ean: '', label: '' },
+    { id: 'tmp-7', articleNo: '330165', name: 'Lapos barack 5kg', gtin: '4061462848704', ean: '', label: '' },
+    { id: 'tmp-8', articleNo: '530766', name: 'Körte Limonera 12kg', gtin: '4061459877144', ean: '', label: '' },
+    { id: 'tmp-9', articleNo: '597477', name: 'Petrezselyem 10*100g', gtin: '4061462789717', ean: '', label: '' },
+    { id: 'tmp-10', articleNo: '666998', name: 'Kapor 6*100g', gtin: '4061463554338', ean: '', label: '' },
+    { id: 'tmp-11', articleNo: '330088', name: 'Fürtös uborka 5kg', gtin: '4061462846892', ean: '', label: '' },
+    { id: 'tmp-12', articleNo: '687493', name: 'Cukkini 10kg', gtin: '4069365093832', ean: '', label: '' },
+    { id: 'tmp-13', articleNo: '658525', name: 'Padlizsán 6kg', gtin: '4061463243454', ean: '', label: '' },
+    { id: 'tmp-14', articleNo: '768144', name: 'Fokhagyma 5kg', gtin: '4069366402930', ean: '', label: '' },
+    { id: 'tmp-15', articleNo: '329758', name: 'Paprika Palermo 12*300g', gtin: '4061462850196', ean: '', label: '' },
+    { id: 'tmp-16', articleNo: '279530', name: 'Kalif Piros 5kg', gtin: '4061461995188', ean: '', label: '' }
   ];
-
-  // Load saved products if any
-  let initialProducts = DEFAULT_PRODUCTS;
-  try {
-    const saved = localStorage.getItem('aldi_products_data');
-    if (saved) {
-      initialProducts = JSON.parse(saved);
-    }
-  } catch (e) {}
 
   // State
   let state = {
@@ -45,16 +36,85 @@ export function renderAldiRendelesek(container, windowManager) {
     filterDate: '',
     filterOrderNo: '',
     productSearch: '',
+    isLoadingProducts: false,
     orders: [
       { id: '1', date: '2026-07-29', orderNo: '4531552076', fileName: 'ALDI_Order_4531552076.pdf' }
     ],
-    products: initialProducts
+    products: DEFAULT_PRODUCTS
   };
 
-  function saveProducts() {
+  // Database sync functions
+  async function fetchProductsFromDb() {
+    state.isLoadingProducts = true;
     try {
-      localStorage.setItem('aldi_products_data', JSON.stringify(state.products));
-    } catch (e) {}
+      const res = await fetch('/api/v1/chain-products?chain=ALDI');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          state.products = data.map(item => ({
+            id: item.id,
+            name: item.product_name || '',
+            articleNo: item.article_number || '',
+            gtin: item.gtin || '',
+            ean: item.ean || '',
+            label: item.label || ''
+          }));
+        }
+      }
+    } catch (e) {
+      console.warn('Nem sikerült az ALDI termékek lekérése az API-ból, helyi adatok használata:', e);
+    } finally {
+      state.isLoadingProducts = false;
+      renderModule();
+    }
+  }
+
+  async function addProductToDb(newProd) {
+    try {
+      const res = await fetch('/api/v1/chain-products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chain: 'ALDI',
+          product_name: newProd.name,
+          article_number: newProd.articleNo,
+          gtin: newProd.gtin,
+          ean: newProd.ean,
+          label: newProd.label
+        })
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        return saved.id;
+      }
+    } catch (e) {
+      console.error('Hiba az új termék mentésekor az adatbázisba:', e);
+    }
+    return null;
+  }
+
+  async function updateProductInDb(id, fields) {
+    if (!id || String(id).startsWith('tmp-')) return;
+    try {
+      await fetch(`/api/v1/chain-products/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fields)
+      });
+    } catch (e) {
+      console.error('Hiba a termék módosításakor az adatbázisban:', e);
+    }
+  }
+
+  async function deleteProductFromDb(id) {
+    if (!id || String(id).startsWith('tmp-')) return;
+    try {
+      await fetch(`/api/v1/chain-products/${id}`, {
+        method: 'DELETE'
+      });
+    } catch (e) {
+      console.error('Hiba a termék törlésekor az adatbázisból:', e);
+    }
   }
 
   const wrapper = document.createElement('div');
@@ -194,7 +254,7 @@ export function renderAldiRendelesek(container, windowManager) {
           </button>
           
           <span style="font-size:12px; color:#64748b; font-weight:500;">
-            Összesen: <strong>${state.products.length}</strong> termék
+            Összesen: <strong>${state.products.length}</strong> termék (PostgreSQL adatbázis szinkronizált)
           </span>
         </div>
 
@@ -237,24 +297,24 @@ export function renderAldiRendelesek(container, windowManager) {
                 </td>
               </tr>
             ` : filteredProducts.map((p, idx) => `
-              <tr data-index="${idx}" style="border-bottom:1px solid #f1f5f9; ${idx % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;'}">
+              <tr data-index="${idx}" data-id="${p.id || ''}" style="border-bottom:1px solid #f1f5f9; ${idx % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;'}">
                 <td style="padding:6px 14px; color:#1e293b; font-weight:600;">
-                  <input type="text" class="aldi-prod-field aldi-prod-name" data-field="name" data-index="${idx}" value="${p.name || ''}" placeholder="Termék neve..." style="width:100%; border:1px solid transparent; background:transparent; font-weight:600; padding:4px 6px; border-radius:4px; font-size:13px;" onfocus="this.style.border='1px solid #93c5fd'; this.style.background='#fff';" onblur="this.style.border='1px solid transparent'; this.style.background='transparent';">
+                  <input type="text" class="aldi-prod-field aldi-prod-name" data-field="name" data-id="${p.id || ''}" data-index="${idx}" value="${p.name || ''}" placeholder="Termék neve..." style="width:100%; border:1px solid transparent; background:transparent; font-weight:600; padding:4px 6px; border-radius:4px; font-size:13px;" onfocus="this.style.border='1px solid #93c5fd'; this.style.background='#fff';" onblur="this.style.border='1px solid transparent'; this.style.background='transparent';">
                 </td>
                 <td style="padding:6px 14px; color:#334155;">
-                  <input type="text" class="aldi-prod-field aldi-prod-article" data-field="articleNo" data-index="${idx}" value="${p.articleNo || ''}" placeholder="Cikkszám..." style="width:100%; border:1px solid transparent; background:transparent; padding:4px 6px; border-radius:4px; font-size:13px;" onfocus="this.style.border='1px solid #93c5fd'; this.style.background='#fff';" onblur="this.style.border='1px solid transparent'; this.style.background='transparent';">
+                  <input type="text" class="aldi-prod-field aldi-prod-article" data-field="articleNo" data-id="${p.id || ''}" data-index="${idx}" value="${p.articleNo || ''}" placeholder="Cikkszám..." style="width:100%; border:1px solid transparent; background:transparent; padding:4px 6px; border-radius:4px; font-size:13px;" onfocus="this.style.border='1px solid #93c5fd'; this.style.background='#fff';" onblur="this.style.border='1px solid transparent'; this.style.background='transparent';">
                 </td>
                 <td style="padding:6px 14px; color:#334155; font-family:monospace;">
-                  <input type="text" class="aldi-prod-field aldi-prod-gtin" data-field="gtin" data-index="${idx}" value="${p.gtin || ''}" placeholder="GTIN..." style="width:100%; border:1px solid transparent; background:transparent; font-family:monospace; padding:4px 6px; border-radius:4px; font-size:13px;" onfocus="this.style.border='1px solid #93c5fd'; this.style.background='#fff';" onblur="this.style.border='1px solid transparent'; this.style.background='transparent';">
+                  <input type="text" class="aldi-prod-field aldi-prod-gtin" data-field="gtin" data-id="${p.id || ''}" data-index="${idx}" value="${p.gtin || ''}" placeholder="GTIN..." style="width:100%; border:1px solid transparent; background:transparent; font-family:monospace; padding:4px 6px; border-radius:4px; font-size:13px;" onfocus="this.style.border='1px solid #93c5fd'; this.style.background='#fff';" onblur="this.style.border='1px solid transparent'; this.style.background='transparent';">
                 </td>
                 <td style="padding:6px 14px; color:#334155; font-family:monospace;">
-                  <input type="text" class="aldi-prod-field aldi-prod-ean" data-field="ean" data-index="${idx}" value="${p.ean || ''}" placeholder="EAN..." style="width:100%; border:1px solid transparent; background:transparent; font-family:monospace; padding:4px 6px; border-radius:4px; font-size:13px;" onfocus="this.style.border='1px solid #93c5fd'; this.style.background='#fff';" onblur="this.style.border='1px solid transparent'; this.style.background='transparent';">
+                  <input type="text" class="aldi-prod-field aldi-prod-ean" data-field="ean" data-id="${p.id || ''}" data-index="${idx}" value="${p.ean || ''}" placeholder="EAN..." style="width:100%; border:1px solid transparent; background:transparent; font-family:monospace; padding:4px 6px; border-radius:4px; font-size:13px;" onfocus="this.style.border='1px solid #93c5fd'; this.style.background='#fff';" onblur="this.style.border='1px solid transparent'; this.style.background='transparent';">
                 </td>
                 <td style="padding:6px 14px; color:#334155;">
-                  <input type="text" class="aldi-prod-field aldi-prod-label" data-field="label" data-index="${idx}" value="${p.label || ''}" placeholder="Címke..." style="width:100%; border:1px solid transparent; background:transparent; padding:4px 6px; border-radius:4px; font-size:13px;" onfocus="this.style.border='1px solid #93c5fd'; this.style.background='#fff';" onblur="this.style.border='1px solid transparent'; this.style.background='transparent';">
+                  <input type="text" class="aldi-prod-field aldi-prod-label" data-field="label" data-id="${p.id || ''}" data-index="${idx}" value="${p.label || ''}" placeholder="Címke..." style="width:100%; border:1px solid transparent; background:transparent; padding:4px 6px; border-radius:4px; font-size:13px;" onfocus="this.style.border='1px solid #93c5fd'; this.style.background='#fff';" onblur="this.style.border='1px solid transparent'; this.style.background='transparent';">
                 </td>
                 <td style="padding:6px 10px; text-align:center;">
-                  <button class="aldi-prod-delete-btn" data-index="${idx}" style="background:none; border:none; cursor:pointer; font-size:14px; opacity:0.6; padding:4px; border-radius:4px; transition:opacity 0.2s;" title="Sor törlése" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">
+                  <button class="aldi-prod-delete-btn" data-id="${p.id || ''}" data-index="${idx}" style="background:none; border:none; cursor:pointer; font-size:14px; opacity:0.6; padding:4px; border-radius:4px; transition:opacity 0.2s;" title="Sor törlése" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">
                     🗑️
                   </button>
                 </td>
@@ -264,7 +324,7 @@ export function renderAldiRendelesek(container, windowManager) {
         </table>
       </div>
       <div style="font-size:11px; color:#94a3b8; margin-top:8px;">
-        💡 A cellákra kattintva a termékadatok közvetlenül módosíthatók és automatikusan elmentődnek.
+        💡 A cellákra kattintva a termékadatok közvetlenül módosíthatók és azonnal elmentődnek az adatbázisba.
       </div>
     `;
   }
@@ -330,7 +390,7 @@ export function renderAldiRendelesek(container, windowManager) {
     modalOverlay.querySelector('#aldi-prod-modal-close-x')?.addEventListener('click', () => modalOverlay.remove());
     modalOverlay.querySelector('#aldi-prod-modal-cancel')?.addEventListener('click', () => modalOverlay.remove());
 
-    modalOverlay.querySelector('#aldi-prod-modal-save')?.addEventListener('click', () => {
+    modalOverlay.querySelector('#aldi-prod-modal-save')?.addEventListener('click', async () => {
       const name = modalOverlay.querySelector('#aldi-new-prod-name').value.trim();
       const articleNo = modalOverlay.querySelector('#aldi-new-prod-articleno').value.trim();
       const gtin = modalOverlay.querySelector('#aldi-new-prod-gtin').value.trim();
@@ -342,15 +402,18 @@ export function renderAldiRendelesek(container, windowManager) {
         return;
       }
 
-      state.products.push({
+      const newProd = {
         name,
         articleNo,
         gtin,
         ean,
         label
-      });
+      };
 
-      saveProducts();
+      const savedId = await addProductToDb(newProd);
+      newProd.id = savedId || `tmp-${Date.now()}`;
+      state.products.push(newProd);
+
       modalOverlay.remove();
       renderModule();
     });
@@ -544,22 +607,34 @@ export function renderAldiRendelesek(container, windowManager) {
       input.addEventListener('change', (e) => {
         const idx = parseInt(e.target.dataset.index, 10);
         const field = e.target.dataset.field;
+        const id = e.target.dataset.id;
+        const val = e.target.value;
+
         if (!isNaN(idx) && state.products[idx] && field) {
-          state.products[idx][field] = e.target.value;
-          saveProducts();
+          state.products[idx][field] = val;
+          const apiFieldMap = {
+            name: 'product_name',
+            articleNo: 'article_number',
+            gtin: 'gtin',
+            ean: 'ean',
+            label: 'label'
+          };
+          const dbField = apiFieldMap[field] || field;
+          updateProductInDb(id, { [dbField]: val });
         }
       });
     });
 
     // Delete product row
     wrapper.querySelectorAll('.aldi-prod-delete-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', async (e) => {
         const idx = parseInt(btn.dataset.index, 10);
+        const id = btn.dataset.id;
         if (!isNaN(idx) && state.products[idx]) {
           const pName = state.products[idx].name || 'terméket';
-          if (confirm(`Biztosan törölni szeretnéd a(z) "${pName}" sort?`)) {
+          if (confirm(`Biztosan törölni szeretnéd a(z) "${pName}" sort az adatbázisból?`)) {
+            await deleteProductFromDb(id);
             state.products.splice(idx, 1);
-            saveProducts();
             renderModule();
           }
         }
@@ -567,5 +642,6 @@ export function renderAldiRendelesek(container, windowManager) {
     });
   }
 
-  renderModule();
+  // Initial load
+  fetchProductsFromDb();
 }
