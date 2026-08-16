@@ -20,10 +20,22 @@ export function renderAldiRendelesek(container, windowManager) {
       { id: '1', date: '2026-07-29', orderNo: '4531552076', fileName: 'ALDI_Order_4531552076.pdf' }
     ],
     products: [
-      { name: 'Nektarin 7kg', articleNo: '330166', gtin: '4061462848056', ean: '', label: '' },
-      { name: 'Őszibarack 1kg', articleNo: '330172', gtin: '4061462848124', ean: '', label: '' },
-      { name: 'Görögdinnye mini', articleNo: '330205', gtin: '4061462849015', ean: '', label: '' },
-      { name: 'Lédig Szilva', articleNo: '330250', gtin: '4061462850110', ean: '', label: '' }
+      { articleNo: '330166', name: 'Nektarin 7kg', gtin: '4061462848056', ean: '', label: '' },
+      { articleNo: '330171', name: 'Nektarin 10*1kg', gtin: '4061462848001', ean: '', label: '' },
+      { articleNo: '329885', name: 'Őszibarack 7kg', gtin: '4061462851506', ean: '', label: '' },
+      { articleNo: '330173', name: 'Őszibarack 10*1kg', gtin: '4061462847981', ean: '', label: '' },
+      { articleNo: '330167', name: 'Sárgabarack 5kg', gtin: '4061462848049', ean: '', label: '' },
+      { articleNo: '330117', name: 'Sárgabarack 10*500g', gtin: '4061462848544', ean: '', label: '' },
+      { articleNo: '330165', name: 'Lapos barack 5kg', gtin: '4061462848704', ean: '', label: '' },
+      { articleNo: '530766', name: 'Körte Limonera 12kg', gtin: '4061459877144', ean: '', label: '' },
+      { articleNo: '597477', name: 'Petrezselyem 10*100g', gtin: '4061462789717', ean: '', label: '' },
+      { articleNo: '666998', name: 'Kapor 6*100g', gtin: '4061463554338', ean: '', label: '' },
+      { articleNo: '330088', name: 'Fürtös uborka 5kg', gtin: '4061462846892', ean: '', label: '' },
+      { articleNo: '687493', name: 'Cukkini 10kg', gtin: '4069365093832', ean: '', label: '' },
+      { articleNo: '658525', name: 'Padlizsán 6kg', gtin: '4061463243454', ean: '', label: '' },
+      { articleNo: '768144', name: 'Fokhagyma 5kg', gtin: '4069366402930', ean: '', label: '' },
+      { articleNo: '329758', name: 'Paprika Palermo 12*300g', gtin: '4061462850196', ean: '', label: '' },
+      { articleNo: '279530', name: 'Kalif Piros 5kg', gtin: '4061461995188', ean: '', label: '' }
     ]
   };
 
