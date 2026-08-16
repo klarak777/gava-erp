@@ -1,6 +1,6 @@
 /**
  * GAVA ERP – ALDI Rendelések modul
- * v1.0.0 – ALDI Napi rendelések, Heti lekötés és Termékek adat tábla
+ * v1.1.0 – ALDI Napi rendelések, Heti lekötés és Termékek adat tábla (dinamikus bővítéssel)
  */
 
 export function renderAldiRendelesek(container, windowManager) {
@@ -11,33 +11,51 @@ export function renderAldiRendelesek(container, windowManager) {
   container.style.height = '100%';
   container.style.background = 'var(--bg-main, #ffffff)';
 
+  const DEFAULT_PRODUCTS = [
+    { articleNo: '330166', name: 'Nektarin 7kg', gtin: '4061462848056', ean: '', label: '' },
+    { articleNo: '330171', name: 'Nektarin 10*1kg', gtin: '4061462848001', ean: '', label: '' },
+    { articleNo: '329885', name: 'Őszibarack 7kg', gtin: '4061462851506', ean: '', label: '' },
+    { articleNo: '330173', name: 'Őszibarack 10*1kg', gtin: '4061462847981', ean: '', label: '' },
+    { articleNo: '330167', name: 'Sárgabarack 5kg', gtin: '4061462848049', ean: '', label: '' },
+    { articleNo: '330117', name: 'Sárgabarack 10*500g', gtin: '4061462848544', ean: '', label: '' },
+    { articleNo: '330165', name: 'Lapos barack 5kg', gtin: '4061462848704', ean: '', label: '' },
+    { articleNo: '530766', name: 'Körte Limonera 12kg', gtin: '4061459877144', ean: '', label: '' },
+    { articleNo: '597477', name: 'Petrezselyem 10*100g', gtin: '4061462789717', ean: '', label: '' },
+    { articleNo: '666998', name: 'Kapor 6*100g', gtin: '4061463554338', ean: '', label: '' },
+    { articleNo: '330088', name: 'Fürtös uborka 5kg', gtin: '4061462846892', ean: '', label: '' },
+    { articleNo: '687493', name: 'Cukkini 10kg', gtin: '4069365093832', ean: '', label: '' },
+    { articleNo: '658525', name: 'Padlizsán 6kg', gtin: '4061463243454', ean: '', label: '' },
+    { articleNo: '768144', name: 'Fokhagyma 5kg', gtin: '4069366402930', ean: '', label: '' },
+    { articleNo: '329758', name: 'Paprika Palermo 12*300g', gtin: '4061462850196', ean: '', label: '' },
+    { articleNo: '279530', name: 'Kalif Piros 5kg', gtin: '4061461995188', ean: '', label: '' }
+  ];
+
+  // Load saved products if any
+  let initialProducts = DEFAULT_PRODUCTS;
+  try {
+    const saved = localStorage.getItem('aldi_products_data');
+    if (saved) {
+      initialProducts = JSON.parse(saved);
+    }
+  } catch (e) {}
+
   // State
   let state = {
     activeTab: 'napi', // 'napi' | 'heti' | 'termekek'
     filterDate: '',
     filterOrderNo: '',
+    productSearch: '',
     orders: [
       { id: '1', date: '2026-07-29', orderNo: '4531552076', fileName: 'ALDI_Order_4531552076.pdf' }
     ],
-    products: [
-      { articleNo: '330166', name: 'Nektarin 7kg', gtin: '4061462848056', ean: '', label: '' },
-      { articleNo: '330171', name: 'Nektarin 10*1kg', gtin: '4061462848001', ean: '', label: '' },
-      { articleNo: '329885', name: 'Őszibarack 7kg', gtin: '4061462851506', ean: '', label: '' },
-      { articleNo: '330173', name: 'Őszibarack 10*1kg', gtin: '4061462847981', ean: '', label: '' },
-      { articleNo: '330167', name: 'Sárgabarack 5kg', gtin: '4061462848049', ean: '', label: '' },
-      { articleNo: '330117', name: 'Sárgabarack 10*500g', gtin: '4061462848544', ean: '', label: '' },
-      { articleNo: '330165', name: 'Lapos barack 5kg', gtin: '4061462848704', ean: '', label: '' },
-      { articleNo: '530766', name: 'Körte Limonera 12kg', gtin: '4061459877144', ean: '', label: '' },
-      { articleNo: '597477', name: 'Petrezselyem 10*100g', gtin: '4061462789717', ean: '', label: '' },
-      { articleNo: '666998', name: 'Kapor 6*100g', gtin: '4061463554338', ean: '', label: '' },
-      { articleNo: '330088', name: 'Fürtös uborka 5kg', gtin: '4061462846892', ean: '', label: '' },
-      { articleNo: '687493', name: 'Cukkini 10kg', gtin: '4069365093832', ean: '', label: '' },
-      { articleNo: '658525', name: 'Padlizsán 6kg', gtin: '4061463243454', ean: '', label: '' },
-      { articleNo: '768144', name: 'Fokhagyma 5kg', gtin: '4069366402930', ean: '', label: '' },
-      { articleNo: '329758', name: 'Paprika Palermo 12*300g', gtin: '4061462850196', ean: '', label: '' },
-      { articleNo: '279530', name: 'Kalif Piros 5kg', gtin: '4061461995188', ean: '', label: '' }
-    ]
+    products: initialProducts
   };
+
+  function saveProducts() {
+    try {
+      localStorage.setItem('aldi_products_data', JSON.stringify(state.products));
+    } catch (e) {}
+  }
 
   const wrapper = document.createElement('div');
   wrapper.style.cssText = 'padding: 16px 28px; display:flex; flex-direction:column; gap:16px; flex:1; min-height:100%;';
@@ -156,19 +174,48 @@ export function renderAldiRendelesek(container, windowManager) {
   }
 
   function renderTermekekHtml() {
+    const q = (state.productSearch || '').toLowerCase().trim();
+    const filteredProducts = state.products.filter(p => {
+      if (!q) return true;
+      return (p.name && p.name.toLowerCase().includes(q)) ||
+             (p.articleNo && p.articleNo.toLowerCase().includes(q)) ||
+             (p.gtin && p.gtin.toLowerCase().includes(q)) ||
+             (p.ean && p.ean.toLowerCase().includes(q)) ||
+             (p.label && p.label.toLowerCase().includes(q));
+    });
+
     return `
+      <!-- Toolbar for Products Table -->
+      <div style="display:flex; align-items:center; justify-content:space-between; margin:16px 0 12px 0; max-width:920px; flex-wrap:wrap; gap:10px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <!-- ➕ Új sor hozzáadása gomb -->
+          <button id="aldi-btn-add-product" class="primary-btn" style="height:34px; padding:0 16px; border-radius:8px; font-size:13px; font-weight:700; background:#0284c7; display:inline-flex; align-items:center; gap:6px; cursor:pointer; box-shadow:0 2px 4px rgba(2,132,199,0.2);">
+            ➕ Új termék sor hozzáadása
+          </button>
+          
+          <span style="font-size:12px; color:#64748b; font-weight:500;">
+            Összesen: <strong>${state.products.length}</strong> termék
+          </span>
+        </div>
+
+        <!-- Quick search in products -->
+        <div>
+          <input type="text" id="aldi-product-search-input" class="access-control-input" value="${state.productSearch}" placeholder="Keresés név, cikkszám, GTIN..." style="height:32px; width:220px; font-size:12px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 10px;">
+        </div>
+      </div>
+
       <!-- Products Table (Image 3) -->
-      <div style="margin-top:16px; border:1px solid #e2e8f0; border-radius:6px; overflow:hidden; max-width:850px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+      <div style="border:1px solid #cbd5e1; border-radius:8px; overflow:hidden; max-width:920px; box-shadow:0 1px 4px rgba(0,0,0,0.04); background:#ffffff;">
         <table style="width:100%; border-collapse:collapse; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size:13px;">
           <thead>
             <tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;">
-              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:200px;">
+              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:220px;">
                 TERMÉK MEGNEVEZÉSE
               </th>
-              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:140px;">
+              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:130px;">
                 CIKKSZÁM
               </th>
-              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:160px;">
+              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:170px;">
                 GTIN AZONOSÍTÓ
               </th>
               <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:140px;">
@@ -177,32 +224,136 @@ export function renderAldiRendelesek(container, windowManager) {
               <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:120px;">
                 CÍMKE
               </th>
+              <th style="padding:10px 10px; text-align:center; font-size:11px; font-weight:800; color:#64748b; letter-spacing:0.5px; width:60px;">
+                MŰVELET
+              </th>
             </tr>
           </thead>
-          <tbody>
-            ${state.products.map((p, idx) => `
-              <tr style="border-bottom:1px solid #f1f5f9; ${idx % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;'}">
-                <td style="padding:10px 14px; color:#1e293b; font-weight:600;">
-                  ${p.name}
+          <tbody id="aldi-products-tbody">
+            ${filteredProducts.length === 0 ? `
+              <tr>
+                <td colspan="6" style="padding:24px; text-align:center; color:#94a3b8; font-size:13px;">
+                  Nincs megjeleníthető termék. Kattints a <strong>➕ Új termék sor hozzáadása</strong> gombra!
                 </td>
-                <td style="padding:10px 14px; color:#334155;">
-                  ${p.articleNo || ''}
+              </tr>
+            ` : filteredProducts.map((p, idx) => `
+              <tr data-index="${idx}" style="border-bottom:1px solid #f1f5f9; ${idx % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;'}">
+                <td style="padding:6px 14px; color:#1e293b; font-weight:600;">
+                  <input type="text" class="aldi-prod-field aldi-prod-name" data-field="name" data-index="${idx}" value="${p.name || ''}" placeholder="Termék neve..." style="width:100%; border:1px solid transparent; background:transparent; font-weight:600; padding:4px 6px; border-radius:4px; font-size:13px;" onfocus="this.style.border='1px solid #93c5fd'; this.style.background='#fff';" onblur="this.style.border='1px solid transparent'; this.style.background='transparent';">
                 </td>
-                <td style="padding:10px 14px; color:#334155; font-family:monospace;">
-                  ${p.gtin || ''}
+                <td style="padding:6px 14px; color:#334155;">
+                  <input type="text" class="aldi-prod-field aldi-prod-article" data-field="articleNo" data-index="${idx}" value="${p.articleNo || ''}" placeholder="Cikkszám..." style="width:100%; border:1px solid transparent; background:transparent; padding:4px 6px; border-radius:4px; font-size:13px;" onfocus="this.style.border='1px solid #93c5fd'; this.style.background='#fff';" onblur="this.style.border='1px solid transparent'; this.style.background='transparent';">
                 </td>
-                <td style="padding:10px 14px; color:#334155; font-family:monospace;">
-                  ${p.ean || ''}
+                <td style="padding:6px 14px; color:#334155; font-family:monospace;">
+                  <input type="text" class="aldi-prod-field aldi-prod-gtin" data-field="gtin" data-index="${idx}" value="${p.gtin || ''}" placeholder="GTIN..." style="width:100%; border:1px solid transparent; background:transparent; font-family:monospace; padding:4px 6px; border-radius:4px; font-size:13px;" onfocus="this.style.border='1px solid #93c5fd'; this.style.background='#fff';" onblur="this.style.border='1px solid transparent'; this.style.background='transparent';">
                 </td>
-                <td style="padding:10px 14px; color:#334155;">
-                  ${p.label || ''}
+                <td style="padding:6px 14px; color:#334155; font-family:monospace;">
+                  <input type="text" class="aldi-prod-field aldi-prod-ean" data-field="ean" data-index="${idx}" value="${p.ean || ''}" placeholder="EAN..." style="width:100%; border:1px solid transparent; background:transparent; font-family:monospace; padding:4px 6px; border-radius:4px; font-size:13px;" onfocus="this.style.border='1px solid #93c5fd'; this.style.background='#fff';" onblur="this.style.border='1px solid transparent'; this.style.background='transparent';">
+                </td>
+                <td style="padding:6px 14px; color:#334155;">
+                  <input type="text" class="aldi-prod-field aldi-prod-label" data-field="label" data-index="${idx}" value="${p.label || ''}" placeholder="Címke..." style="width:100%; border:1px solid transparent; background:transparent; padding:4px 6px; border-radius:4px; font-size:13px;" onfocus="this.style.border='1px solid #93c5fd'; this.style.background='#fff';" onblur="this.style.border='1px solid transparent'; this.style.background='transparent';">
+                </td>
+                <td style="padding:6px 10px; text-align:center;">
+                  <button class="aldi-prod-delete-btn" data-index="${idx}" style="background:none; border:none; cursor:pointer; font-size:14px; opacity:0.6; padding:4px; border-radius:4px; transition:opacity 0.2s;" title="Sor törlése" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">
+                    🗑️
+                  </button>
                 </td>
               </tr>
             `).join('')}
           </tbody>
         </table>
       </div>
+      <div style="font-size:11px; color:#94a3b8; margin-top:8px;">
+        💡 A cellákra kattintva a termékadatok közvetlenül módosíthatók és automatikusan elmentődnek.
+      </div>
     `;
+  }
+
+  // Modal to Add New Product Row
+  function openAddProductModal() {
+    const modalOverlay = document.createElement('div');
+    modalOverlay.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.4); z-index:9999; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);';
+
+    modalOverlay.innerHTML = `
+      <div style="background:#ffffff; width:92%; max-width:440px; border-radius:12px; box-shadow:0 20px 50px rgba(0,0,0,0.2); overflow:hidden; border:1px solid #cbd5e1; display:flex; flex-direction:column;">
+        
+        <!-- Modal Header -->
+        <div style="padding:12px 18px; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; justify-content:space-between; background:#ffffff;">
+          <h3 style="margin:0; font-size:14px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:8px;">
+            ➕ Új ALDI termék felvétele
+          </h3>
+          <button id="aldi-prod-modal-close-x" style="background:none; border:none; font-size:16px; cursor:pointer; color:#64748b; font-weight:700;">✕</button>
+        </div>
+
+        <!-- Modal Body -->
+        <div style="padding:16px 20px; display:flex; flex-direction:column; gap:12px;">
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <label style="font-size:11px; font-weight:700; color:#334155;">Termék megnevezése: *</label>
+            <input type="text" id="aldi-new-prod-name" class="access-control-input" placeholder="Pl. Nektarin 7kg" style="width:100%; height:34px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 10px;">
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <label style="font-size:11px; font-weight:700; color:#334155;">Cikkszám: *</label>
+            <input type="text" id="aldi-new-prod-articleno" class="access-control-input" placeholder="Pl. 330166" style="width:100%; height:34px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 10px;">
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <label style="font-size:11px; font-weight:700; color:#334155;">GTIN azonosító: *</label>
+            <input type="text" id="aldi-new-prod-gtin" class="access-control-input" placeholder="Pl. 4061462848056" style="width:100%; height:34px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 10px;">
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <label style="font-size:11px; font-weight:700; color:#334155;">EAN azonosító:</label>
+            <input type="text" id="aldi-new-prod-ean" class="access-control-input" placeholder="Opcionális..." style="width:100%; height:34px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 10px;">
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <label style="font-size:11px; font-weight:700; color:#334155;">Címke:</label>
+            <input type="text" id="aldi-new-prod-label" class="access-control-input" placeholder="Opcionális..." style="width:100%; height:34px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 10px;">
+          </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div style="padding:12px 20px; border-top:1px solid #e2e8f0; background:#ffffff; display:flex; justify-content:flex-end; gap:10px;">
+          <button id="aldi-prod-modal-cancel" style="padding:6px 18px; border-radius:8px; font-size:13px; font-weight:600; border:1px solid #cbd5e1; background:#ffffff; color:#334155; cursor:pointer;">
+            Mégse
+          </button>
+          <button id="aldi-prod-modal-save" style="padding:6px 20px; border-radius:8px; font-size:13px; font-weight:700; border:none; background:#0284c7; color:#ffffff; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 4px rgba(2,132,199,0.2);">
+            💾 Mentés
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modalOverlay);
+
+    modalOverlay.querySelector('#aldi-prod-modal-close-x')?.addEventListener('click', () => modalOverlay.remove());
+    modalOverlay.querySelector('#aldi-prod-modal-cancel')?.addEventListener('click', () => modalOverlay.remove());
+
+    modalOverlay.querySelector('#aldi-prod-modal-save')?.addEventListener('click', () => {
+      const name = modalOverlay.querySelector('#aldi-new-prod-name').value.trim();
+      const articleNo = modalOverlay.querySelector('#aldi-new-prod-articleno').value.trim();
+      const gtin = modalOverlay.querySelector('#aldi-new-prod-gtin').value.trim();
+      const ean = modalOverlay.querySelector('#aldi-new-prod-ean').value.trim();
+      const label = modalOverlay.querySelector('#aldi-new-prod-label').value.trim();
+
+      if (!name) {
+        alert('Kérlek add meg a termék megnevezését!');
+        return;
+      }
+
+      state.products.push({
+        name,
+        articleNo,
+        gtin,
+        ean,
+        label
+      });
+
+      saveProducts();
+      modalOverlay.remove();
+      renderModule();
+    });
   }
 
   // Upload Modal (Image 2)
@@ -345,7 +496,7 @@ export function renderAldiRendelesek(container, windowManager) {
       renderModule();
     });
 
-    // Filters
+    // Filters (Napi rendelés)
     const dateInput = wrapper.querySelector('#aldi-filter-date');
     if (dateInput) {
       dateInput.addEventListener('input', (e) => {
@@ -373,6 +524,44 @@ export function renderAldiRendelesek(container, windowManager) {
         const ord = state.orders.find(o => o.id === id);
         if (ord) {
           alert(`ALDI Rendelés megtekintése:\nRendelési szám: ${ord.orderNo}\nSzállítási dátum: ${ord.date}\nFájl: ${ord.fileName}`);
+        }
+      });
+    });
+
+    // ── Termékek adat tábla események ──
+    wrapper.querySelector('#aldi-btn-add-product')?.addEventListener('click', openAddProductModal);
+
+    const productSearchInput = wrapper.querySelector('#aldi-product-search-input');
+    if (productSearchInput) {
+      productSearchInput.addEventListener('input', (e) => {
+        state.productSearch = e.target.value;
+        renderModule();
+      });
+    }
+
+    // Inline field changes in products table
+    wrapper.querySelectorAll('.aldi-prod-field').forEach(input => {
+      input.addEventListener('change', (e) => {
+        const idx = parseInt(e.target.dataset.index, 10);
+        const field = e.target.dataset.field;
+        if (!isNaN(idx) && state.products[idx] && field) {
+          state.products[idx][field] = e.target.value;
+          saveProducts();
+        }
+      });
+    });
+
+    // Delete product row
+    wrapper.querySelectorAll('.aldi-prod-delete-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const idx = parseInt(btn.dataset.index, 10);
+        if (!isNaN(idx) && state.products[idx]) {
+          const pName = state.products[idx].name || 'terméket';
+          if (confirm(`Biztosan törölni szeretnéd a(z) "${pName}" sort?`)) {
+            state.products.splice(idx, 1);
+            saveProducts();
+            renderModule();
+          }
         }
       });
     });
