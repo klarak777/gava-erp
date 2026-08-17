@@ -698,16 +698,19 @@ export function renderAldiRendelesek(container, windowManager) {
       yearOptions += `<option value="${y}" ${y === state.hetiArakYear ? 'selected' : ''}>${y}</option>`;
     }
 
-    // Heti opciók: KW01-től KW53-ig listázva, jelölve a már feltöltötteket
-    const currentWeekNum = Math.min(53, Math.max(1, Math.ceil((Date.now() - new Date(`${state.hetiArakYear}-01-01`)) / (7 * 24 * 3600 * 1000))));
-    let weekDropdownOpts = '';
-    for (let w = 1; w <= 53; w++) {
-      const code = `KW${String(w).padStart(2, '0')}`;
-      const exists = state.hetiArakWeeks.some(ew => ew.week_code === code);
-      const isSelected = (state.hetiArakSelectedWeekId && state.hetiArakWeeks.find(ew => ew.id === state.hetiArakSelectedWeekId)?.week_code === code) ||
-                         (!state.hetiArakSelectedWeekId && w === currentWeekNum);
-      weekDropdownOpts += `<option value="${code}" ${isSelected ? 'selected' : ''}>${code}${exists ? ' (feltöltve)' : ''}</option>`;
-    }
+    // Csak a ténylegesen feltöltött hetek + "Új hét" opció
+    const existingWeekOpts = state.hetiArakWeeks
+      .filter(w => w.year === state.hetiArakYear)
+      .sort((a, b) => (a.week_number || 0) - (b.week_number || 0))
+      .map(w => `<option value="existing:${w.week_code}">${w.week_code} – frissítés</option>`)
+      .join('');
+
+    // Következő KW javasolt szám (eggyel a legnagyobb meglévő fölé)
+    const existingForYear = state.hetiArakWeeks.filter(w => w.year === state.hetiArakYear);
+    const maxKw = existingForYear.length > 0
+      ? Math.max(...existingForYear.map(w => w.week_number || 0))
+      : Math.min(53, Math.max(1, Math.ceil((Date.now() - new Date(`${state.hetiArakYear}-01-01`)) / (7 * 24 * 3600 * 1000))));
+    const nextKwSuggestion = Math.min(53, maxKw + (existingForYear.length > 0 ? 1 : 0));
 
     const modalOverlay = document.createElement('div');
     modalOverlay.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.4); z-index:9999; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);';
@@ -733,13 +736,22 @@ export function renderAldiRendelesek(container, windowManager) {
               </select>
             </div>
 
-            <!-- Hét -->
+            <!-- Hét: csak a már feltöltöttek + Új hét -->
             <div style="display:flex; flex-direction:column; gap:4px; flex:2;">
               <label style="font-size:11px; font-weight:700; color:#334155; text-transform:uppercase; letter-spacing:0.4px;">Hét</label>
               <select id="aldi-arak-modal-week" style="height:36px; font-size:13px; border:1px solid #cbd5e1; border-radius:8px; padding:4px 10px; background:#fff; color:#1e293b;">
-                ${weekDropdownOpts}
+                <option value="new">➕ Új hét</option>
+                ${existingWeekOpts}
               </select>
             </div>
+          </div>
+
+          <!-- Új hét KW szám beviteli mező (csak "Új hét" esetén látható) -->
+          <div id="aldi-arak-new-kw-wrap" style="display:flex; align-items:center; gap:10px; background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:10px 14px;">
+            <span style="font-size:12px; color:#0369a1; font-weight:600;">KW száma (1–53):</span>
+            <input type="number" id="aldi-arak-new-kw-input" min="1" max="53" value="${nextKwSuggestion}"
+              style="height:32px; width:80px; font-size:14px; font-weight:700; border:1px solid #7dd3fc; border-radius:6px; padding:4px 8px; background:#ffffff; color:#0284c7; text-align:center;">
+            <span id="aldi-arak-new-kw-preview" style="font-size:13px; font-weight:700; color:#0284c7;">→ KW${String(nextKwSuggestion).padStart(2,'0')}</span>
           </div>
 
           <!-- Drag & Drop zone -->
@@ -777,19 +789,36 @@ export function renderAldiRendelesek(container, windowManager) {
     const weekSelect = modalOverlay.querySelector('#aldi-arak-modal-week');
     const yearSelect = modalOverlay.querySelector('#aldi-arak-modal-year');
     const statusDiv = modalOverlay.querySelector('#aldi-arak-upload-status');
+    const newKwWrap = modalOverlay.querySelector('#aldi-arak-new-kw-wrap');
+    const newKwInput = modalOverlay.querySelector('#aldi-arak-new-kw-input');
+    const newKwPreview = modalOverlay.querySelector('#aldi-arak-new-kw-preview');
 
-    if (yearSelect) {
-      yearSelect.addEventListener('change', () => {
-        const selectedYear = parseInt(yearSelect.value, 10);
-        let opts = '';
-        for (let w = 1; w <= 53; w++) {
-          const code = `KW${String(w).padStart(2, '0')}`;
-          const exists = state.hetiArakWeeks.some(ew => ew.year === selectedYear && ew.week_code === code);
-          opts += `<option value="${code}" ${w === currentWeekNum ? 'selected' : ''}>${code}${exists ? ' (feltöltve)' : ''}</option>`;
-        }
-        weekSelect.innerHTML = opts;
-      });
+    // KW preview frissítése gépelés közben
+    newKwInput.addEventListener('input', () => {
+      const v = parseInt(newKwInput.value, 10);
+      newKwPreview.textContent = (v >= 1 && v <= 53) ? `→ KW${String(v).padStart(2,'0')}` : '→ ?';
+    });
+
+    // Hét választó változásakor: mutjuk/rejtjük a KW beviteli mezőt
+    function updateNewKwVisibility() {
+      newKwWrap.style.display = weekSelect.value === 'new' ? 'flex' : 'none';
     }
+    updateNewKwVisibility();
+    weekSelect.addEventListener('change', updateNewKwVisibility);
+
+    // Év változásakor frissítjük a hét legördülőt (csak az adott évhez tartozó hetek)
+    yearSelect.addEventListener('change', () => {
+      const selectedYear = parseInt(yearSelect.value, 10);
+      const weeksForYear = state.hetiArakWeeks
+        .filter(w => w.year === selectedYear)
+        .sort((a, b) => (a.week_number || 0) - (b.week_number || 0));
+      let opts = '<option value="new">➕ Új hét</option>';
+      weeksForYear.forEach(w => {
+        opts += `<option value="existing:${w.week_code}">${w.week_code} – frissítés</option>`;
+      });
+      weekSelect.innerHTML = opts;
+      updateNewKwVisibility();
+    });
 
     // Fájl kezelés
     dropzone.addEventListener('click', () => fileInput.click());
@@ -828,15 +857,32 @@ export function renderAldiRendelesek(container, windowManager) {
       }
 
       const yearVal = parseInt(modalOverlay.querySelector('#aldi-arak-modal-year').value, 10);
-      const weekCode = weekSelect.value;
-      const weekNumber = parseInt(weekCode.replace('KW', ''), 10);
+      const weekVal = weekSelect.value;
+      let weekNumber, weekCode;
 
-      if (!weekNumber || weekNumber < 1 || weekNumber > 53) {
-        statusDiv.style.display = 'block';
-        statusDiv.style.background = '#fef2f2';
-        statusDiv.style.color = '#dc2626';
-        statusDiv.textContent = '❌ Érvényes hétszámot válassz ki (KW01–KW53)!';
-        return;
+      if (weekVal === 'new') {
+        weekNumber = parseInt(newKwInput.value, 10);
+        if (!weekNumber || weekNumber < 1 || weekNumber > 53) {
+          statusDiv.style.display = 'block';
+          statusDiv.style.background = '#fef2f2';
+          statusDiv.style.color = '#dc2626';
+          statusDiv.textContent = '❌ Érvényes KW számot adj meg (1–53)!';
+          return;
+        }
+        weekCode = `KW${String(weekNumber).padStart(2, '0')}`;
+        // Ellenőrizzük, hogy ez a KW már nem létezik-e ebben az évben
+        const alreadyExists = state.hetiArakWeeks.some(w => w.year === yearVal && w.week_code === weekCode);
+        if (alreadyExists) {
+          statusDiv.style.display = 'block';
+          statusDiv.style.background = '#fef9c3';
+          statusDiv.style.color = '#854d0e';
+          statusDiv.textContent = `⚠️ ${weekCode} (${yearVal}) már létezik! Válaszd ki a legördülőből a frissítéshez.`;
+          return;
+        }
+      } else if (weekVal.startsWith('existing:')) {
+        weekCode = weekVal.replace('existing:', '');
+        const existingWeek = state.hetiArakWeeks.find(w => w.week_code === weekCode && w.year === yearVal);
+        weekNumber = existingWeek ? existingWeek.week_number : parseInt(weekCode.replace('KW', ''), 10);
       }
 
       // Upload
@@ -970,11 +1016,11 @@ export function renderAldiRendelesek(container, windowManager) {
               </div>
               <div style="display:flex; flex-direction:column; gap:3px;">
                 <label style="font-size:10px; font-weight:600; color:#64748b;">Kezdete</label>
-                <input type="date" id="cp-new-start" style="height:32px; font-size:12px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; background:#fff;">
+                <input type="date" id="cp-new-start" min="${line.delivery_period_start ? line.delivery_period_start.split('T')[0] : ''}" max="${line.delivery_period_end ? line.delivery_period_end.split('T')[0] : ''}" style="height:32px; font-size:12px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; background:#fff;">
               </div>
               <div style="display:flex; flex-direction:column; gap:3px;">
                 <label style="font-size:10px; font-weight:600; color:#64748b;">Vége</label>
-                <input type="date" id="cp-new-end" style="height:32px; font-size:12px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; background:#fff;">
+                <input type="date" id="cp-new-end" min="${line.delivery_period_start ? line.delivery_period_start.split('T')[0] : ''}" max="${line.delivery_period_end ? line.delivery_period_end.split('T')[0] : ''}" style="height:32px; font-size:12px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; background:#fff;">
               </div>
             </div>
             <div style="margin-top:8px; display:flex; flex-direction:column; gap:3px;">
@@ -1032,6 +1078,18 @@ export function renderAldiRendelesek(container, windowManager) {
 
       if (!start || !end) { alert('Add meg a kezdő és végdátumot!'); return; }
       if (start > end) { alert('A kezdő dátum nem lehet a végdátumnál korábbi!'); return; }
+
+      const lineStart = line.delivery_period_start ? line.delivery_period_start.split('T')[0] : null;
+      const lineEnd = line.delivery_period_end ? line.delivery_period_end.split('T')[0] : null;
+
+      if (lineStart && start < lineStart) {
+        alert(`A kezdő dátum nem lehet korábbi, mint a termék időszakának kezdete (${lineStart})!`);
+        return;
+      }
+      if (lineEnd && end > lineEnd) {
+        alert(`A végdátum nem lehet későbbi, mint a termék időszakának vége (${lineEnd})!`);
+        return;
+      }
 
       try {
         const res = await fetch(`/api/v1/aldi-weekly-prices/${state.hetiArakSelectedWeekId}/lines/${lineId}/currency-periods`, {
