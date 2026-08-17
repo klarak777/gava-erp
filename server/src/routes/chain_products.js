@@ -29,6 +29,79 @@ router.get('/', async (req, res) => {
   }
 });
 
+// POST /api/v1/chain-products/sync (Batch save products for a chain on Mentés click)
+router.post('/sync', async (req, res) => {
+  try {
+    const { chain = 'ALDI', products = [] } = req.body;
+    const chainUpper = (chain || 'ALDI').toUpperCase();
+
+    await db.transaction(async trx => {
+      // Get existing active products
+      const existing = await trx('chain_products')
+        .where({ chain: chainUpper, is_active: true });
+      
+      const existingMap = new Map(existing.map(e => [e.id, e]));
+      const incomingIds = new Set();
+
+      for (const p of products) {
+        const pName = p.name || p.product_name || '';
+        const pArticle = p.articleNo || p.article_number || '';
+        const pGtin = p.gtin || '';
+        const pEan = p.ean || '';
+        const pLabel = p.label || '';
+
+        if (!pName && !pArticle) continue; // Skip empty rows
+
+        if (p.id && !String(p.id).startsWith('tmp-') && existingMap.has(Number(p.id))) {
+          incomingIds.add(Number(p.id));
+          await trx('chain_products')
+            .where('id', p.id)
+            .update({
+              product_name: pName,
+              article_number: pArticle,
+              gtin: pGtin,
+              ean: pEan,
+              label: pLabel,
+              updated_at: new Date()
+            });
+        } else {
+          // Insert new
+          const [ins] = await trx('chain_products').insert({
+            chain: chainUpper,
+            product_name: pName,
+            article_number: pArticle,
+            gtin: pGtin,
+            ean: pEan,
+            label: pLabel,
+            is_active: true,
+            created_at: new Date(),
+            updated_at: new Date()
+          }).returning('id');
+          if (ins) incomingIds.add(ins.id || ins);
+        }
+      }
+
+      // Deactivate items removed in UI
+      for (const item of existing) {
+        if (!incomingIds.has(item.id)) {
+          await trx('chain_products')
+            .where('id', item.id)
+            .update({ is_active: false, updated_at: new Date() });
+        }
+      }
+    });
+
+    const updatedList = await db('chain_products')
+      .where({ chain: chainUpper, is_active: true })
+      .orderBy('id', 'asc');
+
+    res.json({ success: true, products: updatedList });
+  } catch (err) {
+    console.error('Hiba a lánc termékek szinkronizálásakor:', err);
+    res.status(500).json({ error: 'Belső szerverhiba a mentés során' });
+  }
+});
+
 // POST /api/v1/chain-products
 router.post('/', async (req, res) => {
   try {
