@@ -65,3 +65,9 @@
 
 #### 5. Rendszerverzió & Verzióváltás
 * **Verziószám:** Frissítve **V0.7.6**-ra a bejelentkező felületen, a fejlécben és az oldalsávban.
+
+---
+
+#### 6. Utólagos Javítások (Bugfixek)
+* **Heti árak feltöltése (Hét kiválasztása):** Javítva a hiba, ami miatt a feltöltő ablakban mindig 53 hét jelent meg. Mostantól a legördülő csak a már feltöltött heteket mutatja (felülírás céljából), valamint elérhető egy **„➕ Új hét”** opció, ami megjelenít egy input mezőt az új KW szám (1-53) megadásához.
+* **Deviza időszakok dátum validálása:** A Deviza időszak felugró ablakban mostantól csak olyan kezdő és végdátum adható meg, ami **az adott termék szállítási időszakának (delivery period) keretein belül** van. HTML `min` / `max` attribútumok és JavaScript validáció is védi a bevitelt.

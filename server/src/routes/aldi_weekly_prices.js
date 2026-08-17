@@ -131,6 +131,19 @@ router.get('/:id/lines', async (req, res) => {
         'chain_products.ean as erp_ean'
       )
       .orderBy('aldi_weekly_price_lines.row_order', 'asc');
+
+    const lineIds = lines.map(l => l.id);
+    let currencyPeriods = [];
+    if (lineIds.length > 0) {
+      currencyPeriods = await db('aldi_price_currency_periods')
+        .whereIn('price_line_id', lineIds)
+        .orderBy('period_start', 'asc');
+    }
+
+    lines.forEach(line => {
+      line.currency_periods = currencyPeriods.filter(cp => cp.price_line_id === line.id);
+    });
+
     res.json(lines);
   } catch (err) {
     console.error('[aldi-weekly-prices] GET lines hiba:', err);
@@ -299,6 +312,18 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         'chain_products.product_name as erp_product_name'
       )
       .orderBy('aldi_weekly_price_lines.row_order', 'asc');
+
+    const lineIds = lines.map(l => l.id);
+    let currencyPeriods = [];
+    if (lineIds.length > 0) {
+      currencyPeriods = await db('aldi_price_currency_periods')
+        .whereIn('price_line_id', lineIds)
+        .orderBy('period_start', 'asc');
+    }
+
+    lines.forEach(line => {
+      line.currency_periods = currencyPeriods.filter(cp => cp.price_line_id === line.id);
+    });
 
     res.json({
       success: true,

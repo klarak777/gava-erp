@@ -387,7 +387,7 @@ export function renderAldiRendelesek(container, windowManager) {
                 <th style="padding:10px 8px; text-align:right; font-size:10px; font-weight:700; color:#94a3b8; letter-spacing:0.6px; text-transform:uppercase; width:110px;">EGYSÉGKÖLTSÉG</th>
                 <th style="padding:10px 8px; text-align:center; font-size:10px; font-weight:700; color:#94a3b8; letter-spacing:0.6px; text-transform:uppercase; width:170px;">SZÁLLÍTÁSI IDŐSZAK</th>
                 <th style="padding:10px 8px; text-align:left; font-size:10px; font-weight:700; color:#94a3b8; letter-spacing:0.6px; text-transform:uppercase; width:140px;">GTIN</th>
-                <th style="padding:10px 6px; text-align:center; font-size:10px; font-weight:700; color:#94a3b8; letter-spacing:0.6px; text-transform:uppercase; width:60px;">€/Ft</th>
+                <th style="padding:10px 6px; text-align:center; font-size:10px; font-weight:700; color:#94a3b8; letter-spacing:0.6px; text-transform:uppercase; width:60px;">Cur</th>
               </tr>
             </thead>
             <tbody>
@@ -403,12 +403,20 @@ export function renderAldiRendelesek(container, windowManager) {
 
                 const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
 
-                // Valuta detect from crate_cost
-                const crateCost = line.crate_cost || '';
-                const isEur = crateCost.startsWith('€');
-                const currencyBadge = isEur
-                  ? '<span style="display:inline-block; background:#dbeafe; color:#1d4ed8; font-size:9px; font-weight:700; border-radius:4px; padding:1px 5px;">EUR</span>'
-                  : '<span style="display:inline-block; background:#fef9c3; color:#854d0e; font-size:9px; font-weight:700; border-radius:4px; padding:1px 5px;">HUF</span>';
+                // Valuta detect from currency_periods or fallback to crate_cost
+                let currencyBadge = '';
+                if (line.currency_periods && line.currency_periods.length > 0) {
+                  const uniqueCurrencies = [...new Set(line.currency_periods.map(cp => cp.currency_code))];
+                  currencyBadge = uniqueCurrencies.map(c => 
+                    `<span style="display:inline-block; background:${c === 'EUR' ? '#dbeafe' : '#fef9c3'}; color:${c === 'EUR' ? '#1d4ed8' : '#854d0e'}; font-size:9px; font-weight:700; border-radius:4px; padding:1px 5px; margin-bottom:2px;">${c}</span>`
+                  ).join('<br>');
+                } else {
+                  const crateCost = line.crate_cost || '';
+                  const isEur = crateCost.startsWith('€');
+                  currencyBadge = isEur
+                    ? '<span style="display:inline-block; background:#dbeafe; color:#1d4ed8; font-size:9px; font-weight:700; border-radius:4px; padding:1px 5px;">EUR</span>'
+                    : '<span style="display:inline-block; background:#fef9c3; color:#854d0e; font-size:9px; font-weight:700; border-radius:4px; padding:1px 5px;">HUF</span>';
+                }
 
                 return `
                   <tr style="border-bottom:1px solid #f1f5f9; background:${rowBg};">
@@ -950,13 +958,19 @@ export function renderAldiRendelesek(container, windowManager) {
     const line = state.hetiArakLines.find(l => l.id == lineId);
     if (!line) return;
 
-    // Betöltjük az aktuális periódusokat
+    // Betöltjük az aktuális periódusokat és az Admin devizákat
     let periods = [];
+    let adminCurrencies = [{code: 'EUR'}, {code: 'HUF'}, {code: 'USD'}]; // Fallback
     try {
-      const res = await fetch(`/api/v1/aldi-weekly-prices/${state.hetiArakSelectedWeekId}/lines/${lineId}/currency-periods`);
-      if (res.ok) periods = await res.json();
+      const [periodsRes, currRes] = await Promise.all([
+        fetch(`/api/v1/aldi-weekly-prices/${state.hetiArakSelectedWeekId}/lines/${lineId}/currency-periods`),
+        fetch(`/api/v1/admin/currencies`)
+      ]);
+      
+      if (periodsRes.ok) periods = await periodsRes.json();
+      if (currRes.ok) adminCurrencies = await currRes.json();
     } catch (e) {
-      console.warn('Currency periods lekérési hiba:', e);
+      console.warn('Currency periods / admin currencies lekérési hiba:', e);
     }
 
     const termekNev = line.is_gtin_matched
@@ -1009,9 +1023,7 @@ export function renderAldiRendelesek(container, windowManager) {
               <div style="display:flex; flex-direction:column; gap:3px;">
                 <label style="font-size:10px; font-weight:600; color:#64748b;">Deviza</label>
                 <select id="cp-new-currency" style="height:32px; width:80px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; background:#fff;">
-                  <option value="EUR">EUR</option>
-                  <option value="HUF">HUF</option>
-                  <option value="USD">USD</option>
+                  ${adminCurrencies.map(c => `<option value="${c.code}">${c.code}</option>`).join('')}
                 </select>
               </div>
               <div style="display:flex; flex-direction:column; gap:3px;">
@@ -1041,7 +1053,11 @@ export function renderAldiRendelesek(container, windowManager) {
 
     document.body.appendChild(modalOverlay);
 
-    const closeModal = () => modalOverlay.remove();
+    const closeModal = () => {
+      line.currency_periods = [...periods];
+      modalOverlay.remove();
+      renderModule();
+    };
     modalOverlay.querySelector('#cp-modal-close')?.addEventListener('click', closeModal);
     modalOverlay.querySelector('#cp-close-btn')?.addEventListener('click', closeModal);
 
