@@ -1091,6 +1091,18 @@ export function renderAldiRendelesek(container, windowManager) {
         return;
       }
 
+      // Ellenőrizzük, hogy az új időszak átfedésben van-e már rögzített időszakokkal
+      const hasOverlap = periods.some(p => {
+        const pStart = p.period_start.split('T')[0];
+        const pEnd = p.period_end.split('T')[0];
+        return start <= pEnd && end >= pStart;
+      });
+
+      if (hasOverlap) {
+        alert('Az általad megadott dátumtartomány átfedésben van egy már meglévő deviza időszakkal!');
+        return;
+      }
+
       try {
         const res = await fetch(`/api/v1/aldi-weekly-prices/${state.hetiArakSelectedWeekId}/lines/${lineId}/currency-periods`, {
           method: 'POST',
