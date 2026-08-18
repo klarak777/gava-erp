@@ -201,19 +201,27 @@ router.get('/', async (req, res) => {
                 const cp = await db('chain_products').where('gtin', line.gtin).first('id');
                 if (!cp) continue;
 
-                const wpLine = await db('aldi_weekly_price_lines')
-                    .where('chain_product_id', cp.id)
-                    .orderBy('id', 'desc')
-                    .first('id');
-                if (!wpLine) continue;
+                // Helyes dátum konverzió időzóna-elcsúszás nélkül (pl. helyi gép CEST vs DO szerver UTC)
+                let dDate = order.delivery_date;
+                if (dDate instanceof Date) {
+                    const y = dDate.getFullYear();
+                    const m = String(dDate.getMonth() + 1).padStart(2, '0');
+                    const d = String(dDate.getDate()).padStart(2, '0');
+                    dDate = `${y}-${m}-${d}`;
+                } else if (typeof dDate === 'string' && dDate.includes('T')) {
+                    dDate = dDate.split('T')[0];
+                }
 
+                // Nem csak a legutolsó feltöltött heti árat nézzük (mert mi van, ha a KW34-et feltöltötték a KW33 után?),
+                // hanem az összes heti ár sorhoz tartozó periódust összekötjük, és a szállítási dátum alapján szűrünk rá.
                 const period = await db('aldi_price_currency_periods')
-                    .where('price_line_id', wpLine.id)
+                    .join('aldi_weekly_price_lines', 'aldi_price_currency_periods.price_line_id', 'aldi_weekly_price_lines.id')
+                    .where('aldi_weekly_price_lines.chain_product_id', cp.id)
                     .where(function() {
-                        this.where('period_start', '<=', dDate)
-                            .andWhere('period_end', '>=', dDate);
+                        this.where('aldi_price_currency_periods.period_start', '<=', dDate)
+                            .andWhere('aldi_price_currency_periods.period_end', '>=', dDate);
                     })
-                    .first('currency_code');
+                    .first('aldi_price_currency_periods.currency_code');
 
                 if (period) {
                     currency = period.currency_code;
