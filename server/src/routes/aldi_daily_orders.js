@@ -172,31 +172,31 @@ router.get('/', async (req, res) => {
 
         for (let order of orders) {
             // Verziószám dinamikus számítása
-            if (!orderCounts[order.order_number]) {
-                orderCounts[order.order_number] = 1;
+            // A régi logika "-1", "-2" suffixeket adott az azonos rendelésszámokhoz.
+            // Ezeket az alap rendelésszámhoz tartozónak tekintjük a verziószám számításához.
+            const baseOrderNumber = order.order_number.replace(/-\d+$/, '');
+            if (!orderCounts[baseOrderNumber]) {
+                orderCounts[baseOrderNumber] = 1;
             } else {
-                orderCounts[order.order_number]++;
+                orderCounts[baseOrderNumber]++;
             }
-            order.version = `VERSION ${orderCounts[order.order_number]}`;
+            order.version = `VERSION ${orderCounts[baseOrderNumber]}`;
 
             // Deviza (Rendelés típusa) dinamikus számítása a GTIN alapján
-            let currency = 'DEBUG_NO_LINE';
+            let currency = null;
             const firstLine = await db('aldi_daily_order_lines')
                 .where('daily_order_id', order.id)
                 .first('gtin');
 
             if (firstLine && firstLine.gtin) {
-                currency = 'DEBUG_NO_CP';
                 const cp = await db('chain_products').where('gtin', firstLine.gtin).first('id');
                 if (cp) {
-                    currency = 'DEBUG_NO_WPLINE';
                     const wpLine = await db('aldi_weekly_price_lines')
                         .where('chain_product_id', cp.id)
                         .orderBy('id', 'desc')
                         .first('id');
                     
                     if (wpLine) {
-                        currency = 'DEBUG_NO_PERIOD';
                         // Ensure order.delivery_date is a formatted string 'YYYY-MM-DD'
                         let dDate = order.delivery_date;
                         if (dDate instanceof Date) {
