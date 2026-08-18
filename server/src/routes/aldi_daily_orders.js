@@ -183,42 +183,44 @@ router.get('/', async (req, res) => {
             order.version = `VERSION ${orderCounts[baseOrderNumber]}`;
 
             // Deviza (Rendelés típusa) dinamikus számítása a GTIN alapján
+            // Végigmegyünk az összes tételsoron, amíg találunk érvényes deviza-periódust
             let currency = null;
-            const firstLine = await db('aldi_daily_order_lines')
+            let dDate = order.delivery_date;
+            if (dDate instanceof Date) {
+                dDate = dDate.toISOString().split('T')[0];
+            } else if (typeof dDate === 'string' && dDate.includes('T')) {
+                dDate = dDate.split('T')[0];
+            }
+
+            const allLines = await db('aldi_daily_order_lines')
                 .where('daily_order_id', order.id)
-                .first('gtin');
+                .select('gtin');
 
-            if (firstLine && firstLine.gtin) {
-                const cp = await db('chain_products').where('gtin', firstLine.gtin).first('id');
-                if (cp) {
-                    const wpLine = await db('aldi_weekly_price_lines')
-                        .where('chain_product_id', cp.id)
-                        .orderBy('id', 'desc')
-                        .first('id');
-                    
-                    if (wpLine) {
-                        // Ensure order.delivery_date is a formatted string 'YYYY-MM-DD'
-                        let dDate = order.delivery_date;
-                        if (dDate instanceof Date) {
-                            dDate = dDate.toISOString().split('T')[0];
-                        } else if (typeof dDate === 'string' && dDate.includes('T')) {
-                            dDate = dDate.split('T')[0];
-                        }
+            for (const line of allLines) {
+                if (!line.gtin) continue;
+                const cp = await db('chain_products').where('gtin', line.gtin).first('id');
+                if (!cp) continue;
 
-                        const period = await db('aldi_price_currency_periods')
-                            .where('price_line_id', wpLine.id)
-                            .where(function() {
-                                this.where('period_start', '<=', dDate)
-                                    .andWhere('period_end', '>=', dDate);
-                            })
-                            .first('currency_code');
-                        
-                        if (period) {
-                            currency = period.currency_code;
-                        }
-                    }
+                const wpLine = await db('aldi_weekly_price_lines')
+                    .where('chain_product_id', cp.id)
+                    .orderBy('id', 'desc')
+                    .first('id');
+                if (!wpLine) continue;
+
+                const period = await db('aldi_price_currency_periods')
+                    .where('price_line_id', wpLine.id)
+                    .where(function() {
+                        this.where('period_start', '<=', dDate)
+                            .andWhere('period_end', '>=', dDate);
+                    })
+                    .first('currency_code');
+
+                if (period) {
+                    currency = period.currency_code;
+                    break; // Megvan a deviza, nem kell tovább keresni
                 }
             }
+
             order.order_type = currency;
             enrichedOrders.push(order);
         }

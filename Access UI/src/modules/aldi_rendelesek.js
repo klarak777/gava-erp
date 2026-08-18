@@ -264,11 +264,13 @@ export function renderAldiRendelesek(container, windowManager) {
             ` : filteredOrders.map((o, idx) => {
       const dt = new Date(o.delivery_date);
       const formattedDate = !isNaN(dt) ? dt.toISOString().split('T')[0] : o.delivery_date;
+      // A megjelenített rendelési szám: eltávolítjuk a régi "-N" suffixet
+      const displayOrderNumber = o.order_number.replace(/-\d+$/, '');
       return `
               <tr style="border-bottom:1px solid #f1f5f9; ${idx % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;'}">
                 <td style="padding:10px 14px; color:#1e293b; font-weight:500;">${formattedDate}</td>
                 <td style="padding:10px 14px;">
-                  <a href="/api/v1/aldi-daily-orders/${o.id}/file" class="aldi-order-link" target="_blank" data-id="${o.id}" data-orderno="${o.order_number}" data-date="${formattedDate}" style="color:#2563eb; font-weight:700; text-decoration:underline;">${o.order_number}</a>
+                  <a href="/api/v1/aldi-daily-orders/${o.id}/file" class="aldi-order-link" target="_blank" data-id="${o.id}" data-orderno="${o.order_number}" data-date="${formattedDate}" style="color:#2563eb; font-weight:700; text-decoration:underline;">${displayOrderNumber}</a>
                 </td>
                 <td style="padding:10px 14px; color:#334155; font-weight:600;">
                   ${o.version || 'N/A'}
