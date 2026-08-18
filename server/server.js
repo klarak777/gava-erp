@@ -47,6 +47,7 @@ const uploadsRouter = require('./src/routes/uploads');
 const aiRouter = require('./src/routes/ai');
 const chainProductsRouter = require('./src/routes/chain_products');
 const aldiWeeklyPricesRouter = require('./src/routes/aldi_weekly_prices');
+const aldiDailyOrdersRouter = require('./src/routes/aldi_daily_orders');
 
 // Egyszerű teszt végpont
 app.get('/api/v1/status', (req, res) => {
@@ -75,6 +76,7 @@ app.use('/api/v1/uploads', uploadsRouter);
 app.use('/api/v1/ai', aiRouter);
 app.use('/api/v1/chain-products', chainProductsRouter);
 app.use('/api/v1/aldi-weekly-prices', aldiWeeklyPricesRouter);
+app.use('/api/v1/aldi-daily-orders', aldiDailyOrdersRouter);
 
 // Szerver indítása
 app.listen(PORT, () => {

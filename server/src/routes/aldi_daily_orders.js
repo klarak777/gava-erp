@@ -1,0 +1,256 @@
+const express = require('express');
+const router = express.Router();
+const multer = require('multer');
+const pdfParse = require('pdf-parse');
+const fs = require('fs');
+const path = require('path');
+const db = require('../db/db');
+
+// Raktar base path for daily orders
+const RAKTAR_BASE = process.platform === 'win32'
+    ? '\\\\192.168.1.5\\raktar'
+    : '/mnt/raktar';
+const ALDI_DAILY_ORDERS_PATH = path.join(RAKTAR_BASE, 'Gava Hungria System', 'ERP ALDI', 'Napi rendelés');
+
+// Set up multer for memory storage
+const upload = multer({ storage: multer.memoryStorage() });
+
+// Endpoint: POST /api/v1/aldi-daily-orders/upload
+router.post('/upload', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'Nincs fájl feltöltve.' });
+        }
+
+        const dataBuffer = req.file.buffer;
+        
+        let text = '';
+        if (typeof pdfParse === 'function') {
+            const data = await pdfParse(dataBuffer);
+            text = data.text;
+        } else if (pdfParse && pdfParse.PDFParse) {
+            const parser = new pdfParse.PDFParse({ data: dataBuffer });
+            const res = await parser.getText();
+            text = typeof res === 'string' ? res : (res.text || '');
+        } else if (pdfParse && pdfParse.default && typeof pdfParse.default === 'function') {
+            const data = await pdfParse.default(dataBuffer);
+            text = data.text;
+        } else {
+            throw new Error('Unsupported pdf-parse module format.');
+        }
+
+        // 1. Extract Order Number
+        // "Purchase Order Number: 4531560126"
+        const orderNumberMatch = text.match(/Purchase\s+Order\s+Number:\s*(\d+)/i);
+        if (!orderNumberMatch) {
+            return res.status(400).json({ error: 'Nem található a Rendelési szám (Purchase Order Number) a dokumentumban.' });
+        }
+        let orderNumberBase = orderNumberMatch[1];
+        let orderNumber = orderNumberBase;
+
+        // Check if order number already exists and increment
+        let counter = 1;
+        while (true) {
+            const existing = await db('aldi_daily_orders').where({ order_number: orderNumber }).first();
+            if (existing) {
+                orderNumber = `${orderNumberBase}-${counter}`;
+                counter++;
+            } else {
+                break;
+            }
+        }
+
+        // 2. Extract Pallet Count
+        // "Total Number of Pallets (Estimated): 13"
+        const palletMatch = text.match(/Total\s+Number\s+of\s+Pallets\s*\(Estimated\):\s*([\d\.,]+)/i);
+        let palletCount = 0;
+        if (palletMatch) {
+            palletCount = parseFloat(palletMatch[1].replace(',', '.'));
+        }
+
+        // 3. Extract Delivery Date from Line Item rows
+        // Format: "00010 4061462848544 27 20260815 DDP ..."
+        // The delivery date is the date AFTER the quantity in the line item row
+        const lineItemPattern = /^\d{5}\s+(\d{13,14})\s+(\d+)\s+(20\d{2}[01]\d[0-3]\d)/;
+        
+        let deliveryDateStr = null;
+        let lineItems = [];
+        
+        const textLines = text.split('\n');
+        for (let line of textLines) {
+            const m = line.match(lineItemPattern);
+            if (m) {
+                const gtin = m[1];
+                const quantity = parseInt(m[2], 10);
+                const rawDate = m[3]; // e.g. 20260815
+                
+                // Use the first found delivery date
+                if (!deliveryDateStr) {
+                    deliveryDateStr = `${rawDate.slice(0,4)}-${rawDate.slice(4,6)}-${rawDate.slice(6,8)}`;
+                }
+                
+                if (quantity > 0) {
+                    lineItems.push({ gtin, quantity });
+                }
+            }
+        }
+        
+        if (!deliveryDateStr) {
+            return res.status(400).json({ error: 'Nem található a Szállítási dátum (Delivery Date) a tételsorok között.' });
+        }
+
+        if (lineItems.length === 0) {
+            return res.status(400).json({ error: 'Nem találhatók tételsorok (GTIN és Quantity) a PDF-ben.' });
+        }
+
+        // 5. Create folder and save file
+        const folderName = deliveryDateStr; // e.g. 2026-08-15
+        const targetDir = path.join(ALDI_DAILY_ORDERS_PATH, folderName);
+        
+        try {
+            if (!fs.existsSync(targetDir)) {
+                fs.mkdirSync(targetDir, { recursive: true });
+            }
+        } catch (err) {
+            console.error("Error creating directory:", err);
+            // We continue even if we can't create the network folder in dev
+        }
+
+        const fileName = `${req.file.originalname}`;
+        const targetPath = path.join(targetDir, fileName);
+
+        try {
+            fs.writeFileSync(targetPath, dataBuffer);
+        } catch (err) {
+            console.error("Error writing file to network path:", err);
+            // Ignore error for dev purposes if network is unavailable
+        }
+
+        // 6. Save to database
+        const insertedIds = await db('aldi_daily_orders').insert({
+            order_number: orderNumber,
+            delivery_date: deliveryDateStr,
+            pallet_count: palletCount,
+            pdf_file_path: fileName,
+            network_folder_path: targetDir
+        }).returning('id');
+        
+        const dailyOrderId = insertedIds[0].id || insertedIds[0];
+
+        const linesToInsert = lineItems.map(item => ({
+            daily_order_id: dailyOrderId,
+            gtin: item.gtin,
+            ordered_cartons: item.quantity
+        }));
+
+        await db('aldi_daily_order_lines').insert(linesToInsert);
+
+        res.json({
+            success: true,
+            orderId: dailyOrderId,
+            orderNumber,
+            palletCount,
+            deliveryDate: deliveryDateStr,
+            lineItemsCount: lineItems.length
+        });
+    } catch (err) {
+        console.error('Hiba a PDF feldolgozása közben:', err);
+        res.status(500).json({ error: 'Szerverhiba a PDF feldolgozása közben.' });
+    }
+});
+
+// Endpoint: GET /api/v1/aldi-daily-orders
+// Fetch orders with dynamic version and currency based on Heti árak
+router.get('/', async (req, res) => {
+    try {
+        const orders = await db('aldi_daily_orders')
+            .select('*')
+            .orderBy('delivery_date', 'desc');
+
+        // Dynamically calculate currency and version for each order
+        // We look up the currency from aldi_price_currency_periods for any of the products on this date.
+        // We look up the currency from aldi_price_currency_periods that covers the delivery date
+        for (let order of orders) {
+            let currency = 'N/A';
+            let version = 'N/A';
+
+            // Find any currency period that covers the delivery date
+            const period = await db('aldi_price_currency_periods')
+                .where('period_start', '<=', order.delivery_date)
+                .where('period_end', '>=', order.delivery_date)
+                .first('currency_code');
+
+            if (period) {
+                currency = period.currency_code.toUpperCase();
+                if (currency === 'HUF') {
+                    version = 'VERSION 1';
+                } else if (currency === 'EUR') {
+                    version = 'VERSION 2';
+                } else {
+                    version = currency;
+                }
+            }
+            order.currency = currency;
+            order.version = version;
+        }
+
+        res.json(orders);
+    } catch (err) {
+        console.error('Hiba a rendelések lekérdezésekor:', err);
+        res.status(500).json({ error: 'Hiba a rendelések lekérdezésekor.' });
+    }
+});
+
+// Endpoint: GET /api/v1/aldi-daily-orders/:id/lines
+router.get('/:id/lines', async (req, res) => {
+    try {
+        const lines = await db('aldi_daily_order_lines')
+            .where({ daily_order_id: req.params.id })
+            .select('*');
+
+        // Augment with product names
+        for (let line of lines) {
+            // Try chain_products first
+            const product = await db('chain_products')
+                .where({ gtin: line.gtin })
+                .first('product_name');
+            
+            if (product && product.product_name) {
+                line.product_name = product.product_name;
+            } else {
+                // Try from aldi_weekly_price_lines
+                const wpLine = await db('aldi_weekly_price_lines')
+                    .where({ gtin: line.gtin })
+                    .first('xlsx_product_name');
+                line.product_name = wpLine ? wpLine.xlsx_product_name : 'Ismeretlen termék';
+            }
+        }
+
+        res.json(lines);
+    } catch (err) {
+        console.error('Hiba a tételsorok lekérdezésekor:', err);
+        res.status(500).json({ error: 'Hiba a tételsorok lekérdezésekor.' });
+    }
+});
+
+// Endpoint: GET /api/v1/aldi-daily-orders/:id/file
+router.get('/:id/file', async (req, res) => {
+    try {
+        const order = await db('aldi_daily_orders').where({ id: req.params.id }).first();
+        if (!order) {
+            return res.status(404).send('Rendelés nem található.');
+        }
+
+        const filePath = path.join(order.network_folder_path, order.pdf_file_path);
+        if (fs.existsSync(filePath)) {
+            res.sendFile(filePath);
+        } else {
+            res.status(404).send('A fájl nem található a hálózaton.');
+        }
+    } catch (err) {
+        console.error('Hiba a fájl lekérésekor:', err);
+        res.status(500).send('Hiba a fájl lekérésekor.');
+    }
+});
+
+module.exports = router;

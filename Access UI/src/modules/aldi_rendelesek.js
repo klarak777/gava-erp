@@ -53,6 +53,18 @@ export function renderAldiRendelesek(container, windowManager) {
     hetiArakIsLoading: false,
   };
 
+  async function fetchNapiRendelesek() {
+    try {
+      const res = await fetch('/api/v1/aldi-daily-orders');
+      if (res.ok) {
+        state.orders = await res.json();
+        renderModule();
+      }
+    } catch (e) {
+      console.warn('Nem sikerült a napi rendelések lekérése:', e);
+    }
+  }
+
   // ─── Termékek DB funkciók ──────────────────────────────────────────────────────
 
   async function fetchProductsFromDb() {
@@ -214,8 +226,8 @@ export function renderAldiRendelesek(container, windowManager) {
 
   function renderNapiRendelesHtml() {
     const filteredOrders = state.orders.filter(o => {
-      const matchDate = !state.filterDate || o.date.includes(state.filterDate);
-      const matchOrder = !state.filterOrderNo || o.orderNo.toLowerCase().includes(state.filterOrderNo.toLowerCase());
+      const matchDate = !state.filterDate || (o.delivery_date && o.delivery_date.includes(state.filterDate));
+      const matchOrder = !state.filterOrderNo || (o.order_number && o.order_number.toLowerCase().includes(state.filterOrderNo.toLowerCase()));
       return matchDate && matchOrder;
     });
 
@@ -235,39 +247,47 @@ export function renderAldiRendelesek(container, windowManager) {
           </button>
         </div>
       </div>
-      <div style="border:1px solid #e2e8f0; border-radius:6px; overflow:hidden; max-width:820px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+      <div style="border:1px solid #e2e8f0; border-radius:6px; overflow:hidden; max-width:920px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
         <table style="width:100%; border-collapse:collapse; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size:13px;">
           <thead>
             <tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;">
               <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:130px;">SZÁLLÍTÁSI DÁTUM</th>
               <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:160px;">RENDELÉSI SZÁM</th>
+              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:120px;">VERZIÓ SZÁMA</th>
               <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:150px;">RENDELÉS TÍPUSA</th>
               <th style="padding:10px 14px; text-align:center; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:110px;">RAKLAPSZÁM</th>
-              <th style="padding:10px 14px; text-align:center; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:140px;">RENDELÉS MEGTEKINTÉSE</th>
+              <th style="padding:10px 14px; text-align:center; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:160px;">RENDELÉS MEGTEKINTÉSE</th>
             </tr>
           </thead>
           <tbody>
             ${filteredOrders.length === 0 ? `
-              <tr><td colspan="5" style="padding:24px; text-align:center; color:#94a3b8; font-size:13px;">Nincs megjeleníthető rendelés a megadott szűrési feltételekkel.</td></tr>
-            ` : filteredOrders.map((o, idx) => `
+              <tr><td colspan="6" style="padding:24px; text-align:center; color:#94a3b8; font-size:13px;">Nincs megjeleníthető rendelés a megadott szűrési feltételekkel.</td></tr>
+            ` : filteredOrders.map((o, idx) => {
+              const dt = new Date(o.delivery_date);
+              const formattedDate = !isNaN(dt) ? dt.toISOString().split('T')[0] : o.delivery_date;
+              return `
               <tr style="border-bottom:1px solid #f1f5f9; ${idx % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;'}">
-                <td style="padding:10px 14px; color:#1e293b; font-weight:500;">${o.date}</td>
+                <td style="padding:10px 14px; color:#1e293b; font-weight:500;">${formattedDate}</td>
                 <td style="padding:10px 14px;">
-                  <a href="#" class="aldi-order-link" data-id="${o.id}" style="color:#2563eb; font-weight:700; text-decoration:underline;">${o.orderNo}</a>
+                  <a href="/api/v1/aldi-daily-orders/${o.id}/file" class="aldi-order-link" target="_blank" data-id="${o.id}" data-orderno="${o.order_number}" data-date="${formattedDate}" style="color:#2563eb; font-weight:700; text-decoration:underline;">${o.order_number}</a>
+                </td>
+                <td style="padding:10px 14px; color:#334155; font-weight:600;">
+                  ${o.version || 'N/A'}
                 </td>
                 <td style="padding:10px 14px; color:#334155;">
                   <span style="display:inline-block; background:#f1f5f9; color:#475569; font-size:11px; font-weight:600; padding:2px 8px; border-radius:4px; border:1px solid #e2e8f0;">
-                    ${o.orderType || 'Normál'}
+                    ${o.currency || 'Normál'}
                   </span>
                 </td>
                 <td style="padding:10px 14px; text-align:center; font-weight:700; color:#1e293b;">
-                  ${o.palletCount != null && o.palletCount !== '' ? o.palletCount : '-'}
+                  ${o.pallet_count != null && o.pallet_count !== '' ? o.pallet_count : '-'}
                 </td>
                 <td style="padding:10px 14px; text-align:center;">
-                  <button class="aldi-view-order-btn" data-id="${o.id}" style="background:none; border:none; font-size:18px; cursor:pointer; padding:2px 6px; border-radius:4px;" title="Rendelés megtekintése">📋</button>
+                  <button class="aldi-view-order-btn" data-id="${o.id}" data-orderno="${o.order_number}" data-date="${formattedDate}" style="background:none; border:none; cursor:pointer; font-size:16px;" title="Tételek megtekintése">📋</button>
                 </td>
               </tr>
-            `).join('')}
+              `;
+            }).join('')}
           </tbody>
         </table>
       </div>
@@ -340,27 +360,14 @@ export function renderAldiRendelesek(container, windowManager) {
           </button>
         </div>
 
-        <!-- Összefoglaló -->
+        <!-- Letöltés gomb / Információ -->
         ${state.hetiArakIsLoading ? `
           <div style="margin-top:18px; font-size:12px; color:#64748b;">⏳ Betöltés...</div>
-        ` : selectedWeek ? `
-          <div style="margin-top:18px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-            <span style="font-size:12px; color:#64748b; background:#f1f5f9; border-radius:6px; padding:4px 10px;">
-              📋 <strong>${lines.length}</strong> sor betöltve
-            </span>
-            <span style="font-size:12px; color:#16a34a; background:#f0fdf4; border-radius:6px; padding:4px 10px; border:1px solid #bbf7d0;">
-              ✅ <strong>${matchedCount}</strong> ERP azonosítva
-            </span>
-            ${lines.length - matchedCount > 0 ? `
-              <span style="font-size:12px; color:#dc2626; background:#fef2f2; border-radius:6px; padding:4px 10px; border:1px solid #fecaca;">
-                ⚠️ <strong>${lines.length - matchedCount}</strong> GTIN nem azonosított
-              </span>
-            ` : ''}
-            ${selectedWeek.xlsx_file_path ? `
-              <span style="font-size:11px; color:#94a3b8;" title="${selectedWeek.xlsx_file_path}">
-                📁 ${selectedWeek.xlsx_file_path.split(/[\\/]/).pop()}
-              </span>
-            ` : ''}
+        ` : (selectedWeek && selectedWeek.id) ? `
+          <div style="margin-top:18px;">
+            <a href="/api/v1/aldi-weekly-prices/${selectedWeek.id}/file" download target="_blank" style="height:34px; padding:0 16px; border-radius:20px; font-size:13px; font-weight:600; background:#10b981; color:#fff; text-decoration:none; display:inline-flex; align-items:center; gap:8px; cursor:pointer; box-shadow:0 2px 6px rgba(16,185,129,0.25); transition:background 0.2s;">
+              📥 Heti árak letöltése
+            </a>
           </div>
         ` : `
           <div style="margin-top:18px; font-size:12px; color:#94a3b8;">Tölts fel egy XLSX fájlt a megjelenítéshez.</div>
@@ -380,7 +387,7 @@ export function renderAldiRendelesek(container, windowManager) {
             <thead>
               <tr style="background:#0f172a; border-bottom:1px solid #cbd5e1;">
                 <th style="padding:10px 12px; text-align:left; font-size:10px; font-weight:700; color:#94a3b8; letter-spacing:0.6px; text-transform:uppercase; width:200px;">TERMÉK</th>
-                <th style="padding:10px 8px; text-align:center; font-size:10px; font-weight:700; color:#94a3b8; letter-spacing:0.6px; text-transform:uppercase; width:60px;">KARTON</th>
+                <th style="padding:10px 8px; text-align:center; font-size:10px; font-weight:700; color:#94a3b8; letter-spacing:0.6px; text-transform:uppercase; width:85px;">KISZERELÉS</th>
                 <th style="padding:10px 8px; text-align:left; font-size:10px; font-weight:700; color:#94a3b8; letter-spacing:0.6px; text-transform:uppercase; width:130px;">SZÁRMAZÁS</th>
                 <th style="padding:10px 8px; text-align:left; font-size:10px; font-weight:700; color:#94a3b8; letter-spacing:0.6px; text-transform:uppercase; width:220px;">CSOMAGOLÁS</th>
                 <th style="padding:10px 8px; text-align:right; font-size:10px; font-weight:700; color:#94a3b8; letter-spacing:0.6px; text-transform:uppercase; width:120px;">REKESZKÖLTSÉG</th>
@@ -391,61 +398,96 @@ export function renderAldiRendelesek(container, windowManager) {
               </tr>
             </thead>
             <tbody>
-              ${lines.map((line, idx) => {
-                const isMatched = line.is_gtin_matched;
-                const displayName = isMatched
-                  ? (line.erp_product_name || line.xlsx_product_name || '')
-                  : (line.xlsx_product_name || '');
+              ${(() => {
+                const todayStr = new Date().toISOString().split('T')[0];
+                return lines.map((line, idx) => {
+                  const isMatched = line.is_gtin_matched;
+                  const displayName = isMatched
+                    ? (line.erp_product_name || line.xlsx_product_name || '')
+                    : (line.xlsx_product_name || '');
 
-                const nameStyle = isMatched
-                  ? 'color:#1e293b; font-weight:600;'
-                  : 'color:#dc2626; font-weight:600; background:#fef2f2; padding:2px 6px; border-radius:4px;';
+                  const nameStyle = isMatched
+                    ? 'color:#1e293b; font-weight:600;'
+                    : 'color:#dc2626; font-weight:600; background:#fef2f2; padding:2px 6px; border-radius:4px;';
 
-                const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+                  const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
 
-                // Valuta detect from currency_periods or fallback to crate_cost
-                let currencyBadge = '';
-                if (line.currency_periods && line.currency_periods.length > 0) {
-                  const uniqueCurrencies = [...new Set(line.currency_periods.map(cp => cp.currency_code))];
-                  currencyBadge = uniqueCurrencies.map(c => 
-                    `<span style="display:inline-block; background:${c === 'EUR' ? '#dbeafe' : '#fef9c3'}; color:${c === 'EUR' ? '#1d4ed8' : '#854d0e'}; font-size:9px; font-weight:700; border-radius:4px; padding:1px 5px; margin-bottom:2px;">${c}</span>`
-                  ).join('<br>');
-                } else {
-                  const crateCost = line.crate_cost || '';
-                  const isEur = crateCost.startsWith('€');
-                  currencyBadge = isEur
-                    ? '<span style="display:inline-block; background:#dbeafe; color:#1d4ed8; font-size:9px; font-weight:700; border-radius:4px; padding:1px 5px;">EUR</span>'
-                    : '<span style="display:inline-block; background:#fef9c3; color:#854d0e; font-size:9px; font-weight:700; border-radius:4px; padding:1px 5px;">HUF</span>';
-                }
+                  // Aktuális mai nap szerinti aktív periódus meghatározása
+                  let displayedCrateCost = line.crate_cost || '';
+                  let displayedUnitCost = line.unit_cost || '';
+                  let activeCurrency = '';
+                  let activePeriod = null;
 
-                return `
-                  <tr style="border-bottom:1px solid #f1f5f9; background:${rowBg};">
-                    <td style="padding:8px 12px;">
-                      <div style="${nameStyle}" title="${isMatched ? 'ERP: ' + displayName : 'ALDI XLSX név – nincs ERP match'}">
-                        ${!isMatched ? '⚠️ ' : ''}${displayName}
-                      </div>
-                    </td>
-                    <td style="padding:8px 8px; text-align:center; color:#334155; font-weight:600;">${line.carton_content || ''}</td>
-                    <td style="padding:8px 8px; color:#475569; font-size:11px;">${(line.origin || '').replace(/, /g, '<br>')}</td>
-                    <td style="padding:8px 8px; color:#475569; font-size:11px; line-height:1.3;">${line.packaging || ''}</td>
-                    <td style="padding:8px 8px; text-align:right; font-weight:600; color:#0f172a; font-family:monospace; font-size:12px;">${line.crate_cost || ''}</td>
-                    <td style="padding:8px 8px; text-align:right; font-weight:600; color:#0f172a; font-family:monospace; font-size:12px;">${line.unit_cost || ''}</td>
-                    <td style="padding:8px 8px; text-align:center; color:#475569; font-size:11px;">
-                      ${line.delivery_period_start ? `<div>${line.delivery_period_start}</div>` : ''}
-                      ${line.delivery_period_end ? `<div style="color:#94a3b8;">→ ${line.delivery_period_end}</div>` : ''}
-                    </td>
-                    <td style="padding:8px 8px; font-family:monospace; font-size:11px; color:#64748b;">${line.gtin || ''}</td>
-                    <td style="padding:8px 6px; text-align:center;">
-                      <button class="aldi-arak-currency-btn" data-line-id="${line.id}"
-                        style="background:none; border:1px solid #e2e8f0; border-radius:6px; cursor:pointer; padding:3px 7px; font-size:11px; display:inline-flex; align-items:center; gap:4px; transition:background 0.15s;"
-                        title="Deviza időszak szerkesztése"
-                        onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='none'">
-                        ${currencyBadge}
-                      </button>
-                    </td>
-                  </tr>
-                `;
-              }).join('')}
+                  if (line.currency_periods && line.currency_periods.length > 0) {
+                    activePeriod = line.currency_periods.find(cp => {
+                      const s = cp.period_start ? cp.period_start.split('T')[0] : '';
+                      const e = cp.period_end ? cp.period_end.split('T')[0] : '';
+                      return s <= todayStr && todayStr <= e;
+                    });
+
+                    if (!activePeriod) {
+                      activePeriod = line.currency_periods[0];
+                    }
+
+                    if (activePeriod) {
+                      displayedCrateCost = activePeriod.crate_cost || displayedCrateCost;
+                      displayedUnitCost = activePeriod.unit_cost || displayedUnitCost;
+                      activeCurrency = activePeriod.currency_code;
+                    }
+                  }
+
+                  if (!activeCurrency) {
+                    const isEur = displayedCrateCost.startsWith('€') || displayedUnitCost.startsWith('€');
+                    activeCurrency = isEur ? 'EUR' : 'HUF';
+                  }
+
+                  const isMultiPeriod = line.currency_periods && line.currency_periods.length > 1;
+                  const currencyBadgeColor = activeCurrency === 'EUR' ? '#1d4ed8' : '#854d0e';
+                  const currencyBadgeBg = activeCurrency === 'EUR' ? '#dbeafe' : '#fef9c3';
+
+                  let currencyBadge = `<span style="display:inline-block; background:${currencyBadgeBg}; color:${currencyBadgeColor}; font-size:10px; font-weight:700; border-radius:4px; padding:2px 6px;">${activeCurrency}</span>`;
+                  if (isMultiPeriod) {
+                    currencyBadge += `<span style="display:inline-block; background:#e0e7ff; color:#4338ca; font-size:9px; font-weight:700; border-radius:4px; padding:1px 4px; margin-left:3px;" title="${line.currency_periods.length} rögzített deviza időszak">🔀 ${line.currency_periods.length}</span>`;
+                  }
+
+                  const tooltipText = line.currency_periods && line.currency_periods.length > 0
+                    ? `Aktív (${activeCurrency}): ${displayedCrateCost} / ${displayedUnitCost}\n\nÖsszes időszak:\n` + line.currency_periods.map(cp => {
+                        const s = cp.period_start ? cp.period_start.split('T')[0] : '';
+                        const e = cp.period_end ? cp.period_end.split('T')[0] : '';
+                        const isCurActive = (cp === activePeriod);
+                        return `${isCurActive ? '▶ (Aktív) ' : '  '}${s} → ${e} [${cp.currency_code}] Rekesz: ${cp.crate_cost || '-'}, Egység: ${cp.unit_cost || '-'}`;
+                      }).join('\n')
+                    : 'Deviza időszak szerkesztése';
+
+                  return `
+                    <tr style="border-bottom:1px solid #f1f5f9; background:${rowBg};">
+                      <td style="padding:8px 12px;">
+                        <div style="${nameStyle}" title="${isMatched ? 'ERP: ' + displayName : 'ALDI XLSX név – nincs ERP match'}">
+                          ${!isMatched ? '⚠️ ' : ''}${displayName}
+                        </div>
+                      </td>
+                      <td style="padding:8px 8px; text-align:center; color:#334155; font-weight:600;">${line.carton_content || ''}</td>
+                      <td style="padding:8px 8px; color:#475569; font-size:11px;">${(line.origin || '').replace(/, /g, '<br>')}</td>
+                      <td style="padding:8px 8px; color:#475569; font-size:11px; line-height:1.3;">${line.packaging || ''}</td>
+                      <td style="padding:8px 8px; text-align:right; font-weight:700; color:#0f172a; font-family:monospace; font-size:12px;">${displayedCrateCost || ''}</td>
+                      <td style="padding:8px 8px; text-align:right; font-weight:700; color:#0f172a; font-family:monospace; font-size:12px;">${displayedUnitCost || ''}</td>
+                      <td style="padding:8px 8px; text-align:center; color:#475569; font-size:11px;">
+                        ${line.delivery_period_start ? `<div>${line.delivery_period_start}</div>` : ''}
+                        ${line.delivery_period_end ? `<div style="color:#94a3b8;">→ ${line.delivery_period_end}</div>` : ''}
+                      </td>
+                      <td style="padding:8px 8px; font-family:monospace; font-size:11px; color:#64748b;">${line.gtin || ''}</td>
+                      <td style="padding:8px 6px; text-align:center;">
+                        <button class="aldi-arak-currency-btn" data-line-id="${line.id}"
+                          style="background:none; border:1px solid #e2e8f0; border-radius:6px; cursor:pointer; padding:3px 7px; font-size:11px; display:inline-flex; align-items:center; gap:2px; transition:background 0.15s;"
+                          title="${tooltipText}"
+                          onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='none'">
+                          ${currencyBadge}
+                        </button>
+                      </td>
+                    </tr>
+                  `;
+                }).join('');
+              })()}
             </tbody>
           </table>
         </div>
@@ -590,6 +632,62 @@ export function renderAldiRendelesek(container, windowManager) {
   }
 
   // Upload modal (Napi rendelés)
+  async function openOrderViewModal(id, orderNo, dateStr) {
+    const modalOverlay = document.createElement('div');
+    modalOverlay.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.4); z-index:9999; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);';
+
+    modalOverlay.innerHTML = `
+      <div style="background:#ffffff; width:92%; max-width:600px; border-radius:12px; box-shadow:0 20px 50px rgba(0,0,0,0.2); overflow:hidden; border:1px solid #cbd5e1; display:flex; flex-direction:column;">
+        <div style="padding:12px 18px; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; justify-content:space-between; background:#ffffff;">
+          <h3 style="margin:0; font-size:14px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:8px;">Rendelési szám: ${orderNo} | Dátum: ${dateStr}</h3>
+          <button id="aldi-modal-close-x" style="background:none; border:none; font-size:16px; cursor:pointer; color:#64748b; font-weight:700;">✕</button>
+        </div>
+        <div style="padding:16px 20px; display:flex; flex-direction:column; gap:14px; max-height:400px; overflow-y:auto;" id="aldi-modal-lines-container">
+          <div style="text-align:center; padding:20px; color:#64748b; font-size:13px;">Tételsorok betöltése...</div>
+        </div>
+        <div style="padding:12px 20px; border-top:1px solid #e2e8f0; background:#f8fafc; display:flex; justify-content:flex-end;">
+          <button id="aldi-modal-ok" style="padding:6px 22px; border-radius:20px; font-size:13px; font-weight:600; border:none; background:#2563eb; color:#ffffff; cursor:pointer;">Rendben</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modalOverlay);
+
+    modalOverlay.querySelector('#aldi-modal-close-x').addEventListener('click', () => modalOverlay.remove());
+    modalOverlay.querySelector('#aldi-modal-ok').addEventListener('click', () => modalOverlay.remove());
+
+    try {
+      const res = await fetch('/api/v1/aldi-daily-orders/' + id + '/lines');
+      const lines = await res.json();
+      const container = modalOverlay.querySelector('#aldi-modal-lines-container');
+      
+      if (lines && lines.length > 0) {
+        container.innerHTML = `
+          <table style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+              <tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;">
+                <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">Termék megnevezése</th>
+                <th style="padding:8px 12px; text-align:right; font-weight:700; color:#334155;">Rendelt kartonszám</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${lines.map((l, i) => `
+                <tr style="${i % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;'} border-bottom:1px solid #f1f5f9;">
+                  <td style="padding:8px 12px; color:#1e293b;">${l.product_name} <span style="font-size:11px; color:#94a3b8;">(${l.gtin})</span></td>
+                  <td style="padding:8px 12px; text-align:right; font-weight:600; color:#2563eb;">${l.ordered_cartons}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } else {
+        container.innerHTML = '<div style="text-align:center; padding:20px; color:#64748b; font-size:13px;">Nem találhatók tételsorok.</div>';
+      }
+    } catch (err) {
+      modalOverlay.querySelector('#aldi-modal-lines-container').innerHTML = '<div style="text-align:center; padding:20px; color:#ef4444; font-size:13px;">Hiba történt a betöltés során!</div>';
+    }
+  }
+
   function openUploadModal() {
     const modalOverlay = document.createElement('div');
     modalOverlay.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.4); z-index:9999; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);';
@@ -597,52 +695,19 @@ export function renderAldiRendelesek(container, windowManager) {
     modalOverlay.innerHTML = `
       <div style="background:#ffffff; width:92%; max-width:440px; border-radius:12px; box-shadow:0 20px 50px rgba(0,0,0,0.2); overflow:hidden; border:1px solid #cbd5e1; display:flex; flex-direction:column;">
         <div style="padding:12px 18px; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; justify-content:space-between; background:#ffffff;">
-          <h3 style="margin:0; font-size:14px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:8px;">📄 Rendelés feltöltése</h3>
+          <h3 style="margin:0; font-size:14px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:8px;">📄 Rendelés feltöltése (PDF)</h3>
           <button id="aldi-modal-close-x" style="background:none; border:none; font-size:16px; cursor:pointer; color:#64748b; font-weight:700;">✕</button>
         </div>
         <div style="padding:16px 20px; display:flex; flex-direction:column; gap:14px;">
-          <div style="display:flex; flex-direction:column; gap:4px;">
-            <label style="font-size:11px; font-weight:700; color:#334155;">Szállítási dátum</label>
-            <select id="aldi-modal-date" class="access-control-input" style="width:100%; height:34px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; background:#fff;">
-              <option value="">-- Válasszon --</option>
-              <option value="2026-08-14">2026-08-14</option>
-              <option value="2026-08-15">2026-08-15</option>
-              <option value="2026-08-16">2026-08-16</option>
-              <option value="2026-08-17">2026-08-17</option>
-              <option value="2026-08-18">2026-08-18</option>
-              <option value="2026-08-19">2026-08-19</option>
-              <option value="2026-08-20">2026-08-20</option>
-            </select>
-          </div>
-          <div style="display:flex; flex-direction:column; gap:4px;">
-            <label style="font-size:11px; font-weight:700; color:#334155;">Rendelési szám</label>
-            <input type="text" id="aldi-modal-orderno" class="access-control-input" placeholder="Pl. PO-2024-001" style="width:100%; height:34px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 10px;">
-          </div>
-          <div style="display:flex; gap:10px;">
-            <div style="display:flex; flex-direction:column; gap:4px; flex:1;">
-              <label style="font-size:11px; font-weight:700; color:#334155;">Rendelés típusa</label>
-              <select id="aldi-modal-ordertype" class="access-control-input" style="width:100%; height:34px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; background:#fff;">
-                <option value="Normál">Normál</option>
-                <option value="Akciós">Akciós</option>
-                <option value="Kiegészítő">Kiegészítő</option>
-                <option value="Egyéb">Egyéb</option>
-              </select>
-            </div>
-            <div style="display:flex; flex-direction:column; gap:4px; width:120px;">
-              <label style="font-size:11px; font-weight:700; color:#334155;">Raklapszám</label>
-              <input type="number" id="aldi-modal-palletcount" class="access-control-input" placeholder="Pl. 33" min="1" max="99" style="width:100%; height:34px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 10px;">
-            </div>
-          </div>
-          <div id="aldi-dropzone" style="border:2px dashed #93c5fd; background:#f0f9ff; border-radius:8px; padding:24px 16px; text-align:center; cursor:pointer; transition:background 0.2s;">
+          <div id="aldi-dropzone" style="border:2px dashed #93c5fd; background:#f0f9ff; border-radius:8px; padding:30px 16px; text-align:center; cursor:pointer; transition:background 0.2s;">
             <input type="file" id="aldi-file-input" accept=".pdf" style="display:none;">
             <div style="font-size:36px; margin-bottom:6px;">📁</div>
-            <div style="font-size:12px; font-weight:600; color:#1d4ed8; margin-bottom:4px;" id="aldi-dropzone-text">Húzza ide a fájlokat, vagy kattintson a tallózáshoz</div>
-            <div style="font-size:11px; color:#64748b;">PDF.</div>
+            <div style="font-size:13px; font-weight:600; color:#1d4ed8; margin-bottom:4px;" id="aldi-dropzone-text">Húzza ide a PDF fájlt, vagy kattintson a tallózáshoz</div>
           </div>
         </div>
         <div style="padding:12px 20px; border-top:1px solid #e2e8f0; background:#ffffff; display:flex; justify-content:center; gap:12px;">
           <button id="aldi-modal-cancel" style="padding:6px 22px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid #cbd5e1; background:#ffffff; color:#334155; cursor:pointer;">Mégse</button>
-          <button id="aldi-modal-save" style="padding:6px 24px; border-radius:20px; font-size:13px; font-weight:600; border:none; background:#2563eb; color:#ffffff; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 4px rgba(37,99,235,0.2);">💾 Mentés</button>
+          <button id="aldi-modal-save" style="padding:6px 24px; border-radius:20px; font-size:13px; font-weight:600; border:none; background:#2563eb; color:#ffffff; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 4px rgba(37,99,235,0.2);">📤 Feltöltés</button>
         </div>
       </div>
     `;
@@ -675,25 +740,37 @@ export function renderAldiRendelesek(container, windowManager) {
     modalOverlay.querySelector('#aldi-modal-close-x')?.addEventListener('click', () => modalOverlay.remove());
     modalOverlay.querySelector('#aldi-modal-cancel')?.addEventListener('click', () => modalOverlay.remove());
 
-    modalOverlay.querySelector('#aldi-modal-save')?.addEventListener('click', () => {
-      const dateVal = modalOverlay.querySelector('#aldi-modal-date').value;
-      const orderNoVal = modalOverlay.querySelector('#aldi-modal-orderno').value.trim();
-      const orderTypeVal = modalOverlay.querySelector('#aldi-modal-ordertype').value;
-      const palletCountVal = modalOverlay.querySelector('#aldi-modal-palletcount').value.trim();
+    modalOverlay.querySelector('#aldi-modal-save')?.addEventListener('click', async () => {
+      if (!selectedFile) { alert('Kérlek válassz ki egy PDF fájlt!'); return; }
+      
+      const saveBtn = modalOverlay.querySelector('#aldi-modal-save');
+      saveBtn.disabled = true;
+      saveBtn.textContent = '⏳ Feltöltés...';
 
-      if (!dateVal) { alert('Kérlek válassz szállítási dátumot!'); return; }
-      if (!orderNoVal) { alert('Kérlek add meg a rendelési számot!'); return; }
+      const formData = new FormData();
+      formData.append('file', selectedFile);
 
-      state.orders.unshift({
-        id: String(Date.now()),
-        date: dateVal,
-        orderNo: orderNoVal,
-        orderType: orderTypeVal || 'Normál',
-        palletCount: palletCountVal ? parseInt(palletCountVal, 10) : null,
-        fileName: selectedFile ? selectedFile.name : 'rendeles.pdf'
-      });
-      modalOverlay.remove();
-      renderModule();
+      try {
+        const res = await fetch('/api/v1/aldi-daily-orders/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await res.json();
+        if (res.ok) {
+          alert('✅ Sikeres feltöltés!');
+          modalOverlay.remove();
+          fetchNapiRendelesek(); // Frissítjük a táblázatot
+        } else {
+          alert('❌ Hiba: ' + (result.error || 'Ismeretlen hiba'));
+        }
+      } catch (err) {
+        console.error('Feltöltési hiba:', err);
+        alert('❌ Hiba történt a fájl feltöltésekor!');
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = '📤 Feltöltés';
+      }
     });
   }
 
@@ -952,6 +1029,27 @@ export function renderAldiRendelesek(container, windowManager) {
     });
   }
 
+  // ─── Dátum segédfüggvény ───────────────────────────────────────────────────────
+  function addDaysToDateStr(dateStr, days) {
+    if (!dateStr) return dateStr;
+    const parts = dateStr.split('T')[0].split('-').map(Number);
+    const dt = new Date(parts[0], parts[1] - 1, parts[2]);
+    dt.setDate(dt.getDate() + days);
+    const ry = dt.getFullYear();
+    const rm = String(dt.getMonth() + 1).padStart(2, '0');
+    const rd = String(dt.getDate()).padStart(2, '0');
+    return `${ry}-${rm}-${rd}`;
+  }
+
+  // ─── Incoterm / Kereskedelmi kód eltávolító segédfüggvény (csak a modalhoz) ───
+  function stripIncoterm(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/\b(DDP|EXW|FCA|CPT|CIP|DAP|DPU|FAS|FOB|CFR|CIF)\b/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   // ─── Deviza időszak modal ─────────────────────────────────────────────────────
 
   async function openCurrencyPeriodModal(lineId) {
@@ -973,9 +1071,35 @@ export function renderAldiRendelesek(container, windowManager) {
       console.warn('Currency periods / admin currencies lekérési hiba:', e);
     }
 
+    // Ha még nem volt rögzített periódus, állítsunk be egy alapértelmezettet a teljes időszakra
+    const isLineEur = (line.crate_cost && line.crate_cost.startsWith('€')) || (line.unit_cost && line.unit_cost.startsWith('€'));
+    if (periods.length === 0 && line.delivery_period_start && line.delivery_period_end) {
+      periods = [{
+        price_line_id: line.id,
+        currency_code: isLineEur ? 'EUR' : 'HUF',
+        period_start: line.delivery_period_start.split('T')[0],
+        period_end: line.delivery_period_end.split('T')[0],
+        crate_cost: stripIncoterm(line.crate_cost || ''),
+        unit_cost: stripIncoterm(line.unit_cost || ''),
+        note: 'Alapértelmezett'
+      }];
+    }
+
+    // Ha valamelyik korábbi rekordból hiányzik az ár, kitöltjük az alapárral (DDP nélkül)
+    periods.forEach(p => {
+      if (!p.crate_cost && p.currency_code === (isLineEur ? 'EUR' : 'HUF')) {
+        p.crate_cost = stripIncoterm(line.crate_cost || '');
+      }
+      if (!p.unit_cost && p.currency_code === (isLineEur ? 'EUR' : 'HUF')) {
+        p.unit_cost = stripIncoterm(line.unit_cost || '');
+      }
+    });
+
     const termekNev = line.is_gtin_matched
       ? (line.erp_product_name || line.xlsx_product_name)
       : line.xlsx_product_name;
+
+    let editingPeriodIndex = null; // null = Új időszak hozzáadása, szám = adott indexű időszak szerkesztése
 
     const modalOverlay = document.createElement('div');
     modalOverlay.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.4); z-index:9999; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);';
@@ -984,41 +1108,65 @@ export function renderAldiRendelesek(container, windowManager) {
       if (periods.length === 0) {
         return `<div style="font-size:12px; color:#94a3b8; text-align:center; padding:12px 0;">Még nincs rögzített deviza időszak.</div>`;
       }
-      return periods.map(p => `
-        <div style="display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid #f1f5f9;">
-          <span style="display:inline-block; width:44px; background:${p.currency_code === 'EUR' ? '#dbeafe' : '#fef9c3'}; color:${p.currency_code === 'EUR' ? '#1d4ed8' : '#854d0e'}; font-size:11px; font-weight:700; border-radius:4px; padding:2px 6px; text-align:center;">${p.currency_code}</span>
-          <span style="font-size:12px; color:#1e293b; font-weight:600;">${p.period_start}</span>
-          <span style="font-size:11px; color:#94a3b8;">→</span>
-          <span style="font-size:12px; color:#1e293b; font-weight:600;">${p.period_end}</span>
-          ${p.note ? `<span style="font-size:11px; color:#64748b; font-style:italic;">${p.note}</span>` : ''}
-          <button class="cp-delete-btn" data-id="${p.id}" style="margin-left:auto; background:none; border:none; cursor:pointer; font-size:13px; opacity:0.5; transition:opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.5'" title="Törlés">🗑️</button>
-        </div>
-      `).join('');
+      return periods.map((p, idx) => {
+        const isEditing = editingPeriodIndex === idx;
+        const borderStyle = isEditing ? 'border:1.5px solid #0284c7; background:#eff6ff;' : 'border:1px solid #e2e8f0; background:#ffffff;';
+        const crateClean = stripIncoterm(p.crate_cost);
+        const unitClean = stripIncoterm(p.unit_cost);
+
+        return `
+          <div class="cp-period-item" data-index="${idx}"
+            style="display:flex; flex-direction:column; gap:4px; padding:8px 10px; margin-bottom:6px; border-radius:8px; cursor:pointer; transition:all 0.15s; ${borderStyle}"
+            title="Kattints az időszak és árak szerkesztéséhez">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="display:inline-block; width:44px; background:${p.currency_code === 'EUR' ? '#dbeafe' : '#fef9c3'}; color:${p.currency_code === 'EUR' ? '#1d4ed8' : '#854d0e'}; font-size:11px; font-weight:700; border-radius:4px; padding:2px 6px; text-align:center;">${p.currency_code}</span>
+              <span style="font-size:12px; color:#1e293b; font-weight:600;">${p.period_start ? p.period_start.split('T')[0] : ''}</span>
+              <span style="font-size:11px; color:#94a3b8;">→</span>
+              <span style="font-size:12px; color:#1e293b; font-weight:600;">${p.period_end ? p.period_end.split('T')[0] : ''}</span>
+              ${isEditing ? `<span style="font-size:10px; font-weight:700; color:#0284c7; background:#dbeafe; padding:1px 6px; border-radius:4px;">✏️ Szerkesztés alatt</span>` : ''}
+              <div style="display:flex; align-items:center; gap:6px; margin-left:auto;">
+                <span style="font-size:11px; font-family:monospace; font-weight:700; color:#0f172a; background:#f8fafc; border:1px solid #cbd5e1; border-radius:4px; padding:2px 6px;" title="Rekeszköltség">📦 ${crateClean || '-'}</span>
+                <span style="font-size:11px; font-family:monospace; font-weight:700; color:#0f172a; background:#f8fafc; border:1px solid #cbd5e1; border-radius:4px; padding:2px 6px;" title="Egységköltség">🏷️ ${unitClean || '-'}</span>
+                <button class="cp-edit-row-btn" data-index="${idx}" style="background:none; border:none; cursor:pointer; font-size:12px; padding:2px;" title="Szerkesztés">✏️</button>
+                <button class="cp-delete-btn" data-index="${idx}" data-id="${p.id || ''}" style="background:none; border:none; cursor:pointer; font-size:13px; opacity:0.5; transition:opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.5'" title="Törlés">🗑️</button>
+              </div>
+            </div>
+            ${p.note ? `<div style="font-size:11px; color:#64748b; font-style:italic; padding-left:52px;">💬 ${p.note}</div>` : ''}
+          </div>
+        `;
+      }).join('');
     }
 
     modalOverlay.innerHTML = `
-      <div style="background:#ffffff; width:92%; max-width:460px; border-radius:12px; box-shadow:0 20px 50px rgba(0,0,0,0.2); overflow:hidden; border:1px solid #cbd5e1; display:flex; flex-direction:column;">
+      <div style="background:#ffffff; width:92%; max-width:550px; border-radius:12px; box-shadow:0 20px 50px rgba(0,0,0,0.2); overflow:hidden; border:1px solid #cbd5e1; display:flex; flex-direction:column; position:relative;">
         <div style="padding:12px 18px; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; justify-content:space-between; background:#0f172a;">
           <div>
-            <div style="font-size:13px; font-weight:700; color:#f8fafc;">💱 Deviza időszakok</div>
+            <div style="font-size:13px; font-weight:700; color:#f8fafc;">💱 Deviza időszakok & Árak</div>
             <div style="font-size:11px; color:#94a3b8; margin-top:2px;">${termekNev}</div>
           </div>
           <button id="cp-modal-close" style="background:none; border:none; font-size:16px; cursor:pointer; color:#94a3b8; font-weight:700;">✕</button>
         </div>
 
-        <div style="padding:16px 20px; display:flex; flex-direction:column; gap:14px;">
+        <div style="padding:16px 20px; display:flex; flex-direction:column; gap:14px; max-height:75vh; overflow-y:auto;">
 
           <!-- Meglévő periódusok -->
           <div>
-            <div style="font-size:11px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:8px;">Rögzített időszakok</div>
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+              <span style="font-size:11px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.4px;">Rögzített időszakok & Árak</span>
+              <span style="font-size:11px; color:#64748b;">(Kattints a sorra a módosításhoz)</span>
+            </div>
             <div id="cp-periods-list">
               ${buildPeriodsHtml()}
             </div>
           </div>
 
-          <!-- Új periódus hozzáadása -->
-          <div style="background:#f8fafc; border-radius:8px; padding:14px; border:1px solid #e2e8f0;">
-            <div style="font-size:11px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:10px;">➕ Új időszak hozzáadása</div>
+          <!-- Új periódus / Szerkesztés űrlap -->
+          <div id="cp-form-container" style="background:#f8fafc; border-radius:8px; padding:14px; border:1px solid #e2e8f0;">
+            <div id="cp-form-title" style="font-size:12px; font-weight:700; color:#0369a1; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;">
+              <span>➕ Új időszak és árak hozzáadása</span>
+              <button id="cp-cancel-edit-btn" style="display:none; background:none; border:1px solid #cbd5e1; border-radius:4px; font-size:11px; font-weight:600; padding:2px 8px; color:#64748b; cursor:pointer;">Mégsem (Új hozzáadása)</button>
+            </div>
+            
             <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
               <div style="display:flex; flex-direction:column; gap:3px;">
                 <label style="font-size:10px; font-weight:600; color:#64748b;">Deviza</label>
@@ -1026,27 +1174,70 @@ export function renderAldiRendelesek(container, windowManager) {
                   ${adminCurrencies.map(c => `<option value="${c.code}">${c.code}</option>`).join('')}
                 </select>
               </div>
-              <div style="display:flex; flex-direction:column; gap:3px;">
+              <div style="display:flex; flex-direction:column; gap:3px; flex:1; min-width:115px;">
                 <label style="font-size:10px; font-weight:600; color:#64748b;">Kezdete</label>
-                <input type="date" id="cp-new-start" min="${line.delivery_period_start ? line.delivery_period_start.split('T')[0] : ''}" max="${line.delivery_period_end ? line.delivery_period_end.split('T')[0] : ''}" style="height:32px; font-size:12px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; background:#fff;">
+                <input type="date" id="cp-new-start" min="${line.delivery_period_start ? line.delivery_period_start.split('T')[0] : ''}" max="${line.delivery_period_end ? line.delivery_period_end.split('T')[0] : ''}" style="height:32px; width:100%; font-size:12px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; background:#fff;">
               </div>
-              <div style="display:flex; flex-direction:column; gap:3px;">
+              <div style="display:flex; flex-direction:column; gap:3px; flex:1; min-width:115px;">
                 <label style="font-size:10px; font-weight:600; color:#64748b;">Vége</label>
-                <input type="date" id="cp-new-end" min="${line.delivery_period_start ? line.delivery_period_start.split('T')[0] : ''}" max="${line.delivery_period_end ? line.delivery_period_end.split('T')[0] : ''}" style="height:32px; font-size:12px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; background:#fff;">
+                <input type="date" id="cp-new-end" min="${line.delivery_period_start ? line.delivery_period_start.split('T')[0] : ''}" max="${line.delivery_period_end ? line.delivery_period_end.split('T')[0] : ''}" style="height:32px; width:100%; font-size:12px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; background:#fff;">
               </div>
             </div>
+
+            <!-- Árak megadása (DDP nélkül) -->
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;">
+              <div style="display:flex; flex-direction:column; gap:3px; flex:1; min-width:140px;">
+                <label style="font-size:10px; font-weight:600; color:#64748b;">Rekeszköltség</label>
+                <input type="text" id="cp-new-crate-cost" placeholder="pl. € 14,50 vagy 5200 Ft" value="${stripIncoterm(line.crate_cost || '')}" style="height:32px; font-size:12px; font-weight:600; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; background:#fff;">
+              </div>
+              <div style="display:flex; flex-direction:column; gap:3px; flex:1; min-width:140px;">
+                <label style="font-size:10px; font-weight:600; color:#64748b;">Egységköltség</label>
+                <input type="text" id="cp-new-unit-cost" placeholder="pl. € 1,45 vagy 520 Ft" value="${stripIncoterm(line.unit_cost || '')}" style="height:32px; font-size:12px; font-weight:600; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; background:#fff;">
+              </div>
+            </div>
+
             <div style="margin-top:8px; display:flex; flex-direction:column; gap:3px;">
               <label style="font-size:10px; font-weight:600; color:#64748b;">Megjegyzés (opcionális)</label>
               <input type="text" id="cp-new-note" placeholder="..." style="height:32px; font-size:12px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; background:#fff;">
             </div>
-            <button id="cp-add-btn" style="margin-top:10px; padding:6px 18px; border-radius:8px; font-size:12px; font-weight:700; border:none; background:#0284c7; color:#fff; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
-              ➕ Hozzáadás
-            </button>
+
+            <div style="display:flex; align-items:center; gap:8px; margin-top:12px;">
+              <button id="cp-add-btn" style="padding:7px 20px; border-radius:8px; font-size:12px; font-weight:700; border:none; background:#0284c7; color:#fff; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 4px rgba(2,132,199,0.25);">
+                ➕ Hozzáadás / Felosztás
+              </button>
+            </div>
           </div>
         </div>
 
         <div style="padding:12px 20px; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end;">
           <button id="cp-close-btn" style="padding:7px 22px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid #cbd5e1; background:#ffffff; color:#334155; cursor:pointer;">Bezárás</button>
+        </div>
+
+        <!-- Megerősítő / Előnézet panel (Átfedés esetén) -->
+        <div id="cp-confirm-overlay" style="display:none; position:absolute; inset:0; background:rgba(15,23,42,0.7); z-index:10; backdrop-filter:blur(2px); padding:20px; align-items:center; justify-content:center;">
+          <div style="background:#ffffff; border-radius:10px; border:1px solid #cbd5e1; box-shadow:0 10px 30px rgba(0,0,0,0.3); width:100%; max-height:90%; overflow-y:auto; padding:18px; display:flex; flex-direction:column; gap:12px;">
+            <div style="display:flex; align-items:center; gap:8px; color:#d97706; font-size:14px; font-weight:700;">
+              <span>⚠️</span>
+              <span>Átfedő / Köztes időszak észlelve</span>
+            </div>
+            <div style="font-size:12px; color:#475569; line-height:1.4;">
+              A megadott időszak átfedésben van egy vagy több már rögzített időszakkal.<br>
+              A rendszer automatikusan átszámolta az új időszak- és árfelosztást:
+            </div>
+            <div id="cp-confirm-preview-list" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:8px 12px; display:flex; flex-direction:column; gap:6px;">
+            </div>
+            <div style="font-size:11px; color:#64748b; font-style:italic;">
+              Kérlek hagyd jóvá, hogy szeretnéd-e a fenti új időszak- és árbeosztást rögzíteni!
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:6px;">
+              <button id="cp-confirm-cancel-btn" style="padding:6px 14px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid #cbd5e1; background:#fff; color:#334155; cursor:pointer;">
+                Mégsem
+              </button>
+              <button id="cp-confirm-save-btn" style="padding:6px 16px; border-radius:6px; font-size:12px; font-weight:700; border:none; background:#0284c7; color:#fff; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 5px rgba(2,132,199,0.3);">
+                ✅ Jóváhagyom és mentem
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -1061,35 +1252,238 @@ export function renderAldiRendelesek(container, windowManager) {
     modalOverlay.querySelector('#cp-modal-close')?.addEventListener('click', closeModal);
     modalOverlay.querySelector('#cp-close-btn')?.addEventListener('click', closeModal);
 
-    // Periódus lista újrarajzolása
+    // Form állapot frissítése (Szerkesztés vs Új hozzáadás)
+    function updateFormMode() {
+      const formTitle = modalOverlay.querySelector('#cp-form-title span');
+      const cancelEditBtn = modalOverlay.querySelector('#cp-cancel-edit-btn');
+      const addBtn = modalOverlay.querySelector('#cp-add-btn');
+
+      if (editingPeriodIndex !== null && periods[editingPeriodIndex]) {
+        const p = periods[editingPeriodIndex];
+        if (formTitle) formTitle.textContent = `✏️ #${editingPeriodIndex + 1}. Időszak módosítása (${p.currency_code}: ${p.period_start} → ${p.period_end})`;
+        if (cancelEditBtn) cancelEditBtn.style.display = 'inline-block';
+        if (addBtn) {
+          addBtn.textContent = '💾 Módosítás mentése';
+          addBtn.style.background = '#16a34a';
+        }
+      } else {
+        if (formTitle) formTitle.textContent = '➕ Új időszak és árak hozzáadása';
+        if (cancelEditBtn) cancelEditBtn.style.display = 'none';
+        if (addBtn) {
+          addBtn.textContent = '➕ Hozzáadás / Felosztás';
+          addBtn.style.background = '#0284c7';
+        }
+      }
+    }
+
+    function setEditingIndex(idx) {
+      editingPeriodIndex = idx;
+      const p = periods[idx];
+      if (p) {
+        modalOverlay.querySelector('#cp-new-currency').value = p.currency_code || 'EUR';
+        modalOverlay.querySelector('#cp-new-start').value = p.period_start ? p.period_start.split('T')[0] : '';
+        modalOverlay.querySelector('#cp-new-end').value = p.period_end ? p.period_end.split('T')[0] : '';
+        modalOverlay.querySelector('#cp-new-crate-cost').value = stripIncoterm(p.crate_cost || '');
+        modalOverlay.querySelector('#cp-new-unit-cost').value = stripIncoterm(p.unit_cost || '');
+        modalOverlay.querySelector('#cp-new-note').value = p.note || '';
+      }
+      updateFormMode();
+      refreshPeriodsList();
+    }
+
+    function resetFormToAddMode() {
+      editingPeriodIndex = null;
+      modalOverlay.querySelector('#cp-new-currency').value = isLineEur ? 'EUR' : 'HUF';
+      modalOverlay.querySelector('#cp-new-start').value = '';
+      modalOverlay.querySelector('#cp-new-end').value = '';
+      modalOverlay.querySelector('#cp-new-crate-cost').value = stripIncoterm(line.crate_cost || '');
+      modalOverlay.querySelector('#cp-new-unit-cost').value = stripIncoterm(line.unit_cost || '');
+      modalOverlay.querySelector('#cp-new-note').value = '';
+      updateFormMode();
+      refreshPeriodsList();
+    }
+
+    modalOverlay.querySelector('#cp-cancel-edit-btn')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      resetFormToAddMode();
+    });
+
+    // Periódus lista újrarajzolása és eseménykezelők
     function refreshPeriodsList() {
       const listEl = modalOverlay.querySelector('#cp-periods-list');
       if (listEl) listEl.innerHTML = buildPeriodsHtml();
-      bindDeleteBtns();
+      bindPeriodEvents();
     }
 
-    function bindDeleteBtns() {
+    function bindPeriodEvents() {
+      // Sorra / szerkesztés ikonra kattintva szerkesztésbe töltés
+      modalOverlay.querySelectorAll('.cp-period-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+          if (e.target.closest('.cp-delete-btn')) return;
+          const idx = parseInt(item.dataset.index, 10);
+          if (!isNaN(idx)) setEditingIndex(idx);
+        });
+      });
+
+      modalOverlay.querySelectorAll('.cp-edit-row-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const idx = parseInt(btn.dataset.index, 10);
+          if (!isNaN(idx)) setEditingIndex(idx);
+        });
+      });
+
       modalOverlay.querySelectorAll('.cp-delete-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const idx = parseInt(btn.dataset.index, 10);
           const cpId = btn.dataset.id;
           if (!confirm('Törlöd ezt az időszakot?')) return;
           try {
-            await fetch(`/api/v1/aldi-weekly-prices/${state.hetiArakSelectedWeekId}/lines/${lineId}/currency-periods/${cpId}`, { method: 'DELETE' });
-            periods = periods.filter(p => String(p.id) !== String(cpId));
+            if (cpId) {
+              await fetch(`/api/v1/aldi-weekly-prices/${state.hetiArakSelectedWeekId}/lines/${lineId}/currency-periods/${cpId}`, { method: 'DELETE' });
+            }
+            periods.splice(idx, 1);
+            if (editingPeriodIndex === idx) resetFormToAddMode();
+            else if (editingPeriodIndex !== null && editingPeriodIndex > idx) editingPeriodIndex--;
+            line.currency_periods = [...periods];
             refreshPeriodsList();
-          } catch (e) {
-            alert('Törlési hiba: ' + e.message);
+          } catch (err) {
+            alert('Törlési hiba: ' + err.message);
           }
         });
       });
     }
-    bindDeleteBtns();
+    bindPeriodEvents();
 
-    // Hozzáadás
+    // Átfedés számítás algoritmusa (árak öröklésével és Incoterm tisztítással)
+    function calculateSplitPeriods(existingPeriods, newPeriod) {
+      const nStart = newPeriod.period_start.split('T')[0];
+      const nEnd = newPeriod.period_end.split('T')[0];
+      
+      let hasOverlap = false;
+      const resultPeriods = [];
+
+      for (const p of existingPeriods) {
+        const pStart = p.period_start ? p.period_start.split('T')[0] : '';
+        const pEnd = p.period_end ? p.period_end.split('T')[0] : '';
+
+        // Átfedés ellenőrzése
+        const overlaps = (nStart <= pEnd && nEnd >= pStart);
+        if (!overlaps) {
+          resultPeriods.push({ ...p, period_start: pStart, period_end: pEnd, isNew: false, isOriginal: true });
+          continue;
+        }
+
+        hasOverlap = true;
+
+        // 1. Teljes felülírás
+        if (nStart <= pStart && nEnd >= pEnd) {
+          continue;
+        }
+        // 2. Köztes időszak (pStart < nStart ÉS nEnd < pEnd) -> 2 részre bontás
+        else if (nStart > pStart && nEnd < pEnd) {
+          const part1End = addDaysToDateStr(nStart, -1);
+          const part2Start = addDaysToDateStr(nEnd, 1);
+
+          resultPeriods.push({
+            currency_code: p.currency_code,
+            period_start: pStart,
+            period_end: part1End,
+            crate_cost: stripIncoterm(p.crate_cost),
+            unit_cost: stripIncoterm(p.unit_cost),
+            note: p.note,
+            isNew: false,
+            isSplit: true
+          });
+          resultPeriods.push({
+            currency_code: p.currency_code,
+            period_start: part2Start,
+            period_end: pEnd,
+            crate_cost: stripIncoterm(p.crate_cost),
+            unit_cost: stripIncoterm(p.unit_cost),
+            note: p.note,
+            isNew: false,
+            isSplit: true
+          });
+        }
+        // 3. Bal oldali átfedés (nStart <= pStart ÉS nEnd < pEnd)
+        else if (nStart <= pStart && nEnd < pEnd) {
+          const newPStart = addDaysToDateStr(nEnd, 1);
+          resultPeriods.push({
+            currency_code: p.currency_code,
+            period_start: newPStart,
+            period_end: pEnd,
+            crate_cost: stripIncoterm(p.crate_cost),
+            unit_cost: stripIncoterm(p.unit_cost),
+            note: p.note,
+            isNew: false,
+            isTrimmed: true
+          });
+        }
+        // 4. Jobb oldali átfedés (nStart > pStart ÉS nEnd >= pEnd)
+        else if (nStart > pStart && nEnd >= pEnd) {
+          const newPEnd = addDaysToDateStr(nStart, -1);
+          resultPeriods.push({
+            currency_code: p.currency_code,
+            period_start: pStart,
+            period_end: newPEnd,
+            crate_cost: stripIncoterm(p.crate_cost),
+            unit_cost: stripIncoterm(p.unit_cost),
+            note: p.note,
+            isNew: false,
+            isTrimmed: true
+          });
+        }
+      }
+
+      // Hozzáadjuk az új / módosított időszakot az új árakkal
+      resultPeriods.push({
+        currency_code: newPeriod.currency_code,
+        period_start: nStart,
+        period_end: nEnd,
+        crate_cost: stripIncoterm(newPeriod.crate_cost) || null,
+        unit_cost: stripIncoterm(newPeriod.unit_cost) || null,
+        note: newPeriod.note || null,
+        isNew: true
+      });
+
+      // Dátum szerint növekvőbe rendezzük
+      resultPeriods.sort((a, b) => a.period_start.localeCompare(b.period_start));
+
+      return { hasOverlap, resultPeriods };
+    }
+
+    // Elmenti a teljes periódus listát a szerverre (PUT)
+    async function saveCalculatedPeriods(newPeriodsList) {
+      try {
+        const res = await fetch(`/api/v1/aldi-weekly-prices/${state.hetiArakSelectedWeekId}/lines/${lineId}/currency-periods`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ periods: newPeriodsList })
+        });
+        if (res.ok) {
+          periods = await res.json();
+          line.currency_periods = [...periods];
+          resetFormToAddMode();
+          return true;
+        } else {
+          alert('Hiba a mentés során!');
+          return false;
+        }
+      } catch (e) {
+        alert('Hiba: ' + e.message);
+        return false;
+      }
+    }
+
+    // Hozzáadás / Módosítás mentése gomb kattintás
     modalOverlay.querySelector('#cp-add-btn')?.addEventListener('click', async () => {
       const currency = modalOverlay.querySelector('#cp-new-currency').value;
       const start = modalOverlay.querySelector('#cp-new-start').value;
       const end = modalOverlay.querySelector('#cp-new-end').value;
+      const crateCost = stripIncoterm(modalOverlay.querySelector('#cp-new-crate-cost').value.trim());
+      const unitCost = stripIncoterm(modalOverlay.querySelector('#cp-new-unit-cost').value.trim());
       const note = modalOverlay.querySelector('#cp-new-note').value.trim();
 
       if (!start || !end) { alert('Add meg a kezdő és végdátumot!'); return; }
@@ -1107,37 +1501,80 @@ export function renderAldiRendelesek(container, windowManager) {
         return;
       }
 
-      // Ellenőrizzük, hogy az új időszak átfedésben van-e már rögzített időszakokkal
-      const hasOverlap = periods.some(p => {
-        const pStart = p.period_start.split('T')[0];
-        const pEnd = p.period_end.split('T')[0];
-        return start <= pEnd && end >= pStart;
-      });
+      const newPeriodObj = {
+        currency_code: currency,
+        period_start: start,
+        period_end: end,
+        crate_cost: crateCost,
+        unit_cost: unitCost,
+        note
+      };
 
-      if (hasOverlap) {
-        alert('Az általad megadott dátumtartomány átfedésben van egy már meglévő deviza időszakkal!');
-        return;
-      }
+      // Ha egy adott sort szerkesztünk, a többi sorhoz viszonyítjuk az átfedést
+      const basePeriods = (editingPeriodIndex !== null)
+        ? periods.filter((_, i) => i !== editingPeriodIndex)
+        : periods;
 
-      try {
-        const res = await fetch(`/api/v1/aldi-weekly-prices/${state.hetiArakSelectedWeekId}/lines/${lineId}/currency-periods`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ currency_code: currency, period_start: start, period_end: end, note })
+      const { hasOverlap, resultPeriods } = calculateSplitPeriods(basePeriods, newPeriodObj);
+
+      if (!hasOverlap) {
+        // Nincs átfedés más periódusokkal, mentés
+        await saveCalculatedPeriods(resultPeriods);
+      } else {
+        // Átfedés van -> Megerősítő felugró ablak / Előnézet megjelenítése
+        const confirmOverlay = modalOverlay.querySelector('#cp-confirm-overlay');
+        const previewList = modalOverlay.querySelector('#cp-confirm-preview-list');
+
+        let previewHtml = '';
+        resultPeriods.forEach(p => {
+          const isNew = p.isNew;
+          const badgeBg = p.currency_code === 'EUR' ? '#dbeafe' : '#fef9c3';
+          const badgeCol = p.currency_code === 'EUR' ? '#1d4ed8' : '#854d0e';
+          const rowBg = isNew ? '#f0fdf4' : '#ffffff';
+          const rowBorder = isNew ? '#86efac' : '#e2e8f0';
+          const tagText = isNew ? (editingPeriodIndex !== null ? '⭐ Módosított időszak' : '⭐ Új köztes időszak') : (p.isSplit ? '📅 Felosztott rész' : (p.isTrimmed ? '✂️ Módosult rész' : 'Eredeti'));
+
+          previewHtml += `
+            <div style="display:flex; align-items:center; justify-content:space-between; background:${rowBg}; border:1px solid ${rowBorder}; border-radius:6px; padding:6px 10px; font-size:11px; flex-wrap:wrap; gap:4px;">
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span style="display:inline-block; background:${badgeBg}; color:${badgeCol}; font-weight:700; border-radius:3px; padding:1px 5px;">${p.currency_code}</span>
+                <strong style="color:#1e293b;">${p.period_start}</strong>
+                <span style="color:#94a3b8;">→</span>
+                <strong style="color:#1e293b;">${p.period_end}</strong>
+                <span style="font-size:11px; font-family:monospace; color:#0f172a; background:#f1f5f9; padding:1px 5px; border-radius:3px;">📦 ${stripIncoterm(p.crate_cost) || '-'}</span>
+                <span style="font-size:11px; font-family:monospace; color:#0f172a; background:#f1f5f9; padding:1px 5px; border-radius:3px;">🏷️ ${stripIncoterm(p.unit_cost) || '-'}</span>
+              </div>
+              <span style="font-size:10px; font-weight:600; color:${isNew ? '#16a34a' : '#64748b'};">${tagText}</span>
+            </div>
+          `;
         });
-        if (res.ok) {
-          const newPeriod = await res.json();
-          periods.push(newPeriod);
-          // Reset inputs
-          modalOverlay.querySelector('#cp-new-start').value = '';
-          modalOverlay.querySelector('#cp-new-end').value = '';
-          modalOverlay.querySelector('#cp-new-note').value = '';
-          refreshPeriodsList();
-        } else {
-          alert('Hiba a mentés során!');
-        }
-      } catch (e) {
-        alert('Hiba: ' + e.message);
+
+        previewList.innerHTML = previewHtml;
+        confirmOverlay.style.display = 'flex';
+
+        // Gomb eseménykezelők a megerősítéshez
+        const cancelBtn = modalOverlay.querySelector('#cp-confirm-cancel-btn');
+        const saveBtn = modalOverlay.querySelector('#cp-confirm-save-btn');
+
+        const onCancel = () => {
+          confirmOverlay.style.display = 'none';
+          cancelBtn.removeEventListener('click', onCancel);
+          saveBtn.removeEventListener('click', onSave);
+        };
+
+        const onSave = async () => {
+          saveBtn.disabled = true;
+          saveBtn.textContent = '⏳ Mentés...';
+          const ok = await saveCalculatedPeriods(resultPeriods);
+          confirmOverlay.style.display = 'none';
+          saveBtn.disabled = false;
+          saveBtn.textContent = '✅ Jóváhagyom és mentem';
+          cancelBtn.removeEventListener('click', onCancel);
+          saveBtn.removeEventListener('click', onSave);
+        };
+
+        cancelBtn.addEventListener('click', onCancel);
+        saveBtn.addEventListener('click', onSave);
       }
     });
   }
@@ -1169,12 +1606,13 @@ export function renderAldiRendelesek(container, windowManager) {
     wrapper.querySelector('#aldi-btn-upload')?.addEventListener('click', openUploadModal);
 
     // Order view
-    wrapper.querySelectorAll('.aldi-view-order-btn, .aldi-order-link').forEach(btn => {
+    wrapper.querySelectorAll('.aldi-view-order-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.preventDefault();
         const id = btn.dataset.id;
-        const ord = state.orders.find(o => o.id === id);
-        if (ord) alert(`ALDI Rendelés:\nRendelési szám: ${ord.orderNo}\nSzállítási dátum: ${ord.date}\nFájl: ${ord.fileName}`);
+        const orderno = btn.dataset.orderno;
+        const dateStr = btn.dataset.date;
+        openOrderViewModal(id, orderno, dateStr);
       });
     });
 
@@ -1259,4 +1697,5 @@ export function renderAldiRendelesek(container, windowManager) {
 
   // ─── Initial load ─────────────────────────────────────────────────────────────
   fetchProductsFromDb();
+  fetchNapiRendelesek();
 }
