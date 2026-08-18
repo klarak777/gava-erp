@@ -23,7 +23,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         }
 
         const dataBuffer = req.file.buffer;
-        
+
         let text = '';
         if (typeof pdfParse === 'function') {
             const data = await pdfParse(dataBuffer);
@@ -72,10 +72,10 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         // Format: "00010 4061462848544 27 20260815 DDP ..."
         // The delivery date is the date AFTER the quantity in the line item row
         const lineItemPattern = /^\d{5}\s+(\d{13,14})\s+(\d+)\s+(20\d{2}[01]\d[0-3]\d)/;
-        
+
         let deliveryDateStr = null;
         let lineItems = [];
-        
+
         const textLines = text.split('\n');
         for (let line of textLines) {
             const m = line.match(lineItemPattern);
@@ -83,18 +83,18 @@ router.post('/upload', upload.single('file'), async (req, res) => {
                 const gtin = m[1];
                 const quantity = parseInt(m[2], 10);
                 const rawDate = m[3]; // e.g. 20260815
-                
+
                 // Use the first found delivery date
                 if (!deliveryDateStr) {
-                    deliveryDateStr = `${rawDate.slice(0,4)}-${rawDate.slice(4,6)}-${rawDate.slice(6,8)}`;
+                    deliveryDateStr = `${rawDate.slice(0, 4)}-${rawDate.slice(4, 6)}-${rawDate.slice(6, 8)}`;
                 }
-                
+
                 if (quantity > 0) {
                     lineItems.push({ gtin, quantity });
                 }
             }
         }
-        
+
         if (!deliveryDateStr) {
             return res.status(400).json({ error: 'Nem található a Szállítási dátum (Delivery Date) a tételsorok között.' });
         }
@@ -106,7 +106,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         // 5. Create folder and save file
         const folderName = deliveryDateStr; // e.g. 2026-08-15
         const targetDir = path.join(ALDI_DAILY_ORDERS_PATH, folderName);
-        
+
         try {
             if (!fs.existsSync(targetDir)) {
                 fs.mkdirSync(targetDir, { recursive: true });
@@ -134,7 +134,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             pdf_file_path: fileName,
             network_folder_path: targetDir
         }).returning('id');
-        
+
         const dailyOrderId = insertedIds[0].id || insertedIds[0];
 
         const linesToInsert = lineItems.map(item => ({
@@ -165,36 +165,68 @@ router.get('/', async (req, res) => {
     try {
         const orders = await db('aldi_daily_orders')
             .select('*')
-            .orderBy('delivery_date', 'desc');
+            .orderBy('created_at', 'asc'); // Fontos: feltöltési sorrendben kérjük le a verziók miatt
 
-        // Dynamically calculate currency and version for each order
-        // We look up the currency from aldi_price_currency_periods for any of the products on this date.
-        // We look up the currency from aldi_price_currency_periods that covers the delivery date
+        const orderCounts = {};
+        const enrichedOrders = [];
+
         for (let order of orders) {
-            let currency = 'N/A';
-            let version = 'N/A';
+            // Verziószám dinamikus számítása
+            if (!orderCounts[order.order_number]) {
+                orderCounts[order.order_number] = 1;
+            } else {
+                orderCounts[order.order_number]++;
+            }
+            order.version = `VERSION ${orderCounts[order.order_number]}`;
 
-            // Find any currency period that covers the delivery date
-            const period = await db('aldi_price_currency_periods')
-                .where('period_start', '<=', order.delivery_date)
-                .where('period_end', '>=', order.delivery_date)
-                .first('currency_code');
+            // Deviza (Rendelés típusa) dinamikus számítása a GTIN alapján
+            let currency = 'DEBUG_NO_LINE';
+            const firstLine = await db('aldi_daily_order_lines')
+                .where('daily_order_id', order.id)
+                .first('gtin');
 
-            if (period) {
-                currency = period.currency_code.toUpperCase();
-                if (currency === 'HUF') {
-                    version = 'VERSION 1';
-                } else if (currency === 'EUR') {
-                    version = 'VERSION 2';
-                } else {
-                    version = currency;
+            if (firstLine && firstLine.gtin) {
+                currency = 'DEBUG_NO_CP';
+                const cp = await db('chain_products').where('gtin', firstLine.gtin).first('id');
+                if (cp) {
+                    currency = 'DEBUG_NO_WPLINE';
+                    const wpLine = await db('aldi_weekly_price_lines')
+                        .where('chain_product_id', cp.id)
+                        .orderBy('id', 'desc')
+                        .first('id');
+                    
+                    if (wpLine) {
+                        currency = 'DEBUG_NO_PERIOD';
+                        // Ensure order.delivery_date is a formatted string 'YYYY-MM-DD'
+                        let dDate = order.delivery_date;
+                        if (dDate instanceof Date) {
+                            dDate = dDate.toISOString().split('T')[0];
+                        } else if (typeof dDate === 'string' && dDate.includes('T')) {
+                            dDate = dDate.split('T')[0];
+                        }
+
+                        const period = await db('aldi_price_currency_periods')
+                            .where('price_line_id', wpLine.id)
+                            .where(function() {
+                                this.where('period_start', '<=', dDate)
+                                    .andWhere('period_end', '>=', dDate);
+                            })
+                            .first('currency_code');
+                        
+                        if (period) {
+                            currency = period.currency_code;
+                        }
+                    }
                 }
             }
-            order.currency = currency;
-            order.version = version;
+            order.order_type = currency;
+            enrichedOrders.push(order);
         }
 
-        res.json(orders);
+        // Végül dátum szerint csökkenő sorrendben küldjük vissza
+        enrichedOrders.sort((a, b) => new Date(b.delivery_date) - new Date(a.delivery_date));
+
+        res.json(enrichedOrders);
     } catch (err) {
         console.error('Hiba a rendelések lekérdezésekor:', err);
         res.status(500).json({ error: 'Hiba a rendelések lekérdezésekor.' });
@@ -214,7 +246,7 @@ router.get('/:id/lines', async (req, res) => {
             const product = await db('chain_products')
                 .where({ gtin: line.gtin })
                 .first('product_name');
-            
+
             if (product && product.product_name) {
                 line.product_name = product.product_name;
             } else {

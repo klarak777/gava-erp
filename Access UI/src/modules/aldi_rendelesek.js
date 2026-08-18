@@ -210,12 +210,11 @@ export function renderAldiRendelesek(container, windowManager) {
 
       <!-- Tab Content Area -->
       <div id="aldi-tab-content" style="display:flex; flex-direction:column; flex:1;">
-        ${
-          state.activeTab === 'napi' ? renderNapiRendelesHtml() :
-          state.activeTab === 'heti' ? renderHetiLekotesHtml() :
+        ${state.activeTab === 'napi' ? renderNapiRendelesHtml() :
+        state.activeTab === 'heti' ? renderHetiLekotesHtml() :
           state.activeTab === 'heti_arak' ? renderHetiArakHtml() :
-          renderTermekekHtml()
-        }
+            renderTermekekHtml()
+      }
       </div>
     `;
 
@@ -263,9 +262,9 @@ export function renderAldiRendelesek(container, windowManager) {
             ${filteredOrders.length === 0 ? `
               <tr><td colspan="6" style="padding:24px; text-align:center; color:#94a3b8; font-size:13px;">Nincs megjeleníthető rendelés a megadott szűrési feltételekkel.</td></tr>
             ` : filteredOrders.map((o, idx) => {
-              const dt = new Date(o.delivery_date);
-              const formattedDate = !isNaN(dt) ? dt.toISOString().split('T')[0] : o.delivery_date;
-              return `
+      const dt = new Date(o.delivery_date);
+      const formattedDate = !isNaN(dt) ? dt.toISOString().split('T')[0] : o.delivery_date;
+      return `
               <tr style="border-bottom:1px solid #f1f5f9; ${idx % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;'}">
                 <td style="padding:10px 14px; color:#1e293b; font-weight:500;">${formattedDate}</td>
                 <td style="padding:10px 14px;">
@@ -276,7 +275,7 @@ export function renderAldiRendelesek(container, windowManager) {
                 </td>
                 <td style="padding:10px 14px; color:#334155;">
                   <span style="display:inline-block; background:#f1f5f9; color:#475569; font-size:11px; font-weight:600; padding:2px 8px; border-radius:4px; border:1px solid #e2e8f0;">
-                    ${o.currency || 'Normál'}
+                    ${o.order_type || 'Normál'}
                   </span>
                 </td>
                 <td style="padding:10px 14px; text-align:center; font-weight:700; color:#1e293b;">
@@ -287,7 +286,7 @@ export function renderAldiRendelesek(container, windowManager) {
                 </td>
               </tr>
               `;
-            }).join('')}
+    }).join('')}
           </tbody>
         </table>
       </div>
@@ -399,67 +398,67 @@ export function renderAldiRendelesek(container, windowManager) {
             </thead>
             <tbody>
               ${(() => {
-                const todayStr = new Date().toISOString().split('T')[0];
-                return lines.map((line, idx) => {
-                  const isMatched = line.is_gtin_matched;
-                  const displayName = isMatched
-                    ? (line.erp_product_name || line.xlsx_product_name || '')
-                    : (line.xlsx_product_name || '');
+        const todayStr = new Date().toISOString().split('T')[0];
+        return lines.map((line, idx) => {
+          const isMatched = line.is_gtin_matched;
+          const displayName = isMatched
+            ? (line.erp_product_name || line.xlsx_product_name || '')
+            : (line.xlsx_product_name || '');
 
-                  const nameStyle = isMatched
-                    ? 'color:#1e293b; font-weight:600;'
-                    : 'color:#dc2626; font-weight:600; background:#fef2f2; padding:2px 6px; border-radius:4px;';
+          const nameStyle = isMatched
+            ? 'color:#1e293b; font-weight:600;'
+            : 'color:#dc2626; font-weight:600; background:#fef2f2; padding:2px 6px; border-radius:4px;';
 
-                  const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+          const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
 
-                  // Aktuális mai nap szerinti aktív periódus meghatározása
-                  let displayedCrateCost = line.crate_cost || '';
-                  let displayedUnitCost = line.unit_cost || '';
-                  let activeCurrency = '';
-                  let activePeriod = null;
+          // Aktuális mai nap szerinti aktív periódus meghatározása
+          let displayedCrateCost = line.crate_cost || '';
+          let displayedUnitCost = line.unit_cost || '';
+          let activeCurrency = '';
+          let activePeriod = null;
 
-                  if (line.currency_periods && line.currency_periods.length > 0) {
-                    activePeriod = line.currency_periods.find(cp => {
-                      const s = cp.period_start ? cp.period_start.split('T')[0] : '';
-                      const e = cp.period_end ? cp.period_end.split('T')[0] : '';
-                      return s <= todayStr && todayStr <= e;
-                    });
+          if (line.currency_periods && line.currency_periods.length > 0) {
+            activePeriod = line.currency_periods.find(cp => {
+              const s = cp.period_start ? cp.period_start.split('T')[0] : '';
+              const e = cp.period_end ? cp.period_end.split('T')[0] : '';
+              return s <= todayStr && todayStr <= e;
+            });
 
-                    if (!activePeriod) {
-                      activePeriod = line.currency_periods[0];
-                    }
+            if (!activePeriod) {
+              activePeriod = line.currency_periods[0];
+            }
 
-                    if (activePeriod) {
-                      displayedCrateCost = activePeriod.crate_cost || displayedCrateCost;
-                      displayedUnitCost = activePeriod.unit_cost || displayedUnitCost;
-                      activeCurrency = activePeriod.currency_code;
-                    }
-                  }
+            if (activePeriod) {
+              displayedCrateCost = activePeriod.crate_cost || displayedCrateCost;
+              displayedUnitCost = activePeriod.unit_cost || displayedUnitCost;
+              activeCurrency = activePeriod.currency_code;
+            }
+          }
 
-                  if (!activeCurrency) {
-                    const isEur = displayedCrateCost.startsWith('€') || displayedUnitCost.startsWith('€');
-                    activeCurrency = isEur ? 'EUR' : 'HUF';
-                  }
+          if (!activeCurrency) {
+            const isEur = displayedCrateCost.startsWith('€') || displayedUnitCost.startsWith('€');
+            activeCurrency = isEur ? 'EUR' : 'HUF';
+          }
 
-                  const isMultiPeriod = line.currency_periods && line.currency_periods.length > 1;
-                  const currencyBadgeColor = activeCurrency === 'EUR' ? '#1d4ed8' : '#854d0e';
-                  const currencyBadgeBg = activeCurrency === 'EUR' ? '#dbeafe' : '#fef9c3';
+          const isMultiPeriod = line.currency_periods && line.currency_periods.length > 1;
+          const currencyBadgeColor = activeCurrency === 'EUR' ? '#1d4ed8' : '#854d0e';
+          const currencyBadgeBg = activeCurrency === 'EUR' ? '#dbeafe' : '#fef9c3';
 
-                  let currencyBadge = `<span style="display:inline-block; background:${currencyBadgeBg}; color:${currencyBadgeColor}; font-size:10px; font-weight:700; border-radius:4px; padding:2px 6px;">${activeCurrency}</span>`;
-                  if (isMultiPeriod) {
-                    currencyBadge += `<span style="display:inline-block; background:#e0e7ff; color:#4338ca; font-size:9px; font-weight:700; border-radius:4px; padding:1px 4px; margin-left:3px;" title="${line.currency_periods.length} rögzített deviza időszak">🔀 ${line.currency_periods.length}</span>`;
-                  }
+          let currencyBadge = `<span style="display:inline-block; background:${currencyBadgeBg}; color:${currencyBadgeColor}; font-size:10px; font-weight:700; border-radius:4px; padding:2px 6px;">${activeCurrency}</span>`;
+          if (isMultiPeriod) {
+            currencyBadge += `<span style="display:inline-block; background:#e0e7ff; color:#4338ca; font-size:9px; font-weight:700; border-radius:4px; padding:1px 4px; margin-left:3px;" title="${line.currency_periods.length} rögzített deviza időszak">🔀 ${line.currency_periods.length}</span>`;
+          }
 
-                  const tooltipText = line.currency_periods && line.currency_periods.length > 0
-                    ? `Aktív (${activeCurrency}): ${displayedCrateCost} / ${displayedUnitCost}\n\nÖsszes időszak:\n` + line.currency_periods.map(cp => {
-                        const s = cp.period_start ? cp.period_start.split('T')[0] : '';
-                        const e = cp.period_end ? cp.period_end.split('T')[0] : '';
-                        const isCurActive = (cp === activePeriod);
-                        return `${isCurActive ? '▶ (Aktív) ' : '  '}${s} → ${e} [${cp.currency_code}] Rekesz: ${cp.crate_cost || '-'}, Egység: ${cp.unit_cost || '-'}`;
-                      }).join('\n')
-                    : 'Deviza időszak szerkesztése';
+          const tooltipText = line.currency_periods && line.currency_periods.length > 0
+            ? `Aktív (${activeCurrency}): ${displayedCrateCost} / ${displayedUnitCost}\n\nÖsszes időszak:\n` + line.currency_periods.map(cp => {
+              const s = cp.period_start ? cp.period_start.split('T')[0] : '';
+              const e = cp.period_end ? cp.period_end.split('T')[0] : '';
+              const isCurActive = (cp === activePeriod);
+              return `${isCurActive ? '▶ (Aktív) ' : '  '}${s} → ${e} [${cp.currency_code}] Rekesz: ${cp.crate_cost || '-'}, Egység: ${cp.unit_cost || '-'}`;
+            }).join('\n')
+            : 'Deviza időszak szerkesztése';
 
-                  return `
+          return `
                     <tr style="border-bottom:1px solid #f1f5f9; background:${rowBg};">
                       <td style="padding:8px 12px;">
                         <div style="${nameStyle}" title="${isMatched ? 'ERP: ' + displayName : 'ALDI XLSX név – nincs ERP match'}">
@@ -486,8 +485,8 @@ export function renderAldiRendelesek(container, windowManager) {
                       </td>
                     </tr>
                   `;
-                }).join('');
-              })()}
+        }).join('');
+      })()}
             </tbody>
           </table>
         </div>
@@ -502,10 +501,10 @@ export function renderAldiRendelesek(container, windowManager) {
     const filteredProducts = state.products.filter(p => {
       if (!q) return true;
       return (p.name && p.name.toLowerCase().includes(q)) ||
-             (p.articleNo && p.articleNo.toLowerCase().includes(q)) ||
-             (p.gtin && p.gtin.toLowerCase().includes(q)) ||
-             (p.ean && p.ean.toLowerCase().includes(q)) ||
-             (p.label && p.label.toLowerCase().includes(q));
+        (p.articleNo && p.articleNo.toLowerCase().includes(q)) ||
+        (p.gtin && p.gtin.toLowerCase().includes(q)) ||
+        (p.ean && p.ean.toLowerCase().includes(q)) ||
+        (p.label && p.label.toLowerCase().includes(q));
     });
 
     return `
@@ -660,7 +659,7 @@ export function renderAldiRendelesek(container, windowManager) {
       const res = await fetch('/api/v1/aldi-daily-orders/' + id + '/lines');
       const lines = await res.json();
       const container = modalOverlay.querySelector('#aldi-modal-lines-container');
-      
+
       if (lines && lines.length > 0) {
         container.innerHTML = `
           <table style="width:100%; border-collapse:collapse; font-size:13px;">
@@ -742,7 +741,7 @@ export function renderAldiRendelesek(container, windowManager) {
 
     modalOverlay.querySelector('#aldi-modal-save')?.addEventListener('click', async () => {
       if (!selectedFile) { alert('Kérlek válassz ki egy PDF fájlt!'); return; }
-      
+
       const saveBtn = modalOverlay.querySelector('#aldi-modal-save');
       saveBtn.disabled = true;
       saveBtn.textContent = '⏳ Feltöltés...';
@@ -836,7 +835,7 @@ export function renderAldiRendelesek(container, windowManager) {
             <span style="font-size:12px; color:#0369a1; font-weight:600;">KW száma (1–53):</span>
             <input type="number" id="aldi-arak-new-kw-input" min="1" max="53" value="${nextKwSuggestion}"
               style="height:32px; width:80px; font-size:14px; font-weight:700; border:1px solid #7dd3fc; border-radius:6px; padding:4px 8px; background:#ffffff; color:#0284c7; text-align:center;">
-            <span id="aldi-arak-new-kw-preview" style="font-size:13px; font-weight:700; color:#0284c7;">→ KW${String(nextKwSuggestion).padStart(2,'0')}</span>
+            <span id="aldi-arak-new-kw-preview" style="font-size:13px; font-weight:700; color:#0284c7;">→ KW${String(nextKwSuggestion).padStart(2, '0')}</span>
           </div>
 
           <!-- Drag & Drop zone -->
@@ -881,7 +880,7 @@ export function renderAldiRendelesek(container, windowManager) {
     // KW preview frissítése gépelés közben
     newKwInput.addEventListener('input', () => {
       const v = parseInt(newKwInput.value, 10);
-      newKwPreview.textContent = (v >= 1 && v <= 53) ? `→ KW${String(v).padStart(2,'0')}` : '→ ?';
+      newKwPreview.textContent = (v >= 1 && v <= 53) ? `→ KW${String(v).padStart(2, '0')}` : '→ ?';
     });
 
     // Hét választó változásakor: mutjuk/rejtjük a KW beviteli mezőt
@@ -1058,13 +1057,13 @@ export function renderAldiRendelesek(container, windowManager) {
 
     // Betöltjük az aktuális periódusokat és az Admin devizákat
     let periods = [];
-    let adminCurrencies = [{code: 'EUR'}, {code: 'HUF'}, {code: 'USD'}]; // Fallback
+    let adminCurrencies = [{ code: 'EUR' }, { code: 'HUF' }, { code: 'USD' }]; // Fallback
     try {
       const [periodsRes, currRes] = await Promise.all([
         fetch(`/api/v1/aldi-weekly-prices/${state.hetiArakSelectedWeekId}/lines/${lineId}/currency-periods`),
         fetch(`/api/v1/admin/currencies`)
       ]);
-      
+
       if (periodsRes.ok) periods = await periodsRes.json();
       if (currRes.ok) adminCurrencies = await currRes.json();
     } catch (e) {
@@ -1360,7 +1359,7 @@ export function renderAldiRendelesek(container, windowManager) {
     function calculateSplitPeriods(existingPeriods, newPeriod) {
       const nStart = newPeriod.period_start.split('T')[0];
       const nEnd = newPeriod.period_end.split('T')[0];
-      
+
       let hasOverlap = false;
       const resultPeriods = [];
 
