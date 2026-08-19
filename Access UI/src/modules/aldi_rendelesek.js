@@ -1893,6 +1893,25 @@ export function renderAldiRendelesek(container, windowManager) {
       });
     });
 
+    // Order delete
+    wrapper.querySelectorAll('.aldi-delete-order-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const id = btn.dataset.id;
+        if (confirm('Biztosan törölni szeretnéd ezt a rendelést? A művelet nem vonható vissza, és a PDF fájl is törlődik!')) {
+          try {
+            const res = await fetch(`/api/v1/aldi-daily-orders/${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Hiba a törlés során');
+            alert('A rendelés sikeresen törölve lett.');
+            fetchNapiRendelesek(); // Frissítjük az oldalt a törlés után
+          } catch (err) {
+            console.error(err);
+            alert('Sikertelen törlés!');
+          }
+        }
+      });
+    });
+
     // Order view
     wrapper.querySelectorAll('.aldi-view-order-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
