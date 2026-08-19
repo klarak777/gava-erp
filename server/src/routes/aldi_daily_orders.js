@@ -116,7 +116,10 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             // We continue even if we can't create the network folder in dev
         }
 
-        const fileName = `${req.file.originalname}`;
+        const ext = path.extname(req.file.originalname);
+        const baseName = path.basename(req.file.originalname, ext);
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const fileName = `${baseName}_${uniqueSuffix}${ext}`;
         const targetPath = path.join(targetDir, fileName);
 
         try {
