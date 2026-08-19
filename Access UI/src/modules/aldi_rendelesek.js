@@ -756,7 +756,7 @@ export function renderAldiRendelesek(container, windowManager) {
           <tbody>
             ${lines.map((l, i) => {
               const prod = state.products.find(p => p.gtin === l.gtin || p.product_name === l.product_name);
-              const cikk = prod ? prod.article_number : '';
+              const cikk = prod ? (prod.articleNo || prod.article_number || '') : '';
               return `
               <tr style="${i % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;'} border-bottom:1px solid #f1f5f9;">
                 <td style="padding:8px 12px; color:#475569; font-weight:600;">${cikk}</td>
