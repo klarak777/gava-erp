@@ -299,6 +299,20 @@ export function renderAldiRendelesek(container, windowManager) {
       const formattedDate = !isNaN(dt) ? dt.toISOString().split('T')[0] : o.delivery_date;
       // A megjelenített rendelési szám: eltávolítjuk a régi "-N" suffixet
       const displayOrderNumber = o.order_number.replace(/-\d+$/, '');
+      let orderTypeBadgeBg = '#f1f5f9';
+      let orderTypeBadgeColor = '#475569';
+      let orderTypeBorder = '1px solid #e2e8f0';
+
+      if (o.order_type === 'EUR') {
+        orderTypeBadgeBg = '#dbeafe';
+        orderTypeBadgeColor = '#1d4ed8';
+        orderTypeBorder = '1px solid #bfdbfe';
+      } else if (o.order_type === 'HUF') {
+        orderTypeBadgeBg = '#fef9c3';
+        orderTypeBadgeColor = '#854d0e';
+        orderTypeBorder = '1px solid #fef08a';
+      }
+
       return `
               <tr style="border-bottom:1px solid #f1f5f9; ${idx % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;'}">
                 <td style="padding:10px 14px; color:#1e293b; font-weight:500;">${formattedDate}</td>
@@ -309,7 +323,7 @@ export function renderAldiRendelesek(container, windowManager) {
                   ${o.version || 'N/A'}
                 </td>
                 <td style="padding:10px 14px; color:#334155;">
-                  <span style="display:inline-block; background:#f1f5f9; color:#475569; font-size:11px; font-weight:600; padding:2px 8px; border-radius:4px; border:1px solid #e2e8f0;">
+                  <span style="display:inline-block; background:${orderTypeBadgeBg}; color:${orderTypeBadgeColor}; font-size:11px; font-weight:700; padding:2px 8px; border-radius:4px; border:${orderTypeBorder};">
                     ${o.order_type || 'Tételhez nincs heti ár'}
                   </span>
                 </td>
