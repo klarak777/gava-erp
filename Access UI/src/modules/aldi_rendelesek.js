@@ -727,94 +727,123 @@ export function renderAldiRendelesek(container, windowManager) {
     }
   }
 
-  // Upload modal (Napi rendelés)
   async function openOrderViewModal(id, orderNo, dateStr) {
-    const modalOverlay = document.createElement('div');
-    modalOverlay.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.4); z-index:9999; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);';
+    const windowId = 'order-view-' + id;
+    const title = `Rendelés: ${orderNo} | Dátum: ${dateStr}`;
 
-    modalOverlay.innerHTML = `
-      <div style="background:#ffffff; width:92%; max-width:700px; border-radius:12px; box-shadow:0 20px 50px rgba(0,0,0,0.2); overflow:hidden; border:1px solid #cbd5e1; display:flex; flex-direction:column;">
-        <div style="padding:12px 18px; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; justify-content:space-between; background:#ffffff;">
-          <h3 style="margin:0; font-size:14px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:8px;">Rendelési szám: ${orderNo} | Dátum: ${dateStr}</h3>
-          <button id="aldi-modal-close-x" style="background:none; border:none; font-size:16px; cursor:pointer; color:#64748b; font-weight:700;">✕</button>
-        </div>
-        <div style="padding:16px 20px; display:flex; flex-direction:column; gap:14px; max-height:400px; overflow-y:auto;" id="aldi-modal-lines-container">
-          <div style="text-align:center; padding:20px; color:#64748b; font-size:13px;">Tételsorok betöltése...</div>
+    let lines = [];
+    try {
+      const res = await fetch('/api/v1/aldi-daily-orders/' + id + '/lines');
+      lines = await res.json();
+    } catch(err) {
+      alert("Hiba történt a tételek betöltése során!");
+      return;
+    }
+
+    let tableHtml = '';
+    if (lines && lines.length > 0) {
+      tableHtml = `
+        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+          <thead>
+            <tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;">
+              <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">Cikkszám</th>
+              <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">Termék megnevezése</th>
+              <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">GTIN szám</th>
+              <th style="padding:8px 12px; text-align:right; font-weight:700; color:#334155;">Rendelt kartonszám</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${lines.map((l, i) => {
+              const prod = state.products.find(p => p.gtin === l.gtin || p.product_name === l.product_name);
+              const cikk = prod ? prod.article_number : '';
+              return `
+              <tr style="${i % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;'} border-bottom:1px solid #f1f5f9;">
+                <td style="padding:8px 12px; color:#475569; font-weight:600;">${cikk}</td>
+                <td style="padding:8px 12px; color:#1e293b;">${l.product_name}</td>
+                <td style="padding:8px 12px; color:#64748b; font-family:monospace;">${l.gtin || ''}</td>
+                <td style="padding:8px 12px; text-align:right; font-weight:600; color:#2563eb;">${Number(l.ordered_cartons)}</td>
+              </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+    } else {
+      tableHtml = '<div style="text-align:center; padding:20px; color:#64748b; font-size:13px;">Nem találhatók tételsorok.</div>';
+    }
+
+    const contentHtml = `
+      <div style="display:flex; flex-direction:column; height:100%; background:#ffffff;">
+        <div style="flex:1; padding:16px 20px; overflow-y:auto;">
+          ${tableHtml}
         </div>
         <div style="padding:12px 20px; border-top:1px solid #e2e8f0; background:#f8fafc; display:flex; justify-content:space-between; align-items:center;">
-          <button id="aldi-modal-export" style="padding:6px 18px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid #10b981; background:#ffffff; color:#10b981; cursor:pointer; display:none; align-items:center; gap:6px;">⬇️ Excel Export</button>
-          <button id="aldi-modal-ok" style="padding:6px 22px; border-radius:20px; font-size:13px; font-weight:600; border:none; background:#2563eb; color:#ffffff; cursor:pointer;">Rendben</button>
+          <button id="export-btn-${id}" style="padding:6px 18px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid #10b981; background:#ffffff; color:#10b981; cursor:pointer; display:${lines.length > 0 ? 'inline-flex' : 'none'}; align-items:center; gap:6px;">⬇️ Excel Export</button>
         </div>
       </div>
     `;
 
-    document.body.appendChild(modalOverlay);
-
-    modalOverlay.querySelector('#aldi-modal-close-x').addEventListener('click', () => modalOverlay.remove());
-    modalOverlay.querySelector('#aldi-modal-ok').addEventListener('click', () => modalOverlay.remove());
-
-    try {
-      const res = await fetch('/api/v1/aldi-daily-orders/' + id + '/lines');
-      const lines = await res.json();
-      const container = modalOverlay.querySelector('#aldi-modal-lines-container');
-
-      if (lines && lines.length > 0) {
-        container.innerHTML = `
-          <table style="width:100%; border-collapse:collapse; font-size:13px;">
-            <thead>
-              <tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;">
-                <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">Termék megnevezése</th>
-                <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">GTIN szám</th>
-                <th style="padding:8px 12px; text-align:right; font-weight:700; color:#334155;">Rendelt kartonszám</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${lines.map((l, i) => `
-                <tr style="${i % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;'} border-bottom:1px solid #f1f5f9;">
-                  <td style="padding:8px 12px; color:#1e293b;">${l.product_name}</td>
-                  <td style="padding:8px 12px; color:#64748b; font-family:monospace;">${l.gtin || ''}</td>
-                  <td style="padding:8px 12px; text-align:right; font-weight:600; color:#2563eb;">${l.ordered_cartons}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        `;
-        
-        const exportBtn = modalOverlay.querySelector('#aldi-modal-export');
-        exportBtn.style.display = 'inline-flex';
-        exportBtn.addEventListener('click', () => {
-          if (typeof XLSX === 'undefined') {
-            alert('Az Excel generáló modul még töltődik, kérlek próbáld újra pár másodperc múlva!');
-            return;
+    if (window.gavaWindowManager) {
+      window.gavaWindowManager.createWindow({
+        id: windowId,
+        title: title,
+        width: 750,
+        height: 500,
+        content: contentHtml
+      });
+      
+      setTimeout(() => {
+        const winEl = document.getElementById(windowId);
+        if (winEl) {
+          const exportBtn = winEl.querySelector(`#export-btn-${id}`);
+          if (exportBtn) {
+            exportBtn.addEventListener('click', () => doExcelExport(lines, orderNo, dateStr));
           }
-          
-          const exportData = lines.map(l => ({
-            "Termék megnevezése": l.product_name || '',
-            "GTIN szám": l.gtin || '',
-            "Rendelt kartonszám": Number(l.ordered_cartons) || 0
-          }));
-          
-          const ws = XLSX.utils.json_to_sheet(exportData);
-          
-          // Oszlopok szélességének automatikus beállítása
-          ws['!cols'] = [
-            { wch: 40 }, // Termék megnevezése
-            { wch: 20 }, // GTIN szám
-            { wch: 20 }  // Rendelt kartonszám
-          ];
-          
-          const wb = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(wb, ws, "Rendelés");
-          
-          // Fájl mentése natív Excelként
-          XLSX.writeFile(wb, `rendeles_${orderNo}.xlsx`);
-        });
-      } else {
-        container.innerHTML = '<div style="text-align:center; padding:20px; color:#64748b; font-size:13px;">Nem találhatók tételsorok.</div>';
-      }
-    } catch (err) {
-      modalOverlay.querySelector('#aldi-modal-lines-container').innerHTML = '<div style="text-align:center; padding:20px; color:#ef4444; font-size:13px;">Hiba történt a betöltés során!</div>';
+        }
+      }, 100);
+    } else {
+      // Fallback
+      alert('WindowManager nem elérhető, kérlek frissítsd az oldalt!');
     }
+  }
+
+  function doExcelExport(lines, orderNo, dateStr) {
+    if (typeof XLSX === 'undefined') {
+      alert('Az Excel generáló modul még töltődik, kérlek próbáld újra pár másodperc múlva!');
+      return;
+    }
+    
+    const aoa = [
+      ["Szállítási dátum:", dateStr],
+      ["Rendelési szám:", orderNo],
+      [], // üres sor
+      ["Göngyöleg", "Cikkszám", "Termék megnevezése", "GTIN szám", "Rendelt kartonszám"]
+    ];
+
+    lines.forEach(l => {
+      const prod = state.products.find(p => p.gtin === l.gtin || p.product_name === l.product_name);
+      aoa.push([
+        "", // Göngyöleg
+        prod ? prod.article_number : '',
+        l.product_name || '',
+        l.gtin || '',
+        Number(l.ordered_cartons) || 0
+      ]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+    ws['!cols'] = [
+      { wch: 15 }, // Göngyöleg
+      { wch: 15 }, // Cikkszám
+      { wch: 40 }, // Termék megnevezése
+      { wch: 20 }, // GTIN
+      { wch: 20 }  // Kartonszám
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Rendelés");
+    XLSX.writeFile(wb, `rendeles_${orderNo}.xlsx`);
   }
 
   function openUploadModal() {
