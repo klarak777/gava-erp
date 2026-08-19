@@ -721,23 +721,31 @@ export function renderAldiRendelesek(container, windowManager) {
         const exportBtn = modalOverlay.querySelector('#aldi-modal-export');
         exportBtn.style.display = 'inline-flex';
         exportBtn.addEventListener('click', () => {
-          let csvContent = "Termék megnevezése;GTIN szám;Rendelt kartonszám\n";
-          lines.forEach(l => {
-            const name = (l.product_name || '').replace(/"/g, '""');
-            const gtin = l.gtin || '';
-            const cartons = l.ordered_cartons || '';
-            csvContent += `"${name}";"${gtin}";"${cartons}"\n`;
-          });
-          const bom = "\\uFEFF"; // UTF-8 BOM for Excel
-          const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `rendeles_${orderNo}.csv`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
+          if (typeof XLSX === 'undefined') {
+            alert('Az Excel generáló modul még töltődik, kérlek próbáld újra pár másodperc múlva!');
+            return;
+          }
+          
+          const exportData = lines.map(l => ({
+            "Termék megnevezése": l.product_name || '',
+            "GTIN szám": l.gtin || '',
+            "Rendelt kartonszám": Number(l.ordered_cartons) || 0
+          }));
+          
+          const ws = XLSX.utils.json_to_sheet(exportData);
+          
+          // Oszlopok szélességének automatikus beállítása
+          ws['!cols'] = [
+            { wch: 40 }, // Termék megnevezése
+            { wch: 20 }, // GTIN szám
+            { wch: 20 }  // Rendelt kartonszám
+          ];
+          
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, "Rendelés");
+          
+          // Fájl mentése natív Excelként
+          XLSX.writeFile(wb, \`rendeles_${orderNo}.xlsx\`);
         });
       } else {
         container.innerHTML = '<div style="text-align:center; padding:20px; color:#64748b; font-size:13px;">Nem találhatók tételsorok.</div>';
