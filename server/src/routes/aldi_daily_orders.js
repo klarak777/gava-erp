@@ -126,16 +126,33 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             // Ignore error for dev purposes if network is unavailable
         }
 
-        // 6. Save to database
-        const insertedIds = await db('aldi_daily_orders').insert({
-            order_number: orderNumber,
-            delivery_date: deliveryDateStr,
-            pallet_count: palletCount,
-            pdf_file_path: fileName,
-            network_folder_path: targetDir
-        }).returning('id');
+        // 6. Save to database (Upsert)
+        const existingOrder = await db('aldi_daily_orders')
+            .where({ order_number: orderNumber, delivery_date: deliveryDateStr })
+            .first();
 
-        const dailyOrderId = insertedIds[0].id || insertedIds[0];
+        let dailyOrderId;
+        if (existingOrder) {
+            dailyOrderId = existingOrder.id;
+            // Delete existing lines
+            await db('aldi_daily_order_lines').where({ daily_order_id: dailyOrderId }).del();
+            // Update order info
+            await db('aldi_daily_orders').where({ id: dailyOrderId }).update({
+                pallet_count: palletCount,
+                pdf_file_path: fileName,
+                network_folder_path: targetDir,
+                updated_at: db.fn.now()
+            });
+        } else {
+            const insertedIds = await db('aldi_daily_orders').insert({
+                order_number: orderNumber,
+                delivery_date: deliveryDateStr,
+                pallet_count: palletCount,
+                pdf_file_path: fileName,
+                network_folder_path: targetDir
+            }).returning('id');
+            dailyOrderId = insertedIds[0].id || insertedIds[0];
+        }
 
         const linesToInsert = lineItems.map(item => ({
             daily_order_id: dailyOrderId,

@@ -819,9 +819,11 @@ export function renderAldiRendelesek(container, windowManager) {
 
     lines.forEach(l => {
       const prod = state.products.find(p => p.gtin === l.gtin || p.product_name === l.product_name);
+      // Fallback for article number mapping differences
+      const cikk = prod ? (prod.article_number || prod.articleNo || '') : '';
       aoa.push([
         "", // Göngyöleg
-        prod ? prod.article_number : '',
+        cikk,
         l.product_name || '',
         l.gtin || '',
         Number(l.ordered_cartons) || 0
@@ -829,6 +831,19 @@ export function renderAldiRendelesek(container, windowManager) {
     });
 
     const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+    // Apply styles to header row (row index 3)
+    const headerRow = 3;
+    const cols = ['A', 'B', 'C', 'D', 'E'];
+    cols.forEach(col => {
+      const cellRef = col + (headerRow + 1); // 1-based index in Excel, so 'A4'
+      if (ws[cellRef]) {
+        ws[cellRef].s = {
+          font: { bold: true, color: { rgb: "000000" } },
+          fill: { fgColor: { rgb: "d9ead3" } } // light green
+        };
+      }
+    });
 
     ws['!cols'] = [
       { wch: 15 }, // Göngyöleg
