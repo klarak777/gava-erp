@@ -81,7 +81,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             const m = line.match(lineItemPattern);
             if (m) {
                 const gtin = m[1];
-                const quantity = parseInt(m[2].replace(/,/g, ''), 10);
+                const quantity = parseFloat(m[2].replace(/,/g, '.'));
                 const rawDate = m[3]; // e.g. 20260815
 
                 // Use the first found delivery date
