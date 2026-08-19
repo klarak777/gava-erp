@@ -679,6 +679,29 @@ export function renderAldiRendelesek(container, windowManager) {
     });
   }
 
+  function openPdfViewerModal(url, title) {
+    const modalOverlay = document.createElement('div');
+    modalOverlay.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.8); z-index:9999; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(4px);';
+
+    modalOverlay.innerHTML = `
+      <div style="background:#ffffff; width:95%; height:95%; max-width:1200px; border-radius:12px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5); display:flex; flex-direction:column; overflow:hidden;">
+        <div style="padding:12px 20px; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; justify-content:space-between; background:#f8fafc;">
+          <h3 style="margin:0; font-size:15px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:8px;">📄 ${title}</h3>
+          <div style="display:flex; gap:10px;">
+            <a href="${url}" target="_blank" style="padding:6px 16px; border-radius:6px; font-size:13px; font-weight:600; border:1px solid #cbd5e1; background:#ffffff; color:#334155; text-decoration:none; display:inline-flex; align-items:center;">Új lapon nyit</a>
+            <button id="aldi-pdf-close" style="background:#ef4444; color:white; border:none; border-radius:6px; padding:6px 16px; font-size:13px; font-weight:700; cursor:pointer; box-shadow:0 2px 4px rgba(239,68,68,0.2);">Bezárás</button>
+          </div>
+        </div>
+        <div style="flex:1; background:#94a3b8; position:relative;">
+          <iframe src="${url}" style="width:100%; height:100%; border:none;"></iframe>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modalOverlay);
+    modalOverlay.querySelector('#aldi-pdf-close').addEventListener('click', () => modalOverlay.remove());
+  }
+
   // Upload modal (Napi rendelés)
   async function openOrderViewModal(id, orderNo, dateStr) {
     const modalOverlay = document.createElement('div');
@@ -1685,6 +1708,14 @@ export function renderAldiRendelesek(container, windowManager) {
 
     // Napi upload
     wrapper.querySelector('#aldi-btn-upload')?.addEventListener('click', openUploadModal);
+
+    // PDF view
+    wrapper.querySelectorAll('.aldi-order-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        openPdfViewerModal(link.href, `Rendelés PDF: ${link.dataset.orderno} (${link.dataset.date})`);
+      });
+    });
 
     // Order view
     wrapper.querySelectorAll('.aldi-view-order-btn').forEach(btn => {
