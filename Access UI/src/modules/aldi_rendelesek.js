@@ -671,7 +671,7 @@ export function renderAldiRendelesek(container, windowManager) {
     modalOverlay.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.4); z-index:9999; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);';
 
     modalOverlay.innerHTML = `
-      <div style="background:#ffffff; width:92%; max-width:600px; border-radius:12px; box-shadow:0 20px 50px rgba(0,0,0,0.2); overflow:hidden; border:1px solid #cbd5e1; display:flex; flex-direction:column;">
+      <div style="background:#ffffff; width:92%; max-width:700px; border-radius:12px; box-shadow:0 20px 50px rgba(0,0,0,0.2); overflow:hidden; border:1px solid #cbd5e1; display:flex; flex-direction:column;">
         <div style="padding:12px 18px; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; justify-content:space-between; background:#ffffff;">
           <h3 style="margin:0; font-size:14px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:8px;">Rendelési szám: ${orderNo} | Dátum: ${dateStr}</h3>
           <button id="aldi-modal-close-x" style="background:none; border:none; font-size:16px; cursor:pointer; color:#64748b; font-weight:700;">✕</button>
@@ -679,7 +679,8 @@ export function renderAldiRendelesek(container, windowManager) {
         <div style="padding:16px 20px; display:flex; flex-direction:column; gap:14px; max-height:400px; overflow-y:auto;" id="aldi-modal-lines-container">
           <div style="text-align:center; padding:20px; color:#64748b; font-size:13px;">Tételsorok betöltése...</div>
         </div>
-        <div style="padding:12px 20px; border-top:1px solid #e2e8f0; background:#f8fafc; display:flex; justify-content:flex-end;">
+        <div style="padding:12px 20px; border-top:1px solid #e2e8f0; background:#f8fafc; display:flex; justify-content:space-between; align-items:center;">
+          <button id="aldi-modal-export" style="padding:6px 18px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid #10b981; background:#ffffff; color:#10b981; cursor:pointer; display:none; align-items:center; gap:6px;">⬇️ Excel Export</button>
           <button id="aldi-modal-ok" style="padding:6px 22px; border-radius:20px; font-size:13px; font-weight:600; border:none; background:#2563eb; color:#ffffff; cursor:pointer;">Rendben</button>
         </div>
       </div>
@@ -701,19 +702,43 @@ export function renderAldiRendelesek(container, windowManager) {
             <thead>
               <tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;">
                 <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">Termék megnevezése</th>
+                <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">GTIN szám</th>
                 <th style="padding:8px 12px; text-align:right; font-weight:700; color:#334155;">Rendelt kartonszám</th>
               </tr>
             </thead>
             <tbody>
               ${lines.map((l, i) => `
                 <tr style="${i % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;'} border-bottom:1px solid #f1f5f9;">
-                  <td style="padding:8px 12px; color:#1e293b;">${l.product_name} <span style="font-size:11px; color:#94a3b8;">(${l.gtin})</span></td>
+                  <td style="padding:8px 12px; color:#1e293b;">${l.product_name}</td>
+                  <td style="padding:8px 12px; color:#64748b; font-family:monospace;">${l.gtin || ''}</td>
                   <td style="padding:8px 12px; text-align:right; font-weight:600; color:#2563eb;">${l.ordered_cartons}</td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
         `;
+        
+        const exportBtn = modalOverlay.querySelector('#aldi-modal-export');
+        exportBtn.style.display = 'inline-flex';
+        exportBtn.addEventListener('click', () => {
+          let csvContent = "Termék megnevezése;GTIN szám;Rendelt kartonszám\n";
+          lines.forEach(l => {
+            const name = (l.product_name || '').replace(/"/g, '""');
+            const gtin = l.gtin || '';
+            const cartons = l.ordered_cartons || '';
+            csvContent += `"${name}";"${gtin}";"${cartons}"\n`;
+          });
+          const bom = "\\uFEFF"; // UTF-8 BOM for Excel
+          const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `rendeles_${orderNo}.csv`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        });
       } else {
         container.innerHTML = '<div style="text-align:center; padding:20px; color:#64748b; font-size:13px;">Nem találhatók tételsorok.</div>';
       }
