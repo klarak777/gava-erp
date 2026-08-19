@@ -567,4 +567,71 @@ router.delete('/:id/lines/:lineId/currency-periods/:cpId', async (req, res) => {
   }
 });
 
+// ─── DELETE /api/v1/aldi-weekly-prices/:id/lines/:lineId ──────────────────
+router.delete('/:id/lines/:lineId', async (req, res) => {
+  try {
+    const { id, lineId } = req.params;
+    await db.transaction(async (trx) => {
+      // First delete currency periods associated with the line
+      await trx('aldi_price_currency_periods').where({ price_line_id: lineId }).delete();
+      // Then delete the line itself
+      await trx('aldi_weekly_price_lines').where({ id: lineId, weekly_price_id: id }).delete();
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[aldi-weekly-prices] DELETE line hiba:', err);
+    res.status(500).json({ error: 'Szerver hiba', detail: err.message });
+  }
+});
+
+// ─── PUT /api/v1/aldi-weekly-prices/:id/lines/reorder ─────────────────────
+router.put('/:id/lines/reorder', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { order } = req.body; // Array of { id: lineId, row_order: newOrder }
+    if (!Array.isArray(order)) {
+      return res.status(400).json({ error: 'Hibás formátum. Tömb várt.' });
+    }
+
+    await db.transaction(async (trx) => {
+      for (const item of order) {
+        await trx('aldi_weekly_price_lines')
+          .where({ id: item.id, weekly_price_id: id })
+          .update({ row_order: item.row_order });
+      }
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[aldi-weekly-prices] PUT reorder hiba:', err);
+    res.status(500).json({ error: 'Szerver hiba', detail: err.message });
+  }
+});
+
+// ─── PUT /api/v1/aldi-weekly-prices/:id/lines/:lineId/delivery-period ─────
+router.put('/:id/lines/:lineId/delivery-period', async (req, res) => {
+  try {
+    const { id, lineId } = req.params;
+    const { start, end } = req.body;
+    
+    await db.transaction(async (trx) => {
+      // Update line
+      await trx('aldi_weekly_price_lines')
+        .where({ id: lineId, weekly_price_id: id })
+        .update({
+          delivery_period_start: start || null,
+          delivery_period_end: end || null
+        });
+      
+      // We do NOT update currency periods here automatically because the frontend
+      // handles the logic of what happens to currency periods when dates change
+      // (as it might require user confirmation for overlaps, etc.).
+    });
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[aldi-weekly-prices] PUT delivery-period hiba:', err);
+    res.status(500).json({ error: 'Szerver hiba', detail: err.message });
+  }
+});
+
 module.exports = router;
