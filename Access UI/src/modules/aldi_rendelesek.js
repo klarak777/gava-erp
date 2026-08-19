@@ -1766,10 +1766,12 @@ export function renderAldiRendelesek(container, windowManager) {
         const minPeriodStart = line.currency_periods.reduce((min, p) => p.period_start && p.period_start < min ? p.period_start : min, '9999-99-99');
         const maxPeriodEnd = line.currency_periods.reduce((max, p) => p.period_end && p.period_end > max ? p.period_end : max, '0000-00-00');
         
-        const isOutside = (newStart && newStart < minPeriodStart) || (newEnd && newEnd > maxPeriodEnd);
+        // Sérülés akkor van, ha a deviza periódusok KILÓGNAK az új szállítási időszakból
+        // (azaz a deviza periódus korábban kezdődik, mint az új szállítás, vagy később ér véget)
+        const isOutside = (newStart && minPeriodStart < newStart) || (newEnd && maxPeriodEnd > newEnd);
         
         if (isOutside) {
-          const proceed = confirm('⚠️ Figyelem!\n\nA megadott szállítási időszak túllóg a rögzített "Deviza időszakokon".\n\nHa folytatod, a hiányzó napokra (vagy a teljes időszakra) a rendszer automatikusan alapértelmezett devizát fog beállítani (korábbi deviza adatok törlődhetnek).\n\nSzeretnéd folytatni?');
+          const proceed = confirm('⚠️ Figyelem!\n\nA megadott szűkebb szállítási időszak miatt a rögzített "Deviza időszakok" túllógnak a szállítási tartományon.\n\nHa folytatod, a rendszer automatikusan törli a régi deviza periódusokat, hogy a következő megnyitáskor egy újat hozzon létre.\n\nSzeretnéd folytatni?');
           if (!proceed) return;
 
           try {
