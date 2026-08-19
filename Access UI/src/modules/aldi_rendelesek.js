@@ -745,7 +745,7 @@ export function renderAldiRendelesek(container, windowManager) {
           XLSX.utils.book_append_sheet(wb, ws, "Rendelés");
           
           // Fájl mentése natív Excelként
-          XLSX.writeFile(wb, \`rendeles_${orderNo}.xlsx\`);
+          XLSX.writeFile(wb, `rendeles_${orderNo}.xlsx`);
         });
       } else {
         container.innerHTML = '<div style="text-align:center; padding:20px; color:#64748b; font-size:13px;">Nem találhatók tételsorok.</div>';
