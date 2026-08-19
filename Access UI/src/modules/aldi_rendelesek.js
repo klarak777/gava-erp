@@ -331,6 +331,7 @@ export function renderAldiRendelesek(container, windowManager) {
                   ${o.pallet_count != null && o.pallet_count !== '' ? o.pallet_count : '-'}
                 </td>
                 <td style="padding:10px 14px; text-align:center;">
+                  <button class="aldi-delete-order-btn" data-id="${o.id}" style="background:none; border:none; cursor:pointer; font-size:16px; margin-right:8px;" title="T�rl�s">=�</button>
                   <button class="aldi-view-order-btn" data-id="${o.id}" data-orderno="${o.order_number}" data-date="${formattedDate}" style="background:none; border:none; cursor:pointer; font-size:16px;" title="Tételek megtekintése">📋</button>
                 </td>
               </tr>
@@ -1890,6 +1891,25 @@ export function renderAldiRendelesek(container, windowManager) {
       link.addEventListener('click', (e) => {
         e.preventDefault();
         openPdfViewerModal(link.href, `Rendelés PDF: ${link.dataset.orderno} (${link.dataset.date})`);
+      });
+    });
+
+    // Order delete
+    wrapper.querySelectorAll('.aldi-delete-order-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const id = btn.dataset.id;
+        if (confirm('Biztosan törölni szeretnéd ezt a rendelést? A művelet nem vonható vissza, és a PDF fájl is törlődik!')) {
+          try {
+            const res = await fetch(`/api/v1/aldi-daily-orders/${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Hiba a törlés során');
+            alert('A rendelés sikeresen törölve lett.');
+            renderModule();
+          } catch (err) {
+            console.error(err);
+            alert('Sikertelen törlés!');
+          }
+        }
       });
     });
 

@@ -126,33 +126,16 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             // Ignore error for dev purposes if network is unavailable
         }
 
-        // 6. Save to database (Upsert)
-        const existingOrder = await db('aldi_daily_orders')
-            .where({ order_number: orderNumber, delivery_date: deliveryDateStr })
-            .first();
+        // 6. Save to database
+        const insertedIds = await db('aldi_daily_orders').insert({
+            order_number: orderNumber,
+            delivery_date: deliveryDateStr,
+            pallet_count: palletCount,
+            pdf_file_path: fileName,
+            network_folder_path: targetDir
+        }).returning('id');
 
-        let dailyOrderId;
-        if (existingOrder) {
-            dailyOrderId = existingOrder.id;
-            // Delete existing lines
-            await db('aldi_daily_order_lines').where({ daily_order_id: dailyOrderId }).del();
-            // Update order info
-            await db('aldi_daily_orders').where({ id: dailyOrderId }).update({
-                pallet_count: palletCount,
-                pdf_file_path: fileName,
-                network_folder_path: targetDir,
-                updated_at: db.fn.now()
-            });
-        } else {
-            const insertedIds = await db('aldi_daily_orders').insert({
-                order_number: orderNumber,
-                delivery_date: deliveryDateStr,
-                pallet_count: palletCount,
-                pdf_file_path: fileName,
-                network_folder_path: targetDir
-            }).returning('id');
-            dailyOrderId = insertedIds[0].id || insertedIds[0];
-        }
+        const dailyOrderId = insertedIds[0].id || insertedIds[0];
 
         const linesToInsert = lineItems.map(item => ({
             daily_order_id: dailyOrderId,
@@ -309,6 +292,36 @@ router.get('/:id/file', async (req, res) => {
     } catch (err) {
         console.error('Hiba a fájl lekérésekor:', err);
         res.status(500).send('Hiba a fájl lekérésekor.');
+    }
+});
+
+// Endpoint: DELETE /api/v1/aldi-daily-orders/:id
+// Törli a rendelést és a hozzá tartozó fájlt
+router.delete('/:id', async (req, res) => {
+    try {
+        const orderId = req.params.id;
+        const order = await db('aldi_daily_orders').where({ id: orderId }).first();
+
+        if (!order) {
+            return res.status(404).json({ error: 'Rendelés nem található' });
+        }
+
+        // Töröljük az adatbázisból (a CASCADE miatt a tételek is törlődnek, de azért biztosra megyünk)
+        await db('aldi_daily_order_lines').where({ daily_order_id: orderId }).del();
+        await db('aldi_daily_orders').where({ id: orderId }).del();
+
+        // Töröljük a fájlt, ha létezik
+        if (order.network_folder_path && order.pdf_file_path) {
+            const filePath = path.join(order.network_folder_path, order.pdf_file_path);
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+            }
+        }
+
+        res.json({ success: true, message: 'Rendelés sikeresen törölve' });
+    } catch (err) {
+        console.error('Hiba a rendelés törlése során:', err);
+        res.status(500).json({ error: 'Belső szerverhiba a törlés során' });
     }
 });
 
