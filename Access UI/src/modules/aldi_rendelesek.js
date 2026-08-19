@@ -179,6 +179,26 @@ export function renderAldiRendelesek(container, windowManager) {
   // ─── Fő render ────────────────────────────────────────────────────────────────
 
   function renderModule() {
+    // Fókusz mentése újra-renderelés előtt
+    const activeEl = document.activeElement;
+    let focusSelector = null;
+    let selectionStart = null;
+    let selectionEnd = null;
+    
+    if (activeEl && wrapper.contains(activeEl)) {
+      if (activeEl.id) {
+        focusSelector = '#' + activeEl.id;
+      } else if (activeEl.dataset && activeEl.dataset.index && activeEl.dataset.field) {
+        focusSelector = `input[data-index="${activeEl.dataset.index}"][data-field="${activeEl.dataset.field}"]`;
+      }
+      if (focusSelector && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+        try {
+          selectionStart = activeEl.selectionStart;
+          selectionEnd = activeEl.selectionEnd;
+        } catch (e) {}
+      }
+    }
+
     const tabStyle = (tabKey) => `
       position:relative; background:none; border:none; font-size:14px;
       font-weight:${state.activeTab === tabKey ? '700' : '600'};
@@ -219,6 +239,19 @@ export function renderAldiRendelesek(container, windowManager) {
     `;
 
     bindEvents();
+
+    // Fókusz visszaállítása
+    if (focusSelector) {
+      const elToFocus = wrapper.querySelector(focusSelector);
+      if (elToFocus) {
+        elToFocus.focus();
+        if (selectionStart !== null) {
+          try {
+            elToFocus.setSelectionRange(selectionStart, selectionEnd);
+          } catch (e) {}
+        }
+      }
+    }
   }
 
   // ─── Napi rendelés fül ────────────────────────────────────────────────────────
