@@ -131,11 +131,11 @@
                     loginBtn.addEventListener('click', doLogin);
                 }
                 if (loginForm) {
-                    loginForm.addEventListener('submit', functio n (e) {
+                    loginForm.addEventListener('submit', function (e) {
                         e.preventDefault();
                         doLogin();
                     });
-                    loginForm.addEventListener('keydown', functi on (e) {
+                    loginForm.addEventListener('keydown', function (e) {
                         if (e.key === 'Enter') {
                             e.preventDefault();
                             doLogin();
@@ -143,7 +143,7 @@
                     });
                 }
                 if (logoutBtn) {
-                    logoutBtn.addEventListener('click', funct ion () {
+                    logoutBtn.addEventListener('click', function () {
                         sessionStorage.removeItem('gava_user');
                         if (loginOverlay) loginOverlay.style.display = 'flex';
                         if (appContainer) appContainer.style.display = 'none';
@@ -160,7 +160,8 @@
             } else {
                 attachLogin();
             }
-        })    </script>
+        })();
+    </script>
 </body>
 
 </html>
