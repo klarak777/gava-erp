@@ -332,6 +332,7 @@ export function renderAldiRendelesek(container, windowManager) {
                 </td>
                 <td style="padding:10px 14px; text-align:center;">
                   <button class="aldi-view-order-btn" data-id="${o.id}" data-orderno="${o.order_number}" data-date="${formattedDate}" style="background:none; border:none; cursor:pointer; font-size:16px;" title="Tételek megtekintése">📋</button>
+                  <button class="aldi-delete-order-btn" data-id="${o.id}" style="background:none; border:none; cursor:pointer; font-size:16px; margin-left:8px;" title="Rendelés törlése">🗑️</button>
                 </td>
               </tr>
               `;
