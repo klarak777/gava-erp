@@ -69,9 +69,9 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         }
 
         // 3. Extract Delivery Date from Line Item rows
-        // Format: "00010 4061462848544 27 20260815 DDP ..."
+        // Format: "00010 4061462848544 27 20260815 DDP ..." or with comma "00010 4061462848544 4,371 20260815 DDP ..."
         // The delivery date is the date AFTER the quantity in the line item row
-        const lineItemPattern = /^\d{5}\s+(\d{13,14})\s+(\d+)\s+(20\d{2}[01]\d[0-3]\d)/;
+        const lineItemPattern = /^\d{5}\s+(\d{13,14})\s+([\d,]+)\s+(20\d{2}[01]\d[0-3]\d)/;
 
         let deliveryDateStr = null;
         let lineItems = [];
@@ -81,7 +81,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             const m = line.match(lineItemPattern);
             if (m) {
                 const gtin = m[1];
-                const quantity = parseInt(m[2], 10);
+                const quantity = parseInt(m[2].replace(/,/g, ''), 10);
                 const rawDate = m[3]; // e.g. 20260815
 
                 // Use the first found delivery date
