@@ -174,6 +174,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                                         </div>
                                     </th>
                                     <th style="min-width:100px;">Customer</th>
+                                    <th style="min-width:100px;">Loading Place</th>
+                                    <th style="min-width:100px;">Unload Place</th>
                                     <th style="min-width:100px;">Destination</th>
                                     <th style="min-width:110px;">Comment</th>
                                     <th style="text-align:right; min-width:55px;">Gross weight (kg)</th>
@@ -560,7 +562,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
         function emptyLine() {
             return {
                 product_id: null, productName: '', partner_id: null, partner_name: '', albaran_number: '', customer: '',
-                destination: '', customer_order_no: '', comment: '',
+                loading_place: '', unload_place: '', destination: '', customer_order_no: '', comment: '',
                 euro_palets: 0, normal_palets: 0, gross_weight_kg: 0,
                 price_eur: 0, price_bcn_eur: 0, unit: '',
                 reloading_per_plt: 0, transport_bcn_per_plt: 0, truck_number_per: 0,
@@ -796,6 +798,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                         partner_name: l.partner_name || '',
                         albaran_number: l.albaran_number || '',
                         customer: l.customer || '',
+                        loading_place: l.loading_place || '',
+                        unload_place: l.unload_place || '',
                         destination: l.destination || '',
                         customer_order_no: l.customer_order_no || '',
                         comment: l.comment || '',
@@ -844,6 +848,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                         product: l.productName,
                         reference: l.partner_name,
                         customer: l.customer,
+                        loading_place: l.loading_place,
+                        unload_place: l.unload_place,
                         destination: l.destination,
                         euro_palets: l.euro_palets,
                         normal_palets: l.normal_palets,
@@ -1221,6 +1227,10 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                     <td style="position:relative"><input type="text" class="cell-edit" data-field="customer" data-index="${index}"
                         style="${cellStyle} min-width:90px; padding-right:16px;" value="${isEmpty ? '' : escHtml(l.customer)}">
                         <span onmousedown="event.preventDefault(); this.previousElementSibling.focus(); this.previousElementSibling.dispatchEvent(new Event('input'))" style="position:absolute; right:4px; top:50%; transform:translateY(-50%); cursor:pointer; font-size:10px; color:#666;">▼</span></td>
+                    <td><input type="text" class="cell-edit" data-field="loading_place" data-index="${index}"
+                        style="${cellStyle} min-width:90px;" value="${isEmpty ? '' : escHtml(l.loading_place)}"></td>
+                    <td><input type="text" class="cell-edit" data-field="unload_place" data-index="${index}"
+                        style="${cellStyle} min-width:90px;" value="${isEmpty ? '' : escHtml(l.unload_place)}"></td>
                     <td><input type="text" class="cell-edit" data-field="destination" data-index="${index}"
                         style="${cellStyle} min-width:90px;" value="${isEmpty ? '' : escHtml(l.destination)}"></td>
                     <td><input type="text" class="cell-edit" data-field="comment" data-index="${index}"
@@ -1842,6 +1852,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                     l.partner_id || l.partner_name ||
                     l.product_id ||
                     (l.customer && l.customer.trim()) ||
+                    (l.loading_place && l.loading_place.trim()) ||
+                    (l.unload_place && l.unload_place.trim()) ||
                     (l.destination && l.destination.trim())
                 )
             };
