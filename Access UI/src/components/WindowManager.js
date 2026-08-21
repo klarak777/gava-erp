@@ -192,22 +192,29 @@ export class WindowManager {
     }
 
     close(id) {
-        const win = this.windows.get(id);
+        // Find exact id, or prefix match if exact id is not found
+        let exactId = id;
+        if (!this.windows.has(id)) {
+            exactId = Array.from(this.windows.keys()).find(k => k.startsWith(id));
+        }
+
+        const win = this.windows.get(exactId);
         if (win) {
-            const cb = this._beforeCloseCallbacks.get(id);
+            const cb = this._beforeCloseCallbacks.get(exactId);
             if (cb && cb() === false) return; // Callback megakadályozza a bezárást
 
-            this._beforeCloseCallbacks.delete(id);
+            this._beforeCloseCallbacks.delete(exactId);
             win.remove();
-            this.windows.delete(id);
+            this.windows.delete(exactId);
 
             // Remove taskbar item
-            const taskItem = this.taskbar.querySelector(`[data-window-id="${id}"]`);
+            const taskItem = this.taskbar.querySelector(`[data-window-id="${exactId}"]`);
             if (taskItem) taskItem.remove();
 
             this.updateTaskbarTray();
         }
     }
+
 
     closeAll() {
         // Close all windows
