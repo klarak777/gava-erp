@@ -318,16 +318,31 @@ async function generateEkaerForShipment(shipmentId) {
   if (!shipment) throw new Error('Fuvar nem található: id=' + shipmentId);
 
   const lines = await db('shipment_lines')
-    .select('shipment_lines.*', 'products.name as product_name', 'partners.name as partner_name')
+    .select('shipment_lines.*', 'products.name as product_name', 'partners.name as partner_name', 'partners.id as p_id')
     .leftJoin('products', 'shipment_lines.product_id', 'products.id')
     .leftJoin('partners', 'shipment_lines.partner_id', 'partners.id')
     .where('shipment_lines.shipment_id', shipmentId);
+
+  // Rövidített partner nevek (aliasok) lekérdezése az EKAER-hez
+  const partnerIds = lines.map(l => l.p_id).filter(id => id);
+  let shortNames = {};
+  if (partnerIds.length > 0) {
+    const identifiers = await db('partner_identifiers')
+      .whereIn('partner_id', partnerIds)
+      .andWhere('id_type', '(Reference) Szállítók')
+      .orderBy('updated_at', 'desc');
+    for (const ident of identifiers) {
+      if (!shortNames[ident.partner_id] && ident.value) {
+        shortNames[ident.partner_id] = ident.value.trim();
+      }
+    }
+  }
 
   // Referencia lista összeállítása - VBA ProcessReferences logika
   const uniquePairs = new Map();
 
   for (const l of lines) {
-    let ref = (l.partner_name || '').trim();          // Reference (E oszlop)
+    let ref = shortNames[l.p_id] || (l.partner_name || '').trim(); // Rövid név, ha nincs akkor teljes
     let dest = (l.destination || '').trim();          // Destination (G oszlop)
     const customer = (l.customer || '').trim().toUpperCase(); // Customer (F oszlop)
 
