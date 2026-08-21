@@ -95,6 +95,61 @@ router.get('/', async (req, res) => {
   }
 });
 
+// =====================================================================
+// SABLONFÁJL szerkesztő végpontok (Fuvarmegbízás minta.docx)
+// =====================================================================
+
+// GET /api/v1/transport-orders/template/preview - Sablon HTML előnézet
+router.get('/template/preview', async (req, res) => {
+  try {
+    const templateName = req.query.name || 'Fuvarmegbízás minta.docx';
+    const raktarPath = process.env.RAKTAR_PATH || '\\\\192.168.1.5\\raktar';
+    const templatePath = path.join(raktarPath, 'MI Teszt', 'Minta dokuk', templateName);
+
+    if (!fs.existsSync(templatePath)) {
+      return res.status(404).json({ status: 'error', message: `Sablon nem található: ${templatePath}` });
+    }
+
+    const result = await mammoth.convertToHtml({ path: templatePath });
+    res.json({ status: 'success', html: result.value, fileName: templateName });
+  } catch (err) {
+    console.error('Hiba a sablon előnézetének generálásakor:', err);
+    res.status(500).json({ status: 'error', message: 'Szerverhiba: ' + err.message });
+  }
+});
+
+// PUT /api/v1/transport-orders/template/edit - Sablon mentése
+router.put('/template/edit', async (req, res) => {
+  try {
+    const { html, name } = req.body;
+    if (!html) return res.status(400).json({ status: 'error', message: 'Nincs HTML tartalom.' });
+
+    const templateName = name || 'Fuvarmegbízás minta.docx';
+    const raktarPath = process.env.RAKTAR_PATH || '\\\\192.168.1.5\\raktar';
+    const templatePath = path.join(raktarPath, 'MI Teszt', 'Minta dokuk', templateName);
+
+    if (!fs.existsSync(templatePath)) {
+      return res.status(404).json({ status: 'error', message: `Sablon nem található: ${templatePath}` });
+    }
+
+    // Biztonsági mentés
+    const backupDir = path.join(raktarPath, '_DOCX_Backup', 'Sablonok');
+    if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+    const backupFile = `${path.basename(templatePath, '.docx')}_${new Date().toISOString().replace(/[:.]/g, '-')}.docx.bak`;
+    fs.copyFileSync(templatePath, path.join(backupDir, backupFile));
+
+    // XML alapú mentés (formázás megőrzésével)
+    const docxBuffer = applyHtmlEditsToDocx(templatePath, html);
+    fs.writeFileSync(templatePath, docxBuffer);
+
+    res.json({ status: 'success', message: 'Sablon sikeresen mentve.' });
+  } catch (err) {
+    console.error('Hiba a sablon mentésekor:', err);
+    res.status(500).json({ status: 'error', message: 'Szerverhiba: ' + err.message });
+  }
+});
+
+
 // GET /api/v1/transport-orders/:id/preview - DOCX előnézet HTML-ként (Mammoth.js)
 router.get('/:id/preview', async (req, res) => {
   try {
@@ -470,59 +525,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// =====================================================================
-// SABLONFÁJL szerkesztő végpontok (Fuvarmegbízás minta.docx)
-// =====================================================================
 
-// GET /api/v1/transport-orders/template/preview - Sablon HTML előnézet
-router.get('/template/preview', async (req, res) => {
-  try {
-    const templateName = req.query.name || 'Fuvarmegbízás minta.docx';
-    const raktarPath = process.env.RAKTAR_PATH || '\\\\192.168.1.5\\raktar';
-    const templatePath = path.join(raktarPath, 'MI Teszt', 'Minta dokuk', templateName);
-
-    if (!fs.existsSync(templatePath)) {
-      return res.status(404).json({ status: 'error', message: `Sablon nem található: ${templatePath}` });
-    }
-
-    const result = await mammoth.convertToHtml({ path: templatePath });
-    res.json({ status: 'success', html: result.value, fileName: templateName });
-  } catch (err) {
-    console.error('Hiba a sablon előnézetének generálásakor:', err);
-    res.status(500).json({ status: 'error', message: 'Szerverhiba: ' + err.message });
-  }
-});
-
-// PUT /api/v1/transport-orders/template/edit - Sablon mentése
-router.put('/template/edit', async (req, res) => {
-  try {
-    const { html, name } = req.body;
-    if (!html) return res.status(400).json({ status: 'error', message: 'Nincs HTML tartalom.' });
-
-    const templateName = name || 'Fuvarmegbízás minta.docx';
-    const raktarPath = process.env.RAKTAR_PATH || '\\\\192.168.1.5\\raktar';
-    const templatePath = path.join(raktarPath, 'MI Teszt', 'Minta dokuk', templateName);
-
-    if (!fs.existsSync(templatePath)) {
-      return res.status(404).json({ status: 'error', message: `Sablon nem található: ${templatePath}` });
-    }
-
-    // Biztonsági mentés
-    const backupDir = path.join(raktarPath, '_DOCX_Backup', 'Sablonok');
-    if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
-    const backupFile = `${path.basename(templatePath, '.docx')}_${new Date().toISOString().replace(/[:.]/g, '-')}.docx.bak`;
-    fs.copyFileSync(templatePath, path.join(backupDir, backupFile));
-
-    // XML alapú mentés (formázás megőrzésével)
-    const docxBuffer = applyHtmlEditsToDocx(templatePath, html);
-    fs.writeFileSync(templatePath, docxBuffer);
-
-    res.json({ status: 'success', message: 'Sablon sikeresen mentve.' });
-  } catch (err) {
-    console.error('Hiba a sablon mentésekor:', err);
-    res.status(500).json({ status: 'error', message: 'Szerverhiba: ' + err.message });
-  }
-});
 
 module.exports = router;
 
