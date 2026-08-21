@@ -53,6 +53,7 @@ export function renderFuvarmegbizas(container, windowManager) {
         '<div style="display:flex; gap:12px; margin-bottom:16px;">' +
             '<button class="primary-btn btn-dense" id="btn-open-doc">📄 Dokumentum megnyitása</button>' +
             '<button class="secondary-btn btn-dense" id="btn-delete-doc" style="color:#ef4444; border-color:#fca5a5; background:#fff;">🗑️ Megbízás törlése</button>' +
+            '<button class="secondary-btn btn-dense" id="btn-template-edit" style="color:#7c3aed; border-color:#c4b5fd; background:#fff;">⚙️ Sablon szerkesztése</button>' +
         '</div>' +
 
         // Table
@@ -83,6 +84,7 @@ export function renderFuvarmegbizas(container, windowManager) {
     var tbody = view.querySelector('#fuvm-tbody');
     var btnOpenDoc = view.querySelector('#btn-open-doc');
     var btnDeleteDoc = view.querySelector('#btn-delete-doc');
+    var btnTemplateEdit = view.querySelector('#btn-template-edit');
 
     var selectedRowId = null;
 
@@ -363,6 +365,161 @@ export function renderFuvarmegbizas(container, windowManager) {
     }
 
 
+    // --- SABLON SZERKESZTŐ MODAL ---
+    function openTemplateEditorModal(templateName) {
+        templateName = templateName || 'Fuvarmegbízás minta.docx';
+        var isEditMode = false;
+        var originalHtml = '';
+
+        // A helyőrzők regex mintája: {szöveg}
+        var PLACEHOLDER_REGEX = /\{[^}]+\}/g;
+
+        // Helyőrzőket kiemel és zárolt span-ná alakítja
+        function wrapPlaceholders(html) {
+            return html.replace(PLACEHOLDER_REGEX, function(match) {
+                return '<span class="fuvm-placeholder" contenteditable="false" title="Helyőrző – nem szerkeszthető" ' +
+                    'style="background:#ede9fe; color:#6d28d9; border:1px solid #c4b5fd; border-radius:4px; padding:1px 5px; font-weight:700; font-size:11px; cursor:not-allowed; user-select:none; display:inline-block;">' +
+                    match + '</span>';
+            });
+        }
+
+        // Helyőrző span-okat visszaalakítja szöveggé a mentés előtt
+        function unwrapPlaceholders(html) {
+            return html.replace(/<span class="fuvm-placeholder"[^>]*>([^<]+)<\/span>/g, '$1');
+        }
+
+        var modalContent =
+            '<div style="display:flex; flex-direction:column; height:100%;">' +
+                '<div style="display:flex; align-items:center; justify-content:space-between; padding:12px 20px; background:linear-gradient(135deg,#4c1d95,#7c3aed); border-radius:8px; margin-bottom:16px; flex-shrink:0;">' +
+                    '<div>' +
+                        '<div style="font-size:11px; color:rgba(255,255,255,0.7); font-weight:500; letter-spacing:0.5px; text-transform:uppercase;">Sablon szerkesztő</div>' +
+                        '<div style="font-size:14px; color:#fff; font-weight:700; margin-top:2px;">' + templateName + '</div>' +
+                        '<div style="font-size:11px; color:rgba(255,255,255,0.6); margin-top:2px;">A <span style="background:rgba(255,255,255,0.2); border-radius:3px; padding:1px 4px; font-weight:700;">{helyőrzők}</span> kiemelve – nem szerkeszthetők</div>' +
+                    '</div>' +
+                    '<div style="display:flex; gap:8px; align-items:center;">' +
+                        '<div id="tmpl-status-msg" style="font-size:12px; font-weight:600; display:none; padding:4px 10px; border-radius:6px;"></div>' +
+                        '<button id="tmpl-edit-btn" style="display:flex; align-items:center; gap:6px; background:#f59e0b; color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;">✏️ Szerkesztés</button>' +
+                        '<button id="tmpl-save-btn" style="display:none; align-items:center; gap:6px; background:#2563eb; color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;">💾 Mentés</button>' +
+                        '<button id="tmpl-cancel-btn" style="display:none; align-items:center; gap:6px; background:#64748b; color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;">✕ Mégse</button>' +
+                    '</div>' +
+                '</div>' +
+                '<div id="tmpl-preview-body" style="flex:1; overflow-y:auto; padding:24px 28px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0; font-family:\'Segoe UI\', Arial, sans-serif; font-size:13px; line-height:1.6; color:#1e293b; min-height:300px; outline:none;">' +
+                    '<div id="tmpl-spinner" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:200px; gap:12px; color:#64748b;">' +
+                        '<div style="width:36px; height:36px; border:3px solid #e2e8f0; border-top-color:#7c3aed; border-radius:50%; animation:tmpl-spin 0.8s linear infinite;"></div>' +
+                        '<span style="font-size:13px;">Sablon betöltése...</span>' +
+                    '</div>' +
+                    '<div id="tmpl-content" style="display:none;"></div>' +
+                    '<div id="tmpl-error" style="display:none; padding:20px; background:#fef2f2; border:1px solid #fecaca; border-radius:8px; color:#dc2626; font-size:13px;"></div>' +
+                '</div>' +
+                '<style>' +
+                    '@keyframes tmpl-spin { to { transform: rotate(360deg); } }' +
+                    '#tmpl-preview-body table { border-collapse: collapse; width:100%; margin:8px 0; }' +
+                    '#tmpl-preview-body td, #tmpl-preview-body th { border:1px solid #cbd5e1; padding:5px 8px; font-size:12px; }' +
+                    '#tmpl-preview-body th { background:#f1f5f9; font-weight:600; }' +
+                    '#tmpl-preview-body p { margin:4px 0 8px; }' +
+                    '#tmpl-content[contenteditable="true"] { outline:2px dashed #7c3aed; outline-offset:4px; background:#faf5ff; border-radius:4px; cursor:text; }' +
+                    '.fuvm-placeholder { pointer-events:none; }' +
+                '</style>' +
+            '</div>';
+
+        var modal = windowManager.createModal({
+            title: '⚙️ Sablon szerkesztése',
+            width: 860,
+            height: 680,
+            content: modalContent
+        });
+
+        var modalEl = modal.element;
+        var spinner = modalEl.querySelector('#tmpl-spinner');
+        var contentDiv = modalEl.querySelector('#tmpl-content');
+        var errorDiv = modalEl.querySelector('#tmpl-error');
+        var editBtn = modalEl.querySelector('#tmpl-edit-btn');
+        var saveBtn = modalEl.querySelector('#tmpl-save-btn');
+        var cancelBtn = modalEl.querySelector('#tmpl-cancel-btn');
+        var statusMsg = modalEl.querySelector('#tmpl-status-msg');
+
+        function setEditMode(on) {
+            isEditMode = on;
+            contentDiv.contentEditable = on ? 'true' : 'false';
+            editBtn.style.display = on ? 'none' : 'flex';
+            saveBtn.style.display = on ? 'flex' : 'none';
+            cancelBtn.style.display = on ? 'flex' : 'none';
+        }
+
+        editBtn.addEventListener('click', function() {
+            if (contentDiv.style.display !== 'none') setEditMode(true);
+        });
+
+        cancelBtn.addEventListener('click', function() {
+            contentDiv.innerHTML = wrapPlaceholders(originalHtml);
+            setEditMode(false);
+        });
+
+        saveBtn.addEventListener('click', function() {
+            saveBtn.disabled = true;
+            saveBtn.textContent = '⏳ Mentés...';
+            statusMsg.style.display = 'none';
+
+            // Placeholder span-okat visszaalakítjuk szöveggé a küldés előtt
+            var cleanHtml = unwrapPlaceholders(contentDiv.innerHTML);
+
+            fetch('/api/v1/transport-orders/template/edit', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ html: cleanHtml, name: templateName })
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                saveBtn.disabled = false;
+                saveBtn.textContent = '💾 Mentés';
+                if (data.status === 'success') {
+                    statusMsg.textContent = '✅ Sablon sikeresen mentve!';
+                    statusMsg.style.background = '#dcfce7';
+                    statusMsg.style.color = '#15803d';
+                    statusMsg.style.display = 'block';
+                    originalHtml = cleanHtml;
+                    setEditMode(false);
+                } else {
+                    statusMsg.textContent = '⚠️ Hiba: ' + (data.message || 'Ismeretlen hiba');
+                    statusMsg.style.background = '#fef2f2';
+                    statusMsg.style.color = '#dc2626';
+                    statusMsg.style.display = 'block';
+                }
+            })
+            .catch(function(err) {
+                saveBtn.disabled = false;
+                saveBtn.textContent = '💾 Mentés';
+                statusMsg.textContent = '⚠️ Hálózati hiba: ' + err.message;
+                statusMsg.style.background = '#fef2f2';
+                statusMsg.style.color = '#dc2626';
+                statusMsg.style.display = 'block';
+            });
+        });
+
+        // Sablon betöltése
+        fetch('/api/v1/transport-orders/template/preview?name=' + encodeURIComponent(templateName))
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                spinner.style.display = 'none';
+                if (data.status === 'success') {
+                    originalHtml = data.html || '';
+                    contentDiv.innerHTML = wrapPlaceholders(originalHtml);
+                    contentDiv.style.display = 'block';
+                    editBtn.style.display = 'flex';
+                } else {
+                    editBtn.style.display = 'none';
+                    errorDiv.innerHTML = '<strong>⚠️ Nem sikerült betölteni a sablont</strong><br><br>' + (data.message || 'Ismeretlen hiba');
+                    errorDiv.style.display = 'block';
+                }
+            })
+            .catch(function(err) {
+                spinner.style.display = 'none';
+                editBtn.style.display = 'none';
+                errorDiv.innerHTML = '<strong>⚠️ Hálózati hiba</strong><br><br>' + err.message;
+                errorDiv.style.display = 'block';
+            });
+    }
+
     // --- ESEMÉNYKEZELŐK ---
 
     selSzezon.addEventListener('change', function() {
@@ -432,6 +589,11 @@ export function renderFuvarmegbizas(container, windowManager) {
             .catch(function(err) {
                 alert('Hálózati hiba a törlés során.');
             });
+    });
+
+    // Sablon szerkesztése gomb
+    btnTemplateEdit.addEventListener('click', function() {
+        openTemplateEditorModal('Fuvarmegbízás minta.docx');
     });
 
     // --- INICIALIZÁLÁS ---
