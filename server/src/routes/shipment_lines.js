@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db/db');
+const { mergeOrInsertDemand } = require('../utils/demandMerger');
 
 // GET /api/v1/shipment-lines
 // V2 logika: a Total Palets számítása Javascriptben történik a Raklap váltó alapján.
@@ -241,7 +242,7 @@ router.post('/:id/transfer', async (req, res) => {
 
       // 2. Új sor hozzáadása a célkamionhoz vagy áru igényhez
       if (target_shipment_id === 'DEMAND') {
-        await trx('cargo_demands').insert({
+        const demandData = {
           product_id: sourceLine.product_id || null,
           product_name: sourceLine.productName || 'Ismeretlen termék',
           partner_id: sourceLine.partner_id || null,
@@ -261,7 +262,8 @@ router.post('/:id/transfer', async (req, res) => {
           transport_bcn_per_plt: sourceLine.transport_bcn_per_plt || 0,
           customer_order_no: sourceLine.customer_order_no || null,
           comment: sourceLine.comment || null
-        });
+        };
+        await mergeOrInsertDemand(trx, demandData);
       } else {
         await trx('shipment_lines').insert({
           shipment_id: target_shipment_id,

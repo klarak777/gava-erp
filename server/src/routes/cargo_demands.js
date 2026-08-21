@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db/db');
+const { mergeOrInsertDemand } = require('../utils/demandMerger');
 
 // GET /api/v1/cargo-demands
 // Összes áru igény tétel, termék névvel együtt
@@ -49,7 +50,7 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Legalább egy raklap típusnál 0-nál nagyobb értéket kell megadni.' });
     }
 
-    const [newId] = await db('cargo_demands').insert({
+    const dataToInsert = {
       product_id: product_id || null,
       product_name: product_name.trim(),
       partner_id: partner_id || null,
@@ -70,9 +71,9 @@ router.post('/', async (req, res) => {
       transport_bcn_per_plt: parseFloat(transport_bcn_per_plt) || 0,
       customer_order_no: customer_order_no ? customer_order_no.trim() : null,
       comment: comment ? comment.trim() : (notes ? notes.trim() : null)
-    }).returning('id');
+    };
 
-    const id = typeof newId === 'object' ? newId.id : newId;
+    const id = await mergeOrInsertDemand(db, dataToInsert);
     const created = await db('cargo_demands').where('id', id).first();
     res.status(201).json(created);
   } catch (err) {
