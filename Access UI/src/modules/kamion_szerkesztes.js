@@ -1216,9 +1216,9 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
 
                     <td style="text-align:center; font-weight:bold; padding:1px 4px; color:${tv ? '#1e40af' : '#ccc'};">${tv}</td>
                     <td><input type="number" class="cell-edit" data-field="euro_palets" data-index="${index}"
-                        style="${numCellStyle} width:70px;" value="${isEmpty ? '' : escHtml(l.euro_palets)}" min="0" step="any" placeholder="0" ${currentShipmentIsLoaded ? 'disabled' : ''}></td>
+                        style="${numCellStyle} width:70px;" value="${(isEmpty || l.euro_palets == 0 || l.euro_palets === '0' || l.euro_palets === '0.00' || l.euro_palets === '') ? '' : escHtml(l.euro_palets)}" min="0" step="any" placeholder="0" ${currentShipmentIsLoaded ? 'disabled' : ''}></td>
                     <td><input type="number" class="cell-edit" data-field="normal_palets" data-index="${index}"
-                        style="${numCellStyle} width:70px;" value="${isEmpty ? '' : escHtml(l.normal_palets)}" min="0" step="any" placeholder="0" ${currentShipmentIsLoaded ? 'disabled' : ''}></td>
+                        style="${numCellStyle} width:70px;" value="${(isEmpty || l.normal_palets == 0 || l.normal_palets === '0' || l.normal_palets === '0.00' || l.normal_palets === '') ? '' : escHtml(l.normal_palets)}" min="0" step="any" placeholder="0" ${currentShipmentIsLoaded ? 'disabled' : ''}></td>
                     <td><input type="text" class="cell-edit" data-field="productName" data-index="${index}"
                         style="${cellStyle} min-width:170px;" value="${isEmpty ? '' : escHtml(l.productName)}"></td>
                     <td style="position:relative"><input type="text" class="cell-edit" data-field="partner_name" data-index="${index}"
@@ -1236,17 +1236,17 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                     <td><input type="text" class="cell-edit" data-field="comment" data-index="${index}"
                         style="${cellStyle} min-width:100px;" value="${isEmpty ? '' : escHtml(l.comment)}"></td>
                     <td><input type="number" class="cell-edit" data-field="gross_weight_kg" data-index="${index}"
-                        style="${numCellStyle} width:50px;" value="${isEmpty ? '' : escHtml(l.gross_weight_kg)}" min="0" placeholder="0"></td>
+                        style="${numCellStyle} width:50px;" value="${(isEmpty || l.gross_weight_kg == 0 || l.gross_weight_kg === '0' || l.gross_weight_kg === '0.00' || l.gross_weight_kg === '') ? '' : escHtml(l.gross_weight_kg)}" min="0" placeholder="0"></td>
                     <td><input type="number" class="cell-edit" data-field="price_eur" data-index="${index}"
-                        style="${numCellStyle} width:50px;" value="${isEmpty ? '' : escHtml(l.price_eur)}" min="0" step="0.01" placeholder="0"></td>
+                        style="${numCellStyle} width:50px;" value="${(isEmpty || l.price_eur == 0 || l.price_eur === '0' || l.price_eur === '0.00' || l.price_eur === '') ? '' : escHtml(l.price_eur)}" min="0" step="0.01" placeholder="0"></td>
                     <td><input type="number" class="cell-edit" data-field="price_bcn_eur" data-index="${index}"
-                        style="${numCellStyle} width:50px;" value="${isEmpty ? '' : escHtml(l.price_bcn_eur)}" min="0" step="0.01" placeholder="0"></td>
+                        style="${numCellStyle} width:50px;" value="${(isEmpty || l.price_bcn_eur == 0 || l.price_bcn_eur === '0' || l.price_bcn_eur === '0.00' || l.price_bcn_eur === '') ? '' : escHtml(l.price_bcn_eur)}" min="0" step="0.01" placeholder="0"></td>
                     <td><input type="text" class="cell-edit" data-field="unit" data-index="${index}"
-                        style="${cellStyle} width:30px;" value="${isEmpty ? '' : escHtml(l.unit)}"></td>
+                        style="${cellStyle} width:30px;" value="${(isEmpty || l.unit == 0 || l.unit === '0' || l.unit === '0.00' || l.unit === '') ? '' : escHtml(l.unit)}"></td>
                     <td><input type="number" class="cell-edit" data-field="reloading_per_plt" data-index="${index}"
-                        style="${numCellStyle} width:50px;" value="${isEmpty ? '' : escHtml(l.reloading_per_plt)}" min="0" step="0.01" placeholder="0"></td>
+                        style="${numCellStyle} width:50px;" value="${(isEmpty || l.reloading_per_plt == 0 || l.reloading_per_plt === '0' || l.reloading_per_plt === '0.00' || l.reloading_per_plt === '') ? '' : escHtml(l.reloading_per_plt)}" min="0" step="0.01" placeholder="0"></td>
                     <td><input type="number" class="cell-edit" data-field="transport_bcn_per_plt" data-index="${index}"
-                        style="${numCellStyle} width:60px;" value="${isEmpty ? '' : escHtml(l.transport_bcn_per_plt)}" min="0" step="0.01" placeholder="0"></td>
+                        style="${numCellStyle} width:60px;" value="${(isEmpty || l.transport_bcn_per_plt == 0 || l.transport_bcn_per_plt === '0' || l.transport_bcn_per_plt === '0.00' || l.transport_bcn_per_plt === '') ? '' : escHtml(l.transport_bcn_per_plt)}" min="0" step="0.01" placeholder="0"></td>
                     <td><input type="text" class="cell-edit" data-field="customer_order_no" data-index="${index}"
                         style="${cellStyle} min-width:100px; ${!isEmpty && l.customer_order_no ? 'color:#2563eb; text-decoration:underline; cursor:pointer; font-weight:600;' : ''}" value="${isEmpty ? '' : escHtml(l.customer_order_no)}" title="${!isEmpty && l.customer_order_no ? 'Kattints a szállítólevél megnyitásához' : ''}"></td>
                     <td><input type="text" class="cell-edit" data-field="truck_number_per" data-index="${index}"
@@ -1254,6 +1254,23 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                 </tr>`;
 
             }).join('');
+
+            // Enter key to jump to the cell below
+            tbody.querySelectorAll('.cell-edit').forEach(inp => {
+                inp.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const currentField = inp.dataset.field;
+                        const currentIndex = parseInt(inp.dataset.index, 10);
+                        const nextIndex = currentIndex + 1;
+                        const nextInput = tbody.querySelector(`.cell-edit[data-field="${currentField}"][data-index="${nextIndex}"]`);
+                        if (nextInput) {
+                            nextInput.focus();
+                            nextInput.select();
+                        }
+                    }
+                });
+            });
 
             // Inline cell edit – szinkron az állapotba
             tbody.querySelectorAll('.cell-edit').forEach(inp => {

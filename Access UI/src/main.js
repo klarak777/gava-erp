@@ -243,3 +243,21 @@ if (document.readyState === 'loading') {
 } else {
     init();
 }
+
+
+// Global number formatter for inputs starting with comma or dot
+document.addEventListener('change', (e) => {
+    if (e.target.tagName === 'INPUT' && (e.target.type === 'text' || e.target.type === 'number')) {
+        let val = e.target.value;
+        if (typeof val === 'string') {
+            val = val.trim();
+            if (val.startsWith(',')) {
+                e.target.value = '0' + val;
+                e.target.dispatchEvent(new Event('input', { bubbles: true }));
+            } else if (val.startsWith('.')) {
+                e.target.value = '0' + val;
+                e.target.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        }
+    }
+});
