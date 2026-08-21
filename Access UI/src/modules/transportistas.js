@@ -601,7 +601,15 @@ export function renderTransportistas(container, windowManager) {
             `;
             item.querySelector('.primary-btn').addEventListener('click', () => {
                 const url = `/api/v1/uploads/invoice/file?shipmentId=${id}&fileName=${encodeURIComponent(f.fileName)}`;
-                window.open(url, '_blank');
+                windowManager.open('invoice_view_' + Date.now(), 'Számla megtekintése: ' + f.fileName, (wContainer) => {
+                    wContainer.innerHTML = `<iframe src="${url}" style="width:100%; height:100%; border:none;"></iframe>`;
+                    wContainer.style.padding = '0';
+                    const winEl = wContainer.closest('.mdi-window');
+                    if (winEl) {
+                        winEl.style.width = '900px';
+                        winEl.style.height = '700px';
+                    }
+                });
             });
             item.querySelector('.inv-delete-btn').addEventListener('click', async () => {
                 if (!confirm(`Biztosan törölni szeretné ezt a számlafájlt?\n\n${f.fileName}`)) return;

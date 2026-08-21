@@ -67,7 +67,8 @@ router.post('/delivery-note', upload.array('files', 10), async (req, res) => {
         // Fájlok kiírása a hálózati meghajtóra
         try {
             for (const file of req.files) {
-                const safeFileName = file.originalname.replace(/[<>:"/\\|?*]/g, '_');
+                const originalnameUtf8 = Buffer.from(file.originalname, 'latin1').toString('utf8');
+                const safeFileName = originalnameUtf8.replace(/[<>:"/\\|?*]/g, '_');
                 const targetFilePath = path.join(targetDir, safeFileName);
                 fs.writeFileSync(targetFilePath, file.buffer);
                 uploadedFiles.push(safeFileName);
@@ -125,7 +126,8 @@ router.post('/invoice', upload.array('files', 10), async (req, res) => {
 
         try {
             for (const file of req.files) {
-                const safeFileName = file.originalname.replace(/[<>:"/\\|?*]/g, '_');
+                const originalnameUtf8 = Buffer.from(file.originalname, 'latin1').toString('utf8');
+                const safeFileName = originalnameUtf8.replace(/[<>:"/\\|?*]/g, '_');
                 const targetFilePath = path.join(targetDir, safeFileName);
                 fs.writeFileSync(targetFilePath, file.buffer);
                 uploadedFiles.push(safeFileName);
