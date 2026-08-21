@@ -374,18 +374,19 @@ export function renderFuvarmegbizas(container, windowManager) {
         // A helyőrzők regex mintája: {szöveg}
         var PLACEHOLDER_REGEX = /\{[^}]+\}/g;
 
-        // Helyőrzőket kiemel és zárolt span-ná alakítja
+        // Helyőrzőket kiemel és zárolt span-ná alakítja, a helyőrző nevét mutatva {} nélkül
         function wrapPlaceholders(html) {
             return html.replace(PLACEHOLDER_REGEX, function(match) {
-                return '<span class="fuvm-placeholder" contenteditable="false" title="Helyőrző – nem szerkeszthető" ' +
+                var innerText = match.slice(1, -1); // Kiveszi a {} jeleket
+                return '<span class="fuvm-placeholder" data-original="' + match + '" contenteditable="false" title="Dinamikus adat: ' + innerText + ' (nem szerkeszthető)" ' +
                     'style="background:#ede9fe; color:#6d28d9; border:1px solid #c4b5fd; border-radius:4px; padding:1px 5px; font-weight:700; font-size:11px; cursor:not-allowed; user-select:none; display:inline-block;">' +
-                    match + '</span>';
+                    innerText + '</span>';
             });
         }
 
-        // Helyőrző span-okat visszaalakítja szöveggé a mentés előtt
+        // Helyőrző span-okat visszaalakítja az eredeti helyőrző szöveggé a mentés előtt
         function unwrapPlaceholders(html) {
-            return html.replace(/<span class="fuvm-placeholder"[^>]*>([^<]+)<\/span>/g, '$1');
+            return html.replace(/<span class="fuvm-placeholder"[^>]*data-original="([^"]+)"[^>]*>.*?<\/span>/g, '$1');
         }
 
         var modalContent =
