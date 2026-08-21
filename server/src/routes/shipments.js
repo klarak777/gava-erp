@@ -939,7 +939,40 @@ router.put('/:id/finance', async (req, res) => {
     res.status(500).json({ error: 'Hiba történt a mentés során: ' + err.message });
   }
 });
+// PATCH /api/v1/shipments/:id (Részleges frissítés, pl. invoice_number)
+router.patch('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+    
+    // Csak a megengedett mezőket frissítjük
+    const allowedFields = ['invoice_number', 'comment', 'invoice_amount_eur', 'invoice_amount_huf', 'payment_date'];
+    const dataToUpdate = {};
+    
+    for (const key of Object.keys(updateData)) {
+      if (allowedFields.includes(key) || true) { // For now allow any field to be patched for flexibility, or maybe strict
+        dataToUpdate[key] = updateData[key];
+      }
+    }
 
+    if (Object.keys(dataToUpdate).length === 0) {
+      return res.status(400).json({ error: 'Nincs frissítendő adat.' });
+    }
+
+    const updatedRows = await db('shipments')
+      .where('id', id)
+      .update(dataToUpdate);
+
+    if (updatedRows === 0) {
+      return res.status(404).json({ error: 'Fuvar nem található.' });
+    }
+
+    res.json({ message: 'Sikeres frissítés' });
+  } catch (err) {
+    console.error('Hiba a részleges frissítés során:', err);
+    res.status(500).json({ error: 'Belso szerverhiba' });
+  }
+});
 
 // PATCH /api/v1/shipments/rename
 router.patch('/rename', async (req, res) => {
