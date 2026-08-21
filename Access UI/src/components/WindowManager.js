@@ -5,6 +5,7 @@ export class WindowManager {
         this.activeWindowId = null;
         this.zIndexCounter = 1000; // Start high to ensure windows are above sidebar and topbar
         this.windowCount = 0;
+        this._beforeCloseCallbacks = new Map(); // id -> callback
 
         // Container positioning handled in CSS
 
@@ -13,6 +14,12 @@ export class WindowManager {
         this.taskbar.className = 'mdi-taskbar';
         this.taskbar.style.display = 'none'; // Initially hidden
         this.container.appendChild(this.taskbar);
+    }
+
+    // Regisztrál egy bezárás előtti callback-et. Ha a callback false-t ad vissza, a bezárás megakad.
+    registerBeforeClose(id, callback) {
+        const winId = Array.from(this.windows.keys()).find(k => k.startsWith(id)) || id;
+        this._beforeCloseCallbacks.set(winId, callback);
     }
 
     getWindows() {
@@ -187,6 +194,10 @@ export class WindowManager {
     close(id) {
         const win = this.windows.get(id);
         if (win) {
+            const cb = this._beforeCloseCallbacks.get(id);
+            if (cb && cb() === false) return; // Callback megakadályozza a bezárást
+
+            this._beforeCloseCallbacks.delete(id);
             win.remove();
             this.windows.delete(id);
 

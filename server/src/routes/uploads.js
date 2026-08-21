@@ -365,4 +365,87 @@ router.get('/invoice/file', async (req, res) => {
     }
 });
 
+/**
+ * DELETE /api/v1/uploads/invoice/file
+ * Törli a megadott számlafájlt (fizikailag és az adatbázisból).
+ * Query params: shipmentId, fileName
+ */
+router.delete('/invoice/file', async (req, res) => {
+    try {
+        const { shipmentId, fileName } = req.query;
+        if (!shipmentId || !fileName) {
+            return res.status(400).json({ error: 'Hiányzó paraméterek.' });
+        }
+
+        const shipment = await db('shipments').where('id', shipmentId).first();
+        if (!shipment || !shipment.invoice_files) {
+            return res.status(404).json({ error: 'Nem található számla fájl.' });
+        }
+
+        let files = typeof shipment.invoice_files === 'string' ? JSON.parse(shipment.invoice_files) : shipment.invoice_files;
+        if (!Array.isArray(files)) files = [];
+
+        const fileRecord = files.find(f => f.fileName === fileName);
+        if (!fileRecord) {
+            return res.status(404).json({ error: 'A megadott fájl nem található a nyilvántartásban.' });
+        }
+
+        // Fizikai törlés
+        if (fs.existsSync(fileRecord.filePath)) {
+            fs.unlinkSync(fileRecord.filePath);
+        }
+
+        // Adatbázis frissítése
+        const updatedFiles = files.filter(f => f.fileName !== fileName);
+        await db('shipments').where('id', shipmentId).update({
+            invoice_files: JSON.stringify(updatedFiles)
+        });
+
+        // Ha nincs több fájl, töröljük az invoice_number-t is
+        if (updatedFiles.length === 0) {
+            await db('shipments').where('id', shipmentId).update({ invoice_number: null });
+        }
+
+        res.json({ success: true, files: updatedFiles, message: 'Számlafájl sikeresen törölve.' });
+    } catch (err) {
+        console.error('[uploads invoice delete] Hiba:', err);
+        res.status(500).json({ error: 'Szerver hiba a törlés során.' });
+    }
+});
+
+/**
+ * DELETE /api/v1/uploads/delivery-note/file
+ * Törli a megadott szállítólevél fájlt fizikailag.
+ * Body: { filePath, season, orderNumber, customerOrderNo, fileName }
+ */
+router.delete('/delivery-note/file', async (req, res) => {
+    try {
+        const { filePath, fileName } = req.body;
+        if (!filePath && !fileName) {
+            return res.status(400).json({ error: 'Hiányzó paraméterek.' });
+        }
+
+        const raktarPath = process.env.RAKTAR_PATH || path.join('\\\\192.168.1.5', 'raktar');
+        let targetPath = filePath;
+
+        // Ellenőrizzük és cseréljük a Windows network path-t Linux-ra ha szükséges
+        if (targetPath && process.platform !== 'win32') {
+            targetPath = targetPath.replace(/\\\\/g, '/').replace(/\\/g, '/');
+            if (!path.isAbsolute(targetPath)) {
+                targetPath = path.join(raktarPath, targetPath);
+            }
+        }
+
+        if (!targetPath || !fs.existsSync(targetPath)) {
+            return res.status(404).json({ error: 'A fájl nem található a lemezen.' });
+        }
+
+        fs.unlinkSync(targetPath);
+        res.json({ success: true, message: 'Szállítólevél fájl sikeresen törölve.' });
+    } catch (err) {
+        console.error('[uploads delivery-note delete] Hiba:', err);
+        res.status(500).json({ error: 'Szerver hiba a törlés során.' });
+    }
+});
+
 module.exports = router;

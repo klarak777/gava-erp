@@ -318,6 +318,16 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
         let originalLinesSnapshot = {}; // { lineIndex: { euro_palets, normal_palets } } – a betöltéskori értékek
         let editingLineDbId = null;     // az éppen szerkesztett sor adatbázis-ID-ja (áthelyezéshez)
         let currentShipmentIsLoaded = false; // RAKODVA státusz
+        let isDirty = false; // Volt-e nem mentett változtatás
+
+        // Bezárás előtti figyelmeztetés regisztrálása
+        const windowKey = 'kamion_szerkesztes_' + (kamionId || 'new');
+        windowManager.registerBeforeClose(windowKey, () => {
+            if (!isDirty) return true;
+            const choice = confirm('⚠️ Nem mentett változtatások vannak!\n\nNyomj OK-t a bezáráshoz mentés nélkül,\nvagy Mold a Visszavonás gombot a visszaálláshoz.');
+            if (choice) { isDirty = false; return true; } // OK = bezárás
+            return false; // Mégse = marad az ablak
+        });
 
         // ===== ELEMEK =====
         const kmTip = container.querySelector('#km-tip');
@@ -584,6 +594,23 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
         }
 
         // ===== API =====
+        // Globális dirty tracking – bármely input/select változása feltérképezése
+        container.addEventListener('input', (e) => {
+            const tag = e.target.tagName.toLowerCase();
+            if ((tag === 'input' || tag === 'select' || tag === 'textarea') &&
+                !e.target.closest('#km-transporter-dropdown') &&
+                !e.target.closest('#km-billing-partner-dropdown') &&
+                !e.target.closest('[id^="inline-product-dropdown"]') &&
+                !e.target.closest('[id^="inline-reference-dropdown"]') &&
+                !e.target.closest('[id^="inline-customer-dropdown"]')) {
+                isDirty = true;
+            }
+        });
+        container.addEventListener('change', (e) => {
+            const tag = e.target.tagName.toLowerCase();
+            if (tag === 'select' || tag === 'input') isDirty = true;
+        });
+
         async function loadTransporters() {
             try {
                 const res = await fetch(`${API}/transporters`);
@@ -1318,7 +1345,9 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
             // Inline Product Autocomplete
             tbody.querySelectorAll('.cell-edit[data-field="productName"]').forEach(inp => {
                 inp.addEventListener('input', () => {
+                    isDirty = true;
                     const val = inp.value.toLowerCase();
+
                     const idx = parseInt(inp.dataset.index);
                     inlineDropdown.innerHTML = '';
                     if (!val) { inlineDropdown.style.display = 'none'; return; }
@@ -1974,6 +2003,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                         isNew = false;
                         currentShipmentId = data.id;
                     }
+
+                    isDirty = false; // Mentés után tiszta állapot
 
                     // Értesítjük a Rakodás modult (és másokat) a sikeres mentésről/létrehozásról
                     try { document.dispatchEvent(new CustomEvent('shipmentSaved')); } catch (e) { console.error('shipmentSaved error:', e); }

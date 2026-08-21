@@ -593,17 +593,37 @@ export function renderTransportistas(container, windowManager) {
             const item = document.createElement('div');
             item.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:10px; border:1px solid #e2e8f0; border-radius:4px; background:#f8fafc;';
             item.innerHTML = `
-                <span style="font-size:13px; font-weight:500; color:#0f172a; word-break:break-all;">📄 ${f.fileName}</span>
-                <button class="primary-btn btn-dense" style="padding:4px 10px; font-size:12px;">Megnyitás</button>
+                <span style="font-size:13px; font-weight:500; color:#0f172a; word-break:break-all; flex:1; margin-right:8px;">📄 ${f.fileName}</span>
+                <div style="display:flex; gap:6px; flex-shrink:0;">
+                    <button class="primary-btn btn-dense" style="padding:4px 10px; font-size:12px;">Megnyitás</button>
+                    <button class="secondary-btn btn-dense inv-delete-btn" style="padding:4px 10px; font-size:12px; color:#dc2626; border-color:#fca5a5;">🗑️ Törlés</button>
+                </div>
             `;
-            item.querySelector('button').addEventListener('click', () => {
+            item.querySelector('.primary-btn').addEventListener('click', () => {
                 const url = `/api/v1/uploads/invoice/file?shipmentId=${id}&fileName=${encodeURIComponent(f.fileName)}`;
                 window.open(url, '_blank');
+            });
+            item.querySelector('.inv-delete-btn').addEventListener('click', async () => {
+                if (!confirm(`Biztosan törölni szeretné ezt a számlafájlt?\n\n${f.fileName}`)) return;
+                try {
+                    const res = await fetch(`/api/v1/uploads/invoice/file?shipmentId=${id}&fileName=${encodeURIComponent(f.fileName)}`, { method: 'DELETE' });
+                    const data = await res.json();
+                    if (!res.ok) { alert('Hiba a törlés során: ' + (data.error || 'Ismeretlen hiba')); return; }
+                    item.remove();
+                    // Ha nincs több fájl, bezárjuk a modalt és frissítjük a listát
+                    if (viewModalList.children.length === 0) {
+                        viewModalOverlay.style.display = 'none';
+                    }
+                    loadRealData();
+                } catch (err) {
+                    alert('Hálózati hiba a törlés során: ' + err.message);
+                }
             });
             viewModalList.appendChild(item);
         });
         viewModalOverlay.style.display = 'flex';
     };
+
 
     viewModalClose.addEventListener('click', () => { viewModalOverlay.style.display = 'none'; });
     viewModalOverlay.addEventListener('click', (e) => { if (e.target === viewModalOverlay) viewModalOverlay.style.display = 'none'; });
