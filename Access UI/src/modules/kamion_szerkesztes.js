@@ -320,13 +320,53 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
         let currentShipmentIsLoaded = false; // RAKODVA státusz
         let isDirty = false; // Volt-e nem mentett változtatás
 
-        // Bezárás előtti figyelmeztetés regisztrálása
+        // Bezárás előtti figyelmeztetés regisztrálása (egyedi modális ablak)
         const windowKey = 'kamion_szerkesztes_' + (kamionId || 'new');
+        
+        const unsavedOverlay = document.createElement('div');
+        unsavedOverlay.style.cssText = 'display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:999999; align-items:center; justify-content:center;';
+        unsavedOverlay.innerHTML = `
+            <div style="background:#fff; padding:24px; border-radius:8px; width:450px; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+                <h3 style="margin-top:0; color:#1e293b; font-size:18px;">⚠️ Nem mentett változtatások</h3>
+                <p style="color:#475569; font-size:14px; margin-bottom:24px; line-height:1.5;">A kamion szerkesztése során olyan módosításokat végeztél, amelyeket még nem mentettél el. Szeretnéd menteni ezeket a változtatásokat a bezárás előtt?</p>
+                <div style="display:flex; justify-content:flex-end; gap:12px;">
+                    <button id="km-unsaved-cancel" class="secondary-btn" style="padding:8px 16px;">Mégse</button>
+                    <button id="km-unsaved-discard" class="secondary-btn" style="padding:8px 16px; color:#dc2626; border-color:#fca5a5;">Bezárás mentés nélkül</button>
+                    <button id="km-unsaved-save" class="primary-btn" style="padding:8px 16px;">Mentés és Bezárás</button>
+                </div>
+            </div>
+        `;
+        container.appendChild(unsavedOverlay);
+
+        unsavedOverlay.querySelector('#km-unsaved-cancel').addEventListener('click', () => {
+            unsavedOverlay.style.display = 'none';
+        });
+
+        unsavedOverlay.querySelector('#km-unsaved-discard').addEventListener('click', () => {
+            isDirty = false;
+            unsavedOverlay.style.display = 'none';
+            windowManager.close(windowKey);
+        });
+
+        unsavedOverlay.querySelector('#km-unsaved-save').addEventListener('click', () => {
+            unsavedOverlay.style.display = 'none';
+            const saveBtn = container.querySelector('#btn-save-km');
+            if (saveBtn) {
+                saveBtn.click();
+                const checkSaved = setInterval(() => {
+                    if (!isDirty) {
+                        clearInterval(checkSaved);
+                        windowManager.close(windowKey);
+                    }
+                }, 500);
+                setTimeout(() => clearInterval(checkSaved), 15000); // Stop polling after 15s
+            }
+        });
+
         windowManager.registerBeforeClose(windowKey, () => {
             if (!isDirty) return true;
-            const choice = confirm('⚠️ Nem mentett változtatások vannak!\n\nNyomj OK-t a bezáráshoz mentés nélkül,\nvagy Mold a Visszavonás gombot a visszaálláshoz.');
-            if (choice) { isDirty = false; return true; } // OK = bezárás
-            return false; // Mégse = marad az ablak
+            unsavedOverlay.style.display = 'flex';
+            return false; // Mégse zárjuk be, megmutatjuk a saját modális ablakot
         });
 
         // ===== ELEMEK =====
