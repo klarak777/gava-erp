@@ -201,8 +201,8 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                     <div>
                         <div style="display:flex; gap: 16px; margin-bottom: 8px;">
                             <div class="input-group" style="flex:1;">
-                                <label>Type Truck:</label>
-                                <select id="fm-type-truck"><option value="">--</option></select>
+                                <label>Szállítólevélre:</label>
+                                <input type="text" id="fm-type-truck" readonly style="background:#fff; font-weight:bold; width:100%;">
                             </div>
                             <div class="input-group" style="flex:2;">
                                 <label>Supplier:</label>
@@ -224,9 +224,9 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                         <table class="finance-table-summary">
                             <thead>
                                 <tr>
-                                    <th>(HUF*)</th>
-                                    <th>Total Invoice</th>
-                                    <th>Total Inv A</th>
+                                    <th></th>
+                                    <th>Total Invoice HUF</th>
+                                    <th>Total Invoice €</th>
                                     <th>Balance A</th>
                                     <th>Total Inv B</th>
                                     <th>Balance B</th>
@@ -321,7 +321,8 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                         <table class="grid-table" id="fm-lines-table">
                             <thead>
                                 <tr style="background:var(--bg-light); border-bottom: 2px solid var(--border);">
-                                    <th colspan="4" style="text-align:right; font-weight:bold; padding-right:8px;">Totals:</th>
+                                    <th colspan="2" style="text-align:left; font-weight:bold; padding-left:8px;">(Currency : HUF)</th>
+                                    <th colspan="2" style="text-align:right; font-weight:bold; padding-right:8px;">Totals:</th>
                                     <th><input type="text" id="tot-palets" readonly style="width:60px; text-align:right; background:#eee; font-weight:bold; border:none; padding:2px;"></th>
                                     <th></th>
                                     <th><input type="text" id="tot-boxes" readonly style="width:60px; text-align:right; background:#eee; font-weight:bold; border:none; padding:2px;"></th>
@@ -386,7 +387,6 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                                     <th>Cur</th>
                                     <th>ExchRt</th>
                                     <th>Total Inv Local</th>
-                                    <th>IdEmpr</th>
                                     <th>Season</th>
                                     <th>TruckNr</th>
                                 </tr>
@@ -404,12 +404,12 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                         <table class="grid-table" id="uc-lines-table">
                             <thead>
                                 <tr style="background:var(--bg-light); border-bottom: 2px solid var(--border);">
-                                    <th colspan="5"></th>
+                                    <th colspan="5" style="text-align:left; font-weight:bold; padding-left:8px;">(Currency : HUF)</th>
                                     <th><input type="text" id="uc-tot-pr" readonly style="width:80px; text-align:right; background:#eee; font-weight:bold; border:none; padding:2px;"></th>
                                     <th><input type="text" id="uc-tot-trans" readonly style="width:80px; text-align:right; background:#eee; font-weight:bold; border:none; padding:2px;"></th>
                                     <th><input type="text" id="uc-tot-vcost" readonly style="width:80px; text-align:right; background:#eee; font-weight:bold; border:none; padding:2px;"></th>
                                     <th><input type="text" id="uc-tot-oh" readonly style="width:80px; text-align:right; background:#eee; font-weight:bold; border:none; padding:2px;"></th>
-                                    <th colspan="2" style="text-align:center; background:#aaa; color:#000;">PER KG</th>
+                                    <th colspan="3" style="text-align:center; background:#aaa; color:#000;">PER KG</th>
                                     <th colspan="2" style="text-align:center; background:#aaa; color:#000;">PER BOX</th>
                                     <th></th>
                                 </tr>
@@ -483,13 +483,8 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                 partnersData = partnerRes.ok ? await partnerRes.json() : [];
                 transportersData = transpRes.ok ? await transpRes.json() : [];
 
-                const typeSelect = container.querySelector('#fm-type-truck');
-                financeTruckTypes.forEach(t => {
-                    const opt = document.createElement('option');
-                    opt.value = t.id;
-                    opt.textContent = t.name;
-                    typeSelect.appendChild(opt);
-                });
+                // Removed typeSelect initialization for fm-type-truck as it is now a readonly text input
+
 
                 // Currencies legördülők feltöltése az Admin táblából
                 const currOpts = currenciesData.map(c => `<option value="${c.code}">${c.code}</option>`).join('');
@@ -517,7 +512,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                 linesData = rawLines.filter(l => (l.customer || l.cust || '').toUpperCase().includes('GHU'));
                 transportLinesData = transRes.ok ? await transRes.json() : [];
                 unitCostLinesData = ucRes.ok ? await ucRes.json() : [];
-                renderData();
+                renderData(rawLines);
             } catch (err) {
                 alert(err.message);
                 container.closest('.mdi-window').querySelector('.mdi-window-close').click();
@@ -525,7 +520,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
         }
 
         // === Header renderelés ===
-        function renderData() {
+        function renderData(rawLines) {
             if (!shipmentData) return;
 
             const orderToParse = displayOrderNumber || shipmentData.order_number || '';
@@ -551,14 +546,38 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
             container.querySelector('#fm-exch-rt').value = shipmentData.exchange_rate || '';
             container.querySelector('#fm-exch-rt-2').value = shipmentData.exchange_rate || '';
             container.querySelector('#fm-comments').value = shipmentData.finance_comments || '';
-            container.querySelector('#fm-type-truck').value = shipmentData.finance_truck_type_id || '';
+            
+            // "Type Truck" helyett "Szállítólevélre:"
+            let custOrderNo = '';
+            if (rawLines && rawLines.length > 0) {
+                const lineWithOrder = rawLines.find(l => l.customer_order_no);
+                if (lineWithOrder) {
+                    custOrderNo = lineWithOrder.customer_order_no;
+                }
+            }
+            const typeTruckEl = container.querySelector('#fm-type-truck');
+            if (typeTruckEl) {
+                typeTruckEl.value = custOrderNo || 'Nincs adat';
+                if (custOrderNo) {
+                    typeTruckEl.style.cursor = 'pointer';
+                    typeTruckEl.style.color = '#2563eb';
+                    typeTruckEl.style.textDecoration = 'underline';
+                    typeTruckEl.onclick = () => openDeliveryNoteViewer(custOrderNo);
+                } else {
+                    typeTruckEl.style.cursor = 'default';
+                    typeTruckEl.style.color = '#555';
+                    typeTruckEl.style.textDecoration = 'none';
+                    typeTruckEl.onclick = null;
+                }
+            }
+
             container.querySelector('#fm-supplier').value = refName || shipmentData.supplier_name || '';
             container.querySelector('#fm-date').value = shipmentData.finance_date ? shipmentData.finance_date.split('T')[0] : '';
             container.querySelector('#fm-status').value = shipmentData.finance_status || 'Open';
 
             // Season és Truck info kinyerése
             const seasonVal = shipmentData.season || '25-26';
-            const truckNoVal = truckNr;
+            const truckNoVal = orderToParse;
             container.querySelector('#fm-season').textContent = seasonVal;
 
             if (container.querySelector('#uc-currency-label')) {
@@ -611,7 +630,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                     <td style="display:none;"><input type="text" class="inp-prod-code" list="${dlCodeId}" value="${displayCode}" style="width:80px;"><datalist id="${dlCodeId}">${dlCodeItems}</datalist></td>
                     <td><input type="text" class="inp-prod-name" list="${dlNameId}" value="${displayName}" style="width:160px;"><datalist id="${dlNameId}">${dlNameItems}</datalist></td>
                     <td style="text-align:center;">c</td>
-                    <td><input type="text" class="inp-desc" value="${line.description_finance || line.comment || ''}"></td>
+                    <td><input type="text" class="inp-desc" value="${line.description_finance || ''}"></td>
                     <td><input type="number" step="0.01" class="inp-palets" value="${((parseFloat(line.euro_palets) || 0) + (parseFloat(line.normal_palets) || 0)) || ''}" readonly style="background:#eee;"></td>
                     <td style="text-align:center;">u</td>
                     <td><input type="number" step="0.01" class="inp-boxes num-calc" value="${line.boxes || ''}"></td>
@@ -757,9 +776,8 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                 <td><select class="tr-cur tr-calc" style="width:55px;">${buildCurrencyOptions(currCode)}</select></td>
                 <td><input type="number" step="0.001" class="tr-exch-rt tr-calc" value="${line.exchange_rate || container.querySelector('#fm-exch-rt').value || ''}" style="width:70px;"></td>
                 <td><input type="number" step="0.01" class="tr-tot-local" value="${line.total_inv_local || ''}" readonly style="background:#f0f8ff; width:90px;"></td>
-                <td><input type="text" class="tr-id-empr" value="${line.id_empr ? (String(line.id_empr).match(/^([a-zA-Z]+)/) ? String(line.id_empr).match(/^([a-zA-Z]+)/)[1].toUpperCase() : idEmprVal) : idEmprVal}" readonly style="background:#eee; width:45px;"></td>
-                <td><input type="text" class="tr-season" value="${line.season || seasonVal}" readonly style="background:#eee; width:45px;"></td>
-                <td><input type="text" class="tr-truck-nr" value="${line.truck_nr || truckNoVal}" readonly style="background:#eee; width:55px;"></td>
+                <td><input type="text" class="tr-season" value="${line.season || seasonVal}" readonly style="background:#eee; width:45px;"><input type="hidden" class="tr-id-empr" value="${line.id_empr ? (String(line.id_empr).match(/^([a-zA-Z]+)/) ? String(line.id_empr).match(/^([a-zA-Z]+)/)[1].toUpperCase() : idEmprVal) : idEmprVal}"></td>
+                <td><input type="text" class="tr-truck-nr" value="${line.truck_nr && (line.truck_nr.includes('/') || line.truck_nr.includes(' ')) ? line.truck_nr : (truckNoVal || line.truck_nr || '')}" readonly style="background:#eee; width:85px;"></td>
             `;
             tbody.appendChild(tr);
 
@@ -824,7 +842,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
             
             container.querySelector('#ts-goods-inv').textContent = goodsInvHuf > 0 ? Math.round(goodsInvHuf) : '0';
             container.querySelector('#ts-goods-inv-a').textContent = tAmntA > 0 ? tAmntA.toFixed(2) : '0';
-            container.querySelector('#ts-goods-bal-a').textContent = tAmntA > 0 ? tAmntA.toFixed(2) : '0';
+            container.querySelector('#ts-goods-bal-a').textContent = '0';
 
             // Transport & Other calculations
             let totTransA = 0;
@@ -835,24 +853,22 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
 
             container.querySelector('#ts-trans-inv').textContent = transInvHuf > 0 ? Math.round(transInvHuf) : '0';
             container.querySelector('#ts-trans-inv-a').textContent = totTransA > 0 ? totTransA.toFixed(2) : '0';
-            container.querySelector('#ts-trans-bal-a').textContent = totTransA > 0 ? totTransA.toFixed(2) : '0';
+            container.querySelector('#ts-trans-bal-a').textContent = '0';
 
             // Totals row calculations
             const totInvHuf = goodsInvHuf + transInvHuf;
             const totInvA = tAmntA + totTransA;
-            const totBalA = tAmntA + totTransA;
 
             container.querySelector('#ts-tot-inv').textContent = totInvHuf > 0 ? Math.round(totInvHuf) : '0';
             container.querySelector('#ts-tot-inv-a').textContent = totInvA > 0 ? totInvA.toFixed(2) : '0';
-            container.querySelector('#ts-tot-bal-a').textContent = totBalA > 0 ? totBalA.toFixed(2) : '0';
+            container.querySelector('#ts-tot-bal-a').textContent = '0';
 
             // Transfers Totals (EUR)
-            const totalTransfersEur = tAmntA + totTransA;
             if (container.querySelector('#ts-transf-inv')) {
-                container.querySelector('#ts-transf-inv').textContent = totalTransfersEur > 0 ? totalTransfersEur.toFixed(2) : '0';
+                container.querySelector('#ts-transf-inv').textContent = '0';
             }
             if (container.querySelector('#ts-transf-inv-a')) {
-                container.querySelector('#ts-transf-inv-a').textContent = totalTransfersEur > 0 ? totalTransfersEur.toFixed(2) : '0';
+                container.querySelector('#ts-transf-inv-a').textContent = '0';
             }
         }
 
@@ -875,7 +891,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
 
                     return {
                         product_name: prodName,
-                        description: l.description_finance || l.comment || '',
+                        description: l.description_finance || '',
                         netto_kgs: kgs,
                         kgs_per_box: kgsPerBox.toFixed(2)
                     };
@@ -1026,7 +1042,7 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
             const num = tbody.querySelectorAll('tr').length;
             const seasonVal = container.querySelector('#fm-season').textContent || '';
             const fmTruckNo = container.querySelector('#fm-truck-no');
-            const truckNoVal = fmTruckNo.dataset.trucknr || '';
+            const truckNoVal = fmTruckNo.textContent.trim() || fmTruckNo.dataset.trucknr || '';
             const idEmprVal = getOrderPrefix();
             appendTransportRow(tbody, { _isNew: true, exchange_rate: container.querySelector('#fm-exch-rt').value }, num, idEmprVal, seasonVal, truckNoVal);
         });
@@ -1079,6 +1095,195 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                 calculateTotals();
             }
         });
+
+        function buildDeleteGoodsRowsList() {
+            let list = [];
+            deletedGoodsLineIds.forEach(id => {
+                list.push(`<input type="hidden" name="deleted_goods_lines[]" value="${id}">`);
+            });
+            return list.join('');
+        }
+
+        // ===== SZÁLLÍTÓLEVÉL MEGJELENÍTŐ =====
+        async function openDeliveryNoteViewer(customerOrderNo = 'none') {
+            const orderNumber = shipmentData.order_number;
+            if (!orderNumber) {
+                alert('Nincs érvényes kamionszám megadva.');
+                return;
+            }
+
+            let seasonLabel = shipmentData.season_code || shipmentData.season || '25-26';
+
+            try {
+                const queryParams = new URLSearchParams({
+                    season: seasonLabel,
+                    orderNumber: orderNumber,
+                    customerOrderNo: customerOrderNo
+                }).toString();
+                const checkRes = await fetch(`/api/v1/uploads/delivery-note/check?${queryParams}`);
+                const checkData = await checkRes.json();
+
+                if (!checkRes.ok || !checkData.exists || !checkData.files || checkData.files.length === 0) {
+                    alert('Még nem történt szállítólevél feltöltés ehhez a kamionhoz.');
+                    return;
+                }
+
+                const files = checkData.files;
+                let currentIndex = 0;
+                const modalId = 'dn-viewer-' + Date.now();
+
+                function getPreviewHtml(fileName) {
+                    const fileParams = new URLSearchParams({
+                        season: seasonLabel,
+                        orderNumber: orderNumber,
+                        customerOrderNo: customerOrderNo,
+                        fileName: fileName
+                    }).toString();
+                    const fileUrl = `/api/v1/uploads/delivery-note/file?${fileParams}`;
+                    const htmlUrl = `/api/v1/uploads/delivery-note/html?${fileParams}`;
+                    const ext = fileName.split('.').pop().toLowerCase();
+                    
+                    if (['pdf'].includes(ext)) {
+                        return `<iframe src="${fileUrl}" style="width:100%; height:100%; border:none;"></iframe>`;
+                    } else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
+                        return `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:auto; background:#f8fafc;"><img src="${fileUrl}" style="max-width:100%; max-height:100%; object-fit:contain;"></div>`;
+                    } else if (['docx'].includes(ext)) {
+                        const docxId = 'docx-' + Date.now();
+                        setTimeout(async () => {
+                            try {
+                                const docxRes = await fetch(htmlUrl);
+                                const docxData = await docxRes.json();
+                                const container = document.getElementById(docxId);
+                                if (container) {
+                                    if (docxRes.ok && docxData.html) {
+                                        container.innerHTML = `<div style="padding: 24px; font-family: 'Segoe UI', sans-serif; background: #fff; color: #1e293b; line-height: 1.6; height: 100%; box-sizing: border-box; text-align: left;">${docxData.html}</div>`;
+                                        container.style.display = 'block';
+                                    } else {
+                                        container.innerHTML = `<div style="padding: 24px; color: #dc2626;">Hiba a DOCX előnézet generálásakor: ${docxData.error || 'Ismeretlen hiba'}</div>`;
+                                    }
+                                }
+                            } catch (err) {
+                                const container = document.getElementById(docxId);
+                                if (container) container.innerHTML = `<div style="padding: 24px; color: #dc2626;">Hálózati hiba a DOCX betöltésekor.</div>`;
+                            }
+                        }, 100);
+                        return `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; flex-direction:column; background:#f8fafc; gap:16px;" id="${docxId}">
+                            <div style="width:36px; height:36px; border:3px solid #cbd5e1; border-top-color:#2563eb; border-radius:50%; animation:spin 1s linear infinite;"></div>
+                            <span style="font-size:13px; color:#64748b;">DOCX betöltése...</span>
+                        </div>`;
+                    } else {
+                        return `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:16px;">
+                            <span style="font-size:48px;">📄</span>
+                            <p style="font-size:14px; color:#334155;">A ${ext.toUpperCase()} fájl előnézete nem támogatott a böngészőben.</p>
+                            <a href="${fileUrl}" download class="primary-btn" style="text-decoration:none;">Fájl letöltése</a>
+                        </div>`;
+                    }
+                }
+
+                function getHeaderHtml(fileName, index, totalFiles) {
+                    const fileParams = new URLSearchParams({
+                        season: seasonLabel,
+                        orderNumber: orderNumber,
+                        customerOrderNo: customerOrderNo,
+                        fileName: fileName
+                    }).toString();
+                    const fileUrl = `/api/v1/uploads/delivery-note/file?${fileParams}`;
+                    
+                    let navHtml = '';
+                    if (totalFiles > 1) {
+                        const optionsHtml = files.map((f, i) => `<option value="${i}" ${i === index ? 'selected' : ''}>${f}</option>`).join('');
+                        navHtml = `
+                            <div style="display:flex; align-items:center; gap:12px; background:rgba(255,255,255,0.1); padding:4px 8px; border-radius:6px;">
+                                <button class="dn-nav-btn" data-action="prev" style="background:none; border:none; color:#fff; cursor:pointer; padding:4px 8px; font-weight:bold;">◀</button>
+                                <select class="dn-nav-select" style="background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.3); border-radius:4px; padding:2px 6px; font-size:13px; max-width:250px; cursor:pointer; outline:none;">
+                                    ${optionsHtml}
+                                </select>
+                                <span style="font-size:12px; color:rgba(255,255,255,0.8);">${index + 1} / ${totalFiles}</span>
+                                <button class="dn-nav-btn" data-action="next" style="background:none; border:none; color:#fff; cursor:pointer; padding:4px 8px; font-weight:bold;">▶</button>
+                            </div>
+                        `;
+                    } else {
+                        navHtml = `<div style="font-size:14px; color:#fff; font-weight:700; margin-top:2px;">${fileName}</div>`;
+                    }
+
+                    return `
+                        <div>
+                            <div style="font-size:11px; color:rgba(255,255,255,0.7); font-weight:500; letter-spacing:0.5px; text-transform:uppercase;">Szállítólevél${totalFiles > 1 ? 'ek' : ''}</div>
+                            ${navHtml}
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <a href="${fileUrl}" download style="display:flex; align-items:center; gap:6px; background:#22c55e; color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer; text-decoration:none; transition:all 0.2s;">⬇️ Letöltés</a>
+                        </div>
+                    `;
+                }
+
+                const modalContent = `
+                    <div id="${modalId}" style="display:flex; flex-direction:column; height:100%;">
+                        <div class="dn-viewer-header" style="display:flex; align-items:center; justify-content:space-between; padding:12px 20px; background:linear-gradient(135deg,#1e3a5f,#2563eb); border-radius:8px; margin-bottom:16px; flex-shrink:0;">
+                            ${getHeaderHtml(files[currentIndex], currentIndex, files.length)}
+                        </div>
+                        <div class="dn-viewer-body" style="flex:1; overflow:hidden; border-radius:8px; border:1px solid #e2e8f0; background:#fff;">
+                            ${getPreviewHtml(files[currentIndex])}
+                        </div>
+                    </div>`;
+
+                windowManager.createModal({
+                    title: '📄 Szállítólevél',
+                    width: 820,
+                    height: 660,
+                    content: modalContent
+                });
+
+                // Attach event listeners after modal creation
+                setTimeout(() => {
+                    const modalContainer = document.getElementById(modalId);
+                    if (!modalContainer) return;
+
+                    const attachEvents = () => {
+                        const btnPrev = modalContainer.querySelector('.dn-nav-btn[data-action="prev"]');
+                        const btnNext = modalContainer.querySelector('.dn-nav-btn[data-action="next"]');
+                        const selectEl = modalContainer.querySelector('.dn-nav-select');
+
+                        const updateView = () => {
+                            modalContainer.querySelector('.dn-viewer-header').innerHTML = getHeaderHtml(files[currentIndex], currentIndex, files.length);
+                            modalContainer.querySelector('.dn-viewer-body').innerHTML = getPreviewHtml(files[currentIndex]);
+                            attachEvents(); // Re-attach events for the new HTML
+                        };
+
+                        if (btnPrev) {
+                            btnPrev.addEventListener('click', () => {
+                                if (currentIndex > 0) {
+                                    currentIndex--;
+                                    updateView();
+                                }
+                            });
+                        }
+
+                        if (btnNext) {
+                            btnNext.addEventListener('click', () => {
+                                if (currentIndex < files.length - 1) {
+                                    currentIndex++;
+                                    updateView();
+                                }
+                            });
+                        }
+
+                        if (selectEl) {
+                            selectEl.addEventListener('change', (e) => {
+                                currentIndex = parseInt(e.target.value);
+                                updateView();
+                            });
+                        }
+                    };
+
+                    attachEvents();
+                }, 100);
+
+            } catch (err) {
+                console.error(err);
+                alert('Hiba történt a fájl megnyitásakor.');
+            }
+        }
 
         // ============================
         // MENTÉS
