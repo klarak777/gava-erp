@@ -1881,8 +1881,19 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                     }
                 }
                 closeTransferPopup();
-                renderTable();
+                isDirty = false;
+                if (currentShipmentId) {
+                    try {
+                        await loadExistingShipment(currentShipmentId);
+                    } catch (e) {
+                        renderTable();
+                    }
+                } else {
+                    renderTable();
+                }
+                isDirty = false;
                 document.dispatchEvent(new CustomEvent('cargoDemandsUpdated')); // Frissíti a Rakodás nézet Áru igény részét
+                document.dispatchEvent(new CustomEvent('shipmentSaved')); // Frissíti a többi nézetet is
                 alert(`✅ ${data.message}`);
             } catch (err) {
                 alert('Hálózati hiba: ' + err.message);
