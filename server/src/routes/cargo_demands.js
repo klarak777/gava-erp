@@ -222,29 +222,52 @@ router.patch('/:id/fulfill', async (req, res) => {
       // Partner azonosító név: a demand.partner_name már tartalmazza a felhasználó által begépelt azonosítót (pl. "CASI AEROPORTO")
       // Ezt használjuk közvetlenül és nem keressük újra az adatbázisból (ami más aktív identifier-t adhatna vissza)
 
-      // 2. Új sor hozzáadása a célkamionhoz
-      await trx('shipment_lines').insert({
-        shipment_id: shipment_id,
-        product_id: productId || null,
-        partner_id: partnerId,
-        customer: demand.customer_name || '',
-        destination: demand.destination || '',
-        euro_palets: sendEuro,
-        normal_palets: sendNormal,
-        total_palets: sendEuro + sendNormal,
-        gross_weight_kg: demand.gross_weight_kg || 0,
-        price_eur: demand.price_eur || 0,
-        price_bcn_eur: demand.price_bcn_eur || 0,
-        unit: demand.unit || '',
-        reloading_per_plt: demand.reloading_per_plt || 0,
-        transport_bcn_per_plt: demand.transport_bcn_per_plt || 0,
-        albaran_number: demand.albaran_number || '',
-        customer_order_no: demand.customer_order_no || '',
-        comment: demand.comment || demand.notes || '',
-        truck_number_per: 0,
-        transport_cost_product: 0,
-        transport_cost: 0
-      });
+      // 2. Ellenőrzés: van-e már azonos tétel a célkamionon (összevonás)?
+      const existingLine = await trx('shipment_lines')
+        .where({
+          shipment_id: shipment_id,
+          product_id: productId || null,
+          partner_id: partnerId || null,
+          customer: demand.customer_name || '',
+          destination: demand.destination || '',
+          comment: demand.comment || demand.notes || ''
+        })
+        .first();
+
+      if (existingLine) {
+        // Összevonás: raklapok összeadása a meglévő sorra
+        const mergedEuro = (parseFloat(existingLine.euro_palets) || 0) + sendEuro;
+        const mergedNormal = (parseFloat(existingLine.normal_palets) || 0) + sendNormal;
+        await trx('shipment_lines').where('id', existingLine.id).update({
+          euro_palets: mergedEuro,
+          normal_palets: mergedNormal,
+          total_palets: mergedEuro + mergedNormal
+        });
+      } else {
+        // Új sor hozzáadása a célkamionhoz
+        await trx('shipment_lines').insert({
+          shipment_id: shipment_id,
+          product_id: productId || null,
+          partner_id: partnerId,
+          customer: demand.customer_name || '',
+          destination: demand.destination || '',
+          euro_palets: sendEuro,
+          normal_palets: sendNormal,
+          total_palets: sendEuro + sendNormal,
+          gross_weight_kg: demand.gross_weight_kg || 0,
+          price_eur: demand.price_eur || 0,
+          price_bcn_eur: demand.price_bcn_eur || 0,
+          unit: demand.unit || '',
+          reloading_per_plt: demand.reloading_per_plt || 0,
+          transport_bcn_per_plt: demand.transport_bcn_per_plt || 0,
+          albaran_number: demand.albaran_number || '',
+          customer_order_no: demand.customer_order_no || '',
+          comment: demand.comment || demand.notes || '',
+          truck_number_per: 0,
+          transport_cost_product: 0,
+          transport_cost: 0
+        });
+      }
 
       // Mivel a products tábla name mezőjét nem tárolhatjuk shipment_lines-ban productName-ként,
       // de a product_id-n keresztül lekérhető, ez rendben van.
