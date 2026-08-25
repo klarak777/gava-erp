@@ -226,9 +226,20 @@ router.get('/', async (req, res) => {
                     })
                     .first('aldi_price_currency_periods.currency_code');
 
-                if (period) {
+                if (period && period.currency_code) {
                     currency = period.currency_code;
                     break; // Megvan a deviza, nem kell tovább keresni
+                } else {
+                    const latestPeriod = await db('aldi_price_currency_periods')
+                        .join('aldi_weekly_price_lines', 'aldi_price_currency_periods.price_line_id', 'aldi_weekly_price_lines.id')
+                        .where('aldi_weekly_price_lines.chain_product_id', cp.id)
+                        .orderBy('aldi_price_currency_periods.period_end', 'desc')
+                        .first('aldi_price_currency_periods.currency_code');
+                    
+                    if (latestPeriod && latestPeriod.currency_code) {
+                        currency = latestPeriod.currency_code;
+                        break;
+                    }
                 }
             }
 

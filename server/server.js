@@ -48,6 +48,7 @@ const aiRouter = require('./src/routes/ai');
 const chainProductsRouter = require('./src/routes/chain_products');
 const aldiWeeklyPricesRouter = require('./src/routes/aldi_weekly_prices');
 const aldiDailyOrdersRouter = require('./src/routes/aldi_daily_orders');
+const aldiCrossDockingRouter = require('./src/routes/aldi_cross_docking');
 
 // Egyszerű teszt végpont
 app.get('/api/v1/status', (req, res) => {
@@ -77,6 +78,7 @@ app.use('/api/v1/ai', aiRouter);
 app.use('/api/v1/chain-products', chainProductsRouter);
 app.use('/api/v1/aldi-weekly-prices', aldiWeeklyPricesRouter);
 app.use('/api/v1/aldi-daily-orders', aldiDailyOrdersRouter);
+app.use('/api/v1/aldi-cross-docking', aldiCrossDockingRouter);
 
 // Szerver indítása
 app.listen(PORT, () => {

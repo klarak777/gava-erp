@@ -51,7 +51,62 @@ export function renderAldiRendelesek(container, windowManager) {
     hetiArakSelectedWeekId: null,
     hetiArakLines: [],           // Aktuálisan betöltött sorok
     hetiArakIsLoading: false,
+    
+    // Komissió state
+    komissioView: 'summary', // 'summary' | 'detail'
+    komissioFilterDate: '',
+    komissioFilterTruck: '',
+    komissioSummaryData: [],
+    komissioDetailTruckId: null,
+    komissioDetailTruckNo: '',
+    komissioDetailLines: [],
+    komissioAvailableProducts: [],
   };
+
+  async function fetchKomissioSummary() {
+    try {
+      let url = '/api/v1/aldi-cross-docking/commission-summary?';
+      if (state.komissioFilterDate) url += `date=${state.komissioFilterDate}&`;
+      if (state.komissioFilterTruck) url += `truck_id=${state.komissioFilterTruck}&`;
+      const res = await fetch(url);
+      if (res.ok) {
+        state.komissioSummaryData = await res.json();
+        if (state.activeTab === 'komissio' && state.komissioView === 'summary') renderModule();
+      }
+    } catch (e) {
+      console.warn('Nem sikerült a komissió summary lekérése:', e);
+    }
+  }
+
+  async function fetchKomissioDetail(truckId, truckNo) {
+    try {
+      state.komissioDetailTruckId = truckId;
+      state.komissioDetailTruckNo = truckNo;
+      const [linesRes, truckLinesRes] = await Promise.all([
+        fetch(`/api/v1/aldi-cross-docking/trucks/${truckId}/commission-lines`),
+        fetch(`/api/v1/aldi-cross-docking/trucks/${truckId}/lines`)
+      ]);
+      if (linesRes.ok) {
+        state.komissioDetailLines = await linesRes.json();
+      }
+      if (truckLinesRes.ok) {
+        const truckLines = await truckLinesRes.json();
+        const available = [];
+        const seen = new Set();
+        truckLines.forEach(l => {
+          if (l.product_name && !seen.has(l.product_name)) {
+            seen.add(l.product_name);
+            available.push(l.product_name);
+          }
+        });
+        state.komissioAvailableProducts = available;
+      }
+      state.komissioView = 'detail';
+      if (state.activeTab === 'komissio') renderModule();
+    } catch (e) {
+      console.warn('Nem sikerült a komissió detail lekérése:', e);
+    }
+  }
 
   async function fetchNapiRendelesek() {
     try {
@@ -221,6 +276,10 @@ export function renderAldiRendelesek(container, windowManager) {
           ${state.activeTab === 'heti_arak' ? '<span style="position:absolute; top:-12px; left:50%; transform:translateX(-50%); color:#0284c7; font-size:10px;">▼</span>' : ''}
           Heti árak
         </button>
+        <button id="aldi-tab-komissio" style="${tabStyle('komissio')}">
+          ${state.activeTab === 'komissio' ? '<span style="position:absolute; top:-12px; left:50%; transform:translateX(-50%); color:#0284c7; font-size:10px;">▼</span>' : ''}
+          Komissió utasítás
+        </button>
         <button id="aldi-tab-termekek" style="${tabStyle('termekek')}">
           ${state.activeTab === 'termekek' ? '<span style="position:absolute; top:-12px; left:50%; transform:translateX(-50%); color:#0284c7; font-size:10px;">▼</span>' : ''}
           Termékek adat tábla
@@ -233,6 +292,7 @@ export function renderAldiRendelesek(container, windowManager) {
         ${state.activeTab === 'napi' ? renderNapiRendelesHtml() :
         state.activeTab === 'heti' ? renderHetiLekotesHtml() :
           state.activeTab === 'heti_arak' ? renderHetiArakHtml() :
+          state.activeTab === 'komissio' ? renderKomissioHtml() :
             renderTermekekHtml()
       }
       </div>
@@ -549,6 +609,192 @@ export function renderAldiRendelesek(container, windowManager) {
     `;
   }
 
+  
+  // ─── Komissió utasítás fül ────────────────────────────────────────────────────────
+
+  function renderKomissioHtml() {
+    if (state.komissioView === 'detail') {
+      return renderKomissioDetailHtml();
+    }
+    return renderKomissioSummaryHtml();
+  }
+
+  function renderKomissioSummaryHtml() {
+    return `
+      <div style="display:flex; align-items:flex-end; gap:16px; margin:16px 0 20px 0; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <label style="font-size:11px; font-weight:600; color:#475569;">Szállítási dátum</label>
+          <input type="text" id="aldi-komissio-filter-date" class="access-control-input" value="${state.komissioFilterDate}" placeholder="YYYY-MM-DD" style="height:32px; width:140px; font-size:12px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px;">
+        </div>
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <label style="font-size:11px; font-weight:600; color:#475569;">Kamionszám választó</label>
+          <select id="aldi-komissio-filter-truck" class="access-control-input" style="height:32px; width:140px; font-size:12px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; background:#fff;">
+            <option value="">Mind</option>
+            ${state.komissioSummaryData.map(t => `<option value="${t.id}" ${state.komissioFilterTruck == t.id ? 'selected' : ''}>${t.truck_number}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div style="border:1px solid #e2e8f0; border-radius:6px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+        <table style="width:100%; border-collapse:collapse; font-size:13px; text-align:left;">
+          <thead>
+            <tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;">
+              <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; width:100px;">SZÁLLÍTÁSI DÁTUM</th>
+              <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; width:120px;">KAMION SZÁM</th>
+              <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; text-align:right;">RAKLAP</th>
+              <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; text-align:right;">RENDELT KARTONSZÁM</th>
+              <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; text-align:right;">BRUTTÓ KG</th>
+              <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; text-align:right;">NETTÓ KG</th>
+              <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; text-align:center;">ÖSSZEKÉSZÍTÉS ÁLLAPOTA</th>
+              <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; text-align:right;">KOMISSIÓZOTT KARTONSZÁM</th>
+              <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; text-align:right;">MÉG HÁTRA VAN</th>
+              <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; text-align:center;">KOMISSIÓ MEGTEKINTÉSE</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${state.komissioSummaryData.length === 0 ? `<tr><td colspan="10" style="padding:24px; text-align:center; color:#94a3b8;">Nincs adat.</td></tr>` :
+              state.komissioSummaryData.map((t, idx) => {
+                const dt = new Date(t.delivery_date);
+                const formattedDate = !isNaN(dt) ? dt.toISOString().split('T')[0] : t.delivery_date;
+                const statusColor = t.status_percent === 100 ? '#10b981' : (t.status_percent > 0 ? '#f59e0b' : '#64748b');
+                
+                return `
+                <tr style="border-bottom:1px solid #f1f5f9; ${idx % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;'}">
+                  <td style="padding:10px; font-weight:500;">${formattedDate}</td>
+                  <td style="padding:10px; font-weight:700;">${t.truck_number}</td>
+                  <td style="padding:10px; text-align:right;">${t.pallets || 0}</td>
+                  <td style="padding:10px; text-align:right;">${t.ordered_cartons || 0}</td>
+                  <td style="padding:10px; text-align:right;">${t.gross_weight || 0}</td>
+                  <td style="padding:10px; text-align:right;">${t.net_weight || 0}</td>
+                  <td style="padding:10px; text-align:center; font-weight:700; color:${statusColor};">${t.status_percent}%</td>
+                  <td style="padding:10px; text-align:right;">${t.commissioned_cartons || 0}</td>
+                  <td style="padding:10px; text-align:right;">${t.remaining_cartons || 0}</td>
+                  <td style="padding:10px; text-align:center;">
+                    <button class="aldi-view-komissio-btn" data-id="${t.id}" data-truckno="${t.truck_number}" style="background:none; border:none; cursor:pointer; font-size:18px;" title="Megtekintés">👁️</button>
+                  </td>
+                </tr>
+                `;
+              }).join('')
+            }
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderKomissioDetailHtml() {
+    let sumCartons = 0, sumGross = 0, sumNet = 0, sumPallets = 0;
+    state.komissioDetailLines.forEach(l => {
+      sumCartons += (parseFloat(l.cartons) || 0);
+      sumGross += (parseFloat(l.gross_weight) || 0);
+      sumNet += (parseFloat(l.net_weight) || 0);
+      sumPallets += (parseFloat(l.pallets) || 0);
+    });
+
+    const termekOptions = state.komissioAvailableProducts.map(p => `<option value="${p}">${p}</option>`).join('');
+
+    return `
+      <div style="margin-bottom:16px;">
+        <button id="aldi-komissio-back-btn" class="secondary-btn" style="height:32px; padding:0 16px; border-radius:6px; font-size:13px; font-weight:600; border:1px solid #cbd5e1; background:#ffffff; color:#334155; cursor:pointer;">
+          ⬅ Vissza
+        </button>
+      </div>
+      <div style="display:flex; gap:16px; margin-bottom:16px;">
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <label style="font-size:11px; font-weight:600; color:#475569;">KAMION SZÁM</label>
+          <input type="text" value="${state.komissioDetailTruckNo}" disabled style="height:32px; width:140px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; background:#f1f5f9; font-weight:700;">
+        </div>
+      </div>
+      
+      <div style="border:1px solid #e2e8f0; border-radius:6px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+        <table style="width:100%; border-collapse:collapse; font-size:12px; text-align:left;">
+          <thead>
+            <tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;">
+              <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155; width:40px; text-align:center;">➕</th>
+              <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155; width:160px;">TERMÉK</th>
+              <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">KARTONSZÁM</th>
+              <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">BRUTTÓ KG</th>
+              <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">NETTÓ KG</th>
+              <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">ÁTLAG SÚLY</th>
+              <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">RAKLAP</th>
+              <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">SZÁRMAZÁSI ORSZÁG</th>
+              <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">KARTON TÍPUS</th>
+              <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">TÁRA SÚLY</th>
+              <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">RAKLAP TÍPUS</th>
+              <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">LOT SZÁM</th>
+              <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">MŰV.</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${state.komissioDetailLines.map((l, idx) => {
+              return `
+              <tr style="border-bottom:1px solid #f1f5f9; background:${idx % 2 === 1 ? '#fafafa' : '#ffffff'};">
+                <td style="padding:8px; text-align:center;"></td>
+                <td style="padding:8px;">
+                  <select class="kom-field" data-field="product_name" data-id="${l.id}" style="width:100%; padding:4px; font-size:12px; border:1px solid transparent; background:transparent;">
+                    <option value="">Válassz...</option>
+                    ${state.komissioAvailableProducts.map(p => `<option value="${p}" ${l.product_name === p ? 'selected' : ''}>${p}</option>`).join('')}
+                    ${(!state.komissioAvailableProducts.includes(l.product_name) && l.product_name) ? `<option value="${l.product_name}" selected>${l.product_name}</option>` : ''}
+                  </select>
+                </td>
+                <td style="padding:8px;"><input type="number" class="kom-field" data-field="cartons" data-id="${l.id}" value="${l.cartons || ''}" style="width:100%; border:1px solid transparent; background:transparent; padding:4px;"></td>
+                <td style="padding:8px;"><input type="number" step="0.01" class="kom-field" data-field="gross_weight" data-id="${l.id}" value="${l.gross_weight || ''}" style="width:100%; border:1px solid transparent; background:transparent; padding:4px;"></td>
+                <td style="padding:8px;"><input type="number" step="0.01" class="kom-field" data-field="net_weight" data-id="${l.id}" value="${l.net_weight || ''}" style="width:100%; border:1px solid transparent; background:transparent; padding:4px;"></td>
+                <td style="padding:8px;"><input type="number" step="0.01" class="kom-field" data-field="average_weight" data-id="${l.id}" value="${l.average_weight || ''}" style="width:100%; border:1px solid transparent; background:transparent; padding:4px;"></td>
+                <td style="padding:8px;"><input type="number" step="0.01" class="kom-field" data-field="pallets" data-id="${l.id}" value="${l.pallets || ''}" style="width:100%; border:1px solid transparent; background:transparent; padding:4px;"></td>
+                <td style="padding:8px;"><input type="text" class="kom-field" data-field="origin_country" data-id="${l.id}" value="${l.origin_country || ''}" style="width:100%; border:1px solid transparent; background:transparent; padding:4px;"></td>
+                <td style="padding:8px;"><input type="text" class="kom-field" data-field="carton_type" data-id="${l.id}" value="${l.carton_type || ''}" style="width:100%; border:1px solid transparent; background:transparent; padding:4px;"></td>
+                <td style="padding:8px;"><input type="number" step="0.01" class="kom-field" data-field="tare_weight" data-id="${l.id}" value="${l.tare_weight || ''}" style="width:100%; border:1px solid transparent; background:transparent; padding:4px;"></td>
+                <td style="padding:8px;"><input type="text" class="kom-field" data-field="pallet_type" data-id="${l.id}" value="${l.pallet_type || ''}" style="width:100%; border:1px solid transparent; background:transparent; padding:4px;"></td>
+                <td style="padding:8px;"><input type="text" class="kom-field" data-field="lot_number" data-id="${l.id}" value="${l.lot_number || ''}" style="width:100%; border:1px solid transparent; background:transparent; padding:4px;"></td>
+                <td style="padding:8px; text-align:center;">
+                  <button class="kom-del-btn" data-id="${l.id}" style="background:none; border:none; cursor:pointer; color:#ef4444;" title="Törlés">🗑</button>
+                </td>
+              </tr>
+              `;
+            }).join('')}
+            <!-- Új sor -->
+            <tr style="background:#fefce8; border-top:2px solid #e2e8f0;">
+              <td style="padding:8px; text-align:center;">
+                <button id="komissio-add-row-btn" style="background:none; border:none; cursor:pointer; font-size:16px; color:#2563eb;" title="Hozzáadás">➕</button>
+              </td>
+              <td style="padding:8px;">
+                <select id="kom-new-product_name" style="width:100%; padding:4px; font-size:12px; border:1px solid #cbd5e1; border-radius:4px; background:#fff;">
+                  <option value="">Válassz...</option>
+                  ${termekOptions}
+                </select>
+              </td>
+              <td style="padding:8px;"><input type="number" id="kom-new-cartons" style="width:100%; border:1px solid #cbd5e1; border-radius:4px; padding:4px;"></td>
+              <td style="padding:8px;"><input type="number" step="0.01" id="kom-new-gross_weight" style="width:100%; border:1px solid #cbd5e1; border-radius:4px; padding:4px;"></td>
+              <td style="padding:8px;"><input type="number" step="0.01" id="kom-new-net_weight" style="width:100%; border:1px solid #cbd5e1; border-radius:4px; padding:4px;"></td>
+              <td style="padding:8px;"><input type="number" step="0.01" id="kom-new-average_weight" style="width:100%; border:1px solid #cbd5e1; border-radius:4px; padding:4px;"></td>
+              <td style="padding:8px;"><input type="number" step="0.01" id="kom-new-pallets" style="width:100%; border:1px solid #cbd5e1; border-radius:4px; padding:4px;"></td>
+              <td style="padding:8px;"><input type="text" id="kom-new-origin_country" style="width:100%; border:1px solid #cbd5e1; border-radius:4px; padding:4px;"></td>
+              <td style="padding:8px;"><input type="text" id="kom-new-carton_type" style="width:100%; border:1px solid #cbd5e1; border-radius:4px; padding:4px;"></td>
+              <td style="padding:8px;"><input type="number" step="0.01" id="kom-new-tare_weight" style="width:100%; border:1px solid #cbd5e1; border-radius:4px; padding:4px;"></td>
+              <td style="padding:8px;"><input type="text" id="kom-new-pallet_type" style="width:100%; border:1px solid #cbd5e1; border-radius:4px; padding:4px;"></td>
+              <td style="padding:8px;"><input type="text" id="kom-new-lot_number" style="width:100%; border:1px solid #cbd5e1; border-radius:4px; padding:4px;"></td>
+              <td></td>
+            </tr>
+            <!-- Összesen -->
+            <tr style="background:#e2e8f0; font-weight:700;">
+              <td colspan="2" style="padding:10px; text-align:right;">ÖSSZESEN:</td>
+              <td style="padding:10px;">${sumCartons}</td>
+              <td style="padding:10px;">${sumGross.toFixed(2)}</td>
+              <td style="padding:10px;">${sumNet.toFixed(2)}</td>
+              <td style="padding:10px;"></td>
+              <td style="padding:10px;">${sumPallets.toFixed(2)}</td>
+              <td colspan="6"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="font-size:11px; color:#64748b; margin-top:8px;">
+        💡 A mezőkből való kilépés (kattintás máshova) automatikusan elmenti a módosítást!
+      </div>
+    `;
+  }
+
+
   // ─── Termékek adat tábla fül ──────────────────────────────────────────────────
 
   function renderTermekekHtml() {
@@ -780,6 +1026,7 @@ export function renderAldiRendelesek(container, windowManager) {
         </div>
         <div style="padding:12px 20px; border-top:1px solid #e2e8f0; background:#f8fafc; display:flex; justify-content:space-between; align-items:center;">
           <button id="export-btn-${id}" style="padding:6px 18px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid #10b981; background:#ffffff; color:#10b981; cursor:pointer; display:${lines.length > 0 ? 'inline-flex' : 'none'}; align-items:center; gap:6px;">⬇️ Excel Export</button>
+          <button id="send-to-demands-btn-${id}" class="primary-btn" style="padding:6px 18px; border-radius:20px; font-size:13px; font-weight:600; display:${lines.length > 0 ? 'inline-flex' : 'none'}; align-items:center; gap:6px; background:#2563eb; color:white; border:none; cursor:pointer;">Rakodásra küldés &gt;&gt;&gt;</button>
         </div>
       </div>
     `;
@@ -797,6 +1044,26 @@ export function renderAldiRendelesek(container, windowManager) {
         const exportBtn = document.getElementById(`export-btn-${id}`);
         if (exportBtn) {
           exportBtn.addEventListener('click', () => doExcelExport(lines, orderNo, dateStr));
+        }
+
+        const sendBtn = document.getElementById(`send-to-demands-btn-${id}`);
+        if (sendBtn) {
+          sendBtn.addEventListener('click', () => {
+             // Modális ablak bezárása (feltételezzük, hogy az overlay vagy a close gomb megtalálható)
+             const closeBtn = document.querySelector('.window-manager-modal-close');
+             if (closeBtn) closeBtn.click();
+             
+             // Rendelési szám mentése
+             localStorage.setItem('aldi_rakodas_pending_order', orderNo);
+
+             // Navigáció a Rakodás menüre
+             const rakodasMenu = document.querySelector('[data-module="aldi_rakodas"]');
+             if (rakodasMenu) {
+               rakodasMenu.click();
+             } else if (window.appNavigate) {
+               window.appNavigate('aldi_rakodas');
+             }
+          });
         }
       }, 100);
     } else {
@@ -1876,6 +2143,114 @@ export function renderAldiRendelesek(container, windowManager) {
     });
     wrapper.querySelector('#aldi-tab-termekek')?.addEventListener('click', () => { state.activeTab = 'termekek'; renderModule(); });
 
+
+    wrapper.querySelector('#aldi-tab-komissio')?.addEventListener('click', () => { 
+      state.activeTab = 'komissio'; 
+      if (state.komissioSummaryData.length === 0) fetchKomissioSummary();
+      else renderModule(); 
+    });
+    
+    // Komissió summary events
+    const komDateInput = wrapper.querySelector('#aldi-komissio-filter-date');
+    if (komDateInput) {
+      komDateInput.addEventListener('change', (e) => { state.komissioFilterDate = e.target.value; fetchKomissioSummary(); });
+    }
+    const komTruckInput = wrapper.querySelector('#aldi-komissio-filter-truck');
+    if (komTruckInput) {
+      komTruckInput.addEventListener('change', (e) => { state.komissioFilterTruck = e.target.value; fetchKomissioSummary(); });
+    }
+    wrapper.querySelectorAll('.aldi-view-komissio-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        fetchKomissioDetail(btn.dataset.id, btn.dataset.truckno);
+      });
+    });
+    
+    // Komissió detail events
+    wrapper.querySelector('#aldi-komissio-back-btn')?.addEventListener('click', () => {
+      state.komissioView = 'summary';
+      fetchKomissioSummary();
+    });
+    
+    wrapper.querySelector('#komissio-add-row-btn')?.addEventListener('click', async () => {
+      const truckId = state.komissioDetailTruckId;
+      if (!truckId) return;
+      
+      const val = (id) => wrapper.querySelector('#'+id)?.value;
+      const product_name = val('kom-new-product_name');
+      if (!product_name) { alert('Válaszd ki a terméket!'); return; }
+      
+      const payload = {
+        product_name,
+        cartons: val('kom-new-cartons'),
+        gross_weight: val('kom-new-gross_weight'),
+        net_weight: val('kom-new-net_weight'),
+        average_weight: val('kom-new-average_weight'),
+        pallets: val('kom-new-pallets'),
+        origin_country: val('kom-new-origin_country'),
+        carton_type: val('kom-new-carton_type'),
+        tare_weight: val('kom-new-tare_weight'),
+        pallet_type: val('kom-new-pallet_type'),
+        lot_number: val('kom-new-lot_number')
+      };
+      
+      try {
+        const res = await fetch(`/api/v1/aldi-cross-docking/trucks/${truckId}/commission-lines`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          fetchKomissioDetail(truckId, state.komissioDetailTruckNo);
+        } else {
+          alert('Hiba mentéskor!');
+        }
+      } catch(e) { console.error(e); }
+    });
+    
+    wrapper.querySelectorAll('.kom-field').forEach(field => {
+      field.addEventListener('change', async (e) => {
+        const lineId = e.target.dataset.id;
+        const fieldName = e.target.dataset.field;
+        const truckId = state.komissioDetailTruckId;
+        
+        // Find existing line to keep other fields
+        const line = state.komissioDetailLines.find(l => l.id == lineId);
+        if (!line) return;
+        
+        const payload = { ...line, [fieldName]: e.target.value };
+        try {
+          const res = await fetch(`/api/v1/aldi-cross-docking/trucks/${truckId}/commission-lines/${lineId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (res.ok) {
+            const updated = await res.json();
+            // Update inline
+            Object.assign(line, updated);
+            // Re-render to update sum
+            renderModule();
+          }
+        } catch(e) { console.error(e); }
+      });
+    });
+    
+    wrapper.querySelectorAll('.kom-del-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Biztosan törlöd a sort?')) return;
+        const lineId = btn.dataset.id;
+        try {
+          const res = await fetch(`/api/v1/aldi-cross-docking/trucks/${state.komissioDetailTruckId}/commission-lines/${lineId}`, {
+            method: 'DELETE'
+          });
+          if (res.ok) {
+            fetchKomissioDetail(state.komissioDetailTruckId, state.komissioDetailTruckNo);
+          }
+        } catch(e) { console.error(e); }
+      });
+    });
+
+
     // Napi rendelés filterek
     const dateInput = wrapper.querySelector('#aldi-filter-date');
     if (dateInput) dateInput.addEventListener('input', (e) => { state.filterDate = e.target.value; renderModule(); });
@@ -2109,5 +2484,6 @@ export function renderAldiRendelesek(container, windowManager) {
 
   // ─── Initial load ─────────────────────────────────────────────────────────────
   fetchProductsFromDb();
+  fetchKomissioSummary();
   fetchNapiRendelesek();
 }
