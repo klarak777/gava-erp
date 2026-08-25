@@ -163,6 +163,20 @@ router.delete('/trucks/:truckId/lines/:lineId', async (req, res) => {
   }
 });
 
+// Delete line directly by lineId
+router.delete('/truck-lines/:lineId', async (req, res) => {
+  try {
+    const { lineId } = req.params;
+    await knex('aldi_truck_lines')
+      .where({ id: lineId })
+      .delete();
+    res.status(204).end();
+  } catch (err) {
+    console.error('Error deleting aldi truck line by id:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Get unassigned (or partially assigned) ALDI order demands
 // This provides the data for the right side "Áru igény" panel
 router.get('/demands', async (req, res) => {

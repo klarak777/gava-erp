@@ -137,11 +137,16 @@ export function renderAldiRakodas(container, windowManager) {
   const elSumPallets = view.querySelector('#aldi-sum-pallets');
   const elSumTrucks = view.querySelector('#aldi-sum-trucks');
 
+  // Szűrők visszaállítása és megőrzése böngészőfrissítés esetén is
   const pendingOrder = localStorage.getItem('aldi_rakodas_pending_order');
-  if (pendingOrder) {
-    state.filterOrder = pendingOrder;
+  const savedFilterOrder = sessionStorage.getItem('aldi_rakodas_filter_order');
+  const initialOrderFilter = pendingOrder || savedFilterOrder || '';
+
+  if (initialOrderFilter) {
+    state.filterOrder = initialOrderFilter;
+    sessionStorage.setItem('aldi_rakodas_filter_order', initialOrderFilter);
     localStorage.removeItem('aldi_rakodas_pending_order');
-    if (filterOrderInput) filterOrderInput.value = pendingOrder;
+    if (filterOrderInput) filterOrderInput.value = initialOrderFilter;
   }
 
   // Adatbetöltés: Kamionok
@@ -595,7 +600,7 @@ export function renderAldiRakodas(container, windowManager) {
                 const lineId = e.currentTarget.getAttribute('data-id');
                 if (!confirm('Biztosan visszateszed ezt a tételt a kamionról az áruigénybe?')) return;
                 try {
-                  const delRes = await fetch(`/api/v1/aldi-cross-docking/truck-lines/${lineId}`, { method: 'DELETE' });
+                  const delRes = await fetch(`/api/v1/aldi-cross-docking/trucks/${truckId}/lines/${lineId}`, { method: 'DELETE' });
                   if (delRes.ok) {
                     loadTruckLines();
                     loadDemands();
@@ -674,7 +679,12 @@ export function renderAldiRakodas(container, windowManager) {
   });
 
   filterOrderInput.addEventListener('input', () => {
-    state.filterOrder = filterOrderInput.value;
+    state.filterOrder = filterOrderInput.value.trim();
+    if (state.filterOrder) {
+      sessionStorage.setItem('aldi_rakodas_filter_order', state.filterOrder);
+    } else {
+      sessionStorage.removeItem('aldi_rakodas_filter_order');
+    }
     loadDemands();
   });
 
@@ -685,6 +695,7 @@ export function renderAldiRakodas(container, windowManager) {
     state.filterProduct = '';
     state.filterDate = '';
     state.filterOrder = '';
+    sessionStorage.removeItem('aldi_rakodas_filter_order');
     loadDemands();
   });
 
@@ -692,12 +703,7 @@ export function renderAldiRakodas(container, windowManager) {
     openEditTruckModal(null);
   });
 
-  // Inicializálás
+  // Inicializálás: Kamionok és Áruigények automatikus betöltése
   loadTrucks();
-  // Az Áru igény panel csak akkor töltődik be automatikusan, ha van pendingOrder
-  // (azaz a felhasználó a "Rakodásra küldés >>>" gombbal navigált ide)
-  // Egyéb esetben a felhasználónak kell szűrőt beállítani, hogy betöltődjön
-  if (pendingOrder) {
-    loadDemands();
-  }
+  loadDemands();
 }

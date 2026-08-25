@@ -1055,6 +1055,7 @@ export function renderAldiRendelesek(container, windowManager) {
              
              // Rendelési szám mentése
              localStorage.setItem('aldi_rakodas_pending_order', orderNo);
+             sessionStorage.setItem('aldi_rakodas_filter_order', orderNo);
 
              // Navigáció a Rakodás menüre
              const rakodasMenu = document.querySelector('[data-module="aldi_rakodas"]');
