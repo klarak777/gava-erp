@@ -384,7 +384,7 @@ export function renderAldiRendelesek(container, windowManager) {
                 </td>
                 <td style="padding:10px 14px; color:#334155;">
                   <span style="display:inline-block; background:${orderTypeBadgeBg}; color:${orderTypeBadgeColor}; font-size:11px; font-weight:700; padding:2px 8px; border-radius:4px; border:${orderTypeBorder};">
-                    ${o.order_type || 'Tételhez nincs heti ár'}
+                    ${o.order_type || 'Nincs heti ár megadva a tételhez'}
                   </span>
                 </td>
                 <td style="padding:10px 14px; text-align:center; font-weight:700; color:#1e293b;">

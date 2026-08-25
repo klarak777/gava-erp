@@ -208,7 +208,7 @@ router.get('/demands', async (req, res) => {
         if (remaining > 0) {
             const product = productMap[line.gtin];
             
-            let currency = 'Normál';
+            let currency = 'Nincs heti ár megadva a tételhez';
             if (product) {
                 let dDate = order.delivery_date;
                 if (dDate instanceof Date) {
@@ -232,7 +232,7 @@ router.get('/demands', async (req, res) => {
                 if (period && period.currency_code) {
                     currency = period.currency_code;
                 }
-                // Ha nincs egyező időszak a dátumhoz, currency marad 'Normál'
+                // Ha nincs egyező időszak a dátumhoz, currency marad 'Nincs heti ár megadva a tételhez'
             }
 
             demands.push({
