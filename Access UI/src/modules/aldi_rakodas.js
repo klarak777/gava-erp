@@ -694,5 +694,10 @@ export function renderAldiRakodas(container, windowManager) {
 
   // Inicializálás
   loadTrucks();
-  loadDemands();
+  // Az Áru igény panel csak akkor töltődik be automatikusan, ha van pendingOrder
+  // (azaz a felhasználó a "Rakodásra küldés >>>" gombbal navigált ide)
+  // Egyéb esetben a felhasználónak kell szűrőt beállítani, hogy betöltődjön
+  if (pendingOrder) {
+    loadDemands();
+  }
 }

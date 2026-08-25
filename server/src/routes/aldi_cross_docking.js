@@ -231,18 +231,8 @@ router.get('/demands', async (req, res) => {
 
                 if (period && period.currency_code) {
                     currency = period.currency_code;
-                } else {
-                    // Fallback to latest available period for this product
-                    const latestPeriod = await knex('aldi_price_currency_periods')
-                        .join('aldi_weekly_price_lines', 'aldi_price_currency_periods.price_line_id', 'aldi_weekly_price_lines.id')
-                        .where('aldi_weekly_price_lines.chain_product_id', product.id)
-                        .orderBy('aldi_price_currency_periods.period_end', 'desc')
-                        .first('aldi_price_currency_periods.currency_code');
-                        
-                    if (latestPeriod && latestPeriod.currency_code) {
-                        currency = latestPeriod.currency_code;
-                    }
                 }
+                // Ha nincs egyező időszak a dátumhoz, currency marad 'Normál'
             }
 
             demands.push({
