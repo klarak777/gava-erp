@@ -1064,22 +1064,15 @@ export function renderAldiRendelesek(container, windowManager) {
                return;
              }
 
-             // Modális ablak bezárása (feltételezzük, hogy az overlay vagy a close gomb megtalálható)
-             const closeBtn = document.querySelector('.window-manager-modal-close');
-             if (closeBtn) closeBtn.click();
-             
-             // Opcionális: már nem feltétlenül kell a szűrő, mert a szerver csak a kiküldötteket adja, de kényelmi okokból még hagyhatjuk.
-             // Hogy a felhasználó az összeset lássa, inkább töröljük a szűrőt.
-             localStorage.removeItem('aldi_rakodas_pending_order');
-             sessionStorage.removeItem('aldi_rakodas_filter_order');
+             sendBtn.textContent = '✓ Sikeresen elküldve!';
+             sendBtn.style.backgroundColor = '#16a34a';
+             sendBtn.style.color = 'white';
+             sendBtn.disabled = true;
 
-             // Navigáció a Rakodás menüre
-             const rakodasMenu = document.querySelector('[data-module="aldi_rakodas"]');
-             if (rakodasMenu) {
-               rakodasMenu.click();
-             } else if (window.appNavigate) {
-               window.appNavigate('aldi_rakodas');
-             }
+             setTimeout(() => {
+               const closeBtn = document.querySelector('.window-manager-modal-close');
+               if (closeBtn) closeBtn.click();
+             }, 1000);
           });
         }
       }, 100);
