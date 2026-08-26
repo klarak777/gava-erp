@@ -247,7 +247,8 @@ router.get('/demands', async (req, res) => {
                     currency = period.currency_code;
                 }
                 // Ha nincs egyező időszak a dátumhoz, currency marad 'Nincs heti ár megadva a tételhez'
-            }
+            const cpp = line.cartons_per_pallet ? parseInt(line.cartons_per_pallet) : null;
+            const calcPallets = (cpp && cpp > 0) ? (remaining / cpp) : null;
 
             demands.push({
                 id: line.id,
@@ -258,8 +259,8 @@ router.get('/demands', async (req, res) => {
                 total_ordered_cartons: line.ordered_cartons,
                 delivery_date: order.delivery_date,
                 order_number: order.order_number,
-                cartons_per_pallet: null, 
-                pallets: null,
+                cartons_per_pallet: cpp, 
+                pallets: calcPallets,
                 order_type: currency
             });
         }
@@ -268,6 +269,34 @@ router.get('/demands', async (req, res) => {
     res.json(demands);
   } catch (err) {
     console.error('Error fetching aldi demands:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Batch update cartons_per_pallet for daily order lines
+router.put('/demands/cartons-per-pallet', async (req, res) => {
+  try {
+    const { updates } = req.body;
+    if (!Array.isArray(updates)) {
+      return res.status(400).json({ error: 'Az updates mezőnek tömbnek kell lennie.' });
+    }
+
+    await knex.transaction(async (trx) => {
+      for (const item of updates) {
+        if (item.id) {
+          const cpp = item.cartons_per_pallet !== '' && item.cartons_per_pallet !== null && !isNaN(item.cartons_per_pallet)
+            ? parseInt(item.cartons_per_pallet)
+            : null;
+          await trx('aldi_daily_order_lines')
+            .where({ id: item.id })
+            .update({ cartons_per_pallet: cpp });
+        }
+      }
+    });
+
+    res.json({ success: true, message: 'Karton/raklap értékek sikeresen mentve.' });
+  } catch (err) {
+    console.error('Error updating cartons_per_pallet:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
