@@ -6,9 +6,15 @@ const knex = require('../db/db');
 router.get('/trucks', async (req, res) => {
   try {
     const { date } = req.query;
-    let query = knex('aldi_trucks').select('*').orderBy('id', 'asc');
+    let query = knex('aldi_trucks')
+      .select('aldi_trucks.*')
+      .leftJoin('aldi_truck_lines', 'aldi_trucks.id', 'aldi_truck_lines.aldi_truck_id')
+      .sum('aldi_truck_lines.pallets as total_pallets')
+      .groupBy('aldi_trucks.id')
+      .orderBy('aldi_trucks.id', 'asc');
+    
     if (date) {
-      query = query.where('delivery_date', date);
+      query = query.where('aldi_trucks.delivery_date', date);
     }
     const trucks = await query;
     res.json(trucks);
