@@ -247,6 +247,8 @@ router.get('/demands', async (req, res) => {
                     currency = period.currency_code;
                 }
                 // Ha nincs egyező időszak a dátumhoz, currency marad 'Nincs heti ár megadva a tételhez'
+            }
+
             const cpp = line.cartons_per_pallet ? parseInt(line.cartons_per_pallet) : null;
             const calcPallets = (cpp && cpp > 0) ? (remaining / cpp) : null;
 
