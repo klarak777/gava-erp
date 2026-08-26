@@ -334,6 +334,13 @@ router.delete('/:id', async (req, res) => {
 router.patch('/:id/send-to-rakodas', async (req, res) => {
     try {
         const orderId = req.params.id;
+        const order = await db('aldi_daily_orders').where({ id: orderId }).first();
+        if (!order) {
+            return res.status(404).json({ error: 'Rendelés nem található.' });
+        }
+        if (order.sent_to_rakodas) {
+            return res.status(409).json({ error: 'Ez a rendelés már át lett küldve a Rakodás modulba.' });
+        }
         await db('aldi_daily_orders').where({ id: orderId }).update({ sent_to_rakodas: true });
         res.json({ success: true, message: 'Rendelés átküldve a Rakodás modulba.' });
     } catch (err) {

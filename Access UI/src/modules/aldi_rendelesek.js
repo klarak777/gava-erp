@@ -1055,7 +1055,11 @@ export function renderAldiRendelesek(container, windowManager) {
                  method: 'PATCH'
                });
                if (!res.ok) {
-                 alert('Hiba történt a tétel átküldésekor.');
+                 if (res.status === 409) {
+                     alert(`Figyelem! A tétel - SZÁLLÍTÁSI DÁTUM: ${dateStr}, RENDELÉSI SZÁM: ${orderNo}, VERZIÓ SZÁMA - hármas azonosítóval már át lett küldve a Rakodás modulba! Ezt a műveletet nem hajthatja végre még egyszer.`);
+                 } else {
+                     alert('Hiba történt a tétel átküldésekor.');
+                 }
                  return;
                }
              } catch (err) {
