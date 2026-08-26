@@ -329,4 +329,17 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
+// Endpoint: PATCH /api/v1/aldi-daily-orders/:id/send-to-rakodas
+// Beállítja, hogy a rendelés át lett küldve a Rakodás modulba
+router.patch('/:id/send-to-rakodas', async (req, res) => {
+    try {
+        const orderId = req.params.id;
+        await db('aldi_daily_orders').where({ id: orderId }).update({ sent_to_rakodas: true });
+        res.json({ success: true, message: 'Rendelés átküldve a Rakodás modulba.' });
+    } catch (err) {
+        console.error('Hiba a rendelés átküldése során:', err);
+        res.status(500).json({ error: 'Belső szerverhiba az átküldés során' });
+    }
+});
+
 module.exports = router;

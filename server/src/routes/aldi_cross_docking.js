@@ -183,7 +183,7 @@ router.get('/demands', async (req, res) => {
   try {
     const { delivery_date, order_number } = req.query;
 
-    let orderQuery = knex('aldi_daily_orders').select('id', 'order_number', 'delivery_date');
+    let orderQuery = knex('aldi_daily_orders').select('id', 'order_number', 'delivery_date').where('sent_to_rakodas', true);
     if (delivery_date) orderQuery = orderQuery.where('delivery_date', delivery_date);
     if (order_number) orderQuery = orderQuery.where('order_number', 'ilike', `%${order_number}%`);
 

@@ -165,15 +165,8 @@ export function renderAldiRakodas(container, windowManager) {
     }
   }
 
-  // Adatbetöltés: Áruigények (csak akkor töltjük be, ha van szűrés, pl. Rakodásra küldésből)
+  // Adatbetöltés: Áruigények (csak a 'sent_to_rakodas' = true rendeléseket hozza)
   async function loadDemands() {
-    // Ha nincs semmilyen szűrő beállítva, ne töltsük be az összes rendelést
-    if (!state.filterOrder && !state.filterDate && !state.filterProduct) {
-      state.demands = [];
-      renderDemands();
-      return;
-    }
-
     try {
       let url = '/api/v1/aldi-cross-docking/demands?_t=' + Date.now();
       if (state.filterDate) url += `&delivery_date=${encodeURIComponent(state.filterDate)}`;

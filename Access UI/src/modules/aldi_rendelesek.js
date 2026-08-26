@@ -1048,14 +1048,30 @@ export function renderAldiRendelesek(container, windowManager) {
 
         const sendBtn = document.getElementById(`send-to-demands-btn-${id}`);
         if (sendBtn) {
-          sendBtn.addEventListener('click', () => {
+          sendBtn.addEventListener('click', async () => {
+             // API hívás, ami beállítja a sent_to_rakodas = true taget az adatbázisban
+             try {
+               const res = await fetch(`/api/v1/aldi-daily-orders/${id}/send-to-rakodas`, {
+                 method: 'PATCH'
+               });
+               if (!res.ok) {
+                 alert('Hiba történt a tétel átküldésekor.');
+                 return;
+               }
+             } catch (err) {
+               console.error(err);
+               alert('Hálózati hiba.');
+               return;
+             }
+
              // Modális ablak bezárása (feltételezzük, hogy az overlay vagy a close gomb megtalálható)
              const closeBtn = document.querySelector('.window-manager-modal-close');
              if (closeBtn) closeBtn.click();
              
-             // Rendelési szám mentése
-             localStorage.setItem('aldi_rakodas_pending_order', orderNo);
-             sessionStorage.setItem('aldi_rakodas_filter_order', orderNo);
+             // Opcionális: már nem feltétlenül kell a szűrő, mert a szerver csak a kiküldötteket adja, de kényelmi okokból még hagyhatjuk.
+             // Hogy a felhasználó az összeset lássa, inkább töröljük a szűrőt.
+             localStorage.removeItem('aldi_rakodas_pending_order');
+             sessionStorage.removeItem('aldi_rakodas_filter_order');
 
              // Navigáció a Rakodás menüre
              const rakodasMenu = document.querySelector('[data-module="aldi_rakodas"]');
