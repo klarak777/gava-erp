@@ -176,7 +176,7 @@ export function renderRakodas(container, windowManager) {
             const val = inpElement.value.toLowerCase();
             dropElement.innerHTML = '';
             if (!val) { dropElement.style.display = 'none'; return; }
-            const filtered = list.filter(p => p[listField].toLowerCase().startsWith(val));
+            const filtered = list.filter(p => p[listField].toLowerCase().includes(val));
             if (filtered.length > 0) {
                 filtered.forEach(p => {
                     const div = document.createElement('div');
@@ -750,11 +750,11 @@ export function renderRakodas(container, windowManager) {
                 (a.name || '').localeCompare(b.name || '', 'hu', { sensitivity: 'base' })
             );
 
-            let filtered = val 
+                let filtered = val 
                 ? sortedProducts.filter(p => 
-                    (p.name || '').toLowerCase().startsWith(val) || 
-                    (p.name_hu || '').toLowerCase().startsWith(val) || 
-                    (p.code || '').toLowerCase().startsWith(val)
+                    (p.name || '').toLowerCase().includes(val) || 
+                    (p.name_hu || '').toLowerCase().includes(val) || 
+                    (p.code || '').toLowerCase().includes(val)
                   ) 
                 : sortedProducts;
 

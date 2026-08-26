@@ -208,8 +208,8 @@ export function openAdminTable(wm, title, tableName, columns, extraPayload = {},
         function renderTable() {
             const query = (searchInput?.value || '').toLowerCase().trim();
             const filtered = query ? items.filter(item => {
-                return columns.some(c => String(item[c.field] || '').toLowerCase().startsWith(query)) ||
-                       String(item.id || '').toLowerCase().startsWith(query);
+                return columns.some(c => String(item[c.field] || '').toLowerCase().includes(query)) ||
+                       String(item.id || '').toLowerCase().includes(query);
             }) : items;
 
             if (filtered.length === 0) {
@@ -472,10 +472,10 @@ export function openArchivedPartnersTable(wm) {
                 displayList = archivedData.filter(p => {
                     const pName = (p.name || '').toLowerCase();
                     const pInvName = (p.invoice_name || '').toLowerCase();
-                    const pMatches = pName.startsWith(query) || pInvName.startsWith(query);
+                    const pMatches = pName.includes(query) || pInvName.includes(query);
                     const idenMatches = (p.identifiers || []).some(iden =>
-                        (iden.value || '').toLowerCase().startsWith(query) ||
-                        (iden.id_type || '').toLowerCase().startsWith(query)
+                        (iden.value || '').toLowerCase().includes(query) ||
+                        (iden.id_type || '').toLowerCase().includes(query)
                     );
                     return pMatches || idenMatches;
                 });

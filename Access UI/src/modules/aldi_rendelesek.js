@@ -367,7 +367,7 @@ export function renderAldiRendelesek(container, windowManager) {
   function renderNapiRendelesHtml() {
     const filteredOrders = state.orders.filter(o => {
       const matchDate = !state.filterDate || (o.delivery_date && o.delivery_date.startsWith(state.filterDate));
-      const matchOrder = !state.filterOrderNo || (o.order_number && o.order_number.toLowerCase().startsWith(state.filterOrderNo.toLowerCase()));
+      const matchOrder = !state.filterOrderNo || (o.order_number && o.order_number.toLowerCase().includes(state.filterOrderNo.toLowerCase()));
       return matchDate && matchOrder;
     });
 
@@ -728,11 +728,11 @@ export function renderAldiRendelesek(container, windowManager) {
     const q = (state.productSearch || '').toLowerCase().trim();
     const filteredProducts = state.products.filter(p => {
       if (!q) return true;
-      return (p.name && p.name.toLowerCase().startsWith(q)) ||
-        (p.articleNo && p.articleNo.toLowerCase().startsWith(q)) ||
-        (p.gtin && p.gtin.toLowerCase().startsWith(q)) ||
-        (p.ean && p.ean.toLowerCase().startsWith(q)) ||
-        (p.label && p.label.toLowerCase().startsWith(q));
+      return (p.name && p.name.toLowerCase().includes(q)) ||
+        (p.articleNo && p.articleNo.toLowerCase().includes(q)) ||
+        (p.gtin && p.gtin.toLowerCase().includes(q)) ||
+        (p.ean && p.ean.toLowerCase().includes(q)) ||
+        (p.label && p.label.toLowerCase().includes(q));
     });
 
     return `
