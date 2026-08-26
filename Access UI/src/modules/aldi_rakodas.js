@@ -543,6 +543,21 @@ export function renderAldiRakodas(container, windowManager) {
       console.warn('Központi törzsadatok betöltése sikertelen:', e);
     }
 
+    let defaultTruckNum = '';
+    if (isNew && state.trucks) {
+      let maxNum = 0;
+      state.trucks.forEach(t => {
+        if (t.truck_number) {
+          const match = t.truck_number.match(/(?:AL|ALDI)\s*0*(\d+)/i);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            if (num > maxNum) maxNum = num;
+          }
+        }
+      });
+      defaultTruckNum = `AL${String(maxNum + 1).padStart(2, '0')}`;
+    }
+
     const modalContent = `
       <div style="padding:16px 20px; display:flex; flex-direction:column; gap:14px; height:100%; box-sizing:border-box;">
         
@@ -554,7 +569,7 @@ export function renderAldiRakodas(container, windowManager) {
         <div style="padding:12px 16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
           <div style="flex:1; min-width:120px;">
             <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Kamionszám: <span style="color:red;">*</span></label>
-            <input type="text" id="m-truck-num" class="access-control-input" style="font-size:12px; padding:4px 8px; height:30px; width:100%; text-transform:uppercase;" placeholder="Pl. ALDI 01" value="${escHtml(existing?.truck_number || '')}">
+            <input type="text" id="m-truck-num" class="access-control-input" style="font-size:12px; padding:4px 8px; height:30px; width:100%; text-transform:uppercase;" placeholder="Pl. AL01" value="${escHtml(existing?.truck_number || defaultTruckNum)}">
           </div>
           <div style="flex:2; min-width:180px;">
             <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Rendszám (Vontató + Pótkocsi):</label>
