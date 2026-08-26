@@ -169,6 +169,20 @@ router.delete('/trucks/:truckId/lines/:lineId', async (req, res) => {
   }
 });
 
+// Update line directly by lineId
+router.put('/truck-lines/:lineId', async (req, res) => {
+  try {
+    const { lineId } = req.params;
+    const updateData = { ...req.body, updated_at: knex.fn.now() };
+    await knex('aldi_truck_lines').where({ id: lineId }).update(updateData);
+    const updatedLine = await knex('aldi_truck_lines').where({ id: lineId }).first();
+    res.json(updatedLine);
+  } catch (err) {
+    console.error('Error updating aldi truck line by id:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Delete line directly by lineId
 router.delete('/truck-lines/:lineId', async (req, res) => {
   try {

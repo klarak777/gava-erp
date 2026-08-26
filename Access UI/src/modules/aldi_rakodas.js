@@ -517,30 +517,48 @@ export function renderAldiRakodas(container, windowManager) {
   }
 
   // ============= ÚJ KAMION / KAMION SZERKESZTÉSE MODAL =============
-  function openEditTruckModal(truckId = null) {
+  async function openEditTruckModal(truckId = null) {
     const isNew = !truckId;
     const existing = isNew ? null : state.trucks.find(t => t.id === truckId);
 
     const title = isNew ? 'Új kamion rögzítése (ALDI)' : `Kamion szerkesztése: ${existing ? existing.truck_number : ''}`;
 
     const dateVal = existing && existing.delivery_date ? String(existing.delivery_date).substring(0, 10) : new Date().toISOString().substring(0, 10);
+    const usedPallets = existing ? (parseFloat(existing.total_pallets) || 0) : 0;
+    const freeSpots = Math.max(0, 33 - usedPallets).toFixed(2);
+
+    let pkgTypes = [];
+    let originCountries = [];
+    let palletTypes = [];
+    try {
+      const [resPkg, resOrigin, resPallet] = await Promise.all([
+        fetch('/api/v1/admin/ref_packaging_types').then(r => r.ok ? r.json() : []),
+        fetch('/api/v1/admin/ref_origin_countries').then(r => r.ok ? r.json() : []),
+        fetch('/api/v1/admin/ref_pallet_types').then(r => r.ok ? r.json() : [])
+      ]);
+      pkgTypes = resPkg;
+      originCountries = resOrigin;
+      palletTypes = resPallet;
+    } catch (e) {
+      console.warn('Központi törzsadatok betöltése sikertelen:', e);
+    }
 
     const modalContent = `
       <div style="padding:16px 20px; display:flex; flex-direction:column; gap:14px; height:100%; box-sizing:border-box;">
         
+        <datalist id="dl-pkg">${pkgTypes.map(p => `<option value="${escHtml(p.name)}">`).join('')}</datalist>
+        <datalist id="dl-origin">${originCountries.map(o => `<option value="${escHtml(o.name)}">`).join('')}</datalist>
+        <datalist id="dl-pallet">${palletTypes.map(p => `<option value="${escHtml(p.name)}">`).join('')}</datalist>
+
         <!-- FELSŐ VEZÉRLŐSÁV / FEJLÉC ADATOK -->
         <div style="padding:12px 16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
           <div style="flex:1; min-width:120px;">
             <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Kamionszám: <span style="color:red;">*</span></label>
             <input type="text" id="m-truck-num" class="access-control-input" style="font-size:12px; padding:4px 8px; height:30px; width:100%; text-transform:uppercase;" placeholder="Pl. ALDI 01" value="${escHtml(existing?.truck_number || '')}">
           </div>
-          <div style="flex:1; min-width:110px;">
-            <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Vontató rendszám:</label>
-            <input type="text" id="m-truck-plate1" class="access-control-input" style="font-size:12px; padding:4px 8px; height:30px; width:100%; text-transform:uppercase;" placeholder="Pl. ABC-123" value="${escHtml(existing?.license_plate_1 || '')}">
-          </div>
-          <div style="flex:1; min-width:110px;">
-            <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Pótkocsi rendszám:</label>
-            <input type="text" id="m-truck-plate2" class="access-control-input" style="font-size:12px; padding:4px 8px; height:30px; width:100%; text-transform:uppercase;" placeholder="Pl. XYZ-789" value="${escHtml(existing?.license_plate_2 || '')}">
+          <div style="flex:2; min-width:180px;">
+            <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Rendszám (Vontató + Pótkocsi):</label>
+            <input type="text" id="m-truck-plate1" class="access-control-input" style="font-size:12px; padding:4px 8px; height:30px; width:100%; text-transform:uppercase;" placeholder="Pl. ABC-123 / XYZ-789" value="${escHtml(existing?.license_plate_1 || '')}">
           </div>
           <div style="flex:1; min-width:120px;">
             <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Szállítási nap: <span style="color:red;">*</span></label>
@@ -561,19 +579,30 @@ export function renderAldiRakodas(container, windowManager) {
             <span style="font-weight:700;">Kamionra rakott tételek</span>
           </div>
           <div style="flex:1; overflow:auto;">
-            <table class="access-subform-table" style="font-size:11px; width:100%;">
+            <table class="access-subform-table" style="font-size:11px; width:100%; white-space:nowrap;">
               <thead>
                 <tr>
                   <th style="padding:6px 8px; text-align:left;">TERMÉK</th>
-                  <th style="padding:6px 8px; text-align:right; width:90px;">KARTONSZÁM</th>
-                  <th style="padding:6px 8px; text-align:right; width:80px;">RAKLAP</th>
-                  <th style="padding:6px 8px; text-align:left; width:110px;">RENDELÉSI SZÁM</th>
-                  <th style="padding:6px 8px; text-align:center; width:60px;">TÖRLÉS</th>
+                  <th style="padding:6px 8px; text-align:right;">RENDELT KARTONSZÁM</th>
+                  <th style="padding:6px 8px; text-align:right;">SZÁLLÍTHATÓ # / RAKLAP</th>
+                  <th style="padding:6px 8px; text-align:right;">RAKLAP</th>
+                  <th style="padding:6px 8px; text-align:left;">PARTNER</th>
+                  <th style="padding:6px 8px; text-align:left;">RENDELÉSI SZÁM</th>
+                  <th style="padding:6px 8px; text-align:left;">RENDELÉS TÍPUSA</th>
+                  <th style="padding:6px 8px; text-align:left;">CÉL LOKÁCIÓ</th>
+                  <th style="padding:6px 8px; text-align:right;">BRUTTÓ KG</th>
+                  <th style="padding:6px 8px; text-align:right;">NETTÓ KG</th>
+                  <th style="padding:6px 8px; text-align:left;">GÖNGYÖLEG TÍPUS</th>
+                  <th style="padding:6px 8px; text-align:right;">TÁRA SÚLY</th>
+                  <th style="padding:6px 8px; text-align:left;">SZÁRMAZÁSI ORSZÁG</th>
+                  <th style="padding:6px 8px; text-align:left;">LOTSZÁM</th>
+                  <th style="padding:6px 8px; text-align:left;">RAKLAP TÍPUS</th>
+                  <th style="padding:6px 8px; text-align:center;">TÖRLÉS</th>
                 </tr>
               </thead>
               <tbody id="m-truck-lines-tbody">
                 <tr>
-                  <td colspan="5" style="padding:24px; text-align:center; color:#94a3b8; font-size:11px;">
+                  <td colspan="16" style="padding:24px; text-align:center; color:#94a3b8; font-size:11px;">
                     ${isNew ? 'Az új kamion mentése után tudsz rá árut küldeni a jobb oldali Áru igény táblából.' : 'Betöltés...'}
                   </td>
                 </tr>
@@ -582,7 +611,10 @@ export function renderAldiRakodas(container, windowManager) {
           </div>
         </div>
 
-        <div style="display:flex; justify-content:flex-end; gap:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+          <div style="padding:8px 16px; background:#e0f2fe; border:1px solid #7dd3fc; border-radius:6px; font-size:13px; font-weight:700; color:#0369a1;">
+            Szabad helyek száma: <span id="m-truck-free-spots">${freeSpots}</span> EU raklap
+          </div>
           <button class="secondary-btn btn-truck-close">Bezárás</button>
         </div>
 
@@ -591,15 +623,14 @@ export function renderAldiRakodas(container, windowManager) {
 
     const modal = windowManager.createModal({
       title: title,
-      width: 900,
-      height: 520,
+      width: 1200,
+      height: 600,
       content: modalContent
     });
 
     const modalEl = modal.element;
     const inpNum = modalEl.querySelector('#m-truck-num');
     const inpP1 = modalEl.querySelector('#m-truck-plate1');
-    const inpP2 = modalEl.querySelector('#m-truck-plate2');
     const inpDate = modalEl.querySelector('#m-truck-date');
     const inpTrans = modalEl.querySelector('#m-truck-transporter');
     const linesTbody = modalEl.querySelector('#m-truck-lines-tbody');
@@ -612,16 +643,46 @@ export function renderAldiRakodas(container, windowManager) {
         if (res.ok) {
           const lines = await res.json();
           if (lines.length === 0) {
-            linesTbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:#94a3b8;">A kamion jelenleg üres. Küldj rá tételt az Áru igény táblázatból!</td></tr>';
+            linesTbody.innerHTML = '<tr><td colspan="16" style="padding:20px; text-align:center; color:#94a3b8;">A kamion jelenleg üres. Küldj rá tételt az Áru igény táblázatból!</td></tr>';
           } else {
             linesTbody.innerHTML = lines.map(l => `
               <tr>
                 <td style="padding:6px 8px; font-weight:600; color:#1e293b;">${escHtml(l.product_name)}</td>
                 <td style="padding:6px 8px; text-align:right; font-weight:700;">${l.ordered_cartons}</td>
+                <td style="padding:6px 8px; text-align:right;">${l.cartons_per_pallet || '-'}</td>
                 <td style="padding:6px 8px; text-align:right; color:#2563eb;">${l.pallets ? parseFloat(l.pallets).toFixed(2) : '-'}</td>
+                <td style="padding:6px 8px;">
+                  <input type="text" class="inp-line-partner" data-id="${l.id}" value="${escHtml(l.partner || '')}" style="width:100px; padding:2px; font-size:11px;">
+                </td>
                 <td style="padding:6px 8px; color:#64748b;">${escHtml(l.order_number || '-')}</td>
+                <td style="padding:6px 8px; color:#64748b;">${escHtml(l.order_type || '-')}</td>
+                <td style="padding:6px 8px;">
+                  <input type="text" class="inp-line-dest" data-id="${l.id}" value="${escHtml(l.destination || '')}" style="width:80px; padding:2px; font-size:11px;">
+                </td>
+                <td style="padding:6px 8px;">
+                  <input type="number" class="inp-line-gross" data-id="${l.id}" value="${l.gross_weight || ''}" style="width:60px; padding:2px; font-size:11px;" step="0.01">
+                </td>
+                <td style="padding:6px 8px;">
+                  <input type="number" class="inp-line-net" data-id="${l.id}" value="${l.net_weight || ''}" style="width:60px; padding:2px; font-size:11px;" step="0.01">
+                </td>
+                <td style="padding:6px 8px;">
+                  <input type="text" class="inp-line-pkg" list="dl-pkg" data-id="${l.id}" value="${escHtml(l.packaging_type || '')}" style="width:100px; padding:2px; font-size:11px;">
+                </td>
+                <td style="padding:6px 8px;">
+                  <input type="number" class="inp-line-tare" data-id="${l.id}" value="${l.tare_weight || ''}" style="width:50px; padding:2px; font-size:11px;" step="0.01">
+                </td>
+                <td style="padding:6px 8px;">
+                  <input type="text" class="inp-line-origin" list="dl-origin" data-id="${l.id}" value="${escHtml(l.origin_country || '')}" style="width:80px; padding:2px; font-size:11px;">
+                </td>
+                <td style="padding:6px 8px;">
+                  <input type="text" class="inp-line-lot" data-id="${l.id}" value="${escHtml(l.lot_number || '')}" style="width:80px; padding:2px; font-size:11px;">
+                </td>
+                <td style="padding:6px 8px;">
+                  <input type="text" class="inp-line-pallet-type" list="dl-pallet" data-id="${l.id}" value="${escHtml(l.pallet_type || '')}" style="width:80px; padding:2px; font-size:11px;">
+                </td>
                 <td style="padding:4px 6px; text-align:center;">
-                  <button class="btn-del-truck-line" data-id="${l.id}" title="Tétel törlése a kamionról" style="background:none; border:none; cursor:pointer; color:#dc2626; font-size:13px;">✕</button>
+                  <button class="btn-save-truck-line" data-id="${l.id}" title="Mentés" style="background:none; border:none; cursor:pointer; color:#10b981; font-size:14px;">💾</button>
+                  <button class="btn-del-truck-line" data-id="${l.id}" title="Tétel törlése a kamionról" style="background:none; border:none; cursor:pointer; color:#dc2626; font-size:14px; margin-left:4px;">✕</button>
                 </td>
               </tr>
             `).join('');
@@ -639,6 +700,39 @@ export function renderAldiRakodas(container, windowManager) {
                   }
                 } catch (err) {
                   alert('Hiba a törlés során: ' + err.message);
+                }
+              });
+            });
+
+            linesTbody.querySelectorAll('.btn-save-truck-line').forEach(btn => {
+              btn.addEventListener('click', async (e) => {
+                const lineId = e.currentTarget.getAttribute('data-id');
+                const row = e.currentTarget.closest('tr');
+                const payload = {
+                  partner: row.querySelector('.inp-line-partner').value,
+                  destination: row.querySelector('.inp-line-dest').value,
+                  gross_weight: parseFloat(row.querySelector('.inp-line-gross').value) || null,
+                  net_weight: parseFloat(row.querySelector('.inp-line-net').value) || null,
+                  packaging_type: row.querySelector('.inp-line-pkg').value,
+                  tare_weight: parseFloat(row.querySelector('.inp-line-tare').value) || null,
+                  origin_country: row.querySelector('.inp-line-origin').value,
+                  lot_number: row.querySelector('.inp-line-lot').value,
+                  pallet_type: row.querySelector('.inp-line-pallet-type').value
+                };
+                
+                try {
+                  const updateRes = await fetch(`/api/v1/aldi-cross-docking/truck-lines/${lineId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                  });
+                  if (updateRes.ok) {
+                    alert('Sor sikeresen mentve!');
+                  } else {
+                    alert('Hiba mentéskor.');
+                  }
+                } catch (err) {
+                  alert('Hiba: ' + err.message);
                 }
               });
             });
@@ -667,8 +761,7 @@ export function renderAldiRakodas(container, windowManager) {
         truck_number: num,
         delivery_date: date,
         transporter: inpTrans.value.trim(),
-        license_plate_1: inpP1.value.trim().toUpperCase(),
-        license_plate_2: inpP2.value.trim().toUpperCase()
+        license_plate_1: inpP1.value.trim()
       };
 
       try {

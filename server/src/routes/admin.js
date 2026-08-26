@@ -20,7 +20,7 @@ router.get('/export-identifiers', async (req, res) => {
 });
 
 // Engedélyezett táblák a generic végpontokhoz biztonsági okokból
-const ALLOWED_TABLES = ['products', 'partners', 'transporters', 'finance_truck_types', 'finance_tax_rates', 'currencies'];
+const ALLOWED_TABLES = ['products', 'partners', 'transporters', 'finance_truck_types', 'finance_tax_rates', 'currencies', 'ref_packaging_types', 'ref_origin_countries', 'ref_pallet_types'];
 
 // GET /api/v1/admin/:table
 router.get('/:table', async (req, res) => {

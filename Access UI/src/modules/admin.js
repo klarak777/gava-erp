@@ -28,6 +28,15 @@ export function renderAdmin(container, wm, subModuleId = null) {
         'admin-currencies': () => openAdminTable(wm, 'Currencies (Devizák)', 'currencies', [
             { field: 'code', label: 'Kód (pl. EUR)' },
             { field: 'name', label: 'Megnevezés' }
+        ]),
+        'admin-ref-packaging': () => openAdminTable(wm, 'Göngyöleg Típusok', 'ref_packaging_types', [
+            { field: 'name', label: 'Név' }
+        ]),
+        'admin-ref-origin': () => openAdminTable(wm, 'Származási Országok', 'ref_origin_countries', [
+            { field: 'name', label: 'Név' }
+        ]),
+        'admin-ref-pallet': () => openAdminTable(wm, 'Raklap Típusok', 'ref_pallet_types', [
+            { field: 'name', label: 'Név' }
         ])
     };
 

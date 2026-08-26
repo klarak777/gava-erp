@@ -40,6 +40,9 @@ export const NAV_CATEGORIES = [
                     { id: 'admin-finance-trucks', label: 'Type Truck (Pénzügyi)', icon: '🚛', desc: 'Pénzügyi kamion típusok' },
                     { id: 'admin-finance-tax-rates', label: 'TpTAX (Adókulcsok)', icon: '💰', desc: 'Pénzügyi adókulcsok' },
                     { id: 'admin-currencies', label: 'Currencies (Devizák)', icon: '💱', desc: 'Pénznemek kezelése' },
+                    { id: 'admin-ref-packaging', label: 'Göngyöleg Típusok', icon: '📦', desc: 'Csomagolási és göngyöleg típusok' },
+                    { id: 'admin-ref-origin', label: 'Származási Országok', icon: '🌍', desc: 'Származási helyek' },
+                    { id: 'admin-ref-pallet', label: 'Raklap Típusok', icon: '🪚', desc: 'Raklap típusok' },
                 ],
             }
         ],
