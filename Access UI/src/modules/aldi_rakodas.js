@@ -73,7 +73,7 @@ export function renderAldiRakodas(container, windowManager) {
           </div>
           <div style="flex:none; display:flex; gap:6px;">
             <button class="secondary-btn btn-dense" id="btn-aldi-clear-filters" style="font-size:12px; height:28px; line-height:normal; padding:0 12px; box-sizing:border-box;">Szűrők törlése</button>
-            <button class="primary-btn btn-dense" id="btn-aldi-save-demands" style="font-size:12px; height:28px; line-height:normal; padding:0 14px; box-sizing:border-box; background:#16a34a; border-color:#15803d; color:white; font-weight:600;">Mentés</button>
+            <button class="primary-btn btn-dense" id="btn-aldi-save-demands" style="font-size:12px; height:28px; line-height:normal; padding:0 14px; box-sizing:border-box; background:#2563eb; border-color:#1d4ed8; color:white; font-weight:600;">Mentés</button>
           </div>
         </div>
 
