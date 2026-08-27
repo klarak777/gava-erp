@@ -371,15 +371,23 @@ router.post('/demands/:id/split', async (req, res) => {
   }
 });
 
-// Delete a demand
+// Delete a demand (Removes the entire order from Rakodás)
 router.delete('/demands/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    // Note: aldi_truck_lines has ON DELETE SET NULL for aldi_daily_order_line_id
-    await knex('aldi_daily_order_lines').where('id', id).delete();
+    
+    const line = await knex('aldi_daily_order_lines').where('id', id).first();
+    if (!line) {
+      return res.status(404).json({ error: 'Tétel nem található' });
+    }
+
+    await knex('aldi_daily_orders')
+      .where('id', line.daily_order_id)
+      .update({ sent_to_rakodas: false });
+      
     res.status(200).json({ success: true });
   } catch(e) {
-    console.error('Error deleting demand:', e);
+    console.error('Error removing order from rakodas:', e);
     res.status(500).json({ error: 'Belső szerverhiba' });
   }
 });

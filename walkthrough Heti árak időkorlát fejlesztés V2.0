@@ -1,0 +1,45 @@
+# ALDI Heti árak - Biztonsági javítások és Backfill
+
+Az észrevételeknek megfelelően a meglévő adatok védelmére és a validációs lyukak bezárására létrehoztam a megfelelő javításokat. Az alábbiak történtek meg a kódkészletben és az adatbázisban:
+
+## 1. Validációs rések lezárása
+A manuális javítások (UI-ról érkező kérések) sebezhetőségeit kijavítottam a `server/src/routes/aldi_weekly_prices.js` állományban:
+- **`PUT /delivery-period`**: A `start` és `end` mező mostantól egyaránt kötelező. Ha bármelyiket üresen küldik, az API 400-as hibát dob vissza.
+- **`PUT /currency-periods`**: Minden megadott periódusnál szigorúan ellenőrizzük a `period_start` és `period_end` meglétét. A hiányos objektumok elutasításra kerülnek.
+
+## 2. A teszt futtatás szűkítése
+A `package.json` módosult: a `node --test` kiegészült a `tests/*.test.js` útvonallal. Ennek köszönhetően az `npm test` már csak a megfelelő tesztállományokat futtatja le, a docxtemplater scratch fájl figyelmen kívül hagyásával. (Jelenleg 16/16 teszt sikeres).
+
+## 3. Backfill Script az éles adatok biztonságos migrációjához
+Létrehoztam a `server/scripts/backfillAldiDates.js` parancssori eszközt. Ennek célja, hogy a meglévő "hibás", túllógó adatokat (amelyek az eredeti feltöltés során keletkeztek) **adatvesztés nélkül** felzárkóztassa a jelenlegi szigorú heti (Szerda-Kedd) rendhez.
+
+**Hogyan működik a script?**
+- Végigjárja az összes meglévő `aldi_weekly_price_lines` sort.
+- Kiszámítja az év/hét alapján a szerda-kedd határokat.
+- Ha túllóg, vagy a rendszeren kívül esik a szállítási dátum, elmenti a mostani értékeket az `original_period_*` oszlopokba.
+- Beállítja az új `period_status`-t (`clamped`, `invalid_outside`, `valid`, `invalid_format`).
+- **Csonkolja** a `delivery_period_*` dátumokat, hogy beférjenek a hétbe.
+- Végignézi a sorhoz tartozó `aldi_price_currency_periods` (devizaperiódus) sorokat is:
+  - Ha kilóg, azokat is szigorúan hozzávágja a heti határhoz (csonkolja).
+  - Ha pedig teljesen érvénytelen tartományban vannak (pl. teljesen a határon kívül), azokat a script végleg törli az adott sor alól.
+- Részletes összefoglalót nyomtat a terminálba az elvégzett módosításokról.
+
+## [!TIP] Teendők a DO szerveren történő élesítéshez
+
+A szerverre történő telepítés után nem kell feltöltened újra az Excelt! Futtasd le a következő scriptet, ami biztonságosan rendbe rakja a meglévő adatokat:
+
+1. Lépj be a szerveren a backend mappájába:
+```bash
+cd path/to/backend/server
+```
+
+2. Elsőként nézd meg `--dry-run` módban, hogy miket fog változtatni (semmit nem ír a DB-be):
+```bash
+node scripts/backfillAldiDates.js
+```
+
+3. Ha az eredmények megfelelőek, futtasd le a véglegesítő paraméterrel:
+```bash
+node scripts/backfillAldiDates.js --apply
+```
+*(Ezt követően az UI már megfelelően, sárgázva és a tooltipben az eredeti adatokkal fogja mutatni az új határokat.)*

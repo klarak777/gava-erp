@@ -1,0 +1,57 @@
+# ALDI Heti árak - Időintervallum szűkítés és figyelmeztetés
+
+## Cél
+Az ALDI Heti árak modulban biztosítani kell, hogy az árak érvényességi ideje szigorúan az ISO-hét szerdájától (0:00) a következő ISO-hét keddjéig (23:59) tarthat, Budapesti időzóna szerint. Minden bejövő (Excel upload) és kézzel szerkesztett dátumot validálni, illetve szükség esetén csonkolni (clamp) kell.
+
+## Szabályok és Dátumkezelés
+- A validáció kizárólag `YYYY-MM-DD` (ISO string) formátumú dátumokon történik a szerveren (időzónák miatti elcsúszás elkerülése végett).
+- ISO hét kiszámítása: Az 1. hét az az év első hete, amiben benne van január 4-e. A hétfőtől vasárnapig tartó ISO héthez képest az ALDI határok: **Szerda (ISO hét) - Kedd (következő ISO hét)**.
+- **Részben átfedő időszak:** A dátumok a határokra lesznek vágva (csonkolva).
+- **Teljesen kívül eső időszak:** 
+  - *Feltöltéskor:* A sor beimportálásra kerül, de a dátumok `null` értékűek maradnak, és a felhasználó figyelmeztetést kap.
+  - *Kézi módosításkor (POST/PUT):* A rendszer 400 Bad Request hibával elutasítja a mentést.
+- **Kezdődátum > Végdátum:** 400 Bad Request vagy (feltöltésnél) figyelmeztetés + `null` dátumok.
+
+## Proposed Changes
+
+### Adatbázis (Backend)
+#### [NEW] [20260827030000_add_is_clamped_to_weekly_prices.js](file:///c:/Users/klara/Documents/Nepelemes%20ügyek/Gavá/ERP%20Access/server/src/db/migrations/20260827030000_add_is_clamped_to_weekly_prices.js)
+Új mezők az `aldi_weekly_price_lines` táblához:
+- `is_clamped` (boolean, default false): Dinamikusan frissül, ha az API csonkol (és törlődik, ha a user utólag kézzel javítja).
+- `original_period_start` (date, nullable): Az eredeti, Excelből kinyert kezdődátum (tooltiphez).
+- `original_period_end` (date, nullable): Az eredeti, Excelből kinyert végdátum (tooltiphez).
+
+### API (Backend)
+#### [MODIFY] [aldi_weekly_prices.js](file:///c:/Users/klara/Documents/Nepelemes%20ügyek/Gavá/ERP%20Access/server/src/routes/aldi_weekly_prices.js)
+- **Közös Date Validátor Modul:** Bevezetésre kerül egy `validateAldiPeriod(start, end, year, weekNumber)` függvény, ami visszaadja a csonkolt dátumokat, a hibát/kívül esést, és a csonkolás tényét (`is_clamped`).
+- **Év és hét validáció:** Minden mentési ponton validáljuk:
+  - 2000 <= év <= 2100.
+  - 1 <= hét <= 53.
+  - Létezik-e az 53. hét az adott évben (ha ezt adták meg).
+- **Végpontok védelme:** Az alábbi végpontokba beépítjük a fenti validációt és a 400-as hibadobást / figyelmeztetés gyűjtést:
+  - `POST /upload`
+  - `POST /:id/lines/:lineId/currency-periods`
+  - `PUT /:id/lines/:lineId/currency-periods`
+  - `PUT /:id/lines/:lineId/delivery-period`
+
+#### [NEW] [aldi_weekly_dates.test.js](file:///c:/Users/klara/Documents/Nepelemes%20ügyek/Gavá/ERP%20Access/server/tests/aldi_weekly_dates.test.js)
+Új tesztfájl (Jest / Mocha, attól függően, mit használ a backend) a dátumhatár-számító függvényhez, ami lefedi:
+- normál hét, évhatárt átlépő hét, ISO 1. hét, 53. hét (érvényes/érvénytelen),
+- részleges átfedés, teljesen kívül eső időszak, fordított dátumok.
+
+### Felhasználói felület (Frontend)
+#### [MODIFY] [aldi_rendelesek.js](file:///c:/Users/klara/Documents/Nepelemes%20ügyek/Gavá/ERP%20Access/Access%20UI/src/modules/aldi_rendelesek.js)
+- **Feltöltés figyelmeztető Modal:** Ha a válasz `warnings` tömböt tartalmaz (mert voltak levágott vagy teljesen kívül eső tételek), egy elegáns, listázott modal-ban mutatjuk meg őket az `alert()` helyett.
+- **Kiemelés és Tooltip:** A `renderModule()` során, ha egy tétel `is_clamped === true`, a **teljes sort sárga háttérrel** (`#fef08a`) jelenítjük meg. A szállítási időszak celláján egy tooltipben (title attribútum) megjelenítjük az eredeti, Excelből kinyert dátumot (az újonnan bevezetett `original_period_start/end` mezők alapján).
+
+## Verification Plan
+### Automated Tests
+- Tesztek futtatása a szerveren (`npm test` vagy a lokális futtatóval), hogy a `validateAldiPeriod` minden ága zöld legyen.
+
+### Manual Verification
+- Új migráció lefuttatása a terminálban (`npm run migrate`).
+- KW35 (2026) év/hét kiválasztása.
+- Egy próba Excel feltöltése (részben átfedő, teljesen kívül eső és fordított dátumokkal).
+- Ellenőrizni, hogy felugrik-e az összegző modal a hibás sorokkal.
+- Ellenőrizni, hogy a táblázatban sárgán jelenik-e meg a csonkolt sor, és a tooltip helyes adatokat mutat-e.
+- Kézi deviza és szállítási időszak módosítás (PUT/POST) tesztelése kívül eső dátumokkal (ellenőrizni, hogy 400 Bad Request jön-e, és a frontend jelzi-e a hibát).

@@ -1,0 +1,46 @@
+# ALDI Heti árak - Időintervallum szűkítés és figyelmeztetés
+
+## Cél
+A "Heti árak" (ALDI) modulba feltöltött Excel táblázat feldolgozásakor érvényesíteni kell egy időbeli korlátot: egy adott hét (pl. KW35) árai szigorúan csak a hét szerdája (0:00) és a következő hét keddje (23:59) között lehetnek érvényesek. Ha a feltöltött Excelben ennél tágabb intervallum szerepel (vagy korábbi/későbbi), a rendszernek automatikusan le kell vágnia (clamp) a dátumot a heti határokra. Erről figyelmeztetést kell adnia, és a UI-on sárgával ki kell emelnie az érintett sorokat. 
+A kézzel felvitt új periódusokat (deviza időszakokat) szintén nem engedjük ezen a határon kívülre.
+
+## User Review Required
+> [!IMPORTANT]
+> A logika az ISO hetelés alapján számolja a "Szerda - Kedd" intervallumot. (Példa: 2026. KW35 -> a 35. hét hétfőjéhez képest a Szerda 2026.08.26, a Kedd 2026.09.01). Kérlek erősítsd meg, hogy az ALDI hetelés a standard ISO hetelést követi-e.
+
+> [!WARNING]
+> Egy új adatbázis mezőt (is_clamped) adok hozzá az `aldi_weekly_price_lines` táblához, amivel elmentjük, hogy egy sor csonkolva lett-e a feltöltéskor, így könnyen ki tudjuk emelni sárgával a táblázatban.
+
+## Open Questions
+- Elegendő-e, ha a sárga kiemelés csak magán az intervallum celláján jelenik meg, vagy a teljes sort sárgázzuk be a táblázatban?
+
+## Proposed Changes
+
+### Adatbázis (Backend)
+#### [NEW] [20260827030000_add_is_clamped_to_weekly_prices.js](file:///c:/Users/klara/Documents/Nepelemes%20ügyek/Gavá/ERP%20Access/server/src/db/migrations/20260827030000_add_is_clamped_to_weekly_prices.js)
+Új migráció létrehozása, ami hozzáad egy `is_clamped` (boolean, default false) mezőt az `aldi_weekly_price_lines` táblához.
+
+### API (Backend)
+#### [MODIFY] [aldi_weekly_prices.js](file:///c:/Users/klara/Documents/Nepelemes%20ügyek/Gavá/ERP%20Access/server/src/routes/aldi_weekly_prices.js)
+- **Segédfüggvény:** Hozzáadok egy `getAldiWeekBoundaries(year, weekNumber)` függvényt, amely kiszámolja a szerda és kedd dátumokat az adott év és hét alapján.
+- **Feltöltés (`POST /upload`):** 
+  - A sorok feldolgozásánál (a `parseDeliveryPeriod` után) ellenőrizzük, hogy a kapott `start` és `end` kilóg-e a kiszámolt heti keretből.
+  - Ha igen, a `start`-ot és `end`-et levágjuk a keretre, és az `is_clamped = true` flag-et beállítjuk a sorra.
+  - A válasz JSON-be beleteszünk egy `warnings` tömböt, amely tartalmazza a módosított tételek neveit és a heti kötelező keret dátumait, hogy a frontend megjeleníthesse a figyelmeztetést.
+- **Szerkesztés (`POST /currency-periods`):** 
+  - Manuális időszak rögzítéskor szintén bekérjük a szülő hetet, és ha a felhasználó a kereten kívülre próbál rögzíteni, levágjuk a határokra.
+
+### Felhasználói felület (Frontend)
+#### [MODIFY] [aldi_rendelesek.js](file:///c:/Users/klara/Documents/Nepelemes%20ügyek/Gavá/ERP%20Access/Access%20UI/src/modules/aldi_rendelesek.js)
+- **Feltöltés modal:** Sikeres feltöltés után, ha a válasz tartalmazza a `warnings` tömböt, egy `alert()`-el (vagy custom modallal) megjelenítjük a felhasználónak, hogy mely tételeket csonkolta a rendszer.
+- **Renderelés:** A `renderModule()` során a heti árak táblázat renderelésekor, ha a tétel `is_clamped === true`, a cellát (vagy a sort) sárga háttérrel jelenítjük meg (`background: #fef08a`).
+
+## Verification Plan
+### Automated Tests
+- N/A
+### Manual Verification
+- Új migráció lefuttatása a terminálban (`npm run migrate`).
+- KW35 (2026) év/hét kiválasztása.
+- Egy próba Excel feltöltése (ahol az egyik intervallum 2026.08.24 - 2026.09.03).
+- Ellenőrizni, hogy felugrik-e a figyelmeztetés a UI-on.
+- Ellenőrizni, hogy a táblázatban sárgán jelenik-e meg a csonkolt sor, és a dátuma 2026.08.26 - 2026.09.01 lett-e.

@@ -451,22 +451,22 @@ export function renderAldiRakodas(container, windowManager) {
       });
     });
 
-    // Törlés esemény
+    // Törlés (Eltávolítás a Rakodásból) esemény
     demandsTbody.querySelectorAll('.btn-delete-aldi-demand').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         const id = parseInt(e.currentTarget.getAttribute('data-id'));
-        if (confirm('Biztosan törölni szeretnéd ezt a tételt? A már kamionra került mennyiségek nem törlődnek, de a hátralévő igény megszűnik.')) {
+        if (confirm('Biztosan visszaállítod a teljes rendelést "nem rakodott" állapotba? (A rendelés minden tétele eltűnik a Rakodásból, de a Napi rendeléseknél megmarad. A már kamionra került mennyiségek nem törlődnek a kamionokról.)')) {
           try {
             const res = await fetch(`/api/v1/aldi-cross-docking/demands/${id}`, { method: 'DELETE' });
             if (res.ok) {
               loadDemands();
             } else {
               const err = await res.json();
-              alert('Hiba törléskor: ' + (err.error || 'Ismeretlen hiba'));
+              alert('Hiba eltávolításkor: ' + (err.error || 'Ismeretlen hiba'));
             }
           } catch (err) {
             console.error('Törlés hálózati hiba:', err);
-            alert('Hálózati hiba törléskor.');
+            alert('Hálózati hiba eltávolításkor.');
           }
         }
       });

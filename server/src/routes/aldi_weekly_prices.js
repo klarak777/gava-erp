@@ -17,6 +17,7 @@ const path = require('path');
 const fs = require('fs');
 const xlsx = require('xlsx');
 const db = require('../db/db');
+const { validateAldiPeriod } = require('../utils/aldiWeeklyDates');
 
 // ─── Konfiguráció ─────────────────────────────────────────────────────────────
 const IS_WINDOWS = process.platform === 'win32';
@@ -324,14 +325,39 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
       // Sorok beszúrása
       const lineInserts = [];
+      const warnings = [];
       dataRows.forEach((row, idx) => {
         const gtin = colMap['Rendelési GTIN'] !== undefined ? String(row[colMap['Rendelési GTIN']]).trim() : '';
         const xlsxName = colMap['Termék leírása'] !== undefined ? String(row[colMap['Termék leírása']]).trim() : '';
         const origin = colMap['Származás'] !== undefined ? String(row[colMap['Származás']]).trim() : '';
         const deliveryStr = colMap['Szállítási időszak'] !== undefined ? String(row[colMap['Szállítási időszak']]) : '';
-        const { start, end } = parseDeliveryPeriod(deliveryStr);
+        const { start: rawStart, end: rawEnd } = parseDeliveryPeriod(deliveryStr);
 
         const matched = gtin ? gtinToProduct.get(gtin) : null;
+        
+        let finalStart = rawStart;
+        let finalEnd = rawEnd;
+        let pStatus = 'valid';
+        
+        if (rawStart && rawEnd) {
+            const val = validateAldiPeriod(rawStart, rawEnd, parsedYear, parsedWeekNum);
+            pStatus = val.status;
+            if (val.status === 'clamped') {
+                finalStart = val.start;
+                finalEnd = val.end;
+                warnings.push({ row: idx + 1, item: xlsxName, msg: `Időszak csonkolva a heti határokra: ${val.start} - ${val.end}` });
+            } else if (val.status !== 'valid') {
+                finalStart = null;
+                finalEnd = null;
+                const boundsMsg = val.boundaries ? `Heti határ: ${val.boundaries.start} - ${val.boundaries.end}` : '';
+                warnings.push({ row: idx + 1, item: xlsxName, msg: `Érvénytelen időszak (${val.status}). Dátumok törölve. ${boundsMsg}` });
+            }
+        } else if (rawStart || rawEnd) {
+             pStatus = 'invalid_format';
+             finalStart = null;
+             finalEnd = null;
+             warnings.push({ row: idx + 1, item: xlsxName, msg: `Hiányos dátumformátum.` });
+        }
 
         lineInserts.push({
           weekly_price_id: weekRecord.id,
@@ -343,8 +369,11 @@ router.post('/upload', upload.single('file'), async (req, res) => {
           packaging: colMap['Szállítási csomagolás'] !== undefined ? String(row[colMap['Szállítási csomagolás']]).trim() : '',
           crate_cost: colMap['Rekeszköltség'] !== undefined ? String(row[colMap['Rekeszköltség']]).trim() : '',
           unit_cost: colMap['Egységköltség'] !== undefined ? String(row[colMap['Egységköltség']]).trim() : '',
-          delivery_period_start: start,
-          delivery_period_end: end,
+          delivery_period_start: finalStart,
+          delivery_period_end: finalEnd,
+          original_period_start: rawStart,
+          original_period_end: rawEnd,
+          period_status: pStatus,
           delivery_period_raw: deliveryStr,
           is_gtin_matched: !!matched,
           row_order: idx,
@@ -377,13 +406,13 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         }
       }
 
-      return weekRecord;
+      return { weekRecord, warnings };
     });
 
     // 5. Sorok visszaküldése (ERP névvel együtt)
     const lines = await db('aldi_weekly_price_lines')
       .leftJoin('chain_products', 'aldi_weekly_price_lines.chain_product_id', 'chain_products.id')
-      .where('aldi_weekly_price_lines.weekly_price_id', result.id)
+      .where('aldi_weekly_price_lines.weekly_price_id', result.weekRecord.id)
       .select(
         'aldi_weekly_price_lines.*',
         'chain_products.product_name as erp_product_name'
@@ -404,10 +433,11 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
     res.json({
       success: true,
-      weekRecord: result,
+      weekRecord: result.weekRecord,
       lines,
       fileWriteSuccess,
       fileWriteError,
+      warnings: result.warnings,
       message: `${lines.length} sor feldolgozva, ${lines.filter(l => l.is_gtin_matched).length} GTIN azonosítva.`
     });
 
@@ -454,11 +484,24 @@ router.get('/:id/lines/:lineId/currency-periods', async (req, res) => {
 // ─── POST /api/v1/aldi-weekly-prices/:id/lines/:lineId/currency-periods ───────
 router.post('/:id/lines/:lineId/currency-periods', async (req, res) => {
   try {
-    const { lineId } = req.params;
+    const { id, lineId } = req.params;
     const { currency_code, period_start, period_end, crate_cost, unit_cost, note } = req.body;
 
     if (!currency_code || !period_start || !period_end) {
       return res.status(400).json({ error: 'currency_code, period_start, period_end kötelező.' });
+    }
+
+    const weekRecord = await db('aldi_weekly_prices').where({ id }).first();
+    if (!weekRecord) return res.status(404).json({ error: 'Heti ár rekord nem található.' });
+    
+    // Ensure line belongs to this week
+    const lineRecord = await db('aldi_weekly_price_lines').where({ id: lineId, weekly_price_id: id }).first();
+    if (!lineRecord) return res.status(404).json({ error: 'Sor nem található ehhez a héthez.' });
+
+    const val = validateAldiPeriod(period_start.split('T')[0], period_end.split('T')[0], weekRecord.year, weekRecord.week_number);
+    if (val.status !== 'valid') {
+        const boundsMsg = val.boundaries ? ` Heti határ: ${val.boundaries.start} - ${val.boundaries.end}.` : '';
+        return res.status(400).json({ error: `Érvénytelen időszak (${val.status}). Kérjük, módosítsd a dátumokat a megengedett határokon belülre.${boundsMsg}` });
     }
 
     const [inserted] = await db('aldi_price_currency_periods')
@@ -483,11 +526,30 @@ router.post('/:id/lines/:lineId/currency-periods', async (req, res) => {
 // Kicseréli egy sor összes deviza periódusát a megadott listára (tranzakcióban)
 router.put('/:id/lines/:lineId/currency-periods', async (req, res) => {
   try {
-    const { lineId } = req.params;
+    const { id, lineId } = req.params;
     const { periods } = req.body;
 
     if (!Array.isArray(periods)) {
       return res.status(400).json({ error: 'A periods tömb megadása kötelező.' });
+    }
+
+    const weekRecord = await db('aldi_weekly_prices').where({ id }).first();
+    if (!weekRecord) return res.status(404).json({ error: 'Heti ár rekord nem található.' });
+    
+    // Ensure line belongs to this week
+    const lineRecord = await db('aldi_weekly_price_lines').where({ id: lineId, weekly_price_id: id }).first();
+    if (!lineRecord) return res.status(404).json({ error: 'Sor nem található ehhez a héthez.' });
+
+    for (const p of periods) {
+      if (p.period_start && p.period_end) {
+        const val = validateAldiPeriod(p.period_start.split('T')[0], p.period_end.split('T')[0], weekRecord.year, weekRecord.week_number);
+        if (val.status !== 'valid') {
+          const boundsMsg = val.boundaries ? ` Heti határ: ${val.boundaries.start} - ${val.boundaries.end}.` : '';
+          return res.status(400).json({ error: `Érvénytelen időszak az egyik tételnél (${val.status}).${boundsMsg}` });
+        }
+      } else {
+        return res.status(400).json({ error: 'Minden deviza időszakhoz kötelező megadni a kezdő és végdátumot.' });
+      }
     }
 
     const inserted = await db.transaction(async trx => {
@@ -505,12 +567,16 @@ router.put('/:id/lines/:lineId/currency-periods', async (req, res) => {
           unit_cost: p.unit_cost !== undefined ? p.unit_cost : null,
           note: p.note || null
         }));
-        return await trx('aldi_price_currency_periods').insert(rowsToInsert).returning('*');
+        await trx('aldi_price_currency_periods').insert(rowsToInsert);
       }
-      return [];
+      
+      // Update line status if it was invalid
+      await trx('aldi_weekly_price_lines').where({ id: lineId }).update({ period_status: 'valid' });
+      
+      return await trx('aldi_price_currency_periods').where('price_line_id', lineId).orderBy('period_start', 'asc');
     });
-
     res.json(inserted);
+
   } catch (err) {
     console.error('[aldi-weekly-prices] PUT currency-periods hiba:', err);
     res.status(500).json({ error: 'Szerver hiba', detail: err.message });
@@ -613,13 +679,30 @@ router.put('/:id/lines/:lineId/delivery-period', async (req, res) => {
     const { id, lineId } = req.params;
     const { start, end } = req.body;
     
+    if (!start || !end) {
+      return res.status(400).json({ error: 'A szállítási időszak kezdő és végdátuma is kötelező.' });
+    }
+    
+    const weekRecord = await db('aldi_weekly_prices').where({ id }).first();
+    if (!weekRecord) return res.status(404).json({ error: 'Heti ár rekord nem található.' });
+    
+    const lineRecord = await db('aldi_weekly_price_lines').where({ id: lineId, weekly_price_id: id }).first();
+    if (!lineRecord) return res.status(404).json({ error: 'Sor nem található ehhez a héthez.' });
+
+    const val = validateAldiPeriod(start, end, weekRecord.year, weekRecord.week_number);
+    if (val.status !== 'valid') {
+        const boundsMsg = val.boundaries ? ` Heti határ: ${val.boundaries.start} - ${val.boundaries.end}.` : '';
+        return res.status(400).json({ error: `Érvénytelen szállítási időszak (${val.status}).${boundsMsg}` });
+    }
+    
     await db.transaction(async (trx) => {
       // Update line
       await trx('aldi_weekly_price_lines')
         .where({ id: lineId, weekly_price_id: id })
         .update({
           delivery_period_start: start || null,
-          delivery_period_end: end || null
+          delivery_period_end: end || null,
+          period_status: 'valid' // Reset status upon manual save
         });
       
       // We do NOT update currency periods here automatically because the frontend

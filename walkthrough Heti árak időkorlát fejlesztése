@@ -1,0 +1,27 @@
+# ALDI Heti árak határidő érvényesítés
+
+Az ALDI Heti árak modulhoz bevezetésre került az időintervallum szűkítés és validáció. A hétfőtől vasárnapig tartó ISO hetekhez igazodva minden feltöltött időszak szigorúan csak a kiválasztott hét szerdájától a következő hét keddjéig tarthat.
+
+## Miként valósult meg a módosítás?
+
+### 1. Adatbázis bővítés
+Lefutott egy új migráció, amely a `aldi_weekly_price_lines` táblát a következő mezőkkel bővítette:
+- `period_status`: string mező, ami jelzi, ha a dátum `valid`, `clamped`, `invalid_outside`, `invalid_format`, vagy `invalid_reversed`.
+- `original_period_start` és `original_period_end`: Elmenti az Excelből kinyert eredeti dátumot referenciaként, ha csonkolni kellett.
+
+### 2. Szigorú Backend validáció
+- **Közös Date Validátor Modul (`server/src/utils/aldiWeeklyDates.js`)**: Új logika lett bevezetve, ami kiküszöböli az időzónák elcsúszásából származó hibákat azzal, hogy pusztán `YYYY-MM-DD` stringeket vizsgál és egyeztet (UTC naptár alapján ISO 1. és 53. heti sajátosságokat figyelembe véve).
+- **Végpontok védelme (`POST /upload`, `POST` és `PUT /currency-periods`, `PUT /delivery-period`)**:
+  - Feltöltés során az API kiszámolja az év/hét alapján a szerda/kedd határokat.
+  - Ha a kapott intervallum **részben kilóg**, a rendszer a heti határokra vágja a dátumot (`status: clamped`).
+  - Ha a kapott intervallum **teljesen kívül esik**, a rendszer elutasítja az adatot (`status: invalid_outside`, üres időszakkal kerül elmentésre).
+  - Kézi módosításkor a backend **400 Bad Request** hibát ad vissza, ami megakadályozza a jogosulatlan túllógást. Ezenkívül a végpont ellenőrzi, hogy a módosítani kívánt `lineId` valóban a szülő rekord hetéhez tartozik-e.
+
+### 3. Frontend UX frissítések
+- **Excel import hibalista**: Ha a feltöltés után hiba vagy csonkolás történt, az újonnan készült **figyelmeztető modal** kigyűjtve listázza a problémás sorokat és hibaüzeneteket a felugró alert helyett.
+- **Vizuális kiemelés**: A `period_status !== 'valid'` státuszú tételeket a rendszer **sárga háttérrel emeli ki**. Ez egészen addig fennmarad, amíg a felhasználó kézi mentéssel ki nem javítja az időszakot (ekkor a státusz visszaáll `valid`-ra).
+- **Eredeti adatok megjelenítése**: Az egérrel a szállítási időszak felé közelítve egy **tooltip** (title popup) jeleníti meg az Excelből beolvasott eredeti kezdő- és végdátumot.
+- **Hibaüzenetek kézi mentésnél**: Az ablakban olvashatóan, magyar nyelven jelennek meg az API JSON válaszai a 400-as hibák során.
+
+### 4. Automatizált Tesztek
+A logika a `node:test` natív csomaggal teljesen le lett fedve tesztekkel, amely ellenőrzi az ISO heteket (normál, 53., évváltó, 1.) és az átfedéseket, kilógásokat. A tesztek hibátlanul futnak le (`npm test`).

@@ -584,7 +584,10 @@ export function renderAldiRendelesek(container, windowManager) {
             ? 'color:#1e293b; font-weight:600;'
             : 'color:#dc2626; font-weight:600; background:#fef2f2; padding:2px 6px; border-radius:4px;';
 
-          const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+          let rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+          if (line.period_status && line.period_status !== 'valid') {
+              rowBg = '#fef08a'; // Sárga kiemelés
+          }
 
           // Aktuális mai nap szerinti aktív periódus meghatározása
           let displayedCrateCost = line.crate_cost || '';
@@ -646,7 +649,7 @@ export function renderAldiRendelesek(container, windowManager) {
                       <td style="padding:8px 8px; color:#475569; font-size:11px; line-height:1.3;">${line.packaging || ''}</td>
                       <td style="padding:8px 8px; text-align:right; font-weight:700; color:#0f172a; font-family:monospace; font-size:12px;">${displayedCrateCost || ''}</td>
                       <td style="padding:8px 8px; text-align:right; font-weight:700; color:#0f172a; font-family:monospace; font-size:12px;">${displayedUnitCost || ''}</td>
-                      <td style="padding:8px 8px; text-align:center; color:#475569; font-size:11px; cursor:pointer;" class="aldi-arak-delivery-period" data-line-id="${line.id}" title="Kattints a szállítási időszak módosításához">
+                      <td style="padding:8px 8px; text-align:center; color:#475569; font-size:11px; cursor:pointer;" class="aldi-arak-delivery-period" data-line-id="${line.id}" title="${(line.original_period_start || line.original_period_end) ? `Eredeti (Excelből): ${line.original_period_start || ''} - ${line.original_period_end || ''}\nKattints a módosításhoz` : 'Kattints a szállítási időszak módosításához'}">
                         ${line.delivery_period_start ? `<div>${line.delivery_period_start}</div>` : ''}
                         ${line.delivery_period_end ? `<div style="color:#94a3b8;">→ ${line.delivery_period_end}</div>` : ''}
                       </td>
@@ -1402,10 +1405,53 @@ export function renderAldiRendelesek(container, windowManager) {
           statusDiv.style.color = '#16a34a';
           statusDiv.textContent = `✅ ${result.message}${result.fileWriteError ? ' (⚠️ Hálózati mentés sikertelen: ' + result.fileWriteError + ')' : ''}`;
 
-          setTimeout(() => {
-            modalOverlay.remove();
-            renderModule();
-          }, 2000);
+          if (result.warnings && result.warnings.length > 0) {
+              const warnOverlay = document.createElement('div');
+              warnOverlay.style.position = 'fixed';
+              warnOverlay.style.top = '0';
+              warnOverlay.style.left = '0';
+              warnOverlay.style.width = '100%';
+              warnOverlay.style.height = '100%';
+              warnOverlay.style.background = 'rgba(0,0,0,0.5)';
+              warnOverlay.style.display = 'flex';
+              warnOverlay.style.alignItems = 'center';
+              warnOverlay.style.justifyContent = 'center';
+              warnOverlay.style.zIndex = '11000';
+              
+              let warnHtml = `
+                <div style="background:#fff; width:600px; max-width:90%; border-radius:12px; padding:24px; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+                  <h3 style="margin-top:0; color:#b45309; border-bottom:1px solid #fef08a; padding-bottom:10px;">⚠️ Figyelmeztetés a feltöltésnél</h3>
+                  <p style="font-size:13px; color:#475569; margin-bottom:16px;">Több tétel időszaka is módosítva vagy elutasítva lett a heti határok miatt:</p>
+                  <div style="max-height:300px; overflow-y:auto; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; font-size:12px; color:#334155;">
+                    <ul style="margin:0; padding-left:20px;">
+              `;
+              
+              result.warnings.forEach(w => {
+                  warnHtml += `<li style="margin-bottom:6px;"><strong>Sor ${w.row}</strong> (${w.item}): ${w.msg}</li>`;
+              });
+              
+              warnHtml += `
+                    </ul>
+                  </div>
+                  <div style="margin-top:20px; text-align:right;">
+                    <button id="aldi-warn-ok-btn" style="padding:8px 16px; background:#f59e0b; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:600;">Értettem</button>
+                  </div>
+                </div>
+              `;
+              warnOverlay.innerHTML = warnHtml;
+              document.body.appendChild(warnOverlay);
+              
+              warnOverlay.querySelector('#aldi-warn-ok-btn').addEventListener('click', () => {
+                  warnOverlay.remove();
+                  modalOverlay.remove();
+                  renderModule();
+              });
+          } else {
+              setTimeout(() => {
+                modalOverlay.remove();
+                renderModule();
+              }, 2000);
+          }
         } else {
           statusDiv.style.background = '#fef2f2';
           statusDiv.style.color = '#dc2626';
@@ -1866,7 +1912,8 @@ export function renderAldiRendelesek(container, windowManager) {
           resetFormToAddMode();
           return true;
         } else {
-          alert('Hiba a mentés során!');
+          const errData = await res.json().catch(() => ({}));
+          alert(`Hiba a mentés során: ${errData.error || 'Ismeretlen hiba'}`);
           return false;
         }
       } catch (e) {
@@ -2075,7 +2122,8 @@ export function renderAldiRendelesek(container, windowManager) {
           close();
           renderModule();
         } else {
-          alert('Hiba a mentés során!');
+          const errData = await res.json().catch(() => ({}));
+          alert(`Hiba a mentés során: ${errData.error || 'Ismeretlen hiba'}`);
           btn.disabled = false;
         }
       } catch(e) {
