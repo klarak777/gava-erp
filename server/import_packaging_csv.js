@@ -3,7 +3,10 @@ const path = require('path');
 const db = require('./src/db/db');
 
 async function importCsv() {
-  const filePath = path.join(__dirname, '..', 'Göngyöleg típusok .csv');
+  let filePath = path.join(__dirname, 'Göngyöleg típusok .csv');
+  if (!fs.existsSync(filePath)) {
+    filePath = path.join(__dirname, '..', 'Göngyöleg típusok .csv');
+  }
   const content = fs.readFileSync(filePath, 'utf8');
   const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
