@@ -73,7 +73,6 @@ export function renderAldiRakodas(container, windowManager) {
           </div>
           <div style="flex:none; display:flex; gap:6px;">
             <button class="secondary-btn btn-dense" id="btn-aldi-clear-filters" style="font-size:12px; height:28px; line-height:normal; padding:0 12px; box-sizing:border-box;">Szűrők törlése</button>
-            <button class="primary-btn btn-dense" id="btn-aldi-save-demands" style="font-size:12px; height:28px; line-height:normal; padding:0 14px; box-sizing:border-box; background:#2563eb; border-color:#1d4ed8; color:white; font-weight:600;">Mentés</button>
           </div>
         </div>
 
@@ -91,6 +90,7 @@ export function renderAldiRakodas(container, windowManager) {
                   <th style="min-width:65px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 4px;">RENDELÉSI SZÁM</th>
                   <th style="min-width:55px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 4px;">TÍPUS</th>
                   <th style="min-width:50px; text-align:center; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 4px;">KAMIONRA</th>
+                  <th style="width:28px; text-align:center; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 2px;" title="Törlés">🗑️</th>
                 </tr>
               </thead>
               <tbody id="aldi-demands-tbody"></tbody>
@@ -100,7 +100,7 @@ export function renderAldiRakodas(container, windowManager) {
                   <td id="aldi-sum-cartons" style="text-align:right; padding:6px 2px; color:#0369a1; font-size:10px;">0</td>
                   <td></td>
                   <td id="aldi-sum-pallets" style="text-align:right; padding:6px 2px; color:#7c3aed; font-size:10px;">0.0</td>
-                  <td colspan="4" id="aldi-sum-trucks" style="text-align:right; padding:6px 14px; color:#ea580c; font-size:11px;">Szükséges kamion: 0.00</td>
+                  <td colspan="5" id="aldi-sum-trucks" style="text-align:right; padding:6px 14px; color:#ea580c; font-size:11px;">Szükséges kamion: 0.00</td>
                 </tr>
               </tfoot>
             </table>
@@ -133,7 +133,6 @@ export function renderAldiRakodas(container, windowManager) {
   const filterDateInput = view.querySelector('#filter-aldi-date');
   const filterOrderInput = view.querySelector('#filter-aldi-order');
   const btnClearFilters = view.querySelector('#btn-aldi-clear-filters');
-  const btnSaveDemands = view.querySelector('#btn-aldi-save-demands');
 
   const elSumCartons = view.querySelector('#aldi-sum-cartons');
   const elSumPallets = view.querySelector('#aldi-sum-pallets');
@@ -350,9 +349,16 @@ export function renderAldiRakodas(container, windowManager) {
               ${escHtml(d.order_type || 'Normál')}
             </span>
           </td>
-          <td style="text-align:center; padding:3px 4px;">
+          <td style="text-align:center; padding:3px 4px; display:flex; gap:4px; justify-content:center;">
+            <button class="btn-split-aldi-demand" data-id="${d.id}" title="Tétel szétbontása" 
+              style="background:#2563eb; color:#fff; border:1px solid #1d4ed8; border-radius:4px; padding:2px 7px; font-size:12px; font-weight:bold; cursor:pointer; transition:all 0.2s;">+</button>
             <button class="btn-send-aldi-demand" data-id="${d.id}" title="Küldés kamionra" 
               style="background:#ef4444; color:#fff; border:1px solid #dc2626; border-radius:4px; padding:2px 7px; font-size:11px; cursor:pointer; transition:all 0.2s;">➡</button>
+          </td>
+          <td style="text-align:center; padding:3px 2px;">
+            <button class="btn-delete-aldi-demand" data-id="${d.id}" title="Törlés" 
+              style="background:#ffffff; color:#dc2626; border:1px solid #fca5a5; border-radius:4px; padding:2px 6px; font-size:11px; font-weight:bold; cursor:pointer; transition:all 0.2s;"
+              onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#ffffff'">✕</button>
           </td>
         </tr>
       `;
@@ -395,6 +401,32 @@ export function renderAldiRakodas(container, windowManager) {
           elSumTrucks.textContent = `Szükséges kamion: ${neededTrucks}`;
         }
       });
+
+      // Automatikus mentés adatváltozáskor (blur vagy Enter)
+      input.addEventListener('change', async (e) => {
+        const id = parseInt(e.currentTarget.getAttribute('data-id'));
+        const val = e.currentTarget.value.trim();
+        const cpp = val !== '' && !isNaN(val) ? parseInt(val) : null;
+        
+        try {
+          const res = await fetch('/api/v1/aldi-cross-docking/demands/cartons-per-pallet', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ updates: [{ id: id, cartons_per_pallet: cpp }] })
+          });
+          if (!res.ok) {
+            console.error('Hiba az automatikus mentés során.');
+            e.currentTarget.style.borderColor = '#ef4444'; // Error state
+          } else {
+            e.currentTarget.style.borderColor = '#22c55e'; // Success state indicator briefly
+            setTimeout(() => {
+              e.currentTarget.style.borderColor = '#cbd5e1'; // Reset
+            }, 1000);
+          }
+        } catch (err) {
+          console.error('Hálózati hiba mentéskor:', err);
+        }
+      });
     });
 
     // Küldés kamionra események
@@ -407,21 +439,128 @@ export function renderAldiRakodas(container, windowManager) {
         }
       });
     });
+
+    // Szétbontás esemény
+    demandsTbody.querySelectorAll('.btn-split-aldi-demand').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = parseInt(e.currentTarget.getAttribute('data-id'));
+        const demand = state.demands.find(d => d.id === id);
+        if (demand) {
+          openSplitDemandModal(demand);
+        }
+      });
+    });
+
+    // Törlés esemény
+    demandsTbody.querySelectorAll('.btn-delete-aldi-demand').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = parseInt(e.currentTarget.getAttribute('data-id'));
+        if (confirm('Biztosan törölni szeretnéd ezt a tételt? A már kamionra került mennyiségek nem törlődnek, de a hátralévő igény megszűnik.')) {
+          try {
+            const res = await fetch(`/api/v1/aldi-cross-docking/demands/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+              loadDemands();
+            } else {
+              const err = await res.json();
+              alert('Hiba törléskor: ' + (err.error || 'Ismeretlen hiba'));
+            }
+          } catch (err) {
+            console.error('Törlés hálózati hiba:', err);
+            alert('Hálózati hiba törléskor.');
+          }
+        }
+      });
+    });
+  }
+
+  // ============= SZÉTBONTÁS MODAL =============
+  function openSplitDemandModal(demand) {
+    const currentCartons = parseInt(demand.ordered_cartons) || 0;
+
+    const modalContent = `
+      <div style="padding:24px; display:flex; flex-direction:column; gap:20px; font-family:sans-serif;">
+        <div style="display:flex; gap:24px;">
+          <div style="flex:1;">
+            <label style="font-size:13px; font-weight:700; color:#334155; display:block; margin-bottom:8px;">Jelenlegi kartonszám</label>
+            <input type="text" disabled value="${currentCartons}" style="width:100%; height:42px; padding:8px 12px; font-size:15px; border:1px solid #cbd5e1; border-radius:8px; background:#f8fafc; color:#475569; font-weight:600;">
+          </div>
+          <div style="flex:1;">
+            <label style="font-size:13px; font-weight:700; color:#334155; display:block; margin-bottom:8px;">Új kartonszám</label>
+            <input type="number" id="split-new-cartons-input" min="1" max="${currentCartons - 1}" style="width:100%; height:42px; padding:8px 12px; font-size:15px; border:1px solid #cbd5e1; border-radius:8px; color:#0f172a; font-weight:600; outline:none; transition:border 0.2s;">
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:center; gap:16px; margin-top:16px;">
+          <button class="btn-split-cancel" style="padding:10px 24px; font-size:14px; font-weight:700; color:#0f172a; background:#fff; border:1px solid #cbd5e1; border-radius:24px; cursor:pointer; transition:all 0.2s;">Mégsem</button>
+          <button class="btn-split-confirm" style="padding:10px 24px; font-size:14px; font-weight:700; color:#fff; background:#22c55e; border:none; border-radius:24px; cursor:pointer; transition:all 0.2s;">Mentés</button>
+        </div>
+      </div>
+    `;
+
+    const modal = windowManager.createModal({
+      title: 'Rendelés szétbontása',
+      width: 480,
+      height: 240,
+      content: modalContent
+    });
+
+    const modalEl = modal.element;
+    const inputEl = modalEl.querySelector('#split-new-cartons-input');
+    
+    // Auto focus
+    setTimeout(() => inputEl.focus(), 100);
+
+    modalEl.querySelector('.btn-split-cancel').addEventListener('click', () => modal.close());
+
+    modalEl.querySelector('.btn-split-confirm').addEventListener('click', async () => {
+      const newCartons = parseInt(inputEl.value);
+      if (!newCartons || isNaN(newCartons) || newCartons <= 0 || newCartons >= currentCartons) {
+        alert('Kérlek érvényes új kartonszámot adj meg (1 és ' + (currentCartons - 1) + ' között)!');
+        inputEl.focus();
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/v1/aldi-cross-docking/demands/' + demand.id + '/split', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ newCartons })
+        });
+        
+        if (res.ok) {
+          modal.close();
+          loadDemands(); // reload the table
+        } else {
+          const err = await res.json();
+          alert('Hiba a szétbontáskor: ' + (err.error || 'Ismeretlen hiba'));
+        }
+      } catch(e) {
+        console.error('Szétbontás hiba', e);
+        alert('Hálózati hiba a szétbontás során.');
+      }
+    });
   }
 
   // ============= KÜLDÉS KAMIONRA MODAL =============
   function openSendToTruckModal(demand) {
-    const defaultCpp = demand.cartons_per_pallet || '';
-    const defaultPallets = (demand.cartons_per_pallet && demand.cartons_per_pallet > 0)
+    const demandPallets = (demand.cartons_per_pallet && demand.cartons_per_pallet > 0)
       ? ((demand.ordered_cartons || 0) / demand.cartons_per_pallet).toFixed(2)
-      : '';
+      : null;
 
     const modalContent = `
       <div style="padding:20px 24px; display:flex; flex-direction:column; gap:14px;">
-        <div style="padding:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
-          <div style="font-size:13px; font-weight:700; color:#1e293b; margin-bottom:4px;">${escHtml(demand.product_name)}</div>
+        <div style="padding:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; display:flex; flex-direction:column; gap:6px;">
+          <div style="font-size:13px; font-weight:700; color:#1e293b;">${escHtml(demand.product_name)}</div>
           <div style="font-size:11px; color:#64748b;">Rendelési szám: <strong>${escHtml(demand.order_number || '-')}</strong> | Dátum: <strong>${demand.delivery_date ? String(demand.delivery_date).substring(0,10) : '-'}</strong></div>
-          <div style="font-size:11px; color:#64748b; margin-top:2px;">Rendelkezésre áll: <strong style="color:#0284c7;">${demand.ordered_cartons} karton</strong></div>
+          <div style="font-size:12px; color:#334155; padding:6px 10px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px;">
+            Rendelkezésre álló raklap: 
+            <strong style="color:#16a34a; font-size:14px;">
+              ${demandPallets ? demandPallets : '<span style="color:#ef4444;">⚠️ Nincs #/PLT megadva!</span>'}
+            </strong>
+          </div>
+          <div style="font-size:12px; color:#334155; padding:6px 10px; background:#e0f2fe; border:1px solid #7dd3fc; border-radius:6px;">
+            Rendelkezésre álló raklaphely a kamionon: <strong style="color:#0369a1; font-size:14px;" id="avail-pallets-display">–</strong>
+          </div>
         </div>
 
         <div>
@@ -432,13 +571,15 @@ export function renderAldiRakodas(container, windowManager) {
           </select>
         </div>
 
-        <div style="margin-top:10px;">
-          <div style="padding:10px; background:#e0f2fe; border:1px solid #7dd3fc; border-radius:6px; font-size:12px; font-weight:700; color:#0369a1; text-align:center;">
-            Szabad helyek száma: <span id="free-spots-display">-</span> EU raklap
-          </div>
+        <div>
+          <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Küldendő raklap szám: <span style="color:red;">*</span></label>
+          <input type="number" id="send-pallets-input" class="access-control-input" min="0.01" step="0.01"
+            style="font-size:13px; padding:4px 8px; height:32px; width:100%;"
+            placeholder="pl. 2.5"
+            value="${demandPallets || ''}">
         </div>
 
-        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:4px;">
           <button class="secondary-btn btn-send-cancel">Mégse</button>
           <button class="primary-btn btn-send-confirm" style="background:#22c55e; border-color:#16a34a;">➡ Küldés kamionra</button>
         </div>
@@ -448,27 +589,28 @@ export function renderAldiRakodas(container, windowManager) {
     const modal = windowManager.createModal({
       title: 'Tétel küldése kamionra',
       width: 420,
-      height: 310,
+      height: 340,
       content: modalContent
     });
 
     const modalEl = modal.element;
     const selTruck = modalEl.querySelector('#send-target-truck');
-    const freeSpotsDisplay = modalEl.querySelector('#free-spots-display');
+    const availDisplay = modalEl.querySelector('#avail-pallets-display');
+    const palletsInput = modalEl.querySelector('#send-pallets-input');
 
     selTruck.addEventListener('change', () => {
       const tid = parseInt(selTruck.value);
       if (!tid) {
-        freeSpotsDisplay.textContent = '-';
+        availDisplay.textContent = '–';
         return;
       }
       const truck = state.trucks.find(t => t.id === tid);
       if (truck) {
         const used = parseFloat(truck.total_pallets) || 0;
         const free = Math.max(0, 33 - used).toFixed(2);
-        freeSpotsDisplay.textContent = free;
+        availDisplay.textContent = `${free}`;
       } else {
-        freeSpotsDisplay.textContent = '-';
+        availDisplay.textContent = '–';
       }
     });
 
@@ -481,16 +623,25 @@ export function renderAldiRakodas(container, windowManager) {
         return;
       }
 
-      const q = demand.ordered_cartons;
-      const c = demand.cartons_per_pallet || null;
-      const p = parseFloat(defaultPallets) || null;
+      if (!demand.cartons_per_pallet || parseFloat(demand.cartons_per_pallet) <= 0) {
+        alert('⚠️ Hiányzó adat: A tételhez nincs megadva a Karton/Raklap (#/PLT) váltási egység!\n\nA raklapszám kiszámításához szükséges ez az adat. Kérlek add meg az áru igény táblázatban a #/PLT értéket, majd próbáld újra!');
+        return;
+      }
+
+      const pallets = parseFloat(palletsInput.value);
+      if (!pallets || pallets <= 0) {
+        alert('Kérlek add meg a küldendő raklapszámot!');
+        return;
+      }
+
+      const cartonsToSend = Math.round(pallets * parseFloat(demand.cartons_per_pallet));
 
       const payload = {
         aldi_daily_order_line_id: demand.id,
         product_name: demand.product_name,
-        ordered_cartons: q,
-        cartons_per_pallet: c,
-        pallets: p,
+        ordered_cartons: cartonsToSend,
+        cartons_per_pallet: demand.cartons_per_pallet,
+        pallets: pallets,
         delivery_date: demand.delivery_date,
         order_number: demand.order_number,
         order_type: demand.order_type
@@ -527,22 +678,6 @@ export function renderAldiRakodas(container, windowManager) {
     const usedPallets = existing ? (parseFloat(existing.total_pallets) || 0) : 0;
     const freeSpots = Math.max(0, 33 - usedPallets).toFixed(2);
 
-    let pkgTypes = [];
-    let originCountries = [];
-    let palletTypes = [];
-    try {
-      const [resPkg, resOrigin, resPallet] = await Promise.all([
-        fetch('/api/v1/admin/ref_packaging_types').then(r => r.ok ? r.json() : []),
-        fetch('/api/v1/admin/ref_origin_countries').then(r => r.ok ? r.json() : []),
-        fetch('/api/v1/admin/ref_pallet_types').then(r => r.ok ? r.json() : [])
-      ]);
-      pkgTypes = resPkg;
-      originCountries = resOrigin;
-      palletTypes = resPallet;
-    } catch (e) {
-      console.warn('Központi törzsadatok betöltése sikertelen:', e);
-    }
-
     let defaultTruckNum = '';
     if (isNew && state.trucks) {
       let maxNum = 0;
@@ -561,30 +696,26 @@ export function renderAldiRakodas(container, windowManager) {
     const modalContent = `
       <div style="padding:16px 20px; display:flex; flex-direction:column; gap:14px; height:100%; box-sizing:border-box;">
         
-        <datalist id="dl-pkg">${pkgTypes.map(p => `<option value="${escHtml(p.name)}">`).join('')}</datalist>
-        <datalist id="dl-origin">${originCountries.map(o => `<option value="${escHtml(o.name)}">`).join('')}</datalist>
-        <datalist id="dl-pallet">${palletTypes.map(p => `<option value="${escHtml(p.name)}">`).join('')}</datalist>
-
         <!-- FELSŐ VEZÉRLŐSÁV / FEJLÉC ADATOK -->
-        <div style="padding:12px 16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
-          <div style="flex:1; min-width:120px;">
+        <div style="padding:10px 14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+          <div style="flex:0 0 90px;">
             <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Kamionszám: <span style="color:red;">*</span></label>
-            <input type="text" id="m-truck-num" class="access-control-input" style="font-size:12px; padding:4px 8px; height:30px; width:100%; text-transform:uppercase;" placeholder="Pl. AL01" value="${escHtml(existing?.truck_number || defaultTruckNum)}">
+            <input type="text" id="m-truck-num" class="access-control-input" style="font-size:12px; padding:4px 6px; height:30px; width:100%; text-transform:uppercase;" placeholder="Pl. AL01" value="${escHtml(existing?.truck_number || defaultTruckNum)}">
           </div>
-          <div style="flex:2; min-width:180px;">
+          <div style="flex:0 0 180px;">
             <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Rendszám (Vontató + Pótkocsi):</label>
-            <input type="text" id="m-truck-plate1" class="access-control-input" style="font-size:12px; padding:4px 8px; height:30px; width:100%; text-transform:uppercase;" placeholder="Pl. ABC-123 / XYZ-789" value="${escHtml(existing?.license_plate_1 || '')}">
+            <input type="text" id="m-truck-plate1" class="access-control-input" style="font-size:12px; padding:4px 6px; height:30px; width:100%; text-transform:uppercase;" placeholder="Pl. ABC-123 / XYZ-789" value="${escHtml(existing?.license_plate_1 || '')}">
           </div>
-          <div style="flex:1; min-width:120px;">
+          <div style="flex:0 0 125px;">
             <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Szállítási nap: <span style="color:red;">*</span></label>
-            <input type="date" id="m-truck-date" class="access-control-input" style="font-size:12px; padding:4px 8px; height:30px; width:100%;" value="${dateVal}">
+            <input type="date" id="m-truck-date" class="access-control-input" style="font-size:12px; padding:4px 6px; height:30px; width:100%;" value="${dateVal}">
           </div>
-          <div style="flex:1; min-width:130px;">
+          <div style="flex:0 0 130px;">
             <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Fuvarozó:</label>
-            <input type="text" id="m-truck-transporter" class="access-control-input" style="font-size:12px; padding:4px 8px; height:30px; width:100%;" placeholder="Fuvarozó neve" value="${escHtml(existing?.transporter || '')}">
+            <input type="text" id="m-truck-transporter" class="access-control-input" style="font-size:12px; padding:4px 6px; height:30px; width:100%;" placeholder="Fuvarozó neve" value="${escHtml(existing?.transporter || '')}">
           </div>
           <div style="flex:none;">
-            <button class="primary-btn btn-truck-save" style="height:30px; padding:0 16px;">Mentés</button>
+            <button class="primary-btn btn-truck-save" style="height:30px; padding:0 16px; background:#2563eb; border-color:#1d4ed8;">Mentés</button>
           </div>
         </div>
 
@@ -597,27 +728,22 @@ export function renderAldiRakodas(container, windowManager) {
             <table class="access-subform-table" style="font-size:11px; width:100%; white-space:nowrap;">
               <thead>
                 <tr>
-                  <th style="padding:6px 8px; text-align:left;">TERMÉK</th>
-                  <th style="padding:6px 8px; text-align:right;">RENDELT KARTONSZÁM</th>
-                  <th style="padding:6px 8px; text-align:right;">SZÁLLÍTHATÓ # / RAKLAP</th>
-                  <th style="padding:6px 8px; text-align:right;">RAKLAP</th>
-                  <th style="padding:6px 8px; text-align:left;">PARTNER</th>
-                  <th style="padding:6px 8px; text-align:left;">RENDELÉSI SZÁM</th>
-                  <th style="padding:6px 8px; text-align:left;">RENDELÉS TÍPUSA</th>
-                  <th style="padding:6px 8px; text-align:left;">CÉL LOKÁCIÓ</th>
-                  <th style="padding:6px 8px; text-align:right;">BRUTTÓ KG</th>
-                  <th style="padding:6px 8px; text-align:right;">NETTÓ KG</th>
-                  <th style="padding:6px 8px; text-align:left;">GÖNGYÖLEG TÍPUS</th>
-                  <th style="padding:6px 8px; text-align:right;">TÁRA SÚLY</th>
-                  <th style="padding:6px 8px; text-align:left;">SZÁRMAZÁSI ORSZÁG</th>
-                  <th style="padding:6px 8px; text-align:left;">LOTSZÁM</th>
-                  <th style="padding:6px 8px; text-align:left;">RAKLAP TÍPUS</th>
-                  <th style="padding:6px 8px; text-align:center;">TÖRLÉS</th>
+                  <th style="padding:6px 8px; text-align:center; min-width:200px;">TERMÉK</th>
+                  <th style="padding:6px 4px; text-align:center; width:70px; white-space:normal; font-size:10px; line-height:1.2;">RENDELT KARTONSZÁM</th>
+                  <th style="padding:6px 4px; text-align:center; width:80px; white-space:normal; font-size:10px; line-height:1.2;">SZÁLLÍTHATÓ # / RAKLAP</th>
+                  <th style="padding:6px 6px; text-align:center; width:55px;">RAKLAP</th>
+                  <th style="padding:6px 8px; text-align:center;">PARTNER</th>
+                  <th style="padding:6px 8px; text-align:center;">RENDELÉSI SZÁM</th>
+                  <th style="padding:6px 8px; text-align:center;">RENDELÉS TÍPUSA</th>
+                  <th style="padding:6px 8px; text-align:center;">CÉL LOKÁCIÓ</th>
+                  <th style="padding:6px 8px; text-align:center; width:65px;">BRUTTÓ KG</th>
+                  <th style="padding:6px 8px; text-align:center; width:65px;">NETTÓ KG</th>
+                  <th style="padding:6px 8px; text-align:center; width:55px;">MŰVELET</th>
                 </tr>
               </thead>
               <tbody id="m-truck-lines-tbody">
                 <tr>
-                  <td colspan="16" style="padding:24px; text-align:center; color:#94a3b8; font-size:11px;">
+                  <td colspan="11" style="padding:24px; text-align:center; color:#94a3b8; font-size:11px;">
                     ${isNew ? 'Az új kamion mentése után tudsz rá árut küldeni a jobb oldali Áru igény táblából.' : 'Betöltés...'}
                   </td>
                 </tr>
@@ -638,8 +764,8 @@ export function renderAldiRakodas(container, windowManager) {
 
     const modal = windowManager.createModal({
       title: title,
-      width: 1200,
-      height: 600,
+      width: 1050,
+      height: 560,
       content: modalContent
     });
 
@@ -658,14 +784,14 @@ export function renderAldiRakodas(container, windowManager) {
         if (res.ok) {
           const lines = await res.json();
           if (lines.length === 0) {
-            linesTbody.innerHTML = '<tr><td colspan="16" style="padding:20px; text-align:center; color:#94a3b8;">A kamion jelenleg üres. Küldj rá tételt az Áru igény táblázatból!</td></tr>';
+            linesTbody.innerHTML = '<tr><td colspan="11" style="padding:20px; text-align:center; color:#94a3b8;">A kamion jelenleg üres. Küldj rá tételt az Áru igény táblázatból!</td></tr>';
           } else {
             linesTbody.innerHTML = lines.map(l => `
               <tr>
-                <td style="padding:6px 8px; font-weight:600; color:#1e293b;">${escHtml(l.product_name)}</td>
-                <td style="padding:6px 8px; text-align:right; font-weight:700;">${l.ordered_cartons}</td>
-                <td style="padding:6px 8px; text-align:right;">${l.cartons_per_pallet || '-'}</td>
-                <td style="padding:6px 8px; text-align:right; color:#2563eb;">${l.pallets ? parseFloat(l.pallets).toFixed(2) : '-'}</td>
+                <td style="padding:6px 8px; font-weight:600; color:#1e293b; min-width:200px; white-space:normal;">${escHtml(l.product_name)}</td>
+                <td style="padding:6px 4px; text-align:right; font-weight:700; width:70px;">${l.ordered_cartons}</td>
+                <td style="padding:6px 4px; text-align:right; width:80px;">${l.cartons_per_pallet || '-'}</td>
+                <td style="padding:6px 6px; text-align:right; color:#2563eb; width:55px;">${l.pallets ? parseFloat(l.pallets).toFixed(2) : '-'}</td>
                 <td style="padding:6px 8px;">
                   <input type="text" class="inp-line-partner" data-id="${l.id}" value="${escHtml(l.partner || '')}" style="width:100px; padding:2px; font-size:11px;">
                 </td>
@@ -674,28 +800,13 @@ export function renderAldiRakodas(container, windowManager) {
                 <td style="padding:6px 8px;">
                   <input type="text" class="inp-line-dest" data-id="${l.id}" value="${escHtml(l.destination || '')}" style="width:80px; padding:2px; font-size:11px;">
                 </td>
-                <td style="padding:6px 8px;">
-                  <input type="number" class="inp-line-gross" data-id="${l.id}" value="${l.gross_weight || ''}" style="width:60px; padding:2px; font-size:11px;" step="0.01">
+                <td style="padding:6px 8px; width:65px;">
+                  <input type="number" class="inp-line-gross" data-id="${l.id}" value="${l.gross_weight || ''}" style="width:100%; padding:2px; font-size:11px;" step="0.01">
                 </td>
-                <td style="padding:6px 8px;">
-                  <input type="number" class="inp-line-net" data-id="${l.id}" value="${l.net_weight || ''}" style="width:60px; padding:2px; font-size:11px;" step="0.01">
+                <td style="padding:6px 8px; width:65px;">
+                  <input type="number" class="inp-line-net" data-id="${l.id}" value="${l.net_weight || ''}" style="width:100%; padding:2px; font-size:11px;" step="0.01">
                 </td>
-                <td style="padding:6px 8px;">
-                  <input type="text" class="inp-line-pkg" list="dl-pkg" data-id="${l.id}" value="${escHtml(l.packaging_type || '')}" style="width:100px; padding:2px; font-size:11px;">
-                </td>
-                <td style="padding:6px 8px;">
-                  <input type="number" class="inp-line-tare" data-id="${l.id}" value="${l.tare_weight || ''}" style="width:50px; padding:2px; font-size:11px;" step="0.01">
-                </td>
-                <td style="padding:6px 8px;">
-                  <input type="text" class="inp-line-origin" list="dl-origin" data-id="${l.id}" value="${escHtml(l.origin_country || '')}" style="width:80px; padding:2px; font-size:11px;">
-                </td>
-                <td style="padding:6px 8px;">
-                  <input type="text" class="inp-line-lot" data-id="${l.id}" value="${escHtml(l.lot_number || '')}" style="width:80px; padding:2px; font-size:11px;">
-                </td>
-                <td style="padding:6px 8px;">
-                  <input type="text" class="inp-line-pallet-type" list="dl-pallet" data-id="${l.id}" value="${escHtml(l.pallet_type || '')}" style="width:80px; padding:2px; font-size:11px;">
-                </td>
-                <td style="padding:4px 6px; text-align:center;">
+                <td style="padding:4px 6px; text-align:center; width:55px;">
                   <button class="btn-save-truck-line" data-id="${l.id}" title="Mentés" style="background:none; border:none; cursor:pointer; color:#10b981; font-size:14px;">💾</button>
                   <button class="btn-del-truck-line" data-id="${l.id}" title="Tétel törlése a kamionról" style="background:none; border:none; cursor:pointer; color:#dc2626; font-size:14px; margin-left:4px;">✕</button>
                 </td>
@@ -724,15 +835,10 @@ export function renderAldiRakodas(container, windowManager) {
                 const lineId = e.currentTarget.getAttribute('data-id');
                 const row = e.currentTarget.closest('tr');
                 const payload = {
-                  partner: row.querySelector('.inp-line-partner').value,
-                  destination: row.querySelector('.inp-line-dest').value,
-                  gross_weight: parseFloat(row.querySelector('.inp-line-gross').value) || null,
-                  net_weight: parseFloat(row.querySelector('.inp-line-net').value) || null,
-                  packaging_type: row.querySelector('.inp-line-pkg').value,
-                  tare_weight: parseFloat(row.querySelector('.inp-line-tare').value) || null,
-                  origin_country: row.querySelector('.inp-line-origin').value,
-                  lot_number: row.querySelector('.inp-line-lot').value,
-                  pallet_type: row.querySelector('.inp-line-pallet-type').value
+                  partner: row.querySelector('.inp-line-partner')?.value,
+                  destination: row.querySelector('.inp-line-dest')?.value,
+                  gross_weight: parseFloat(row.querySelector('.inp-line-gross')?.value) || null,
+                  net_weight: parseFloat(row.querySelector('.inp-line-net')?.value) || null
                 };
                 
                 try {
@@ -841,46 +947,6 @@ export function renderAldiRakodas(container, windowManager) {
   btnNewTruck.addEventListener('click', () => {
     openEditTruckModal(null);
   });
-
-  if (btnSaveDemands) {
-    btnSaveDemands.addEventListener('click', async () => {
-      const updates = state.demands.map(d => ({
-        id: d.id,
-        cartons_per_pallet: d.cartons_per_pallet !== undefined && d.cartons_per_pallet !== '' && d.cartons_per_pallet !== null
-          ? parseInt(d.cartons_per_pallet)
-          : null
-      }));
-
-      const origText = btnSaveDemands.textContent;
-      btnSaveDemands.disabled = true;
-      btnSaveDemands.textContent = 'Mentés...';
-
-      try {
-        const res = await fetch('/api/v1/aldi-cross-docking/demands/cartons-per-pallet', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ updates })
-        });
-
-        if (res.ok) {
-          btnSaveDemands.textContent = '✓ Mentve!';
-          setTimeout(() => {
-            btnSaveDemands.textContent = origText;
-            btnSaveDemands.disabled = false;
-          }, 1500);
-        } else {
-          alert('Hiba történt a mentés során.');
-          btnSaveDemands.textContent = origText;
-          btnSaveDemands.disabled = false;
-        }
-      } catch (err) {
-        console.error('Mentési hiba:', err);
-        alert('Hálózati hiba: ' + err.message);
-        btnSaveDemands.textContent = origText;
-        btnSaveDemands.disabled = false;
-      }
-    });
-  }
 
   // Inicializálás: Kamionok és Áruigények automatikus betöltése
   loadTrucks();

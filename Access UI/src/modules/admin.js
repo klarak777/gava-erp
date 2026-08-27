@@ -30,7 +30,14 @@ export function renderAdmin(container, wm, subModuleId = null) {
             { field: 'name', label: 'Megnevezés' }
         ]),
         'admin-ref-packaging': () => openAdminTable(wm, 'Göngyöleg Típusok', 'ref_packaging_types', [
-            { field: 'name', label: 'Név' }
+            { field: 'category', label: 'Fajta' },
+            { field: 'name', label: 'Név' },
+            { field: 'tare_weight_kg', label: 'Tára súly (kg)', type: 'number' },
+            { field: 'width_cm', label: 'Szélesség (cm)', type: 'number' },
+            { field: 'length_cm', label: 'Hossz (cm)', type: 'number' },
+            { field: 'height_cm', label: 'Magasság (cm)', type: 'number' },
+            { field: 'is_deposit_required', label: 'Betét díjas', type: 'boolean' },
+            { field: 'is_inventory_tracked', label: 'Göngyöleg leltárban szerepel', type: 'boolean' }
         ]),
         'admin-ref-origin': () => openAdminTable(wm, 'Származási Országok', 'ref_origin_countries', [
             { field: 'name', label: 'Név' }
@@ -155,12 +162,23 @@ export function openAdminTable(wm, title, tableName, columns, extraPayload = {},
                 <h3 id="dialog-title" style="margin-top:0;">Hozzáadás</h3>
                 <form id="admin-form">
                     <input type="hidden" id="edit-id" value="">
-                    ${columns.map(c => `
-                        <div style="margin-bottom:12px;">
-                            <label style="display:block; font-size:12px; font-weight:600; margin-bottom:4px;">${c.label}</label>
-                            <input type="text" id="inp-${c.field}" class="access-control-input" style="width:100%;">
-                        </div>
-                    `).join('')}
+                    ${columns.map(c => {
+                        if (c.type === 'boolean') {
+                            return `
+                                <div style="margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                                    <input type="checkbox" id="inp-${c.field}" style="width:16px; height:16px; cursor:pointer;">
+                                    <label for="inp-${c.field}" style="font-size:12px; font-weight:600; cursor:pointer; margin:0;">${c.label}</label>
+                                </div>
+                            `;
+                        } else {
+                            return `
+                                <div style="margin-bottom:12px;">
+                                    <label style="display:block; font-size:12px; font-weight:600; margin-bottom:4px;">${c.label}</label>
+                                    <input type="${c.type === 'number' ? 'number' : 'text'}" ${c.type === 'number' ? 'step="any"' : ''} id="inp-${c.field}" class="access-control-input" style="width:100%;">
+                                </div>
+                            `;
+                        }
+                    }).join('')}
                     <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px;">
                         <button type="button" class="secondary-btn" id="btn-cancel">Mégse</button>
                         <button type="submit" class="primary-btn">Mentés</button>
@@ -219,7 +237,12 @@ export function openAdminTable(wm, title, tableName, columns, extraPayload = {},
             tbody.innerHTML = filtered.map(item => `
                 <tr>
                     <td>${item.id}</td>
-                    ${columns.map(c => `<td>${item[c.field] || ''}</td>`).join('')}
+                    ${columns.map(c => {
+                        if (c.type === 'boolean') {
+                            return `<td style="text-align:center;">${item[c.field] ? '✅' : '❌'}</td>`;
+                        }
+                        return `<td>${item[c.field] !== null && item[c.field] !== undefined ? item[c.field] : ''}</td>`;
+                    }).join('')}
                     ${(extraPayload.isReadonly && !extraPayload.allowReassign) ? '' : `
                     <td>
                         ${(extraPayload.allowReassign && item.identifier_id) ? `
@@ -332,7 +355,11 @@ export function openAdminTable(wm, title, tableName, columns, extraPayload = {},
             winContainer.querySelector('#dialog-title').textContent = item ? 'Szerkesztés' : 'Új hozzáadása';
             winContainer.querySelector('#edit-id').value = item ? item.id : '';
             columns.forEach(c => {
-                winContainer.querySelector(`#inp-${c.field}`).value = item ? (item[c.field] || '') : '';
+                if (c.type === 'boolean') {
+                    winContainer.querySelector(`#inp-${c.field}`).checked = item ? !!item[c.field] : false;
+                } else {
+                    winContainer.querySelector(`#inp-${c.field}`).value = item ? (item[c.field] || '') : '';
+                }
             });
             dialog.showModal();
         }
@@ -358,7 +385,12 @@ export function openAdminTable(wm, title, tableName, columns, extraPayload = {},
             const id = winContainer.querySelector('#edit-id').value;
             const payload = { ...extraPayload };
             columns.forEach(c => {
-                payload[c.field] = winContainer.querySelector(`#inp-${c.field}`).value;
+                if (c.type === 'boolean') {
+                    payload[c.field] = winContainer.querySelector(`#inp-${c.field}`).checked;
+                } else {
+                    const val = winContainer.querySelector(`#inp-${c.field}`).value;
+                    payload[c.field] = (c.type === 'number' && val !== '') ? parseFloat(val) : val;
+                }
             });
             
             try {

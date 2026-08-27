@@ -1,0 +1,34 @@
+﻿Fajta ;Név;Tára súly (kg);Széleség (cm);Hossza (cm);Magasság (cm);Betét díjas;Gönygöleg leltár szerepel
+IFCO;BLL 4310;0,84;40;30;11,9;igen;igen
+IFCO;BLL 4314;0,985;40;30;16,2;igen;igen
+IFCO;BLL 4320;1,31;40;30;22,6;igen;igen
+IFCO;BLL 6408;1,255;60;40;0,93;igen;igen
+IFCO;BLL 6410;1,36;60;40;11,7;igen;igen
+IFCO;BLL 6413;1,54;60;40;15,2;igen;igen
+IFCO;BLL 6416;1,68;60;40;18,4;igen;igen
+IFCO;BLL 6418;1,725;60;40;19,9;igen;igen
+IFCO;BLL 6420;1,83;60;40;21,6;igen;igen
+IFCO;BLL 6424;2;60;40;23,8;igen;igen
+Europool;EPS 246;2,07;60;40;23,8;igen;igen
+Europool;EPS 24603;2;60;40;23,8;igen;igen
+Europool;EPS 216;1,82;60;40;21,1;igen;igen
+Europool;EPS 206;1,98;60;40;20,1;igen;igen
+Europool;EPS 186;1,54;60;40;17,6;igen;igen
+Europool;EPS 156;1,35;60;40;15,3;igen;igen
+Europool;EPS 136;1,34;60;40;12,3;igen;igen
+Europool;EPS 106;1,19;60;40;10,1;igen;igen
+Europool;EPS 154;0,69;40;30;15,3;igen;igen
+Europool;EPS 104;0,55;40;30;10,1;igen;igen
+Magyar rekesz;M5;1;60;40;10;nem;igen
+Magyar rekesz;M10;1,2;60;40;15;nem;igen
+Magyar rekesz;M20;1,45;60;40;22;nem;igen
+Magyar rekesz;M30;2,3;60;40;30;nem;igen
+Raklap;EU;22;80;120;14,4;nem;igen
+Raklap;Festett EU;22;80;120;14,4;nem;igen
+Raklap;CHEP EU;25;80;120;14,4;igen;igen
+Raklap;CHEP DD;;80;60;16,3;igen;igen
+Raklap;Egyutas kicsi;8;80;120;14,4;nem;nem
+Raklap;Egyutas nagy;12;100;120;14,4;nem;nem
+Plasztik rekesz;PL;;;;;nem;nem
+Papír karton;#;;;;;nem;nem
+Fa rekesz;Fa;;;;;nem;nem

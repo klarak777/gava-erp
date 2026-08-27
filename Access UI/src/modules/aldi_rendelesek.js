@@ -102,10 +102,10 @@ export function renderAldiRendelesek(container, windowManager) {
 
       contentEl.innerHTML = `
         <div style="padding:16px; background:#fff; height:100%; box-sizing:border-box; overflow:auto;">
-          <div style="display:flex; gap:16px; margin-bottom:16px;">
-            <div style="display:flex; flex-direction:column; gap:4px;">
-              <label style="font-size:11px; font-weight:600; color:#475569;">KAMION SZÁM</label>
-              <input type="text" value="${truckNo}" disabled style="height:32px; width:140px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; background:#f1f5f9; font-weight:700;">
+          <div style="display:flex; gap:16px; margin-bottom:16px; align-items:flex-end;">
+            <div style="display:flex; flex-direction:column; gap:4px; flex-grow:1; max-width:300px;">
+              <label style="font-size:11px; font-weight:600; color:#475569;">Termék keresése</label>
+              <input type="text" id="komissio-search-${truckId}" placeholder="Keresés termék neve alapján..." style="height:32px; width:100%; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px;">
             </div>
           </div>
           
@@ -127,7 +127,7 @@ export function renderAldiRendelesek(container, windowManager) {
               </thead>
               <tbody>
                 ${lines.length === 0 ? '<tr><td colspan="10" style="padding:16px; text-align:center; color:#94a3b8;">Nincsenek tételek a kamionon.</td></tr>' : lines.map((l, idx) => `
-                  <tr style="border-bottom:1px solid #f1f5f9; background:${idx % 2 === 1 ? '#fafafa' : '#ffffff'};">
+                  <tr class="komissio-item-row" style="border-bottom:1px solid #f1f5f9; background:${idx % 2 === 1 ? '#fafafa' : '#ffffff'};">
                     <td style="padding:8px; font-weight:600; color:#1e293b;">${l.product_name || '-'}</td>
                     <td style="padding:8px;">${l.ordered_cartons || l.cartons || '-'}</td>
                     <td style="padding:8px;">${l.gross_weight || '-'}</td>
@@ -153,6 +153,22 @@ export function renderAldiRendelesek(container, windowManager) {
           </div>
         </div>
       `;
+
+      const searchInput = contentEl.querySelector('#komissio-search-' + truckId);
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          const q = e.target.value.toLowerCase().trim();
+          const rows = contentEl.querySelectorAll('.komissio-item-row');
+          rows.forEach(row => {
+            const prodName = row.cells[0]?.textContent.toLowerCase() || '';
+            if (prodName.includes(q)) {
+              row.style.display = '';
+            } else {
+              row.style.display = 'none';
+            }
+          });
+        });
+      }
     });
   }
 
@@ -2087,8 +2103,7 @@ export function renderAldiRendelesek(container, windowManager) {
 
     wrapper.querySelector('#aldi-tab-komissio')?.addEventListener('click', () => { 
       state.activeTab = 'komissio'; 
-      if (state.komissioSummaryData.length === 0) fetchKomissioSummary();
-      else renderModule(); 
+      fetchKomissioSummary();
     });
     
     // Komissió summary events

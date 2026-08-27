@@ -323,6 +323,67 @@ router.put('/demands/cartons-per-pallet', async (req, res) => {
   }
 });
 
+// Split a demand
+router.post('/demands/:id/split', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newCartons } = req.body;
+    
+    if (!newCartons || newCartons <= 0) {
+      return res.status(400).json({ error: 'Érvénytelen kartonszám!' });
+    }
+
+    const existing = await knex('aldi_daily_order_lines').where('id', id).first();
+    if (!existing) return res.status(404).json({ error: 'Tétel nem található' });
+
+    // Check loaded quantities
+    const loadedRow = await knex('aldi_truck_lines')
+      .where('aldi_daily_order_line_id', id)
+      .sum('ordered_cartons as total_loaded')
+      .first();
+    
+    const loaded = parseInt(loadedRow?.total_loaded) || 0;
+    const remaining = existing.ordered_cartons - loaded;
+
+    if (newCartons >= remaining) {
+      return res.status(400).json({ error: 'Az új kartonszám kisebb kell legyen a jelenleginél!' });
+    }
+
+    await knex.transaction(async trx => {
+      // reduce original
+      await trx('aldi_daily_order_lines')
+        .where('id', id)
+        .update({ ordered_cartons: existing.ordered_cartons - newCartons });
+        
+      // insert new
+      await trx('aldi_daily_order_lines').insert({
+        daily_order_id: existing.daily_order_id,
+        gtin: existing.gtin,
+        ordered_cartons: newCartons,
+        cartons_per_pallet: existing.cartons_per_pallet
+      });
+    });
+    
+    res.status(200).json({ success: true });
+  } catch (e) {
+    console.error('Error splitting demand:', e);
+    res.status(500).json({ error: 'Belső szerverhiba' });
+  }
+});
+
+// Delete a demand
+router.delete('/demands/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    // Note: aldi_truck_lines has ON DELETE SET NULL for aldi_daily_order_line_id
+    await knex('aldi_daily_order_lines').where('id', id).delete();
+    res.status(200).json({ success: true });
+  } catch(e) {
+    console.error('Error deleting demand:', e);
+    res.status(500).json({ error: 'Belső szerverhiba' });
+  }
+});
+
 // --- Commissioning Endpoints ---
 
 // GET commission summary for trucks
@@ -330,7 +391,7 @@ router.get('/commission-summary', async (req, res) => {
   try {
     const { date, truck_id } = req.query;
     
-    let query = knex('aldi_trucks').select('*').orderBy('delivery_date', 'desc').orderBy('id', 'desc');
+    let query = knex('aldi_trucks').select('*').where('sent_to_pda', true).orderBy('delivery_date', 'desc').orderBy('id', 'desc');
     if (date) query = query.where('delivery_date', date);
     if (truck_id) query = query.where('id', truck_id);
     const trucks = await query;
