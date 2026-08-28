@@ -1,0 +1,275 @@
+# ALDI Tételáthelyezés és Rendelésverzió-kezelés – Végrehajtási Terv
+
+## Döntések rögzítve
+
+| Kérdés | Döntés |
+|--------|--------|
+| Rendeléscsalád azonosítás | Csak Purchase Order Number |
+| GTIN duplikáció | Összevonva (1 sor/GTIN, mennyiségek összegezve) |
+| Aktuális verzió törlése | Teljes rendeléscsalád törlődik |
+| Lezárt kamion áthelyezés | PDA inaktív → visszavonható; Komissió utasításból is levonja ha csökkentés történt |
+| Változásjelzés | Halvány zöld (pozitív), halvány sárga (negatív), piros (törölt) |
+| Kamionos áthelyezés mértékegysége | Kizárólag EU raklap; Normál raklap nem használható |
+| Törölt tétel reprezentációja | Technikai, 0 mennyiségű sor az aktuális verzióban |
+| Excel-export | Marad frontendoldali és változatlan; csak aktuális verzió exportálható |
+
+---
+
+## 1. FÁZIS – Adatbázis séma (migrációk)
+
+### 1.1. `aldi_order_families` tábla létrehozása
+
+```
+id                    SERIAL PK
+base_order_number     VARCHAR(100) UNIQUE NOT NULL
+current_order_id      INTEGER FK → aldi_daily_orders(id) NULLABLE
+created_at, updated_at
+```
+
+### 1.2. `aldi_daily_orders` bővítése
+
+```
++ order_family_id       INTEGER FK → aldi_order_families(id)
++ version_number        INTEGER NOT NULL DEFAULT 1
++ version_status        VARCHAR(20) DEFAULT 'current'  -- 'current' | 'superseded'
++ superseded_by_order_id  INTEGER FK NULLABLE → aldi_daily_orders(id)
++ superseded_at         TIMESTAMP NULLABLE
++ pdf_hash              VARCHAR(64) NULLABLE  -- SHA-256, duplikált feltöltés detektálás
+```
+
+### 1.3. `aldi_order_item_states` tábla létrehozása
+
+```
+id                    SERIAL PK
+order_family_id       INTEGER FK → aldi_order_families(id) NOT NULL
+gtin                  VARCHAR(50) NOT NULL
+sent_cartons          DECIMAL(10,3) NOT NULL DEFAULT 0
+requires_reconciliation  BOOLEAN DEFAULT FALSE
+reconciliation_reason TEXT NULLABLE
+created_at, updated_at
+UNIQUE(order_family_id, gtin)
+```
+
+### 1.4. `aldi_daily_order_lines` bővítése
+
+```
++ order_item_state_id     INTEGER FK → aldi_order_item_states(id) NULLABLE
++ previous_ordered_cartons  DECIMAL(10,3) NULLABLE
++ quantity_delta            DECIMAL(10,3) NULLABLE
++ change_type              VARCHAR(20) DEFAULT 'unchanged'
++ is_virtual_removed        BOOLEAN NOT NULL DEFAULT FALSE
+```
+
+### 1.5. `aldi_truck_lines` bővítése
+
+```
++ order_item_state_id     INTEGER FK → aldi_order_item_states(id) NULLABLE
++ row_order               INTEGER DEFAULT 0
+```
+
+Az `aldi_commission_lines` bővítése:
+
+```
++ aldi_truck_line_id       INTEGER FK → aldi_truck_lines(id) NULLABLE
++ order_item_state_id      INTEGER FK → aldi_order_item_states(id) NULLABLE
+```
+
+A komissiós sorokat elsődlegesen a konkrét kamionsorhoz kell kötni. A `order_item_state_id` a verziókon átívelő tételazonosságot és az auditálhatóságot biztosítja. Terméknév alapján komissiós sort módosítani tilos.
+
+### 1.6. Backfill (meglévő adatok migrálása)
+
+1. Minden egyedi `base_order_number`-hez `aldi_order_families` sor létrehozása
+2. `aldi_daily_orders.order_family_id` kitöltése, `version_number` és `version_status` beállítása (`created_at` sorrend alapján)
+3. `aldi_order_item_states` létrehozása minden family+GTIN kombinációra. A kezdőérték determinisztikusan:
+   - `loaded_cartons = SUM(aldi_truck_lines.ordered_cartons)` az adott family+GTIN-re;
+   - `historical_sent = MAX(aldi_daily_order_lines.sent_cartons)` az összes verzióból;
+   - `state.sent_cartons = GREATEST(loaded_cartons, historical_sent)`;
+   - ha ez nagyobb az aktuális verzió rendelt mennyiségénél, nincs automatikus csökkentés, hanem `requires_reconciliation = true` és auditbejegyzés készül.
+4. `aldi_daily_order_lines.order_item_state_id` összekapcsolása
+5. `aldi_truck_lines.order_item_state_id` összekapcsolása az `aldi_daily_order_line_id` → `aldi_daily_order_lines.order_item_state_id` alapján
+6. Minden backend- és frontend-lekérdezés átállítása az `aldi_order_item_states.sent_cartons` használatára.
+7. A meglévő `check_sent_cartons_bounds` constraint, majd az `aldi_daily_order_lines.sent_cartons` oszlop eltávolítása. A migráció végén kizárólag az `aldi_order_item_states.sent_cartons` maradhat igazságforrás.
+8. Inkonzisztens rekordok audit-listája → hiba esetén a migráció megáll
+
+---
+
+## 2. FÁZIS – Backend API
+
+### 2.1. Feltöltés átírása (`POST /upload`)
+
+A jelenlegi logika helyett:
+1. PDF parse → Purchase Order Number kinyerése
+2. `base_order_number` szerinti PostgreSQL advisory lock megszerzése tranzakcióban. Nem létező család első, párhuzamos feltöltésénél `INSERT ... ON CONFLICT`, majd a létrejött family sor `FOR UPDATE` zárolása szükséges.
+3. `aldi_order_families` keresése/létrehozása
+4. Következő `version_number` meghatározása
+5. **PDF hash ellenőrzés** – ha egyezik, 409 duplikátumhiba
+6. GTIN-ek normalizálása (azonos GTIN összevonása)
+7. Korábbi aktuális verzió tételeivel összehasonlítás → `change_type` és `quantity_delta` kiszámítása
+8. Új `aldi_daily_orders` és `aldi_daily_order_lines` sorok létrehozása. Az előző verzióban szereplő, de az új PDF-ből hiányzó GTIN-hez technikai sor jön létre `ordered_cartons = 0`, `change_type = 'removed'`, `is_virtual_removed = true` értékekkel.
+9. `aldi_order_item_states` létrehozása (új GTIN-ek) vagy frissítése
+10. `requires_reconciliation` beállítása ha `new_ordered < sent_cartons || new_ordered < loaded_cartons`
+11. Korábbi verzió `superseded` státuszra állítása
+12. `current_order_id` frissítése
+
+### 2.2. `GET /aldi-daily-orders` bővítése
+
+- `version_number`, `version_status`, `order_family_id` visszaadása
+- Az `order_type` (deviza) nem változik
+
+### 2.3. `GET /aldi-daily-orders/:id/lines` bővítése
+
+- `change_type`, `quantity_delta`, `previous_ordered_cartons` visszaadása
+- `sent_cartons`, `loaded_cartons`, `available_cartons` visszaadása az `aldi_order_item_states`-ből
+- `requires_reconciliation` visszaadása
+
+### 2.4. Küldés tiltása elévült verzión
+
+- `PATCH /lines/:lineId/send-cartons` – ellenőrzi, hogy az adott line `aldi_daily_orders.version_status = 'current'`
+- `PATCH /:id/send-to-rakodas` – csak current verzión
+- Frontend Excel-export – csak current verzión. Elévült verzión az exportgomb nem jelenik meg/inaktív. A frontend exportfüggvény külön is ellenőrzi a `version_status` értékét.
+
+### 2.5. `PATCH /aldi-order-items/:itemStateId/return-available` (ÚJ)
+
+Áruigény teljes szabad mennyiségének visszavétele a Napi rendelésekhez:
+- `sent_cartons = loaded_cartons` (az order_item_states-ben)
+- Megerősítés nélkül, egyetlen kattintás
+
+### 2.6. `POST /aldi-cross-docking/truck-lines/:lineId/transfer` (ÚJ – ÁTHELYEZÉS)
+
+Request body:
+```json
+{
+  "target_type": "truck" | "demand" | "daily_order",
+  "target_truck_id": 123,      // ha target_type = "truck"
+  "transfer_eu_pallets": 2.5
+}
+```
+
+Tranzakciós logika:
+- **Másik kamion**: lock(source_truck, target_truck) növekvő ID sorrendben → lock(order_item_state) → forrás csökkentés → cél növelés/létrehozás → `sent_cartons` és `loaded_cartons` változatlan
+- **Áruigény**: lock(source_truck) → lock(order_item_state) → forrás csökkentés/törlés → `loaded_cartons` csökken → `available_cartons` nő
+- **Napi rendelések**: lock(source_truck) → lock(order_item_state) → forrás csökkentés/törlés → `sent_cartons` ÉS `loaded_cartons` csökken
+
+Validáció:
+- `cartons_per_pallet > 0` kötelező
+- `transfer_eu_pallets` véges, pozitív, legfeljebb 3 tizedesjegyű érték, és nem nagyobb a forrássor EU-raklapszámánál
+- kizárólag EU raklap mozgatható; Normál raklap mező és bemeneti érték nincs
+- `move_cartons = transfer_eu_pallets * cartons_per_pallet`; a művelet csak akkor hajtható végre, ha az eredmény egész kartonszám, automatikus kerekítés tilos
+- `sent_to_pda = true` esetén az áthelyezés tiltott; előbb külön művelettel vissza kell vonni a PDA-küldést. `sent_to_pda = false` esetén a többi feltétel teljesülése mellett engedélyezhető.
+- Komissziós hatás: kizárólag az `aldi_truck_line_id` alapján kapcsolt komissiós sor csökkenthető. A kartonszámmal arányosan újra kell számítani a raklap-, nettó- és bruttó tömegértékeket; bizonytalan vagy hiányos kapcsolat esetén a művelet 409 hibával megáll, és nem módosít semmit.
+
+### 2.7. `PUT /aldi-cross-docking/trucks/:truckId/lines/reorder` (ÚJ)
+
+Request body: `{ line_ids: [5, 3, 1, 7] }` – az ID-k sorrendje határozza meg a `row_order` értéket.
+
+Backend-validáció:
+- minden ID pontosan egyszer szerepel;
+- minden felsorolt sor a megadott kamionhoz tartozik;
+- a kamion egyetlen meglévő sora sem hiányzik;
+- idegen kamion sora nem rendezhető át;
+- a kamion és sorai a mentés idejére zároltak.
+
+### 2.8. Rendelés törlése
+
+- Aktuális verzió törlésekor: a teljes rendeléscsalád törlődik (döntés #3)
+- Ellenőrzés: egyetlen érintett `order_item_state`-nál sem lehet `loaded_cartons > 0`
+- Az idegen kulcsok törlési viselkedése explicit: technikai állapot- és verziós sorok `CASCADE`, audit szempontból megőrzendő kapcsolat esetén `RESTRICT`; körkörös family/current-order kapcsolatot a tranzakció először nullázza.
+- Törlési sorrend: zárolás → loaded audit → `current_order_id = NULL` → kapcsolt verziók/tételsorok/állapotok törlése → family törlése → commit.
+- Komissiós vagy árva kamionsor esetén a törlés megáll és 409 hibát ad.
+- Sikeres adatbázis-commit után törlődnek minden verzió PDF-fájljai. Részleges fájltörlési hiba esetén részletes warning és újrapróbálható szervernapló készül; az adatbázis-törlést nem jelenti sikertelennek.
+
+---
+
+## 3. FÁZIS – Frontend: Napi rendelések UI
+
+### 3.1. Rendeléslista módosítások
+
+- `VERSION N` jól látható badge minden rendelés mellett
+- `Aktuális` / `Elévült` státusz jelzés
+- Elévült sorok szürkített háttérrel
+- Elévült verzión az export és a „Rakodásra küldés" gombok tiltottak (disabled + tooltip). Az export marad a meglévő frontendoldali megoldás; új backend exportvégpont nem készül.
+
+### 3.2. „Rendelés megtekintése" modal
+
+- „Módosítás" gomb átnevezése → „Küldés"
+- **Saját HTML/CSS mennyiségbekérő modal** a böngésző `prompt()` helyett:
+  - „Add meg az áthelyezni kívánt kartonmennyiséget"
+  - Mutatja: rendelt / küldve / kamionon / küldhető
+  - Az input növekmény, a backend idempotens célértéket kap
+- Új **„Változás" oszlop**:
+  - `added` → `+X`, halvány zöld háttér
+  - `increased` → `+X`, halvány zöld háttér
+  - `decreased` → `-X`, halvány sárga háttér
+- `removed` → `0`, piros háttér
+  - `unchanged` → üres
+  - Reconciliation szükséges → piros ⚠️ ikon tooltippel
+- Elévült verzión: Küldés gombok nem jelennek meg / inaktívak
+- Az `is_virtual_removed = true` technikai sor csak a képernyős összehasonlításban jelenik meg; a meglévő Excel-export adatsorai közé nem kerülhet.
+
+---
+
+## 4. FÁZIS – Frontend: Kamion szerkesztés és Áruigény
+
+### 4.1. Kamion szerkesztés – bal oldali műveleti oszlop
+
+Minden kamionsor bal oldalán (a FUVAROK → Rakodás mintájára):
+- ≡ drag handle (sorrend)
+- ➕ mennyiség hozzáadás (meglévő)
+- 🔀 áthelyezés ikon → **Áthelyezési modal**
+
+### 4.2. Áthelyezési modal (a csatolt kép mintájára)
+
+Fejléc: „Tétel áthelyezése másik fuvarra" (vagy „Áthelyezés")
+
+Tartalom:
+- Tételinformáció: termék neve és EU-raklap mennyiség
+- Célkamion választó (dropdown – csak nem-rakodott kamionok) vagy cél: Áruigény/Napi rendelés
+- N° Euro Palets áthelyezve (egyetlen mennyiségi input, max: forráson rendelkezésre álló)
+- „Mégse" és „Áthelyezés" gombok
+
+Normál raklap nem jelenik meg és nem küldhető az API-nak sem.
+
+### 4.3. Áruigény visszavétel
+
+- A kuka/visszavétel ikon **megerősítés nélkül** a teljes szabad mennyiséget visszavonja
+- API hívás: `PATCH /aldi-order-items/:itemStateId/return-available`
+- Siker → lista frissítés; hiba → backend magyar hibaüzenet megjelenítése
+
+### 4.4. Sorrend mentés
+
+- Drag & drop vagy fel/le gombok → `PUT /trucks/:truckId/lines/reorder`
+- A `row_order` mező alapján rendezve jelennek meg
+
+---
+
+## Verifikációs terv
+
+### Automatikus tesztek (a migráció után)
+
+1. Verzió feltöltés: V1 → V2 → V3 státuszváltás
+2. Diff számítás: added/increased/decreased/removed/unchanged
+3. Elévült verzió küldésének backendoldali tiltása (403), valamint a frontendoldali export tiltása és az exportgomb elrejtése/inaktiválása
+4. Kamion áthelyezés: forrás → célkamion (lock order helyes)
+5. Áruigény visszavétel (sent = loaded)
+6. Napi rendelésekbe visszaküldés (sent csökken)
+7. Reconciliation: `new_ordered < sent` → piros jelzés, küldés tiltva
+8. Negatív/nulla/nem szám mennyiség elutasítás; EU raklapnál legfeljebb 3 tizedesjegy engedélyezett, de a számított kartonmennyiségnek egésznek kell lennie
+9. PDF hash duplikátum detektálás
+10. Rendeléscsalád törlés (ha loaded = 0 mindenütt)
+11. Commission lines csökkentés áthelyezéskor
+12. Párhuzamos első verziófeltöltés ugyanazzal a Purchase Order Numberrel
+13. Törölt technikai sor megjelenik piros nullával, de az Excel-exportból kimarad
+14. Backfill: több verzió `sent_cartons` értékei nem adódnak össze
+
+### Manuális UI ellenőrzés
+
+- Verziók színezése (szürke az elévült)
+- Változás oszlop zöld/sárga/piros
+- Áthelyezési modal (a csatolt kép mintája)
+- Drag handle és sorrend mentés
+- Magyar hibaüzenetek
+
+---
+
+> [!IMPORTANT]
+> Ez a fejlesztés **4 fázisban** valósul meg. Az 1. fázis (migráció) a legkritikusabb – az éles futtatás előtt kötelező a dry-run audit és a staging-tesztelés. A backfill hiba esetén megáll, nem javítgat csendben.

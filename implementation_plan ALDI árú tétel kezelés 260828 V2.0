@@ -1,0 +1,78 @@
+# ALDI Rakodás Tételszintű és Kartonszintű Kezelése (V2)
+
+A kritikus javítások és észrevételek alapján a rendszer egy sokkal robusztusabb, tranzakcionális és szigorúan típusos architektúrára áll át, amely pontosan követi az elvárt invariánsokat.
+
+## 1. Adatmodell és Invariánsok
+
+A napi rendelési tételeknél (`aldi_daily_order_lines`) az alábbi három mennyiség határozza meg az állapotot:
+- **`ordered_cartons`**: Eredetileg megrendelt mennyiség (már létezik, `decimal(10,3)`).
+- **`sent_cartons`**: Rakodásra átadott mennyiség (ÚJ mező, `decimal(10,3)`).
+- **`loaded_cartons`**: Kamionokra kiosztott mennyiség (a `aldi_truck_lines` táblából dinamikusan számítva).
+
+**Kötelező invariáns minden műveletnél:**
+`0 <= loaded_cartons <= sent_cartons <= ordered_cartons`
+
+Az Áruigény listában az elosztható mennyiség:
+`available_cartons = sent_cartons - loaded_cartons`
+
+## 2. Adatbázis módosítások (Migráció és Backfill)
+
+Létrehozunk egy új migrációt:
+1. `table.decimal('sent_cartons', 10, 3).notNullable().defaultTo(0);` hozzáadása az `aldi_daily_order_lines` táblához.
+2. **Backfill script a migráción belül:**
+   - Ahol a szülő rendelés `sent_to_rakodas = true`, ott beállítjuk: `sent_cartons = ordered_cartons`.
+   - Célzott ellenőrzés: garantáljuk, hogy minden már kiosztott sornál teljesül a `sent_cartons >= loaded_cartons` (ez automatikusan igaz, ha `ordered_cartons`-t vesszük alapul).
+
+## 3. API Végpontok (Tranzakcionális működés)
+
+A párhuzamosságból adódó túlküldések megelőzése érdekében a mennyiséget módosító végpontok `await knex.transaction(async trx => ...)` blokkban, **sorzárolással (`.forUpdate()`)** lesznek védve!
+
+**API Válasz formátuma minden művelet után:**
+```json
+{
+  "ordered_cartons": 50,
+  "sent_cartons": 40,
+  "loaded_cartons": 15,
+  "available_cartons": 25,
+  "remaining_to_send": 10
+}
+```
+
+### Új és módosított végpontok:
+- **`PATCH /api/v1/aldi-daily-orders/lines/:lineId/send-cartons` (Részleges/teljes küldés)**
+  Csak annyit enged küldeni, hogy `sent_cartons` ne haladja meg az `ordered_cartons`-t. Utána frissíti a rendelés `sent_to_rakodas` jelzőjét `true`-ra. (Idempotens működést biztosít).
+- **`PATCH /api/v1/aldi-daily-orders/:id/send-to-rakodas` (Rendelés szintű küldés)**
+  Minden tételsoron elvégzi a fenti kiegészítést (`sent_cartons = ordered_cartons`).
+- **`PATCH /api/v1/aldi-daily-orders/lines/:lineId/return-cartons` (Visszavétel a rakodásból)**
+  Ellenőrzi, hogy `visszavonandó <= sent_cartons - loaded_cartons`. Csökkenti a `sent_cartons` értékét. Ha a rendelés minden tételének `sent_cartons == 0`, akkor a `sent_to_rakodas = false` lesz.
+- **`POST /trucks/:id/lines` és `PUT /truck-lines/:lineId` (Kamionra osztás védelme)**
+  Szigorúan validálják, hogy a beállítani kívánt kamionos mennyiség nem haladja-e meg a `sent_cartons - már_kamionon_lévő_mennyiség` (available_cartons) értéket.
+
+### Rendelés törlése/módosítása, szétbontás
+- Rendelés vagy tételsor nem törölhető, ha `loaded_cartons > 0`.
+- A PDF újbóli importja nem írhatja felül a sort, ha `loaded_cartons > 0` (visszautasítjuk).
+- A szétbontás (`/demands/:id/split`) funkció egyelőre marad, de a `sent_cartons`-t az eredeti soron tartjuk a megmaradó `ordered_cartons` erejéig, a maradékot (ha van) az új sor kapja. Mivel ez a funkció eddig is furcsán viselkedett, érdemes lehet később kivezetni.
+
+## 4. Frontend (UI) módosítások
+- **Napi rendelések modal:**
+  - Kijelzi a `sent_cartons / ordered_cartons` értéket vizuálisan (pl. elszürkítve).
+  - Tételszintű ➡️ gomb részleges küldésre (prompt megkérdezi a mennyiséget).
+- **Rakodás (Áruigény) nézet:**
+  - A KARTON oszlop a valós `available_cartons` értéket mutatja (esetleg zárójelben a teljes `sent_cartons`-t a tájékozódás végett).
+  - A kuka ikon visszavonja a kartonokat, felugró ablakkal bekérve a mennyiséget.
+
+## 5. Tesztelési és Verifikációs Terv (Verification Plan)
+A módosítások elkészülte után manuálisan és szkriptelt API hívásokkal is tesztelve lesznek a következő esetek:
+1. Részleges és teljes küldés ellenőrzése.
+2. Ismételt küldés (idempotencia) - 409 vagy sikeres no-op.
+3. Túlküldés elutasítása (hibaüzenet érkezik).
+4. Részleges és teljes visszavétel a Rakodásból.
+5. **Kritikus:** Kamionon lévő mennyiség visszavételének tiltása (hibaüzenet érkezik).
+6. Kamionról levétel után az Áruigény (available) automatikus növekedése.
+7. Párhuzamos (konkurens) küldési kérések - a tranzakciózárolás miatt nem lehet többet kiosztani.
+8. `sent_to_rakodas` pontos újraszámítása nullázódáskor.
+9. Meglévő éles adatok (dummy) backfilljének sikeressége migráció után.
+10. Tizedes, negatív, nulla és nem szám értékek megfelelő lekezelése a validáció során.
+
+---
+*Kérlek nézd át az újratervezett dokumentumot, és ha a szabályrendszer így már maradéktalanul megfelel a szigorú invariánsoknak, kattints a **Proceed** gombra az implementáció megkezdéséhez!*

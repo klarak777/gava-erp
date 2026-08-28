@@ -1,0 +1,24 @@
+# ALDI Rakodás V4 Áttekintés
+
+Az ALDI rendszer jelentős fejlesztéseken esett át, hogy a napi rendelésekből származó tételeket immár **részlegesen, darabonként (kartononként)** lehessen a Rakodás modulba küldeni és onnan visszavenni.
+
+## Áttekintés a fejlesztésekről
+
+### 1. Adatbázis Változások és Idempotencia
+- **`sent_cartons` mező:** A Napi Rendelések tételei kapott egy új mezőt, ami pontosan nyilvántartja, hogy eddig összesen hány karton lett átküldve a Rakodás modul számára. 
+- A rendszer garantálja az `0 <= loaded_cartons <= sent_cartons <= ordered_cartons` egyenlőtlenséget.
+- **Tranzakciók és Lockok (Idempotencia):** Minden olyan adatbázis módosítás (küldés, szétosztás kamionokra, törlés) mostantól szigorú SQL tranzakciót használ (`ORDER BY id ASC FOR UPDATE` logikával). Ez megvédi a rendszert a hálózati duplikációkból származó túlkönyvelésektől és a deadlockoktól (fagyásoktól).
+
+### 2. "Napi rendelés" Modul Fejlesztései (UI)
+- **Tételszintű küldés:** Ha rákattintasz a "Rendelés Megtekintése" gombra egy napi rendelésen, a felugró ablakban most egy részletesebb táblázat fogad.
+- Látni fogod, hogy az egyes tételekből mennyi lett a rakodásba küldve (pl. `150 / 200 karton`). A zöld szín jelzi a teljes küldést.
+- **Módosítás Gomb:** Soronként a "Módosítás" gombra kattintva pontosan megadhatod az új elvárt célértéket, amennyit át akarsz engedni a rakodásba. Ha csökkented a számot, azzal visszaveszed az árut.
+
+### 3. "Rakodás" Modul Fejlesztései (UI)
+- **Visszavétel a "szabad" készletből (Kuka ikon):** Az "Áru igény" listában lévő kuka ikonra kattintva már nem a teljes rendelést dobja el vakon, hanem felugrik egy ablak, ahol megadhatod, hogy mennyire akarod csökkenteni a szabad rakodásra küldött mennyiséget (ha nullát adsz meg, teljesen visszavonja az adott tételt). Ezt persze csak a még kamionra nem került "szabad" készletig lehet megtenni.
+- **Visszavétel a kamionról:** Ha megnyitsz egy létező kamiont (Ceruza ikon), a benne lévő tételek **Rendelt Kartonszám cellája mostantól szerkeszthető**. Ha ide egy kisebb számot írsz be, és rámentesz a tételre, a felszabadult mennyiség rögtön visszakerül az "Áru igény" bal oldali listájába, így újra osztható lesz egy másik kamionra! Ha a "Tétel törlése a kamionról" (X) ikont használod, az egész mennyiséget visszateszi az Áru igények közé.
+
+## Biztonság (Fájlok és Törlés)
+- A **Napi rendelés törlése** gomb esetén a rendszer mostantól csak akkor törli a rendeléshez tartozó PDF fájlt a szerverről (`\\192.168.1.5\...`), ha az adatbázis törlés már biztosan lezajlott hiba nélkül. Ha a fájl törlése hálózati okból meghiúsulna, az nem akasztja meg az adatbázis törlést (csak figyelmeztetést naplóz).
+
+A változtatások mind élesítve lettek a futó rendszerben. Próbáld ki a felületen az új részleges küldéseket és módosításokat!

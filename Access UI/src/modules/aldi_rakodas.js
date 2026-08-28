@@ -89,7 +89,7 @@ export function renderAldiRakodas(container, windowManager) {
                   <th style="width:58px; max-width:62px; background:rgba(14,165,233,0.1); font-size:9px; padding:4px 2px; text-align:center;" title="Szállítási dátum">SZÁLL. DÁTUM</th>
                   <th style="min-width:65px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 4px;">RENDELÉSI SZÁM</th>
                   <th style="min-width:55px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 4px;">TÍPUS</th>
-                  <th style="min-width:50px; text-align:center; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 4px;">KAMIONRA</th>
+                  <th style="min-width:50px; text-align:center; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 4px;">KÜLDÉS</th>
                   <th style="width:28px; text-align:center; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 2px;" title="Törlés">🗑️</th>
                 </tr>
               </thead>
@@ -323,8 +323,8 @@ export function renderAldiRakodas(container, windowManager) {
     }
 
     demandsTbody.innerHTML = filtered.map(d => {
-      const cartons = parseInt(d.ordered_cartons) || 0;
-      const cpp = (d.cartons_per_pallet !== null && d.cartons_per_pallet !== undefined && d.cartons_per_pallet !== '') ? parseInt(d.cartons_per_pallet) : null;
+      const cartons = parseFloat(d.available_cartons) || 0;
+      const cpp = (d.cartons_per_pallet !== null && d.cartons_per_pallet !== undefined && d.cartons_per_pallet !== '') ? parseFloat(d.cartons_per_pallet) : null;
       const pallets = d.pallets !== null && d.pallets !== undefined ? parseFloat(d.pallets) : (cpp && cpp > 0 ? (cartons / cpp) : null);
 
       sumCartons += cartons;
@@ -337,7 +337,10 @@ export function renderAldiRakodas(container, windowManager) {
           <td style="padding:4px 6px; font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;" title="${escHtml(d.product_name || '')}">
             ${escHtml(d.product_name || '')}
           </td>
-          <td style="padding:4px 3px; text-align:right; font-weight:700; color:#0f172a;">${cartons}</td>
+          <td style="padding:4px 3px; text-align:right;">
+            <div style="font-weight:600; color:#0f172a; font-size:11px;">${cartons}</div>
+            ${d.ordered_cartons && Number(d.ordered_cartons) !== cartons ? `<div style="font-size:9px; color:#94a3b8; font-weight:normal;">(${d.ordered_cartons})</div>` : ''}
+          </td>
           <td style="padding:2px 3px; text-align:right;">
             <input type="number" class="aldi-demand-cpp-input" data-id="${d.id}" value="${cpp !== null ? cpp : ''}" placeholder="" min="1" style="width:46px; height:24px; padding:1px 3px; font-size:11px; text-align:right; border:1px solid #cbd5e1; border-radius:3px; background:#fff; font-weight:600; color:#0f172a;">
           </td>
@@ -349,16 +352,13 @@ export function renderAldiRakodas(container, windowManager) {
               ${escHtml(d.order_type || 'Normál')}
             </span>
           </td>
-          <td style="text-align:center; padding:3px 4px; display:flex; gap:4px; justify-content:center;">
-            <button class="btn-split-aldi-demand" data-id="${d.id}" title="Tétel szétbontása" 
-              style="background:#2563eb; color:#fff; border:1px solid #1d4ed8; border-radius:4px; padding:2px 7px; font-size:12px; font-weight:bold; cursor:pointer; transition:all 0.2s;">+</button>
-            <button class="btn-send-aldi-demand" data-id="${d.id}" title="Küldés kamionra" 
+          <td style="text-align:center; padding:3px 4px;">
+            <button class="btn-send-aldi-demand" data-id="${d.id}" title="Küldés vagy Visszavétel" 
               style="background:#ef4444; color:#fff; border:1px solid #dc2626; border-radius:4px; padding:2px 7px; font-size:11px; cursor:pointer; transition:all 0.2s;">➡</button>
           </td>
           <td style="text-align:center; padding:3px 2px;">
-            <button class="btn-delete-aldi-demand" data-id="${d.id}" title="Törlés" 
-              style="background:#ffffff; color:#dc2626; border:1px solid #fca5a5; border-radius:4px; padding:2px 6px; font-size:11px; font-weight:bold; cursor:pointer; transition:all 0.2s;"
-              onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#ffffff'">✕</button>
+            <button class="btn-delete-aldi-demand" data-id="${d.id}" title="Törlés (visszaküldés Napi rendelésekbe)" 
+              style="background:#f1f5f9; color:#ef4444; border:1px solid #cbd5e1; border-radius:4px; padding:2px 5px; font-size:11px; cursor:pointer; transition:all 0.2s;">✕</button>
           </td>
         </tr>
       `;
@@ -435,7 +435,7 @@ export function renderAldiRakodas(container, windowManager) {
         const id = parseInt(e.currentTarget.getAttribute('data-id'));
         const demand = state.demands.find(d => d.id === id);
         if (demand) {
-          openSendToTruckModal(demand);
+          askSendQuantity(demand);
         }
       });
     });
@@ -455,9 +455,16 @@ export function renderAldiRakodas(container, windowManager) {
     demandsTbody.querySelectorAll('.btn-delete-aldi-demand').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         const id = parseInt(e.currentTarget.getAttribute('data-id'));
-        if (confirm('Biztosan visszaállítod a teljes rendelést "nem rakodott" állapotba? (A rendelés minden tétele eltűnik a Rakodásból, de a Napi rendeléseknél megmarad. A már kamionra került mennyiségek nem törlődnek a kamionokról.)')) {
+        const rowData = state.demands.find(d => d.id === id);
+        if (!rowData) return;
+        
+        if (confirm('Biztosan visszaküldöd a teljes szabad mennyiséget a Napi rendelések közé?')) {
           try {
-            const res = await fetch(`/api/v1/aldi-cross-docking/demands/${id}`, { method: 'DELETE' });
+            const res = await fetch(`/api/v1/aldi-cross-docking/order-items/${rowData.order_item_state_id}/return-available`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ return_cartons: rowData.available_cartons })
+            });
             if (res.ok) {
               loadDemands();
             } else {
@@ -541,128 +548,154 @@ export function renderAldiRakodas(container, windowManager) {
     });
   }
 
-  // ============= KÜLDÉS KAMIONRA MODAL =============
-  function openSendToTruckModal(demand) {
+  function askSendQuantity(demand) {
     const demandPallets = (demand.cartons_per_pallet && demand.cartons_per_pallet > 0)
-      ? ((demand.ordered_cartons || 0) / demand.cartons_per_pallet).toFixed(2)
+      ? ((demand.available_cartons || 0) / demand.cartons_per_pallet).toFixed(2)
       : null;
+
+    const truckOptions = (state.trucks || []).filter(t => !t.sent_to_pda && !t.is_loaded).map(t => `<option value="${t.id}">${escHtml(t.truck_number)} - Szabad: ${(33 - (parseFloat(t.total_pallets)||0)).toFixed(2)} EU</option>`).join('');
 
     const modalContent = `
       <div style="padding:20px 24px; display:flex; flex-direction:column; gap:14px;">
         <div style="padding:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; display:flex; flex-direction:column; gap:6px;">
           <div style="font-size:13px; font-weight:700; color:#1e293b;">${escHtml(demand.product_name)}</div>
           <div style="font-size:11px; color:#64748b;">Rendelési szám: <strong>${escHtml(demand.order_number || '-')}</strong> | Dátum: <strong>${demand.delivery_date ? String(demand.delivery_date).substring(0,10) : '-'}</strong></div>
-          <div style="font-size:12px; color:#334155; padding:6px 10px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px;">
+          
+          <div id="plt-warning-box" style="font-size:12px; color:#334155; padding:6px 10px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; display:none;">
             Rendelkezésre álló raklap: 
             <strong style="color:#16a34a; font-size:14px;">
               ${demandPallets ? demandPallets : '<span style="color:#ef4444;">⚠️ Nincs #/PLT megadva!</span>'}
             </strong>
           </div>
-          <div style="font-size:12px; color:#334155; padding:6px 10px; background:#e0f2fe; border:1px solid #7dd3fc; border-radius:6px;">
+          
+          <div id="truck-avail-box" style="font-size:12px; color:#334155; padding:6px 10px; background:#e0f2fe; border:1px solid #7dd3fc; border-radius:6px; display:none;">
             Rendelkezésre álló raklaphely a kamionon: <strong style="color:#0369a1; font-size:14px;" id="avail-pallets-display">–</strong>
           </div>
         </div>
 
         <div>
-          <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Célkamion kiválasztása: <span style="color:red;">*</span></label>
-          <select id="send-target-truck" class="access-control-input" style="font-size:12px; padding:4px 8px; height:32px; width:100%;">
-            <option value="">-- Válasszon kamiont --</option>
-            ${state.trucks.map(t => `<option value="${t.id}">${escHtml(t.truck_number)} (${escHtml(t.transporter || 'Nincs fuvarozó')})</option>`).join('')}
+          <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Cél kiválasztása: <span style="color:red;">*</span></label>
+          <select id="send-target" class="access-control-input" style="font-size:12px; padding:4px 8px; height:32px; width:100%;">
+            <option value="">-- Válasszon célt --</option>
+            <option value="daily_order" style="color:#2563eb; font-weight:bold;">↩ Napi rendelések (Visszaküldés)</option>
+            ${truckOptions ? '<optgroup label="Kamionok">' + truckOptions + '</optgroup>' : ''}
           </select>
         </div>
 
-        <div>
+        <div id="truck-inputs" style="display:none;">
           <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Küldendő raklap szám: <span style="color:red;">*</span></label>
-          <input type="number" id="send-pallets-input" class="access-control-input" min="0.01" step="0.01"
+          <input type="number" id="send-pallets" class="access-control-input" min="0.001" step="0.001"
             style="font-size:13px; padding:4px 8px; height:32px; width:100%;"
             placeholder="pl. 2.5"
             value="${demandPallets || ''}">
         </div>
+        
+        <div id="daily-inputs" style="display:none;">
+          <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Visszaküldendő kartonszám (max. ${demand.available_cartons}): <span style="color:red;">*</span></label>
+          <input type="number" id="send-cartons" class="access-control-input" min="0.001" max="${demand.available_cartons}" step="0.001"
+            style="font-size:13px; padding:4px 8px; height:32px; width:100%;"
+            value="${demand.available_cartons}">
+        </div>
 
         <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:4px;">
           <button class="secondary-btn btn-send-cancel">Mégse</button>
-          <button class="primary-btn btn-send-confirm" style="background:#22c55e; border-color:#16a34a;">➡ Küldés kamionra</button>
+          <button class="primary-btn btn-send-confirm" style="background:#22c55e; border-color:#16a34a;" disabled>➡ Küldés</button>
         </div>
       </div>
     `;
 
     const modal = windowManager.createModal({
-      title: 'Tétel küldése kamionra',
+      title: 'Tétel küldése kamionra / visszavétel',
       width: 420,
-      height: 340,
+      height: 400,
       content: modalContent
     });
 
     const modalEl = modal.element;
-    const selTruck = modalEl.querySelector('#send-target-truck');
+    const select = modalEl.querySelector('#send-target');
+    const truckInputs = modalEl.querySelector('#truck-inputs');
+    const dailyInputs = modalEl.querySelector('#daily-inputs');
+    const btnOk = modalEl.querySelector('.btn-send-confirm');
+    const pltWarningBox = modalEl.querySelector('#plt-warning-box');
+    const truckAvailBox = modalEl.querySelector('#truck-avail-box');
     const availDisplay = modalEl.querySelector('#avail-pallets-display');
-    const palletsInput = modalEl.querySelector('#send-pallets-input');
 
-    selTruck.addEventListener('change', () => {
-      const tid = parseInt(selTruck.value);
-      if (!tid) {
-        availDisplay.textContent = '–';
-        return;
-      }
-      const truck = state.trucks.find(t => t.id === tid);
-      if (truck) {
-        const used = parseFloat(truck.total_pallets) || 0;
-        const free = Math.max(0, 33 - used).toFixed(2);
-        availDisplay.textContent = `${free}`;
+    select.addEventListener('change', () => {
+      if (select.value === 'daily_order') {
+          truckInputs.style.display = 'none';
+          dailyInputs.style.display = 'block';
+          pltWarningBox.style.display = 'none';
+          truckAvailBox.style.display = 'none';
+          btnOk.disabled = false;
+          btnOk.innerHTML = '↩ Visszaküldés';
+          btnOk.style.background = '#2563eb';
+          btnOk.style.borderColor = '#1d4ed8';
+      } else if (select.value) {
+          truckInputs.style.display = 'block';
+          dailyInputs.style.display = 'none';
+          pltWarningBox.style.display = 'block';
+          truckAvailBox.style.display = 'block';
+          btnOk.disabled = false;
+          btnOk.innerHTML = '➡ Küldés kamionra';
+          btnOk.style.background = '#22c55e';
+          btnOk.style.borderColor = '#16a34a';
+
+          const tid = parseInt(select.value);
+          const truck = state.trucks.find(t => t.id === tid);
+          if (truck) {
+            const used = parseFloat(truck.total_pallets) || 0;
+            const free = Math.max(0, 33 - used).toFixed(2);
+            availDisplay.textContent = `${free}`;
+          } else {
+            availDisplay.textContent = '–';
+          }
       } else {
-        availDisplay.textContent = '–';
+          truckInputs.style.display = 'none';
+          dailyInputs.style.display = 'none';
+          pltWarningBox.style.display = 'none';
+          truckAvailBox.style.display = 'none';
+          btnOk.disabled = true;
       }
     });
 
     modalEl.querySelector('.btn-send-cancel').addEventListener('click', () => modal.close());
 
-    modalEl.querySelector('.btn-send-confirm').addEventListener('click', async () => {
-      const truckId = selTruck.value;
-      if (!truckId) {
-        alert('Kérlek válassz ki egy célkamiont!');
-        return;
-      }
-
-      if (!demand.cartons_per_pallet || parseFloat(demand.cartons_per_pallet) <= 0) {
-        alert('⚠️ Hiányzó adat: A tételhez nincs megadva a Karton/Raklap (#/PLT) váltási egység!\n\nA raklapszám kiszámításához szükséges ez az adat. Kérlek add meg az áru igény táblázatban a #/PLT értéket, majd próbáld újra!');
-        return;
-      }
-
-      const pallets = parseFloat(palletsInput.value);
-      if (!pallets || pallets <= 0) {
-        alert('Kérlek add meg a küldendő raklapszámot!');
-        return;
-      }
-
-      const cartonsToSend = Math.round(pallets * parseFloat(demand.cartons_per_pallet));
-
-      const payload = {
-        aldi_daily_order_line_id: demand.id,
-        product_name: demand.product_name,
-        ordered_cartons: cartonsToSend,
-        cartons_per_pallet: demand.cartons_per_pallet,
-        pallets: pallets,
-        delivery_date: demand.delivery_date,
-        order_number: demand.order_number,
-        order_type: demand.order_type
-      };
-
+    btnOk.addEventListener('click', async () => {
       try {
-        const res = await fetch(`/api/v1/aldi-cross-docking/trucks/${truckId}/lines`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        if (res.ok) {
-          modal.close();
-          loadDemands();
-          loadTrucks();
+        if (select.value === 'daily_order') {
+            const qtyCartons = Number(modalEl.querySelector('#send-cartons').value);
+            if (qtyCartons <= 0 || qtyCartons > demand.available_cartons) return alert('Érvénytelen kartonszám.');
+            
+            const res = await fetch(`/api/v1/aldi-cross-docking/order-items/${demand.order_item_state_id}/return-available`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ return_cartons: qtyCartons })
+            });
+            if (!res.ok) throw new Error('Hiba a visszaküldés során.');
         } else {
-          alert('Hiba történt a tétel küldése során.');
+            const targetTruckId = select.value;
+            
+            if (!demand.cartons_per_pallet || parseFloat(demand.cartons_per_pallet) <= 0) {
+              alert('⚠️ Hiányzó adat: A tételhez nincs megadva a Karton/Raklap (#/PLT) váltási egység!\\n\\nA raklapszám kiszámításához szükséges ez az adat. Kérlek add meg az áru igény táblázatban a #/PLT értéket, majd próbáld újra!');
+              return;
+            }
+
+            const qtyPallets = Number(modalEl.querySelector('#send-pallets').value);
+            if (!qtyPallets || qtyPallets <= 0) return alert('Érvénytelen raklap mennyiség!');
+            
+            const res = await fetch(`/api/v1/aldi-cross-docking/trucks/${targetTruckId}/lines`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ demand_id: demand.id, send_eu_pallets: qtyPallets })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Hiba történt a kamionra küldés során.');
         }
+        modal.close();
+        loadDemands();
+        loadTrucks();
       } catch (err) {
-        alert('Hálózati hiba: ' + err.message);
+        alert(err.message);
       }
     });
   }
@@ -806,8 +839,8 @@ export function renderAldiRakodas(container, windowManager) {
                 <td style="padding:6px 8px; width:65px;">
                   <input type="number" class="inp-line-net" data-id="${l.id}" value="${l.net_weight || ''}" style="width:100%; padding:2px; font-size:11px;" step="0.01">
                 </td>
-                <td style="padding:4px 6px; text-align:center; width:55px;">
-                  <button class="btn-save-truck-line" data-id="${l.id}" title="Mentés" style="background:none; border:none; cursor:pointer; color:#10b981; font-size:14px;">💾</button>
+                <td style="padding:4px 6px; text-align:center; width:55px; white-space:nowrap;">
+                  <span class="drag-handle" data-id="${l.id}" title="Sor mozgatása (húzza fel/le)" style="cursor:grab; font-size:13px; color:#2563eb; padding:1px 2px; user-select:none; display:inline-block;">☰</span>
                   <button class="btn-del-truck-line" data-id="${l.id}" title="Tétel törlése a kamionról" style="background:none; border:none; cursor:pointer; color:#dc2626; font-size:14px; margin-left:4px;">✕</button>
                 </td>
               </tr>
@@ -830,10 +863,53 @@ export function renderAldiRakodas(container, windowManager) {
               });
             });
 
-            linesTbody.querySelectorAll('.btn-save-truck-line').forEach(btn => {
-              btn.addEventListener('click', async (e) => {
-                const lineId = e.currentTarget.getAttribute('data-id');
-                const row = e.currentTarget.closest('tr');
+            // --- Drag & Drop újrarendezés (kék ikonnal) ---
+            linesTbody.querySelectorAll('.drag-handle').forEach(handle => {
+              handle.addEventListener('mousedown', e => { e.target.closest('tr').draggable = true; });
+              handle.addEventListener('mouseup', e => { e.target.closest('tr').draggable = false; });
+            });
+
+            let dragSrcId = null;
+            linesTbody.querySelectorAll('tr').forEach(row => {
+              row.addEventListener('dragstart', e => {
+                const h = row.querySelector('.drag-handle');
+                if (!h || !row.draggable) { e.preventDefault(); return; }
+                dragSrcId = h.dataset.id;
+                row.style.opacity = '0.4';
+                row.style.background = '#dbeafe';
+                e.dataTransfer.effectAllowed = 'move';
+              });
+              row.addEventListener('dragover', e => {
+                e.preventDefault();
+                row.style.borderTop = '2px solid #2563eb';
+              });
+              row.addEventListener('dragleave', e => {
+                row.style.borderTop = '';
+              });
+              row.addEventListener('drop', async e => {
+                e.preventDefault();
+                row.style.borderTop = '';
+                const h = row.querySelector('.drag-handle');
+                if (!h || !dragSrcId || dragSrcId === h.dataset.id) return;
+                const dropId = h.dataset.id;
+                const dragIdx = lines.findIndex(l => String(l.id) === String(dragSrcId));
+                const dropIdx = lines.findIndex(l => String(l.id) === String(dropId));
+                const [item] = lines.splice(dragIdx, 1);
+                lines.splice(dropIdx, 0, item);
+                const response = await fetch(`/api/v1/aldi-cross-docking/trucks/${truckId}/lines/reorder`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ line_ids: lines.map(line => line.id) }) });
+                if (!response.ok) alert('A sorrend mentése sikertelen.');
+                loadTruckLines();
+              });
+              row.addEventListener('dragend', e => {
+                row.style.opacity = '1'; row.style.background = ''; row.draggable = false;
+              });
+            });
+
+            // Auto-save módosítások a sorban
+            linesTbody.querySelectorAll('input').forEach(inp => {
+              inp.addEventListener('change', async (e) => {
+                const row = e.target.closest('tr');
+                const lineId = row.querySelector('.drag-handle').dataset.id;
                 const payload = {
                   partner: row.querySelector('.inp-line-partner')?.value,
                   destination: row.querySelector('.inp-line-dest')?.value,
@@ -847,13 +923,11 @@ export function renderAldiRakodas(container, windowManager) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                   });
-                  if (updateRes.ok) {
-                    alert('Sor sikeresen mentve!');
-                  } else {
-                    alert('Hiba mentéskor.');
+                  if (!updateRes.ok) {
+                    alert('Hiba automatikus mentéskor.');
                   }
                 } catch (err) {
-                  alert('Hiba: ' + err.message);
+                  alert('Hiba automatikus mentéskor: ' + err.message);
                 }
               });
             });

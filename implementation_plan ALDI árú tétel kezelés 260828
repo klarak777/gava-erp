@@ -1,0 +1,30 @@
+# ALDI Rakodás Tételszintű és Kartonszintű Kezelése
+
+Az új igényeid alapján a rendszer logikáját sokkal rugalmasabbra alakítjuk. Mostantól nem csak egy egyszerű "Igen/Nem" kapcsoló lesz a rendelésen, hanem **karton szintű pontossággal** lehet majd mozgatni a tételeket a Napi rendelések és a Rakodás között.
+
+## Tervezett adatbázis változtatások
+1. Új mező a `aldi_daily_order_lines` (napi rendelési tételek) táblába: `sent_cartons` (alapértelmezetten 0).
+   - Ez a mező fogja nyilvántartani, hogy az adott tételből pontosan hány kartont küldtünk már át a rakodásra.
+2. A teljes rendelésre vonatkozó `sent_to_rakodas` jelzőt megtartjuk a gyors szűrés érdekében (automatikusan "igaz" lesz, ha legalább 1 kartont átküldünk egy tételből).
+
+## Frontend (UI) módosítások
+
+### 1. Napi rendelések (Rendelés megtekintése ablak)
+- **Részleges küldés:** Minden tételsornál megjelenik egy új gomb (pl. ➡️). Erre kattintva egy felugró ablak (prompt) megkérdezi: *"Hány kartont szeretnél átküldeni a rakodásra?"*. Az alapértelmezett érték a még át nem küldött mennyiség lesz.
+- **Teljes küldés:** A már meglévő "Rakodásra küldés >>>" gomb továbbra is megmarad az ablak alján. Ez az összes tétel fennmaradó mennyiségét egyszerre átteszi a rakodásba.
+- **Állapot követése:** A tételeknél vizuálisan is látszódni fog, hogy az eredetileg megrendelt mennyiségből mennyi került már át a rakodásba (pl. `40 / 50`).
+
+### 2. ALDI Rakodás (Áruigény lista)
+- **Tétel visszavétele:** A "Kuka" (🗑️) ikonra kattintva többé nem törlődik az egész rendelés! Helyette a rendszer megkérdezi: *"Hány kartont szeretnél visszavonni a napi rendelésekbe?"*. Maximum annyit lehet visszavonni, amennyi még nincs felrakva egy kamionra sem.
+- A táblázatban lévő "KARTON" oszlop mostantól a `sent_cartons` értékét mutatja majd (azaz pontosan azt a mennyiséget, amit a Napi rendelésekből ténylegesen átküldtek ide).
+
+### 3. Kamion szerkesztés (Visszavétel a kamionról)
+- Ahogy kérted, a kamionról való visszavétel (törlés a kamionról) eddig is és ezután is úgy működik, hogy a levett mennyiség azonnal újra megjelenik a Rakodás (Áruigény) listájában kioszthatóként.
+
+## Backend (API) módosítások
+- **Új végpont:** `PATCH /api/v1/aldi-daily-orders/lines/:lineId/send-cartons` (Tételszintű áthelyezés)
+- **Új végpont:** `PATCH /api/v1/aldi-cross-docking/demands/:id/return-cartons` (Tételszintű visszavonás)
+- A meglévő lekérdezések módosítása úgy, hogy az `ordered_cartons` helyett az új `sent_cartons` mennyiséggel számoljanak a rakodási felületen.
+
+---
+*Kérlek nézd át a fenti tervet! Ha minden megfelel az elképzeléseidnek, kattints a **Proceed** gombra, és megkezdem a fejlesztést!*

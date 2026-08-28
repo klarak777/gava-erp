@@ -438,13 +438,13 @@ export function renderAldiRendelesek(container, windowManager) {
       }
 
       return `
-              <tr style="border-bottom:1px solid #f1f5f9; ${idx % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;'}">
+              <tr style="border-bottom:1px solid #f1f5f9; ${o.version_status === 'superseded' ? 'background:#e5e7eb; opacity:.72;' : (idx % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;')}">
                 <td style="padding:10px 14px; color:#1e293b; font-weight:500;">${formattedDate}</td>
                 <td style="padding:10px 14px;">
                   <a href="/api/v1/aldi-daily-orders/${o.id}/file" class="aldi-order-link" target="_blank" data-id="${o.id}" data-orderno="${o.order_number}" data-date="${formattedDate}" style="color:#2563eb; font-weight:700; text-decoration:underline;">${displayOrderNumber}</a>
                 </td>
                 <td style="padding:10px 14px; color:#334155; font-weight:600;">
-                  ${o.version || 'N/A'}
+                  ${o.version || 'N/A'} <span style="font-size:9px;padding:2px 5px;border-radius:4px;background:${o.version_status === 'superseded' ? '#cbd5e1' : '#dcfce7'};color:${o.version_status === 'superseded' ? '#475569' : '#166534'}">${o.version_status === 'superseded' ? 'Elévült' : 'Aktuális'}</span>
                 </td>
                 <td style="padding:10px 14px; color:#334155;">
                   <span style="display:inline-block; background:${orderTypeBadgeBg}; color:${orderTypeBadgeColor}; font-size:11px; font-weight:700; padding:2px 8px; border-radius:4px; border:${orderTypeBorder};">
@@ -455,7 +455,7 @@ export function renderAldiRendelesek(container, windowManager) {
                   ${o.pallet_count != null && o.pallet_count !== '' ? o.pallet_count : '-'}
                 </td>
                 <td style="padding:10px 14px; text-align:center;">
-                  <button class="aldi-view-order-btn" data-id="${o.id}" data-orderno="${o.order_number}" data-date="${formattedDate}" style="background:none; border:none; cursor:pointer; font-size:16px;" title="Tételek megtekintése">📋</button>
+                  <button class="aldi-view-order-btn" data-id="${o.id}" data-orderno="${o.order_number}" data-date="${formattedDate}" data-status="${o.version_status || 'current'}" style="background:none; border:none; cursor:pointer; font-size:16px;" title="Tételek megtekintése">📋</button>
                   <button class="aldi-delete-order-btn" data-id="${o.id}" style="background:none; border:none; cursor:pointer; font-size:16px; margin-left:8px;" title="Rendelés törlése">🗑️</button>
                 </td>
               </tr>
@@ -928,55 +928,106 @@ export function renderAldiRendelesek(container, windowManager) {
     const windowId = 'order-view-' + id;
     const title = `Rendelés: ${orderNo} | Dátum: ${dateStr}`;
 
-    let lines = [];
-    try {
-      const res = await fetch('/api/v1/aldi-daily-orders/' + id + '/lines');
-      lines = await res.json();
-    } catch(err) {
-      alert("Hiba történt a tételek betöltése során!");
-      return;
-    }
+    const fetchLines = async () => {
+        try {
+          const res = await fetch('/api/v1/aldi-daily-orders/' + id + '/lines');
+          return await res.json();
+        } catch(err) {
+          alert("Hiba történt a tételek betöltése során!");
+          return [];
+        }
+    };
 
-    let tableHtml = '';
-    if (lines && lines.length > 0) {
-      tableHtml = `
-        <table style="width:100%; border-collapse:collapse; font-size:13px;">
-          <thead>
-            <tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;">
-              <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">Cikkszám</th>
-              <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">Termék megnevezése</th>
-              <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">GTIN szám</th>
-              <th style="padding:8px 12px; text-align:right; font-weight:700; color:#334155;">Rendelt kartonszám</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${lines.map((l, i) => {
-              const prod = state.products.find(p => p.gtin === l.gtin || p.product_name === l.product_name);
-              const cikk = prod ? (prod.articleNo || prod.article_number || '') : '';
-              return `
-              <tr style="${i % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;'} border-bottom:1px solid #f1f5f9;">
-                <td style="padding:8px 12px; color:#475569; font-weight:600;">${cikk}</td>
-                <td style="padding:8px 12px; color:#1e293b;">${l.product_name}</td>
-                <td style="padding:8px 12px; color:#64748b; font-family:monospace;">${l.gtin || ''}</td>
-                <td style="padding:8px 12px; text-align:right; font-weight:600; color:#2563eb;">${Number(l.ordered_cartons)}</td>
-              </tr>
-              `;
-            }).join('')}
-          </tbody>
-        </table>
-      `;
-    } else {
-      tableHtml = '<div style="text-align:center; padding:20px; color:#64748b; font-size:13px;">Nem találhatók tételsorok.</div>';
-    }
+    let lines = await fetchLines();
+    const isCurrentVersion = !lines.length || lines[0].version_status !== 'superseded';
+
+    const askSendQuantity = (available) => new Promise(resolve => {
+        const maxQuantity = Math.max(0, Number(available) || 0);
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:#0f172a66;z-index:10050;display:flex;align-items:center;justify-content:center;';
+        overlay.innerHTML = `<div style="background:#fff;border-radius:10px;padding:18px;width:330px;box-shadow:0 20px 50px #0004"><h3 style="margin:0 0 12px">Tétel küldése</h3><label style="font-size:12px;color:#475569">Add meg az áthelyezni kívánt kartonmennyiséget (maximum ${maxQuantity})</label><input id="aldi-send-qty" type="number" min="0.001" max="${maxQuantity}" step="0.001" value="${maxQuantity}" style="box-sizing:border-box;width:100%;margin:8px 0 14px;padding:8px"><div style="display:flex;justify-content:flex-end;gap:8px"><button data-cancel>Mégse</button><button data-ok style="background:#2563eb;color:#fff;border:0;border-radius:5px;padding:7px 14px">Küldés</button></div></div>`;
+        document.body.appendChild(overlay);
+        overlay.querySelector('[data-cancel]').onclick = () => { overlay.remove(); resolve(null); };
+        overlay.querySelector('[data-ok]').onclick = () => {
+            const value = overlay.querySelector('#aldi-send-qty').valueAsNumber;
+            overlay.remove();
+            resolve(value);
+        };
+    });
+
+    const generateTableHtml = (linesData) => {
+        if (!linesData || linesData.length === 0) {
+            return '<div style="text-align:center; padding:20px; color:#64748b; font-size:13px;">Nem találhatók tételsorok.</div>';
+        }
+        return `
+            <table style="width:100%; border-collapse:collapse; font-size:13px;">
+              <thead>
+                <tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;">
+                  <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">Cikkszám</th>
+                  <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">Termék megnevezése</th>
+                  <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">GTIN szám</th>
+                  <th style="padding:8px 12px; text-align:right; font-weight:700; color:#334155;">Rakodásra küldve</th>
+                  <th style="padding:8px 12px; text-align:center; font-weight:700; color:#334155;">Változás</th>
+                  <th style="padding:8px 12px; text-align:right; font-weight:700; color:#334155;">Művelet</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${linesData.map((l, i) => {
+                  const prod = state.products.find(p => p.gtin === l.gtin || p.product_name === l.product_name);
+                  const cikk = prod ? (prod.articleNo || prod.article_number || '') : '';
+                  const sent = parseFloat(l.sent_cartons) || 0;
+                  const ordered = parseFloat(l.ordered_cartons) || 0;
+                  const isFullySent = sent >= ordered;
+                  const remainingToSend = Math.max(0, ordered - sent);
+                  const delta = parseFloat(l.quantity_delta) || 0;
+                  const hasVersionComparison = Number(l.version_number) > 1;
+                  const changeBg = !hasVersionComparison
+                    ? 'transparent'
+                    : l.change_type === 'removed'
+                    ? '#fecaca'
+                    : ['added', 'increased'].includes(l.change_type)
+                      ? '#dcfce7'
+                      : l.change_type === 'decreased'
+                        ? '#fef3c7'
+                        : 'transparent';
+                  const changeText = !hasVersionComparison
+                    ? ''
+                    : l.change_type === 'removed'
+                    ? '0 (törölt)'
+                    : ['added', 'increased'].includes(l.change_type)
+                      ? `+${delta}`
+                      : l.change_type === 'decreased'
+                        ? String(delta)
+                        : '';
+                  
+                  return `
+                  <tr style="${i % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;'} border-bottom:1px solid #f1f5f9;">
+                    <td style="padding:8px 12px; color:#475569; font-weight:600;">${cikk}</td>
+                    <td style="padding:8px 12px; color:#1e293b;">${l.product_name}</td>
+                    <td style="padding:8px 12px; color:#64748b; font-family:monospace;">${l.gtin || ''}</td>
+                    <td style="padding:8px 12px; text-align:right; font-weight:600; color:#334155;">
+                      ${sent} / ${ordered} karton
+                    </td>
+                    <td style="padding:8px 12px;text-align:center;background:${changeBg};font-weight:700">${changeText}${l.requires_reconciliation ? ' <span title="' + (l.reconciliation_reason || 'Mennyiségi egyeztetés szükséges') + '">⚠️</span>' : ''}</td>
+                    <td style="padding:8px 12px; text-align:right;">
+                        ${isCurrentVersion && !l.is_virtual_removed && !l.requires_reconciliation && remainingToSend > 0 ? `<button class="line-send-btn primary-btn" data-line-id="${l.id}" data-sent="${sent}" data-ordered="${ordered}" style="padding:4px 10px; border-radius:12px; font-size:11px; font-weight:600; background:#2563eb; color:white; border:none; cursor:pointer;">Küldés</button>` : '<span style="color:#94a3b8">—</span>'}
+                    </td>
+                  </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+        `;
+    };
 
     const contentHtml = `
       <div style="display:flex; flex-direction:column; height:100%; background:#ffffff;">
-        <div style="flex:1; padding:16px 20px; overflow-y:auto;">
-          ${tableHtml}
+        <div id="order-lines-container-${id}" style="flex:1; padding:16px 20px; overflow-y:auto;">
+          ${generateTableHtml(lines)}
         </div>
         <div style="padding:12px 20px; border-top:1px solid #e2e8f0; background:#f8fafc; display:flex; justify-content:space-between; align-items:center;">
-          <button id="export-btn-${id}" style="padding:6px 18px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid #10b981; background:#ffffff; color:#10b981; cursor:pointer; display:${lines.length > 0 ? 'inline-flex' : 'none'}; align-items:center; gap:6px;">⬇️ Excel Export</button>
-          <button id="send-to-demands-btn-${id}" class="primary-btn" style="padding:6px 18px; border-radius:20px; font-size:13px; font-weight:600; display:${lines.length > 0 ? 'inline-flex' : 'none'}; align-items:center; gap:6px; background:#2563eb; color:white; border:none; cursor:pointer;">Rakodásra küldés &gt;&gt;&gt;</button>
+          <button id="export-btn-${id}" style="padding:6px 18px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid #10b981; background:#ffffff; color:#10b981; cursor:pointer; display:${lines.length > 0 && isCurrentVersion ? 'inline-flex' : 'none'}; align-items:center; gap:6px;">⬇️ Excel Export</button>
+          <button id="send-to-demands-btn-${id}" class="primary-btn" style="padding:6px 18px; border-radius:20px; font-size:13px; font-weight:600; display:${lines.length > 0 && isCurrentVersion ? 'inline-flex' : 'none'}; align-items:center; gap:6px; background:#2563eb; color:white; border:none; cursor:pointer;">Teljes rendelés rakodásra küldése &gt;&gt;&gt;</button>
         </div>
       </div>
     `;
@@ -984,32 +1035,73 @@ export function renderAldiRendelesek(container, windowManager) {
     if (windowManager && typeof windowManager.createModal === 'function') {
       windowManager.createModal({
         title: title,
-        width: 750,
+        width: 800,
         height: 500,
         content: contentHtml
       });
       
+      const attachEvents = () => {
+          const container = document.getElementById(`order-lines-container-${id}`);
+          if (!container) return;
+
+          container.querySelectorAll('.line-send-btn').forEach(btn => {
+              btn.addEventListener('click', async (e) => {
+                  const button = e.currentTarget;
+                  const lineId = button.getAttribute('data-line-id');
+                  const currentSent = Number(button.getAttribute('data-sent')) || 0;
+                  const maxOrdered = Number(button.getAttribute('data-ordered')) || 0;
+                  const available = Math.max(0, maxOrdered - currentSent);
+                  const addQuantity = await askSendQuantity(available);
+                  if (addQuantity === null) return;
+                  const targetSent = currentSent + addQuantity;
+                  if (!Number.isFinite(addQuantity) || addQuantity <= 0 || addQuantity > available) {
+                      alert('Érvénytelen mennyiség!');
+                      return;
+                  }
+
+                  try {
+                      const res = await fetch(`/api/v1/aldi-daily-orders/lines/${lineId}/send-cartons`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ target_sent_cartons: targetSent })
+                      });
+                      
+                      if (!res.ok) {
+                          const errData = await res.json();
+                          alert('Hiba: ' + (errData.error || 'Ismeretlen hiba'));
+                          return;
+                      }
+                      
+                      // Újratöltés
+                      lines = await fetchLines();
+                      container.innerHTML = generateTableHtml(lines);
+                      attachEvents(); // Újra felkötjük az eseményeket
+                      
+                  } catch (err) {
+                      console.error(err);
+                      alert('Hálózati hiba történt.');
+                  }
+              });
+          });
+      };
+
       setTimeout(() => {
-        // Modal id is auto-generated by WindowManager, so we just search for the button inside the DOM
         const exportBtn = document.getElementById(`export-btn-${id}`);
         if (exportBtn) {
-          exportBtn.addEventListener('click', () => doExcelExport(lines, orderNo, dateStr));
+          exportBtn.addEventListener('click', () => doExcelExport(lines.filter(line => !line.is_virtual_removed), orderNo, dateStr));
         }
 
         const sendBtn = document.getElementById(`send-to-demands-btn-${id}`);
         if (sendBtn) {
           sendBtn.addEventListener('click', async () => {
-             // API hívás, ami beállítja a sent_to_rakodas = true taget az adatbázisban
+             if (!confirm('Biztosan a TELJES rendelést rakodásra küldöd?')) return;
+             
              try {
                const res = await fetch(`/api/v1/aldi-daily-orders/${id}/send-to-rakodas`, {
                  method: 'PATCH'
                });
                if (!res.ok) {
-                 if (res.status === 409) {
-                     alert(`Figyelem! A tétel - SZÁLLÍTÁSI DÁTUM: ${dateStr}, RENDELÉSI SZÁM: ${orderNo}, VERZIÓ SZÁMA - hármas azonosítóval már át lett küldve a Rakodás modulba! Ezt a műveletet nem hajthatja végre még egyszer.`);
-                 } else {
-                     alert('Hiba történt a tétel átküldésekor.');
-                 }
+                 alert('Hiba történt a rendelés átküldésekor.');
                  return;
                }
              } catch (err) {
@@ -1023,20 +1115,23 @@ export function renderAldiRendelesek(container, windowManager) {
              sendBtn.style.color = 'white';
              sendBtn.disabled = true;
 
-             setTimeout(() => {
-               const closeBtn = document.querySelector('.window-manager-modal-close');
-               if (closeBtn) closeBtn.click();
-             }, 1000);
+             lines = await fetchLines();
+             const container = document.getElementById(`order-lines-container-${id}`);
+             if (container) {
+                 container.innerHTML = generateTableHtml(lines);
+                 attachEvents();
+             }
           });
         }
+        
+        attachEvents();
       }, 100);
     } else {
       // Fallback
       alert('WindowManager nem elérhető, kérlek frissítsd az oldalt!');
     }
   }
-
-  function doExcelExport(lines, orderNo, dateStr) {
+function doExcelExport(lines, orderNo, dateStr) {
     if (typeof XLSX === 'undefined') {
       alert('Az Excel generáló modul még töltődik, kérlek próbáld újra pár másodperc múlva!');
       return;

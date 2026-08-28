@@ -1,0 +1,138 @@
+# V4 Kritikus Hibajavítások – Implementációs Terv
+
+## Összefoglalás
+
+A V4 implementáció 6 kritikus hibát tartalmaz, amelyeket éles használat előtt javítani kell. A javítások backend és frontend fájlokat érintenek.
+
+---
+
+## Javítandó hibák
+
+### 1. Negatív/nulla kamionmennyiség elfogadható (KRITIKUS)
+
+**Hol:** [`aldi_cross_docking.js`](file:///c:/Users/klara/Documents/Nepelemes%20%C3%BCgyek/Gav%C3%A1/ERP%20Access/server/src/routes/aldi_cross_docking.js) – `POST /trucks/:id/lines` és `PUT /truck-lines/:lineId`
+
+**Probléma:** `const newCartons = parseFloat(ordered_cartons) || 0;` – nulla és negatív értékek átmennek.
+
+**Javítás:** Mindkét végponton explicit validáció:
+```js
+if (!Number.isFinite(newCartons) || newCartons <= 0) {
+    return res.status(400).json({ error: 'A kartonszámnak pozitív számnak kell lennie.' });
+}
+```
+
+---
+
+### 2. PUT truck-lines tömeges mezőmódosítás (KRITIKUS)
+
+**Hol:** [`aldi_cross_docking.js`](file:///c:/Users/klara/Documents/Nepelemes%20%C3%BCgyek/Gav%C3%A1/ERP%20Access/server/src/routes/aldi_cross_docking.js) – `PUT /truck-lines/:lineId`
+
+**Probléma:** `const updateData = { ...req.body }` – a kliens bármilyen mezőt átírhat, beleértve az `aldi_daily_order_line_id`-t, `aldi_truck_id`-t stb.
+
+**Javítás:** Explicit engedélyezett mezőlista (whitelist):
+```js
+const ALLOWED_FIELDS = ['partner', 'destination', 'gross_weight', 'net_weight', 'ordered_cartons'];
+const updateData = {};
+for (const field of ALLOWED_FIELDS) {
+    if (req.body[field] !== undefined) updateData[field] = req.body[field];
+}
+updateData.updated_at = knex.fn.now();
+```
+
+---
+
+### 3. Rendeléstörlési 409 hiba + PDF warning nem jelenik meg a UI-ban
+
+**Hol:** [`aldi_rendelesek.js`](file:///c:/Users/klara/Documents/Nepelemes%20%C3%BCgyek/Gav%C3%A1/ERP%20Access/Access%20UI/src/modules/aldi_rendelesek.js) – `aldi-delete-order-btn` click handler (sor ~2262)
+
+**Probléma:** A frontend `throw new Error('...')` a `res.ok` ellenőrzés után, így soha nem olvassa ki a szerver részletes JSON hibaüzenetét.
+
+**Javítás:**
+```js
+const res = await fetch(`/api/v1/aldi-daily-orders/${id}`, { method: 'DELETE' });
+const data = await res.json();
+if (!res.ok) {
+    alert('Törlés sikertelen:\n\n' + (data.error || 'Ismeretlen hiba'));
+    return;
+}
+if (data.warning) {
+    alert('⚠️ Figyelem: ' + data.warning + '\n\nAz adatbázis törlés sikeres volt.');
+}
+alert('A rendelés sikeresen törölve lett.');
+fetchNapiRendelesek();
+```
+
+---
+
+### 4. Áruigény API hiányos adatokat ad vissza
+
+**Hol:** [`aldi_cross_docking.js`](file:///c:/Users/klara/Documents/Nepelemes%20%C3%BCgyek/Gav%C3%A1/ERP%20Access/server/src/routes/aldi_cross_docking.js) – `GET /demands` (sor ~378)
+
+**Probléma:** A válaszból hiányzik a `sent_cartons`, `loaded_cartons`, és `available_cartons`. A frontend a `ordered_cartons`-t használja helyette (ami valójában a `remaining`), ami félrevezető.
+
+**Javítás:** A `demands.push(...)` objektumot kibővítjük:
+```js
+demands.push({
+    id: line.id,
+    aldi_daily_order_line_id: line.id,
+    product_name: ...,
+    gtin: line.gtin,
+    ordered_cartons: line.ordered_cartons,   // Teljes eredeti rendelés
+    sent_cartons: sentCartons,               // Mennyi van a Rakodásban
+    loaded_cartons: loaded,                  // Mennyi van kamionon
+    available_cartons: remaining,            // Szabadon osztható (sent - loaded)
+    delivery_date: order.delivery_date,
+    order_number: order.order_number,
+    cartons_per_pallet: cpp,
+    pallets: calcPallets,
+    order_type: currency
+});
+```
+Ezzel a frontend visszavételkor pontosan tudja megmutatni: 
+- „Összesen rakodásra küldve: X"
+- „Ebből kamionon: Y"
+- „Visszavehető max: Z"
+
+A frontend visszavételi dialógust (`btn-delete-aldi-demand`) is frissítjük, hogy ezeket az értékeket mutassa.
+
+---
+
+### 5. Szétbontás gomb eltávolítása az Áruigény listából
+
+**Hol:** [`aldi_rakodas.js`](file:///c:/Users/klara/Documents/Nepelemes%20%C3%BCgyek/Gav%C3%A1/ERP%20Access/Access%20UI/src/modules/aldi_rakodas.js) – `renderDemands()` (sor ~353)
+
+**Probléma:** Az Áruigény listában csak `sent_cartons > 0` sorok jelennek meg, de ilyen sort tilos szétbontani (mert már küldve van). A gomb ezért mindig 409-es hibát eredményez.
+
+**Javítás:** A `btn-split-aldi-demand` gomb és a hozzá tartozó eseménykezelő eltávolítása az `aldi_rakodas.js`-ből.
+
+---
+
+### 6. Kamion törlésénél maga a kamion nincs zárolva
+
+**Hol:** [`aldi_cross_docking.js`](file:///c:/Users/klara/Documents/Nepelemes%20%C3%BCgyek/Gav%C3%A1/ERP%20Access/server/src/routes/aldi_cross_docking.js) – `DELETE /trucks/:id` (sor ~76)
+
+**Probléma:** A tranzakció zárolja a napi rendelési sorokat, de magát a kamion rekordot nem. Közben új tétel kerülhet rá.
+
+**Javítás:** A tranzakción belül a kamion rekordot is először `FOR UPDATE`-el kell lekérni:
+```js
+const truck = await trx('aldi_trucks').where({ id }).first().forUpdate();
+if (!truck) return res.status(404).json({ error: 'Kamion nem található.' });
+```
+
+---
+
+## Érintett fájlok
+
+| Fájl | Változás |
+|------|----------|
+| [`aldi_cross_docking.js`](file:///c:/Users/klara/Documents/Nepelemes%20%C3%BCgyek/Gav%C3%A1/ERP%20Access/server/src/routes/aldi_cross_docking.js) | Hibajavítások #1, #2, #4, #6 |
+| [`aldi_rendelesek.js`](file:///c:/Users/klara/Documents/Nepelemes%20%C3%BCgyek/Gav%C3%A1/ERP%20Access/Access%20UI/src/modules/aldi_rendelesek.js) | Hibajavítás #3 |
+| [`aldi_rakodas.js`](file:///c:/Users/klara/Documents/Nepelemes%20%C3%BCgyek/Gav%C3%A1/ERP%20Access/Access%20UI/src/modules/aldi_rakodas.js) | Hibajavítás #4 (UI), #5 |
+
+## Nem javasolt (egyelőre)
+
+- **Mennyiségtípus egységesítés** (`decimal` vs `integer`): Ez adatbázis migrációt igényel és mellékhatásai lehetnek a meglévő adatokon. Érdemes külön dönteni.
+- **Integrációs tesztek:** Implementálható, de nem blokkolja az éles javítást – külön lépésben.
+
+> [!IMPORTANT]
+> A #1 (negatív mennyiség), #2 (whitelist), #3 (hibaüzenetek) és #4 (demands API) javítások kötelezők az éles használat előtt. A többi szintén fontos, de kisebb kockázatot jelent.

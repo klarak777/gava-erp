@@ -1,0 +1,47 @@
+# ALDI Rakodás Tételszintű és Kartonszintű Kezelése (V3 - Végleges Invariánsokkal)
+
+Az általad megfogalmazott kritikák teljesen jogosak és a legmagasabb szintű szoftvertervezési elveket tükrözik. Kifejezetten igaz, hogy a bizonytalan növekményes frissítések és a nem megfelelő tranzakció-zárolás versenyhelyzetekhez (race conditions) és inkonzisztens adatokhoz vezethetnek.
+
+Ezek alapján itt a **véglegesített, szigorított terv**, ami már pontosan megválaszolja az általad felvetett 3 fő kérdést is.
+
+## 1. Idempotens küldés és visszavétel (A 3. pont válasza)
+Az API végpontok **NEM növekményeket** fognak fogadni, hanem a kívánt **célértéket** (`target_sent_cartons`).
+- Így ha hálózati hiba miatt a kliens kétszer küldi el ugyanazt a kérést, a végeredmény pontosan ugyanaz marad, a kérés teljesen **idempotens**.
+- A JSON body formátuma: `{ "target_sent_cartons": 40 }`
+
+## 2. Tranzakciók és Egységes Zárolási Sorrend (Lock Order) (A 2. pont válasza)
+A rendszerben található összes, mennyiséget befolyásoló végpont (send, return, truck add, truck edit, truck delete, daily order delete) **kötelezően** az alábbi lépéssorozattal hajtódik végre egy tranzakcióban (`await knex.transaction(async trx => ...)`):
+
+1. **Zárolás:** `SELECT * FROM aldi_daily_order_lines WHERE id = X FOR UPDATE`
+2. **Összegzés:** `SELECT SUM(ordered_cartons) FROM aldi_truck_lines WHERE aldi_daily_order_line_id = X`
+3. **Invariáns ellenőrzés:**
+   - Küldés/Visszavétel esetén: `0 <= loaded_cartons <= target_sent_cartons <= ordered_cartons`
+   - Kamionmódosítás (PUT) esetén: `(más_kamionokon_lévő_sum + új_szerkesztett_érték) <= sent_cartons`
+   - Rendelés törlése esetén: Minden tételsor zárolása, és ha bármelyiknél `loaded_cartons > 0`, azonnali **409 Conflict** (hibaüzenettel).
+4. **Módosítás:** Az adott tábla (order_lines vagy truck_lines) írása.
+5. **Konzisztencia:** Szülő rendelés `sent_to_rakodas` értékének újraszámítása (`EXISTS(sent_cartons > 0)`).
+6. **Válasz:** A friss állapot JSON-ben történő visszaadása.
+
+Ezzel minden versenyhelyzet (race condition) kizárva.
+
+## 3. Backfill és Adatbázis Korlátok (Az 1. pont válasza)
+- **Migráció korlátja:** A migráció során felkerül egy adatbázis szintű `CHECK constraint`: `CHECK (sent_cartons >= 0 AND sent_cartons <= ordered_cartons)`.
+- **Szigorú Backfill:** A migrációs script megvizsgálja a már kamionon lévő tételeket.
+  - Ha az éles adatbázisban olyan hibát talál, ahol `loaded_cartons > ordered_cartons` (túlkiosztás történt korábban a védelem hiánya miatt), a migráció **NEM javítja csendben, hanem kivételt dob és megszakad (rollback)**.
+  - Ebben az esetben egy manuális SQL scripttel kell majd feloldani az inkonzisztenciát a szerveren, mielőtt a migráció újra lefuthatna.
+  - Ha minden adat érvényes, akkor `sent_to_rakodas = true` esetén beállítja: `sent_cartons = ordered_cartons`.
+
+## 4. Szétbontás és Napi Rendelés Törlése
+- **Szétbontás (Split):** Egy tételsor **NEM szétbontható**, ha abból akár egyetlen karton is átkerült már a rakodásba (`sent_cartons > 0`). A szétbontást kizárólag érintetlen (új) tételekre engedélyezzük, elkerülve a felesleges komplexitást.
+- **Napi Rendelés Törlése:** Amint fentebb a zárolásnál is szerepel, ha bármelyik tétel `loaded_cartons > 0` értékű, a törlés elbukik (409). Csak akkor törlődik a rendelés (és a PDF), ha a rakodásról teljesen vissza van vonva.
+
+## 5. Tesztelés (Integrációs tesztek)
+A fejlesztés elkészülte után (még a `task.md` lezárása előtt) írok egy önálló integrációs teszt scriptet (`tests/integration_rakodas.js` néven), amely valós HTTP kérésekkel (pl. `supertest` vagy `fetch` segítségével) bombázza a lokális API-t.
+A teszt igazolni fogja:
+- A zárolást (párhuzamosan indított kérések túlosztásra, `Promise.all` használatával).
+- Az idempotens működést.
+- A teljes és részleges küldést/visszavételt.
+- A kamionszerkesztést és törlést, és a `sent_to_rakodas` szülő-státusz precíz kapcsolgatását.
+
+---
+*Kérlek vizsgáld meg a végleges tervet, és ha egyetértesz a szigorú feltételekkel, kattints a **Proceed** gombra, és máris kezdem a fejlesztést a migrációval!*

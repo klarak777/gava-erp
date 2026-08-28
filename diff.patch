@@ -1,0 +1,1504 @@
+﻿diff --git a/Access UI/src/modules/aldi_rakodas.js b/Access UI/src/modules/aldi_rakodas.js
+index 83640f2..9c96cb5 100644
+--- a/Access UI/src/modules/aldi_rakodas.js	
++++ b/Access UI/src/modules/aldi_rakodas.js	
+@@ -323,7 +323,12 @@ export function renderAldiRakodas(container, windowManager) {
+     }
+ 
+     demandsTbody.innerHTML = filtered.map(d => {
+-      const cartons = parseInt(d.ordered_cartons) || 0;
++      // FONTOS: az API most explicit mezoket ad vissza:
++      //   ordered_cartons = teljes eredeti rendel├⌐s
++      //   sent_cartons    = rakod├ísra k├╝ldve
++      //   loaded_cartons  = kamionon
++      //   available_cartons = szabadon kioszthat├│ (sent - loaded)
++      const cartons = parseInt(d.available_cartons) || 0;
+       const cpp = (d.cartons_per_pallet !== null && d.cartons_per_pallet !== undefined && d.cartons_per_pallet !== '') ? parseInt(d.cartons_per_pallet) : null;
+       const pallets = d.pallets !== null && d.pallets !== undefined ? parseFloat(d.pallets) : (cpp && cpp > 0 ? (cartons / cpp) : null);
+ 
+@@ -339,7 +344,7 @@ export function renderAldiRakodas(container, windowManager) {
+           </td>
+           <td style="padding:4px 3px; text-align:right; font-weight:700; color:#0f172a;">${cartons}</td>
+           <td style="padding:2px 3px; text-align:right;">
+-            <input type="number" class="aldi-demand-cpp-input" data-id="${d.id}" value="${cpp !== null ? cpp : ''}" placeholder="" min="1" style="width:46px; height:24px; padding:1px 3px; font-size:11px; text-align:right; border:1px solid #cbd5e1; border-radius:3px; background:#fff; font-weight:600; color:#0f172a;">
++            <input type="number" class="aldi-demand-cpp-input" data-id="${d.id}" value="${cpp !== null ? cpp : ''}" placeholder="" min="1" step="1" style="width:46px; height:24px; padding:1px 3px; font-size:11px; text-align:right; border:1px solid #cbd5e1; border-radius:3px; background:#fff; font-weight:600; color:#0f172a;">
+           </td>
+           <td class="aldi-demand-pallets-cell" data-id="${d.id}" style="padding:4px 3px; text-align:right; font-weight:600; color:#2563eb;">${pallets ? pallets.toFixed(2) : '-'}</td>
+           <td style="padding:4px 6px; color:#475569; white-space:nowrap;">${dateStr}</td>
+@@ -350,13 +355,11 @@ export function renderAldiRakodas(container, windowManager) {
+             </span>
+           </td>
+           <td style="text-align:center; padding:3px 4px; display:flex; gap:4px; justify-content:center;">
+-            <button class="btn-split-aldi-demand" data-id="${d.id}" title="T├⌐tel sz├⌐tbont├ísa" 
+-              style="background:#2563eb; color:#fff; border:1px solid #1d4ed8; border-radius:4px; padding:2px 7px; font-size:12px; font-weight:bold; cursor:pointer; transition:all 0.2s;">+</button>
+             <button class="btn-send-aldi-demand" data-id="${d.id}" title="K├╝ld├⌐s kamionra" 
+               style="background:#ef4444; color:#fff; border:1px solid #dc2626; border-radius:4px; padding:2px 7px; font-size:11px; cursor:pointer; transition:all 0.2s;">Γ₧í</button>
+           </td>
+           <td style="text-align:center; padding:3px 2px;">
+-            <button class="btn-delete-aldi-demand" data-id="${d.id}" title="T├╢rl├⌐s" 
++            <button class="btn-delete-aldi-demand" data-id="${d.id}" title="Visszav├⌐tel a Rakod├ísb├│l" 
+               style="background:#ffffff; color:#dc2626; border:1px solid #fca5a5; border-radius:4px; padding:2px 6px; font-size:11px; font-weight:bold; cursor:pointer; transition:all 0.2s;"
+               onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#ffffff'">Γ£ò</button>
+           </td>
+@@ -380,7 +383,8 @@ export function renderAldiRakodas(container, windowManager) {
+         const cpp = val !== '' && !isNaN(val) ? parseInt(val) : null;
+         if (demand) {
+           demand.cartons_per_pallet = cpp;
+-          const cartons = parseInt(demand.ordered_cartons) || 0;
++          // Use available_cartons for pallets calculation (szabadon kioszthat├│)
++          const cartons = parseInt(demand.available_cartons) || 0;
+           demand.pallets = (cpp && cpp > 0) ? (cartons / cpp) : null;
+         }
+ 
+@@ -440,34 +444,31 @@ export function renderAldiRakodas(container, windowManager) {
+       });
+     });
+ 
+-    // Sz├⌐tbont├ís esem├⌐ny
+-    demandsTbody.querySelectorAll('.btn-split-aldi-demand').forEach(btn => {
+-      btn.addEventListener('click', (e) => {
+-        const id = parseInt(e.currentTarget.getAttribute('data-id'));
+-        const demand = state.demands.find(d => d.id === id);
+-        if (demand) {
+-          openSplitDemandModal(demand);
+-        }
+-      });
+-    });
++    // Sz├⌐tbont├ís le van tiltva ΓÇô a list├íban csak sent_cartons > 0 sorok vannak,
++    // ezeket m├ír nem lehet sz├⌐tbontani az adatb├ízisban.
++    // A btn-split-aldi-demand gomb elt├ívol├¡tva a renderel┼æb┼æl.
+ 
+-    // T├╢rl├⌐s (Elt├ívol├¡t├ís a Rakod├ísb├│l) esem├⌐ny
++    // T├╢rl├⌐s (Visszav├⌐tel a Rakod├ísb├│l) esem├⌐ny
+     demandsTbody.querySelectorAll('.btn-delete-aldi-demand').forEach(btn => {
+       btn.addEventListener('click', async (e) => {
+         const id = parseInt(e.currentTarget.getAttribute('data-id'));
+-        if (confirm('Biztosan vissza├íll├¡tod a teljes rendel├⌐st "nem rakodott" ├íllapotba? (A rendel├⌐s minden t├⌐tele elt┼▒nik a Rakod├ísb├│l, de a Napi rendel├⌐sekn├⌐l megmarad. A m├ír kamionra ker├╝lt mennyis├⌐gek nem t├╢rl┼ædnek a kamionokr├│l.)')) {
+-          try {
+-            const res = await fetch(`/api/v1/aldi-cross-docking/demands/${id}`, { method: 'DELETE' });
++        const demand = state.demands.find(d => d.id === id);
++        if (!demand) return;
++        
++        try {
++            const res = await fetch(`/api/v1/aldi-cross-docking/order-items/${demand.order_item_state_id}/return-available`, { 
++                method: 'PATCH',
++            });
++            
+             if (res.ok) {
+               loadDemands();
+             } else {
+               const err = await res.json();
+-              alert('Hiba elt├ívol├¡t├ískor: ' + (err.error || 'Ismeretlen hiba'));
++              alert('Hiba visszavon├ískor: ' + (err.error || 'Ismeretlen hiba'));
+             }
+-          } catch (err) {
+-            console.error('T├╢rl├⌐s h├íl├│zati hiba:', err);
+-            alert('H├íl├│zati hiba elt├ívol├¡t├ískor.');
+-          }
++        } catch (err) {
++            console.error('Visszavon├ís h├íl├│zati hiba:', err);
++            alert('H├íl├│zati hiba visszavon├ískor.');
+         }
+       });
+     });
+@@ -543,8 +544,9 @@ export function renderAldiRakodas(container, windowManager) {
+ 
+   // ============= K├£LD├ëS KAMIONRA MODAL =============
+   function openSendToTruckModal(demand) {
++    const availableCartons = parseFloat(demand.available_cartons) || 0;
+     const demandPallets = (demand.cartons_per_pallet && demand.cartons_per_pallet > 0)
+-      ? ((demand.ordered_cartons || 0) / demand.cartons_per_pallet).toFixed(2)
++      ? (availableCartons / demand.cartons_per_pallet).toFixed(2)
+       : null;
+ 
+     const modalContent = `
+@@ -636,6 +638,12 @@ export function renderAldiRakodas(container, windowManager) {
+ 
+       const cartonsToSend = Math.round(pallets * parseFloat(demand.cartons_per_pallet));
+ 
++      // Ellenorzes: nem kueldhetunk tobbet mint a szabad keszlet
++      const availableCartons = parseFloat(demand.available_cartons) || 0;
++      if (cartonsToSend > availableCartons) {
++        alert(`Tul sok karton! Szabad keszlet: ${availableCartons} karton, Kert: ${cartonsToSend} karton.`);
++        return;
++      }
+       const payload = {
+         aldi_daily_order_line_id: demand.id,
+         product_name: demand.product_name,
+@@ -789,7 +797,9 @@ export function renderAldiRakodas(container, windowManager) {
+             linesTbody.innerHTML = lines.map(l => `
+               <tr>
+                 <td style="padding:6px 8px; font-weight:600; color:#1e293b; min-width:200px; white-space:normal;">${escHtml(l.product_name)}</td>
+-                <td style="padding:6px 4px; text-align:right; font-weight:700; width:70px;">${l.ordered_cartons}</td>
++                <td style="padding:6px 4px; text-align:right; width:70px;">
++                  <input type="number" class="inp-line-cartons" data-id="${l.id}" value="${l.ordered_cartons}" style="width:100%; padding:2px; font-size:11px; text-align:right; font-weight:700;" min="1" step="1">
++                </td>
+                 <td style="padding:6px 4px; text-align:right; width:80px;">${l.cartons_per_pallet || '-'}</td>
+                 <td style="padding:6px 6px; text-align:right; color:#2563eb; width:55px;">${l.pallets ? parseFloat(l.pallets).toFixed(2) : '-'}</td>
+                 <td style="padding:6px 8px;">
+@@ -807,7 +817,10 @@ export function renderAldiRakodas(container, windowManager) {
+                   <input type="number" class="inp-line-net" data-id="${l.id}" value="${l.net_weight || ''}" style="width:100%; padding:2px; font-size:11px;" step="0.01">
+                 </td>
+                 <td style="padding:4px 6px; text-align:center; width:55px;">
++                  <button class="btn-line-order" data-id="${l.id}" data-dir="-1" title="Sor feljebb" style="background:none;border:none;cursor:pointer">Γåæ</button>
++                  <button class="btn-line-order" data-id="${l.id}" data-dir="1" title="Sor lejjebb" style="background:none;border:none;cursor:pointer">Γåô</button>
+                   <button class="btn-save-truck-line" data-id="${l.id}" title="Ment├⌐s" style="background:none; border:none; cursor:pointer; color:#10b981; font-size:14px;">≡ƒÆ╛</button>
++                  <button class="btn-transfer-truck-line" data-id="${l.id}" data-cpp="${l.cartons_per_pallet || ''}" data-pallets="${l.pallets || 0}" title="T├⌐tel ├íthelyez├⌐se" style="background:none;border:none;cursor:pointer;color:#2563eb;font-size:14px">≡ƒöÇ</button>
+                   <button class="btn-del-truck-line" data-id="${l.id}" title="T├⌐tel t├╢rl├⌐se a kamionr├│l" style="background:none; border:none; cursor:pointer; color:#dc2626; font-size:14px; margin-left:4px;">Γ£ò</button>
+                 </td>
+               </tr>
+@@ -830,6 +843,43 @@ export function renderAldiRakodas(container, windowManager) {
+               });
+             });
+ 
++            linesTbody.querySelectorAll('.btn-line-order').forEach(btn => {
++              btn.addEventListener('click', async e => {
++                const lineId = Number(e.currentTarget.dataset.id);
++                const direction = Number(e.currentTarget.dataset.dir);
++                const index = lines.findIndex(line => Number(line.id) === lineId);
++                const targetIndex = index + direction;
++                if (index < 0 || targetIndex < 0 || targetIndex >= lines.length) return;
++                const reordered = [...lines];
++                [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
++                const response = await fetch(`/api/v1/aldi-cross-docking/trucks/${truckId}/lines/reorder`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ line_ids: reordered.map(line => line.id) }) });
++                if (!response.ok) { const data = await response.json().catch(() => ({})); return alert(data.error || 'A sorrend ment├⌐se sikertelen.'); }
++                loadTruckLines();
++              });
++            });
++
++            linesTbody.querySelectorAll('.btn-transfer-truck-line').forEach(btn => {
++              btn.addEventListener('click', e => {
++                const lineId = e.currentTarget.dataset.id;
++                const maxPallets = Number(e.currentTarget.dataset.pallets) || 0;
++                const overlay = document.createElement('div');
++                overlay.style.cssText = 'position:fixed;inset:0;background:#0f172a66;z-index:10050;display:flex;align-items:center;justify-content:center';
++                const truckOptions = (state.trucks || []).filter(t => Number(t.id) !== Number(truckId) && !t.sent_to_pda && !t.is_loaded).map(t => `<option value="${t.id}">${escHtml(t.truck_number)}</option>`).join('');
++                overlay.innerHTML = `<div style="background:#fff;width:390px;padding:18px;border-radius:10px"><h3 style="margin-top:0">T├⌐tel ├íthelyez├⌐se</h3><label>C├⌐l</label><select data-target style="width:100%;padding:7px;margin:5px 0 10px"><option value="demand">├üruig├⌐ny</option><option value="daily_order">Napi rendel├⌐sek</option>${truckOptions ? '<optgroup label="M├ísik kamion">' + truckOptions + '</optgroup>' : ''}</select><label>├üthelyezend┼æ EU raklap (max. ${maxPallets})</label><input data-qty type="number" min="0.001" max="${maxPallets}" step="0.001" style="box-sizing:border-box;width:100%;padding:7px;margin:5px 0 14px"><div style="display:flex;justify-content:flex-end;gap:8px"><button data-cancel>M├⌐gse</button><button data-ok>├üthelyez├⌐s</button></div></div>`;
++                document.body.appendChild(overlay);
++                overlay.querySelector('[data-cancel]').onclick = () => overlay.remove();
++                overlay.querySelector('[data-ok]').onclick = async () => {
++                  const targetValue = overlay.querySelector('[data-target]').value;
++                  const isTruck = /^\d+$/.test(targetValue);
++                  const payload = { target_type: isTruck ? 'truck' : targetValue, target_truck_id: isTruck ? Number(targetValue) : undefined, transfer_eu_pallets: Number(overlay.querySelector('[data-qty]').value) };
++                  const response = await fetch(`/api/v1/aldi-cross-docking/truck-lines/${lineId}/transfer`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
++                  const data = await response.json().catch(() => ({}));
++                  if (!response.ok) return alert(data.error || 'Az ├íthelyez├⌐s sikertelen.');
++                  overlay.remove(); loadTruckLines(); loadDemands(); loadTrucks();
++                };
++              });
++            });
++
+             linesTbody.querySelectorAll('.btn-save-truck-line').forEach(btn => {
+               btn.addEventListener('click', async (e) => {
+                 const lineId = e.currentTarget.getAttribute('data-id');
+@@ -838,7 +888,8 @@ export function renderAldiRakodas(container, windowManager) {
+                   partner: row.querySelector('.inp-line-partner')?.value,
+                   destination: row.querySelector('.inp-line-dest')?.value,
+                   gross_weight: parseFloat(row.querySelector('.inp-line-gross')?.value) || null,
+-                  net_weight: parseFloat(row.querySelector('.inp-line-net')?.value) || null
++                  net_weight: parseFloat(row.querySelector('.inp-line-net')?.value) || null,
++                  ordered_cartons: parseFloat(row.querySelector('.inp-line-cartons')?.value) || 0
+                 };
+                 
+                 try {
+diff --git a/Access UI/src/modules/aldi_rendelesek.js b/Access UI/src/modules/aldi_rendelesek.js
+index 635e00a..a894728 100644
+--- a/Access UI/src/modules/aldi_rendelesek.js	
++++ b/Access UI/src/modules/aldi_rendelesek.js	
+@@ -438,13 +438,13 @@ export function renderAldiRendelesek(container, windowManager) {
+       }
+ 
+       return `
+-              <tr style="border-bottom:1px solid #f1f5f9; ${idx % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;'}">
++              <tr style="border-bottom:1px solid #f1f5f9; ${o.version_status === 'superseded' ? 'background:#e5e7eb; opacity:.72;' : (idx % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;')}">
+                 <td style="padding:10px 14px; color:#1e293b; font-weight:500;">${formattedDate}</td>
+                 <td style="padding:10px 14px;">
+                   <a href="/api/v1/aldi-daily-orders/${o.id}/file" class="aldi-order-link" target="_blank" data-id="${o.id}" data-orderno="${o.order_number}" data-date="${formattedDate}" style="color:#2563eb; font-weight:700; text-decoration:underline;">${displayOrderNumber}</a>
+                 </td>
+                 <td style="padding:10px 14px; color:#334155; font-weight:600;">
+-                  ${o.version || 'N/A'}
++                  ${o.version || 'N/A'} <span style="font-size:9px;padding:2px 5px;border-radius:4px;background:${o.version_status === 'superseded' ? '#cbd5e1' : '#dcfce7'};color:${o.version_status === 'superseded' ? '#475569' : '#166534'}">${o.version_status === 'superseded' ? 'El├⌐v├╝lt' : 'Aktu├ílis'}</span>
+                 </td>
+                 <td style="padding:10px 14px; color:#334155;">
+                   <span style="display:inline-block; background:${orderTypeBadgeBg}; color:${orderTypeBadgeColor}; font-size:11px; font-weight:700; padding:2px 8px; border-radius:4px; border:${orderTypeBorder};">
+@@ -455,7 +455,7 @@ export function renderAldiRendelesek(container, windowManager) {
+                   ${o.pallet_count != null && o.pallet_count !== '' ? o.pallet_count : '-'}
+                 </td>
+                 <td style="padding:10px 14px; text-align:center;">
+-                  <button class="aldi-view-order-btn" data-id="${o.id}" data-orderno="${o.order_number}" data-date="${formattedDate}" style="background:none; border:none; cursor:pointer; font-size:16px;" title="T├⌐telek megtekint├⌐se">≡ƒôï</button>
++                  <button class="aldi-view-order-btn" data-id="${o.id}" data-orderno="${o.order_number}" data-date="${formattedDate}" data-status="${o.version_status || 'current'}" style="background:none; border:none; cursor:pointer; font-size:16px;" title="T├⌐telek megtekint├⌐se">≡ƒôï</button>
+                   <button class="aldi-delete-order-btn" data-id="${o.id}" style="background:none; border:none; cursor:pointer; font-size:16px; margin-left:8px;" title="Rendel├⌐s t├╢rl├⌐se">≡ƒùæ∩╕Å</button>
+                 </td>
+               </tr>
+@@ -928,55 +928,84 @@ export function renderAldiRendelesek(container, windowManager) {
+     const windowId = 'order-view-' + id;
+     const title = `Rendel├⌐s: ${orderNo} | D├ítum: ${dateStr}`;
+ 
+-    let lines = [];
+-    try {
+-      const res = await fetch('/api/v1/aldi-daily-orders/' + id + '/lines');
+-      lines = await res.json();
+-    } catch(err) {
+-      alert("Hiba t├╢rt├⌐nt a t├⌐telek bet├╢lt├⌐se sor├ín!");
+-      return;
+-    }
++    const fetchLines = async () => {
++        try {
++          const res = await fetch('/api/v1/aldi-daily-orders/' + id + '/lines');
++          return await res.json();
++        } catch(err) {
++          alert("Hiba t├╢rt├⌐nt a t├⌐telek bet├╢lt├⌐se sor├ín!");
++          return [];
++        }
++    };
+ 
+-    let tableHtml = '';
+-    if (lines && lines.length > 0) {
+-      tableHtml = `
+-        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+-          <thead>
+-            <tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;">
+-              <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">Cikksz├ím</th>
+-              <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">Term├⌐k megnevez├⌐se</th>
+-              <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">GTIN sz├ím</th>
+-              <th style="padding:8px 12px; text-align:right; font-weight:700; color:#334155;">Rendelt kartonsz├ím</th>
+-            </tr>
+-          </thead>
+-          <tbody>
+-            ${lines.map((l, i) => {
+-              const prod = state.products.find(p => p.gtin === l.gtin || p.product_name === l.product_name);
+-              const cikk = prod ? (prod.articleNo || prod.article_number || '') : '';
+-              return `
+-              <tr style="${i % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;'} border-bottom:1px solid #f1f5f9;">
+-                <td style="padding:8px 12px; color:#475569; font-weight:600;">${cikk}</td>
+-                <td style="padding:8px 12px; color:#1e293b;">${l.product_name}</td>
+-                <td style="padding:8px 12px; color:#64748b; font-family:monospace;">${l.gtin || ''}</td>
+-                <td style="padding:8px 12px; text-align:right; font-weight:600; color:#2563eb;">${Number(l.ordered_cartons)}</td>
+-              </tr>
+-              `;
+-            }).join('')}
+-          </tbody>
+-        </table>
+-      `;
+-    } else {
+-      tableHtml = '<div style="text-align:center; padding:20px; color:#64748b; font-size:13px;">Nem tal├ílhat├│k t├⌐telsorok.</div>';
+-    }
++    let lines = await fetchLines();
++    const isCurrentVersion = !lines.length || lines[0].version_status !== 'superseded';
++
++    const askSendQuantity = (available) => new Promise(resolve => {
++        const overlay = document.createElement('div');
++        overlay.style.cssText = 'position:fixed;inset:0;background:#0f172a66;z-index:10050;display:flex;align-items:center;justify-content:center;';
++        overlay.innerHTML = `<div style="background:#fff;border-radius:10px;padding:18px;width:330px;box-shadow:0 20px 50px #0004"><h3 style="margin:0 0 12px">T├⌐tel k├╝ld├⌐se</h3><label style="font-size:12px;color:#475569">Add meg az ├íthelyezni k├¡v├ínt kartonmennyis├⌐get</label><input id="aldi-send-qty" type="number" min="1" max="${available}" step="1" value="${available}" style="box-sizing:border-box;width:100%;margin:8px 0 14px;padding:8px"><div style="display:flex;justify-content:flex-end;gap:8px"><button data-cancel>M├⌐gse</button><button data-ok style="background:#2563eb;color:#fff;border:0;border-radius:5px;padding:7px 14px">K├╝ld├⌐s</button></div></div>`;
++        document.body.appendChild(overlay);
++        overlay.querySelector('[data-cancel]').onclick = () => { overlay.remove(); resolve(null); };
++        overlay.querySelector('[data-ok]').onclick = () => { const value = Number(overlay.querySelector('#aldi-send-qty').value); overlay.remove(); resolve(value); };
++    });
++
++    const generateTableHtml = (linesData) => {
++        if (!linesData || linesData.length === 0) {
++            return '<div style="text-align:center; padding:20px; color:#64748b; font-size:13px;">Nem tal├ílhat├│k t├⌐telsorok.</div>';
++        }
++        return `
++            <table style="width:100%; border-collapse:collapse; font-size:13px;">
++              <thead>
++                <tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;">
++                  <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">Cikksz├ím</th>
++                  <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">Term├⌐k megnevez├⌐se</th>
++                  <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">GTIN sz├ím</th>
++                  <th style="padding:8px 12px; text-align:right; font-weight:700; color:#334155;">Rakod├ísra k├╝ldve</th>
++                  <th style="padding:8px 12px; text-align:center; font-weight:700; color:#334155;">V├íltoz├ís</th>
++                  <th style="padding:8px 12px; text-align:right; font-weight:700; color:#334155;">M┼▒velet</th>
++                </tr>
++              </thead>
++              <tbody>
++                ${linesData.map((l, i) => {
++                  const prod = state.products.find(p => p.gtin === l.gtin || p.product_name === l.product_name);
++                  const cikk = prod ? (prod.articleNo || prod.article_number || '') : '';
++                  const sent = parseFloat(l.sent_cartons) || 0;
++                  const ordered = parseFloat(l.ordered_cartons) || 0;
++                  const isFullySent = sent >= ordered;
++                  const quantityColor = isFullySent ? '#16a34a' : (sent > 0 ? '#d97706' : '#64748b');
++                  const delta = parseFloat(l.quantity_delta) || 0;
++                  const changeBg = l.change_type === 'removed' ? '#fecaca' : delta > 0 ? '#dcfce7' : delta < 0 ? '#fef3c7' : 'transparent';
++                  const changeText = l.change_type === 'removed' ? '0 (t├╢r├╢lt)' : delta > 0 ? `+${delta}` : delta < 0 ? String(delta) : '';
++                  
++                  return `
++                  <tr style="${i % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;'} border-bottom:1px solid #f1f5f9;">
++                    <td style="padding:8px 12px; color:#475569; font-weight:600;">${cikk}</td>
++                    <td style="padding:8px 12px; color:#1e293b;">${l.product_name}</td>
++                    <td style="padding:8px 12px; color:#64748b; font-family:monospace;">${l.gtin || ''}</td>
++                    <td style="padding:8px 12px; text-align:right; font-weight:600; color:${quantityColor};">
++                      ${sent} / ${ordered} karton
++                    </td>
++                    <td style="padding:8px 12px;text-align:center;background:${changeBg};font-weight:700">${changeText}${l.requires_reconciliation ? ' <span title="' + (l.reconciliation_reason || 'Mennyis├⌐gi egyeztet├⌐s sz├╝ks├⌐ges') + '">ΓÜá∩╕Å</span>' : ''}</td>
++                    <td style="padding:8px 12px; text-align:right;">
++                        ${isCurrentVersion && !l.is_virtual_removed && !l.requires_reconciliation ? `<button class="line-send-btn primary-btn" data-line-id="${l.id}" data-sent="${sent}" data-ordered="${ordered}" style="padding:4px 10px; border-radius:12px; font-size:11px; font-weight:600; background:#2563eb; color:white; border:none; cursor:pointer;">K├╝ld├⌐s</button>` : '<span style="color:#94a3b8">ΓÇö</span>'}
++                    </td>
++                  </tr>
++                  `;
++                }).join('')}
++              </tbody>
++            </table>
++        `;
++    };
+ 
+     const contentHtml = `
+       <div style="display:flex; flex-direction:column; height:100%; background:#ffffff;">
+-        <div style="flex:1; padding:16px 20px; overflow-y:auto;">
+-          ${tableHtml}
++        <div id="order-lines-container-${id}" style="flex:1; padding:16px 20px; overflow-y:auto;">
++          ${generateTableHtml(lines)}
+         </div>
+         <div style="padding:12px 20px; border-top:1px solid #e2e8f0; background:#f8fafc; display:flex; justify-content:space-between; align-items:center;">
+-          <button id="export-btn-${id}" style="padding:6px 18px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid #10b981; background:#ffffff; color:#10b981; cursor:pointer; display:${lines.length > 0 ? 'inline-flex' : 'none'}; align-items:center; gap:6px;">Γ¼ç∩╕Å Excel Export</button>
+-          <button id="send-to-demands-btn-${id}" class="primary-btn" style="padding:6px 18px; border-radius:20px; font-size:13px; font-weight:600; display:${lines.length > 0 ? 'inline-flex' : 'none'}; align-items:center; gap:6px; background:#2563eb; color:white; border:none; cursor:pointer;">Rakod├ísra k├╝ld├⌐s &gt;&gt;&gt;</button>
++          <button id="export-btn-${id}" style="padding:6px 18px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid #10b981; background:#ffffff; color:#10b981; cursor:pointer; display:${lines.length > 0 && isCurrentVersion ? 'inline-flex' : 'none'}; align-items:center; gap:6px;">Γ¼ç∩╕Å Excel Export</button>
++          <button id="send-to-demands-btn-${id}" class="primary-btn" style="padding:6px 18px; border-radius:20px; font-size:13px; font-weight:600; display:${lines.length > 0 && isCurrentVersion ? 'inline-flex' : 'none'}; align-items:center; gap:6px; background:#2563eb; color:white; border:none; cursor:pointer;">Teljes rendel├⌐s rakod├ísra k├╝ld├⌐se &gt;&gt;&gt;</button>
+         </div>
+       </div>
+     `;
+@@ -984,32 +1013,71 @@ export function renderAldiRendelesek(container, windowManager) {
+     if (windowManager && typeof windowManager.createModal === 'function') {
+       windowManager.createModal({
+         title: title,
+-        width: 750,
++        width: 800,
+         height: 500,
+         content: contentHtml
+       });
+       
++      const attachEvents = () => {
++          const container = document.getElementById(`order-lines-container-${id}`);
++          if (!container) return;
++
++          container.querySelectorAll('.line-send-btn').forEach(btn => {
++              btn.addEventListener('click', async (e) => {
++                  const lineId = e.target.getAttribute('data-line-id');
++                  const currentSent = Number(e.target.getAttribute('data-sent')) || 0;
++                  const maxOrdered = Number(e.target.getAttribute('data-ordered')) || 0;
++                  const addQuantity = await askSendQuantity(Math.max(0, maxOrdered - currentSent));
++                  if (addQuantity === null) return;
++                  const targetSent = currentSent + addQuantity;
++                  if (!Number.isInteger(addQuantity) || addQuantity <= 0 || targetSent > maxOrdered) {
++                      alert('├ërv├⌐nytelen mennyis├⌐g!');
++                      return;
++                  }
++
++                  try {
++                      const res = await fetch(`/api/v1/aldi-daily-orders/lines/${lineId}/send-cartons`, {
++                          method: 'PATCH',
++                          headers: { 'Content-Type': 'application/json' },
++                          body: JSON.stringify({ target_sent_cartons: targetSent })
++                      });
++                      
++                      if (!res.ok) {
++                          const errData = await res.json();
++                          alert('Hiba: ' + (errData.error || 'Ismeretlen hiba'));
++                          return;
++                      }
++                      
++                      // ├Üjrat├╢lt├⌐s
++                      lines = await fetchLines();
++                      container.innerHTML = generateTableHtml(lines);
++                      attachEvents(); // ├Üjra felk├╢tj├╝k az esem├⌐nyeket
++                      
++                  } catch (err) {
++                      console.error(err);
++                      alert('H├íl├│zati hiba t├╢rt├⌐nt.');
++                  }
++              });
++          });
++      };
++
+       setTimeout(() => {
+-        // Modal id is auto-generated by WindowManager, so we just search for the button inside the DOM
+         const exportBtn = document.getElementById(`export-btn-${id}`);
+         if (exportBtn) {
+-          exportBtn.addEventListener('click', () => doExcelExport(lines, orderNo, dateStr));
++          exportBtn.addEventListener('click', () => doExcelExport(lines.filter(line => !line.is_virtual_removed), orderNo, dateStr));
+         }
+ 
+         const sendBtn = document.getElementById(`send-to-demands-btn-${id}`);
+         if (sendBtn) {
+           sendBtn.addEventListener('click', async () => {
+-             // API h├¡v├ís, ami be├íll├¡tja a sent_to_rakodas = true taget az adatb├ízisban
++             if (!confirm('Biztosan a TELJES rendel├⌐st rakod├ísra k├╝ld├╢d?')) return;
++             
+              try {
+                const res = await fetch(`/api/v1/aldi-daily-orders/${id}/send-to-rakodas`, {
+                  method: 'PATCH'
+                });
+                if (!res.ok) {
+-                 if (res.status === 409) {
+-                     alert(`Figyelem! A t├⌐tel - SZ├üLL├ìT├üSI D├üTUM: ${dateStr}, RENDEL├ëSI SZ├üM: ${orderNo}, VERZI├ô SZ├üMA - h├írmas azonos├¡t├│val m├ír ├ít lett k├╝ldve a Rakod├ís modulba! Ezt a m┼▒veletet nem hajthatja v├⌐gre m├⌐g egyszer.`);
+-                 } else {
+-                     alert('Hiba t├╢rt├⌐nt a t├⌐tel ├ítk├╝ld├⌐sekor.');
+-                 }
++                 alert('Hiba t├╢rt├⌐nt a rendel├⌐s ├ítk├╝ld├⌐sekor.');
+                  return;
+                }
+              } catch (err) {
+@@ -1023,12 +1091,16 @@ export function renderAldiRendelesek(container, windowManager) {
+              sendBtn.style.color = 'white';
+              sendBtn.disabled = true;
+ 
+-             setTimeout(() => {
+-               const closeBtn = document.querySelector('.window-manager-modal-close');
+-               if (closeBtn) closeBtn.click();
+-             }, 1000);
++             lines = await fetchLines();
++             const container = document.getElementById(`order-lines-container-${id}`);
++             if (container) {
++                 container.innerHTML = generateTableHtml(lines);
++                 attachEvents();
++             }
+           });
+         }
++        
++        attachEvents();
+       }, 100);
+     } else {
+       // Fallback
+@@ -2201,12 +2273,25 @@ export function renderAldiRendelesek(container, windowManager) {
+         if (confirm('Biztosan t├╢r├╢lni szeretn├⌐d ezt a rendel├⌐st? A m┼▒velet nem vonhat├│ vissza, ├⌐s a PDF f├íjl is t├╢rl┼ædik!')) {
+           try {
+             const res = await fetch(`/api/v1/aldi-daily-orders/${id}`, { method: 'DELETE' });
+-            if (!res.ok) throw new Error('Hiba a t├╢rl├⌐s sor├ín');
+-            alert('A rendel├⌐s sikeresen t├╢r├╢lve lett.');
+-            fetchNapiRendelesek(); // Friss├¡tj├╝k az oldalt a t├╢rl├⌐s ut├ín
++            let data = {};
++            try { data = await res.json(); } catch (_) {}
++
++            if (!res.ok) {
++              // A backend r├⌐szletes magyar hiba├╝zenetet k├╝ld (pl. 409 ha van kamionon t├⌐tel)
++              alert('T├╢rl├⌐s sikertelen:\n\n' + (data.error || 'Ismeretlen hiba'));
++              return;
++            }
++
++            // Sikeres t├╢rl├⌐s ΓÇô ha a PDF t├╢rl├⌐se sem siker├╝lt, azt is jelezz├╝k egy ├╝zenetben
++            if (data.warning) {
++              alert('A rendel├⌐s sikeresen t├╢r├╢lve lett az adatb├ízisb├│l.\n\nΓÜá∩╕Å Figyelem: ' + data.warning);
++            } else {
++              alert('A rendel├⌐s sikeresen t├╢r├╢lve lett.');
++            }
++            fetchNapiRendelesek();
+           } catch (err) {
+             console.error(err);
+-            alert('Sikertelen t├╢rl├⌐s!');
++            alert('H├íl├│zati hiba a t├╢rl├⌐s sor├ín!');
+           }
+         }
+       });
+diff --git a/server/package.json b/server/package.json
+index 27c01ad..473d687 100644
+--- a/server/package.json
++++ b/server/package.json
+@@ -8,6 +8,7 @@
+     "start": "npm run migrate && node server.js",
+     "migrate": "knex migrate:latest --knexfile knexfile.js",
+     "migrate:rollback": "knex migrate:rollback --knexfile knexfile.js",
++    "audit:aldi-versioning": "node scripts/auditAldiOrderVersioning.js",
+     "seed": "node seed.js",
+     "import-docs": "node import_docs_from_json.js"
+   },
+diff --git a/server/src/routes/aldi_cross_docking.js b/server/src/routes/aldi_cross_docking.js
+index 87dbfaf..9610d04 100644
+--- a/server/src/routes/aldi_cross_docking.js
++++ b/server/src/routes/aldi_cross_docking.js
+@@ -76,9 +76,37 @@ router.put('/trucks/:id', async (req, res) => {
+ router.delete('/trucks/:id', async (req, res) => {
+   try {
+     const { id } = req.params;
+-    await knex('aldi_trucks').where('id', id).delete();
++    
++    await knex.transaction(async trx => {
++        // 1. Lock the truck record FIRST to prevent concurrent adds
++        const truck = await trx('aldi_trucks').where({ id }).first().forUpdate();
++        if (!truck) throw new Error('TRUCK_NOT_FOUND');
++
++        // 2. Find all lines of this truck
++        const truckLines = await trx('aldi_truck_lines').where('aldi_truck_id', id);
++        
++        const orderLineIds = truckLines
++            .map(l => l.aldi_daily_order_line_id)
++            .filter(Boolean);
++
++        if (orderLineIds.length > 0) {
++            // 3. Lock parent order lines in ascending order to prevent deadlocks
++            const uniqueOrderLineIds = [...new Set(orderLineIds)].sort((a, b) => a - b);
++            await trx('aldi_daily_order_lines')
++                .whereIn('id', uniqueOrderLineIds)
++                .forUpdate();
++        }
++        const stateIds = [...new Set(truckLines.map(line => line.order_item_state_id).filter(Boolean))].sort((a, b) => a - b);
++        if (stateIds.length) await trx('aldi_order_item_states').whereIn('id', stateIds).orderBy('id', 'asc').forUpdate();
++
++        // 4. Delete
++        await trx('aldi_truck_lines').where('aldi_truck_id', id).delete();
++        await trx('aldi_trucks').where('id', id).delete();
++    });
++
+     res.status(204).end();
+   } catch (err) {
++    if (err.message === 'TRUCK_NOT_FOUND') return res.status(404).json({ error: 'Kamion nem tal├ílhat├│.' });
+     console.error('Error deleting aldi truck:', err);
+     res.status(500).json({ error: 'Internal server error' });
+   }
+@@ -88,7 +116,7 @@ router.delete('/trucks/:id', async (req, res) => {
+ router.get('/trucks/:id/lines', async (req, res) => {
+   try {
+     const { id } = req.params;
+-    const lines = await knex('aldi_truck_lines').where('aldi_truck_id', id).orderBy('id', 'asc');
++    const lines = await knex('aldi_truck_lines').where('aldi_truck_id', id).orderBy('row_order', 'asc').orderBy('id', 'asc');
+     res.json(lines);
+   } catch (err) {
+     console.error('Error fetching aldi truck lines:', err);
+@@ -111,45 +139,87 @@ router.post('/trucks/:id/lines', async (req, res) => {
+       order_type
+     } = req.body;
+ 
+-    // Check if the exact same line from the same order exists on this truck
+-    // If it does, we just add the quantity to it
+-    if (aldi_daily_order_line_id) {
+-        const existing = await knex('aldi_truck_lines')
+-            .where({ aldi_truck_id: id, aldi_daily_order_line_id })
+-            .first();
+-
+-        if (existing) {
+-            const newCartons = existing.ordered_cartons + ordered_cartons;
+-            const newPallets = existing.pallets ? parseFloat(existing.pallets) + (pallets ? parseFloat(pallets) : 0) : pallets;
+-
+-            await knex('aldi_truck_lines')
+-                .where('id', existing.id)
+-                .update({
+-                    ordered_cartons: newCartons,
+-                    pallets: newPallets,
+-                    updated_at: knex.fn.now()
+-                });
+-            
+-            const updated = await knex('aldi_truck_lines').where('id', existing.id).first();
+-            return res.json(updated);
+-        }
++    // Validation: positive integer cartons only
++    const newCartons = Number(ordered_cartons);
++    if (!Number.isFinite(newCartons) || !Number.isInteger(newCartons) || newCartons <= 0) {
++        return res.status(400).json({ error: 'A kartonsz├ímnak pozit├¡v eg├⌐sz sz├ímnak kell lennie.' });
+     }
+ 
+-    const [lineId] = await knex('aldi_truck_lines').insert({
+-      aldi_truck_id: id,
+-      aldi_daily_order_line_id,
+-      product_name,
+-      ordered_cartons,
+-      cartons_per_pallet,
+-      pallets,
+-      delivery_date,
+-      order_number,
+-      order_type
+-    }).returning('id');
++    const result = await knex.transaction(async trx => {
++        // 1. Lock the truck record FIRST (same order as DELETE to prevent deadlocks)
++        const truck = await trx('aldi_trucks').where({ id }).first().forUpdate();
++        if (!truck) throw new Error('TRUCK_NOT_FOUND');
++
++        if (aldi_daily_order_line_id) {
++            // 2. Lock the order line
++            const orderLine = await trx('aldi_daily_order_lines')
++                .where({ id: aldi_daily_order_line_id })
++                .first()
++                .forUpdate();
++
++            if (!orderLine) throw new Error('LINE_NOT_FOUND');
++            const itemState = await trx('aldi_order_item_states').where({ id: orderLine.order_item_state_id }).first().forUpdate();
++            if (!itemState) throw new Error('ITEM_STATE_NOT_FOUND');
++            if (itemState.requires_reconciliation) throw new Error('RECONCILIATION_REQUIRED');
++            const sentCartons = parseFloat(itemState.sent_cartons) || 0;
++
++            // 3. Sum existing loaded cartons for this order line
++            const loadedRes = await trx('aldi_truck_lines')
++                .where({ order_item_state_id: itemState.id })
++                .sum('ordered_cartons as total_loaded')
++                .first();
++            const totalLoaded = parseFloat(loadedRes.total_loaded) || 0;
++
++            // 4. Invariant check: loaded + new <= sent
++            if (totalLoaded + newCartons > sentCartons) {
++                throw new Error(`Nem oszthat├│ ki t├╢bb karton a kamionokra. El├⌐rhet┼æ: ${sentCartons - totalLoaded}, K├⌐rt: ${newCartons}`);
++            }
+ 
+-    const newLine = await knex('aldi_truck_lines').where('id', lineId.id || lineId).first();
+-    res.status(201).json(newLine);
++            // 5. Merge into existing truck line if same line already on this truck
++            const existing = await trx('aldi_truck_lines')
++                .where({ aldi_truck_id: id, order_item_state_id: itemState.id })
++                .first();
++
++            if (existing) {
++                const updatedCartons = parseInt(existing.ordered_cartons) + newCartons;
++                const updatedPallets = existing.pallets
++                    ? parseFloat(existing.pallets) + (pallets ? parseFloat(pallets) : 0)
++                    : pallets;
++
++                await trx('aldi_truck_lines')
++                    .where('id', existing.id)
++                    .update({ ordered_cartons: updatedCartons, pallets: updatedPallets, updated_at: knex.fn.now() });
++                
++                return await trx('aldi_truck_lines').where('id', existing.id).first();
++            }
++        }
++
++        // 6. Insert new truck line
++        const [lineIdObj] = await trx('aldi_truck_lines').insert({
++          aldi_truck_id: id,
++          aldi_daily_order_line_id,
++          order_item_state_id: aldi_daily_order_line_id
++            ? (await trx('aldi_daily_order_lines').where({ id: aldi_daily_order_line_id }).first())?.order_item_state_id
++            : null,
++          product_name,
++          ordered_cartons: newCartons,
++          cartons_per_pallet,
++          pallets,
++          delivery_date,
++          order_number,
++          order_type
++        }).returning('id');
++
++        const insertedId = typeof lineIdObj === 'object' ? lineIdObj.id : lineIdObj;
++        return await trx('aldi_truck_lines').where('id', insertedId).first();
++    });
++
++    res.status(201).json(result);
+   } catch (err) {
++    if (err.message === 'TRUCK_NOT_FOUND') return res.status(404).json({ error: 'Kamion nem tal├ílhat├│.' });
++    if (err.message === 'LINE_NOT_FOUND') return res.status(404).json({ error: 'Napi rendel├⌐si t├⌐tel nem tal├ílhat├│.' });
++    if (err.message === 'ITEM_STATE_NOT_FOUND' || err.message === 'RECONCILIATION_REQUIRED') return res.status(409).json({ error: 'A t├⌐tel ├íllapota hi├ínyzik vagy mennyis├⌐gi egyeztet├⌐st ig├⌐nyel.' });
++    if (err.message.includes('Nem oszthat├│ ki')) return res.status(409).json({ error: err.message });
+     console.error('Error adding line to aldi truck:', err);
+     res.status(500).json({ error: 'Internal server error' });
+   }
+@@ -159,9 +229,18 @@ router.post('/trucks/:id/lines', async (req, res) => {
+ router.delete('/trucks/:truckId/lines/:lineId', async (req, res) => {
+   try {
+     const { truckId, lineId } = req.params;
+-    await knex('aldi_truck_lines')
+-      .where({ id: lineId, aldi_truck_id: truckId })
+-      .delete();
++    
++    await knex.transaction(async trx => {
++        const truckLine = await trx('aldi_truck_lines').where({ id: lineId, aldi_truck_id: truckId }).first();
++        if (!truckLine) return;
++
++        if (truckLine.aldi_daily_order_line_id) {
++            await trx('aldi_daily_order_lines').where({ id: truckLine.aldi_daily_order_line_id }).first().forUpdate();
++        }
++        if (truckLine.order_item_state_id) await trx('aldi_order_item_states').where({ id: truckLine.order_item_state_id }).first().forUpdate();
++        await trx('aldi_truck_lines').where({ id: lineId }).delete();
++    });
++
+     res.status(204).end();
+   } catch (err) {
+     console.error('Error deleting aldi truck line:', err);
+@@ -170,14 +249,68 @@ router.delete('/trucks/:truckId/lines/:lineId', async (req, res) => {
+ });
+ 
+ // Update line directly by lineId
++// Only whitelisted fields may be updated.
+ router.put('/truck-lines/:lineId', async (req, res) => {
+   try {
+     const { lineId } = req.params;
+-    const updateData = { ...req.body, updated_at: knex.fn.now() };
+-    await knex('aldi_truck_lines').where({ id: lineId }).update(updateData);
+-    const updatedLine = await knex('aldi_truck_lines').where({ id: lineId }).first();
++
++    // Whitelist: only these fields may be modified by the client
++    const ALLOWED = ['partner', 'destination', 'gross_weight', 'net_weight', 'ordered_cartons'];
++    const updateData = {};
++    for (const field of ALLOWED) {
++        if (req.body[field] !== undefined) updateData[field] = req.body[field];
++    }
++
++    if (Object.keys(updateData).length === 0) {
++        return res.status(400).json({ error: 'Legal├íbb egy m├│dos├¡that├│ mez┼æt meg kell adni.' });
++    }
++
++    // Validate ordered_cartons if present
++    let newCartons;
++    if (updateData.ordered_cartons !== undefined) {
++        newCartons = Number(updateData.ordered_cartons);
++        if (!Number.isFinite(newCartons) || !Number.isInteger(newCartons) || newCartons <= 0) {
++            return res.status(400).json({ error: 'A kartonsz├ímnak pozit├¡v eg├⌐sz sz├ímnak kell lennie.' });
++        }
++        updateData.ordered_cartons = newCartons;
++    }
++
++    updateData.updated_at = knex.fn.now();
++
++    const updatedLine = await knex.transaction(async trx => {
++        const truckLine = await trx('aldi_truck_lines').where({ id: lineId }).first();
++        if (!truckLine) throw new Error('TRUCK_LINE_NOT_FOUND');
++
++        // Lock truck to maintain consistent lock order with DELETE /trucks/:id
++        await trx('aldi_trucks').where({ id: truckLine.aldi_truck_id }).first().forUpdate();
++
++        if (truckLine.order_item_state_id && newCartons !== undefined) {
++            const itemState = await trx('aldi_order_item_states').where({ id: truckLine.order_item_state_id }).first().forUpdate();
++            if (itemState) {
++                const sentCartons = parseFloat(itemState.sent_cartons) || 0;
++                
++                // Sum OTHER truck lines for same order line
++                const loadedRes = await trx('aldi_truck_lines')
++                    .where({ order_item_state_id: itemState.id })
++                    .andWhereNot({ id: lineId })
++                    .sum('ordered_cartons as total_loaded')
++                    .first();
++                const otherLoaded = parseFloat(loadedRes.total_loaded) || 0;
++
++                if (otherLoaded + newCartons > sentCartons) {
++                    throw new Error(`Nem oszthat├│ ki t├╢bb karton. El├⌐rhet┼æ (m├ís kamionokon fel├╝l): ${sentCartons - otherLoaded}, K├⌐rt: ${newCartons}`);
++                }
++            }
++        }
++
++        await trx('aldi_truck_lines').where({ id: lineId }).update(updateData);
++        return await trx('aldi_truck_lines').where({ id: lineId }).first();
++    });
++
+     res.json(updatedLine);
+   } catch (err) {
++    if (err.message === 'TRUCK_LINE_NOT_FOUND') return res.status(404).json({ error: 'Kamionsor nem tal├ílhat├│.' });
++    if (err.message.includes('Nem oszthat├│ ki')) return res.status(409).json({ error: err.message });
+     console.error('Error updating aldi truck line by id:', err);
+     res.status(500).json({ error: 'Internal server error' });
+   }
+@@ -187,9 +320,18 @@ router.put('/truck-lines/:lineId', async (req, res) => {
+ router.delete('/truck-lines/:lineId', async (req, res) => {
+   try {
+     const { lineId } = req.params;
+-    await knex('aldi_truck_lines')
+-      .where({ id: lineId })
+-      .delete();
++
++    await knex.transaction(async trx => {
++        const truckLine = await trx('aldi_truck_lines').where({ id: lineId }).first();
++        if (!truckLine) return;
++
++        if (truckLine.aldi_daily_order_line_id) {
++            await trx('aldi_daily_order_lines').where({ id: truckLine.aldi_daily_order_line_id }).first().forUpdate();
++        }
++        if (truckLine.order_item_state_id) await trx('aldi_order_item_states').where({ id: truckLine.order_item_state_id }).first().forUpdate();
++        await trx('aldi_truck_lines').where({ id: lineId }).delete();
++    });
++
+     res.status(204).end();
+   } catch (err) {
+     console.error('Error deleting aldi truck line by id:', err);
+@@ -203,7 +345,7 @@ router.get('/demands', async (req, res) => {
+   try {
+     const { delivery_date, order_number } = req.query;
+ 
+-    let orderQuery = knex('aldi_daily_orders').select('id', 'order_number', 'delivery_date').where('sent_to_rakodas', true);
++    let orderQuery = knex('aldi_daily_orders').select('id', 'order_number', 'delivery_date', 'version_number').where({ sent_to_rakodas: true, version_status: 'current' });
+     if (delivery_date) orderQuery = orderQuery.where('delivery_date', delivery_date);
+     if (order_number) orderQuery = orderQuery.where('order_number', 'ilike', `%${order_number}%`);
+ 
+@@ -211,18 +353,22 @@ router.get('/demands', async (req, res) => {
+     if (orders.length === 0) return res.json([]);
+ 
+     const orderIds = orders.map(o => o.id);
+-    const orderLines = await knex('aldi_daily_order_lines').whereIn('daily_order_id', orderIds);
++    const orderLines = await knex('aldi_daily_order_lines as l')
++      .join('aldi_order_item_states as s', 's.id', 'l.order_item_state_id')
++      .whereIn('l.daily_order_id', orderIds)
++      .where('l.is_virtual_removed', false)
++      .select('l.*', 's.sent_cartons', 's.requires_reconciliation', 's.reconciliation_reason');
+ 
+     // Get loaded quantities
+     const loadedLines = await knex('aldi_truck_lines')
+-      .select('aldi_daily_order_line_id')
++      .select('order_item_state_id')
+       .sum('ordered_cartons as total_loaded')
+-      .whereNotNull('aldi_daily_order_line_id')
+-      .groupBy('aldi_daily_order_line_id');
++      .whereNotNull('order_item_state_id')
++      .groupBy('order_item_state_id');
+       
+     const loadedMap = {};
+     loadedLines.forEach(l => {
+-      loadedMap[l.aldi_daily_order_line_id] = parseInt(l.total_loaded) || 0;
++      loadedMap[l.order_item_state_id] = parseFloat(l.total_loaded) || 0;
+     });
+ 
+     // We also need product names from chain_products
+@@ -235,9 +381,12 @@ router.get('/demands', async (req, res) => {
+ 
+     const demands = [];
+     for (const line of orderLines) {
++        const sentCartons = parseFloat(line.sent_cartons) || 0;
++        if (sentCartons <= 0) continue; // Csak azt mutatjuk, ami k├╝ldve lett
++
+         const order = orders.find(o => o.id === line.daily_order_id);
+-        const loaded = loadedMap[line.id] || 0;
+-        const remaining = line.ordered_cartons - loaded;
++        const loaded = loadedMap[line.order_item_state_id] || 0;
++        const remaining = sentCartons - loaded;
+ 
+         if (remaining > 0) {
+             const product = productMap[line.gtin];
+@@ -274,14 +423,21 @@ router.get('/demands', async (req, res) => {
+ 
+             demands.push({
+                 id: line.id,
+-                aldi_daily_order_line_id: line.id, // For easy mapping
++                aldi_daily_order_line_id: line.id,
++                order_item_state_id: line.order_item_state_id,
+                 product_name: product ? product.product_name : `Ismeretlen term├⌐k (${line.gtin})`,
+                 gtin: line.gtin,
+-                ordered_cartons: remaining,
+-                total_ordered_cartons: line.ordered_cartons,
++                // Full quantity breakdown ΓÇô frontend must use these explicit fields:
++                ordered_cartons: parseFloat(line.ordered_cartons) || 0,  // Teljes eredeti rendel├⌐s
++                sent_cartons: sentCartons,                                 // Mennyi van a Rakod├ísban
++                loaded_cartons: loaded,                                    // Mennyi van kamionon
++                available_cartons: remaining,                              // Szabadon oszthat├│ (sent - loaded)
+                 delivery_date: order.delivery_date,
+                 order_number: order.order_number,
+-                cartons_per_pallet: cpp, 
++                version_number: order.version_number,
++                requires_reconciliation: !!line.requires_reconciliation,
++                reconciliation_reason: line.reconciliation_reason,
++                cartons_per_pallet: cpp,
+                 pallets: calcPallets,
+                 order_type: currency
+             });
+@@ -325,6 +481,8 @@ router.put('/demands/cartons-per-pallet', async (req, res) => {
+ 
+ // Split a demand
+ router.post('/demands/:id/split', async (req, res) => {
++  return res.status(410).json({ error: 'A sz├⌐tbont├ís funkci├│ megsz┼▒nt; haszn├íld a t├⌐tel├íthelyez├⌐st.' });
++  /* legacy implementation retained temporarily for rollback reference
+   try {
+     const { id } = req.params;
+     const { newCartons } = req.body;
+@@ -336,13 +494,23 @@ router.post('/demands/:id/split', async (req, res) => {
+     const existing = await knex('aldi_daily_order_lines').where('id', id).first();
+     if (!existing) return res.status(404).json({ error: 'T├⌐tel nem tal├ílhat├│' });
+ 
+-    // Check loaded quantities
++    // Ha m├ír k├╝ldve lett b├írmi is a rakod├ísba, nem engedj├╝k sz├⌐tbontani
++    const sentCartons = parseFloat(existing.sent_cartons) || 0;
++    if (sentCartons > 0) {
++        return res.status(409).json({ error: 'A t├⌐tel nem bonthat├│ sz├⌐t, mert egy r├⌐sze vagy eg├⌐sze m├ír el lett k├╝ldve a Rakod├ís modulba. K├⌐rlek el┼æbb vond vissza a rakod├ísb├│l.' });
++    }
++
++    // Check loaded quantities (csak a biztons├íg kedv├⌐├⌐rt)
+     const loadedRow = await knex('aldi_truck_lines')
+       .where('aldi_daily_order_line_id', id)
+       .sum('ordered_cartons as total_loaded')
+       .first();
+     
+-    const loaded = parseInt(loadedRow?.total_loaded) || 0;
++    const loaded = parseFloat(loadedRow?.total_loaded) || 0;
++    if (loaded > 0) {
++        return res.status(409).json({ error: 'A t├⌐tel nem bonthat├│ sz├⌐t, mert m├ír kamionra lett rakva. K├⌐rlek vedd le a kamionr├│l.' });
++    }
++
+     const remaining = existing.ordered_cartons - loaded;
+ 
+     if (newCartons >= remaining) {
+@@ -369,26 +537,140 @@ router.post('/demands/:id/split', async (req, res) => {
+     console.error('Error splitting demand:', e);
+     res.status(500).json({ error: 'Bels┼æ szerverhiba' });
+   }
++  */
++});
++
++// DELETE /demands/:id ΓÇô DISABLED
++// Ez a v├⌐gpont megker├╝lheti az ├║j t├⌐telszint┼▒ logik├ít (sent_cartons).
++// Haszn├íld helyette: PATCH /api/v1/aldi-daily-orders/lines/:lineId/send-cartons
++router.delete('/demands/:id', (req, res) => {
++  res.status(410).json({
++    error: 'Ez a v├⌐gpont le lett tiltva. Haszn├íld a PATCH /api/v1/aldi-daily-orders/lines/:lineId/send-cartons v├⌐gpontot a visszav├⌐telhez.'
++  });
+ });
+ 
+-// Delete a demand (Removes the entire order from Rakod├ís)
+-router.delete('/demands/:id', async (req, res) => {
++// Teljes szabad ├üruig├⌐ny visszav├⌐tele a Napi rendel├⌐sekhez
++router.patch('/order-items/:itemStateId/return-available', async (req, res) => {
+   try {
+-    const { id } = req.params;
+-    
+-    const line = await knex('aldi_daily_order_lines').where('id', id).first();
+-    if (!line) {
+-      return res.status(404).json({ error: 'T├⌐tel nem tal├ílhat├│' });
+-    }
++    const result = await knex.transaction(async trx => {
++      const state = await trx('aldi_order_item_states').where({ id: req.params.itemStateId }).first().forUpdate();
++      if (!state) throw new Error('ITEM_STATE_NOT_FOUND');
++      const loadedRow = await trx('aldi_truck_lines').where({ order_item_state_id: state.id }).sum('ordered_cartons as total').first();
++      const loaded = Number(loadedRow && loadedRow.total) || 0;
++      await trx('aldi_order_item_states').where({ id: state.id }).update({ sent_cartons: loaded, updated_at: trx.fn.now() });
++      const family = await trx('aldi_order_families').where({ id: state.order_family_id }).first();
++      if (family && family.current_order_id) {
++        const anySent = await trx('aldi_daily_order_lines as l').join('aldi_order_item_states as s', 's.id', 'l.order_item_state_id')
++          .where('l.daily_order_id', family.current_order_id).where('s.sent_cartons', '>', 0).first();
++        await trx('aldi_daily_orders').where({ id: family.current_order_id }).update({ sent_to_rakodas: !!anySent });
++      }
++      return { sent_cartons: loaded, loaded_cartons: loaded, available_cartons: 0 };
++    });
++    res.json(result);
++  } catch (err) {
++    if (err.message === 'ITEM_STATE_NOT_FOUND') return res.status(404).json({ error: 'A t├⌐tel nem tal├ílhat├│.' });
++    console.error('ALDI ├üruig├⌐ny visszav├⌐teli hiba:', err);
++    res.status(500).json({ error: 'Bels┼æ szerverhiba.' });
++  }
++});
+ 
+-    await knex('aldi_daily_orders')
+-      .where('id', line.daily_order_id)
+-      .update({ sent_to_rakodas: false });
+-      
+-    res.status(200).json({ success: true });
+-  } catch(e) {
+-    console.error('Error removing order from rakodas:', e);
+-    res.status(500).json({ error: 'Bels┼æ szerverhiba' });
++// Kamionsor ├íthelyez├⌐se m├ísik kamionra, ├üruig├⌐nybe vagy Napi rendel├⌐sbe
++router.post('/truck-lines/:lineId/transfer', async (req, res) => {
++  try {
++    const { target_type, target_truck_id, transfer_eu_pallets } = req.body;
++    if (!['truck', 'demand', 'daily_order'].includes(target_type)) return res.status(400).json({ error: '├ërv├⌐nytelen ├íthelyez├⌐si c├⌐l.' });
++    const euPallets = Number(transfer_eu_pallets);
++    if (!Number.isFinite(euPallets) || euPallets <= 0 || !/^\d+(\.\d{1,3})?$/.test(String(transfer_eu_pallets))) return res.status(400).json({ error: 'Az EU-raklap mennyis├⌐ge pozit├¡v, legfeljebb 3 tizedesjegy┼▒ sz├ím lehet.' });
++
++    const result = await knex.transaction(async trx => {
++      const sourceLine = await trx('aldi_truck_lines').where({ id: req.params.lineId }).first();
++      if (!sourceLine) throw new Error('TRUCK_LINE_NOT_FOUND');
++      if (!sourceLine.order_item_state_id) throw new Error('ITEM_STATE_NOT_FOUND');
++      const truckIds = [Number(sourceLine.aldi_truck_id)];
++      if (target_type === 'truck') {
++        if (!target_truck_id || Number(target_truck_id) === Number(sourceLine.aldi_truck_id)) throw new Error('INVALID_TARGET_TRUCK');
++        truckIds.push(Number(target_truck_id));
++      }
++      const trucks = await trx('aldi_trucks').whereIn('id', [...new Set(truckIds)].sort((a, b) => a - b)).orderBy('id', 'asc').forUpdate();
++      if (trucks.length !== new Set(truckIds).size) throw new Error('TRUCK_NOT_FOUND');
++      if (trucks.some(truck => truck.sent_to_pda || truck.is_loaded)) throw new Error('TRUCK_LOCKED');
++      const state = await trx('aldi_order_item_states').where({ id: sourceLine.order_item_state_id }).first().forUpdate();
++      const cpp = Number(sourceLine.cartons_per_pallet);
++      if (!Number.isFinite(cpp) || cpp <= 0) throw new Error('MISSING_CPP');
++      const moveCartons = euPallets * cpp;
++      if (!Number.isInteger(moveCartons)) throw new Error('FRACTIONAL_CARTONS');
++      const sourceCartons = Number(sourceLine.ordered_cartons) || 0;
++      if (moveCartons > sourceCartons) throw new Error('TOO_MUCH');
++      const remainingCartons = sourceCartons - moveCartons;
++      const remainingPallets = remainingCartons / cpp;
++      let commission = await trx('aldi_commission_lines').where({ aldi_truck_line_id: sourceLine.id }).first().forUpdate();
++      if (!commission) {
++        const legacyCommission = await trx('aldi_commission_lines').where({ aldi_truck_id: sourceLine.aldi_truck_id, product_name: sourceLine.product_name }).forUpdate();
++        if (legacyCommission.length > 1) throw new Error('AMBIGUOUS_COMMISSION');
++        commission = legacyCommission[0] || null;
++        if (commission) await trx('aldi_commission_lines').where({ id: commission.id }).update({ aldi_truck_line_id: sourceLine.id, order_item_state_id: state.id });
++      }
++
++      if (remainingCartons === 0) await trx('aldi_truck_lines').where({ id: sourceLine.id }).delete();
++      else await trx('aldi_truck_lines').where({ id: sourceLine.id }).update({ ordered_cartons: remainingCartons, pallets: remainingPallets, updated_at: trx.fn.now() });
++
++      if (target_type === 'truck') {
++        const existing = await trx('aldi_truck_lines').where({ aldi_truck_id: target_truck_id, order_item_state_id: state.id }).first();
++        if (existing) await trx('aldi_truck_lines').where({ id: existing.id }).update({ ordered_cartons: Number(existing.ordered_cartons) + moveCartons, pallets: Number(existing.pallets || 0) + euPallets, updated_at: trx.fn.now() });
++        else await trx('aldi_truck_lines').insert({ ...sourceLine, id: undefined, aldi_truck_id: target_truck_id, ordered_cartons: moveCartons, pallets: euPallets, row_order: 0, created_at: trx.fn.now(), updated_at: trx.fn.now() });
++      } else if (target_type === 'daily_order') {
++        const loadedRow = await trx('aldi_truck_lines').where({ order_item_state_id: state.id }).sum('ordered_cartons as total').first();
++        const loadedAfter = Number(loadedRow && loadedRow.total) || 0;
++        const nextSent = Number(state.sent_cartons) - moveCartons;
++        if (nextSent < loadedAfter) throw new Error('INVARIANT_VIOLATION');
++        await trx('aldi_order_item_states').where({ id: state.id }).update({ sent_cartons: nextSent, updated_at: trx.fn.now() });
++      }
++
++      if (commission) {
++        const ratio = remainingCartons / sourceCartons;
++        if (remainingCartons === 0) await trx('aldi_commission_lines').where({ id: commission.id }).delete();
++        else await trx('aldi_commission_lines').where({ id: commission.id }).update({
++          cartons: Math.min(Number(commission.cartons) || 0, remainingCartons),
++          pallets: commission.pallets == null ? null : Number(commission.pallets) * ratio,
++          gross_weight: commission.gross_weight == null ? null : Number(commission.gross_weight) * ratio,
++          net_weight: commission.net_weight == null ? null : Number(commission.net_weight) * ratio,
++          updated_at: trx.fn.now()
++        });
++      }
++      return { success: true, moved_cartons: moveCartons, moved_eu_pallets: euPallets };
++    });
++    res.json(result);
++  } catch (err) {
++    const messages = {
++      TRUCK_LINE_NOT_FOUND: ['Kamionsor nem tal├ílhat├│.', 404], ITEM_STATE_NOT_FOUND: ['A t├⌐tel ├íllapota hi├ínyzik.', 409],
++      INVALID_TARGET_TRUCK: ['├ërv├⌐nytelen c├⌐lkamion.', 400], TRUCK_NOT_FOUND: ['A c├⌐lkamion nem tal├ílhat├│.', 404],
++      TRUCK_LOCKED: ['Rakodott vagy PDA-nak ├ítadott kamion t├⌐tele nem mozgathat├│.', 409], MISSING_CPP: ['A t├⌐telhez nincs ├⌐rv├⌐nyes karton/raklap ├⌐rt├⌐k.', 409],
++      FRACTIONAL_CARTONS: ['Az EU-raklap mennyis├⌐gb┼æl nem eg├⌐sz kartonsz├ím ad├│dik.', 400], TOO_MUCH: ['A megadott mennyis├⌐g meghaladja a forr├íssor mennyis├⌐g├⌐t.', 409],
++      INVARIANT_VIOLATION: ['A m┼▒velet megs├⌐rten├⌐ a rakod├ísi mennyis├⌐gi szab├ílyt.', 409],
++      AMBIGUOUS_COMMISSION: ['A komissi├│s sor nem kapcsolhat├│ egy├⌐rtelm┼▒en a kamionsorhoz; k├⌐zi egyeztet├⌐s sz├╝ks├⌐ges.', 409]
++    };
++    if (messages[err.message]) return res.status(messages[err.message][1]).json({ error: messages[err.message][0] });
++    console.error('ALDI t├⌐tel├íthelyez├⌐si hiba:', err);
++    res.status(500).json({ error: 'Bels┼æ szerverhiba.' });
++  }
++});
++
++router.put('/trucks/:truckId/lines/reorder', async (req, res) => {
++  try {
++    const ids = Array.isArray(req.body.line_ids) ? req.body.line_ids.map(Number) : [];
++    if (!ids.length || new Set(ids).size !== ids.length) return res.status(400).json({ error: '├ërv├⌐nytelen vagy ism├⌐tl┼æd┼æ sorazonos├¡t├│k.' });
++    await knex.transaction(async trx => {
++      const truck = await trx('aldi_trucks').where({ id: req.params.truckId }).first().forUpdate();
++      if (!truck) throw new Error('TRUCK_NOT_FOUND');
++      const existing = await trx('aldi_truck_lines').where({ aldi_truck_id: req.params.truckId }).orderBy('id').forUpdate();
++      if (existing.length !== ids.length || existing.some(line => !ids.includes(Number(line.id)))) throw new Error('INVALID_LINE_SET');
++      for (let index = 0; index < ids.length; index += 1) await trx('aldi_truck_lines').where({ id: ids[index] }).update({ row_order: index });
++    });
++    res.json({ success: true });
++  } catch (err) {
++    if (err.message === 'TRUCK_NOT_FOUND') return res.status(404).json({ error: 'Kamion nem tal├ílhat├│.' });
++    if (err.message === 'INVALID_LINE_SET') return res.status(400).json({ error: 'A sorrend nem pontosan a kamion jelenlegi sorait tartalmazza.' });
++    res.status(500).json({ error: 'Bels┼æ szerverhiba.' });
+   }
+ });
+ 
+@@ -472,10 +754,12 @@ router.get('/trucks/:id/commission-lines', async (req, res) => {
+ // POST commission line
+ router.post('/trucks/:id/commission-lines', async (req, res) => {
+   try {
+-    const { product_name, cartons, gross_weight, net_weight, average_weight, pallets, origin_country, carton_type, tare_weight, pallet_type, lot_number } = req.body;
++    const { product_name, cartons, gross_weight, net_weight, average_weight, pallets, origin_country, carton_type, tare_weight, pallet_type, lot_number, aldi_truck_line_id, order_item_state_id } = req.body;
+     
+     const [id] = await knex('aldi_commission_lines').insert({
+       aldi_truck_id: req.params.id,
++      aldi_truck_line_id: aldi_truck_line_id || null,
++      order_item_state_id: order_item_state_id || null,
+       product_name,
+       cartons: cartons || 0,
+       gross_weight: gross_weight === '' ? null : gross_weight,
+diff --git a/server/src/routes/aldi_daily_orders.js b/server/src/routes/aldi_daily_orders.js
+index 592be61..80d017a 100644
+--- a/server/src/routes/aldi_daily_orders.js
++++ b/server/src/routes/aldi_daily_orders.js
+@@ -4,6 +4,7 @@ const multer = require('multer');
+ const pdfParse = require('pdf-parse');
+ const fs = require('fs');
+ const path = require('path');
++const crypto = require('crypto');
+ const db = require('../db/db');
+ 
+ // Raktar base path for daily orders
+@@ -17,6 +18,7 @@ const upload = multer({ storage: multer.memoryStorage() });
+ 
+ // Endpoint: POST /api/v1/aldi-daily-orders/upload
+ router.post('/upload', upload.single('file'), async (req, res) => {
++    let writtenPath = null;
+     try {
+         if (!req.file) {
+             return res.status(400).json({ error: 'Nincs f├íjl felt├╢ltve.' });
+@@ -45,20 +47,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
+         if (!orderNumberMatch) {
+             return res.status(400).json({ error: 'Nem tal├ílhat├│ a Rendel├⌐si sz├ím (Purchase Order Number) a dokumentumban.' });
+         }
+-        let orderNumberBase = orderNumberMatch[1];
+-        let orderNumber = orderNumberBase;
+-
+-        // Check if order number already exists and increment
+-        let counter = 1;
+-        while (true) {
+-            const existing = await db('aldi_daily_orders').where({ order_number: orderNumber }).first();
+-            if (existing) {
+-                orderNumber = `${orderNumberBase}-${counter}`;
+-                counter++;
+-            } else {
+-                break;
+-            }
+-        }
++        const orderNumberBase = orderNumberMatch[1];
+ 
+         // 2. Extract Pallet Count
+         // "Total Number of Pallets (Estimated): 13"
+@@ -74,7 +63,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
+         const lineItemPattern = /^\d{5}\s+(\d{13,14})\s+([\d,]+)\s+(20\d{2}[01]\d[0-3]\d)/;
+ 
+         let deliveryDateStr = null;
+-        let lineItems = [];
++        const itemTotals = new Map();
+ 
+         const textLines = text.split('\n');
+         for (let line of textLines) {
+@@ -90,7 +79,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
+                 }
+ 
+                 if (quantity > 0) {
+-                    lineItems.push({ gtin, quantity });
++                    itemTotals.set(gtin, (itemTotals.get(gtin) || 0) + quantity);
+                 }
+             }
+         }
+@@ -99,6 +88,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
+             return res.status(400).json({ error: 'Nem tal├ílhat├│ a Sz├íll├¡t├ísi d├ítum (Delivery Date) a t├⌐telsorok k├╢z├╢tt.' });
+         }
+ 
++        const lineItems = [...itemTotals.entries()].map(([gtin, quantity]) => ({ gtin, quantity }));
+         if (lineItems.length === 0) {
+             return res.status(400).json({ error: 'Nem tal├ílhat├│k t├⌐telsorok (GTIN ├⌐s Quantity) a PDF-ben.' });
+         }
+@@ -124,39 +114,90 @@ router.post('/upload', upload.single('file'), async (req, res) => {
+ 
+         try {
+             fs.writeFileSync(targetPath, dataBuffer);
++            writtenPath = targetPath;
+         } catch (err) {
+             console.error("Error writing file to network path:", err);
+             // Ignore error for dev purposes if network is unavailable
+         }
+ 
+-        // 6. Save to database
+-        const insertedIds = await db('aldi_daily_orders').insert({
+-            order_number: orderNumber,
+-            delivery_date: deliveryDateStr,
+-            pallet_count: palletCount,
+-            pdf_file_path: fileName,
+-            network_folder_path: targetDir
+-        }).returning('id');
+-
+-        const dailyOrderId = insertedIds[0].id || insertedIds[0];
+-
+-        const linesToInsert = lineItems.map(item => ({
+-            daily_order_id: dailyOrderId,
+-            gtin: item.gtin,
+-            ordered_cartons: item.quantity
+-        }));
++        const pdfHash = crypto.createHash('sha256').update(dataBuffer).digest('hex');
++        const result = await db.transaction(async trx => {
++            await trx.raw('SELECT pg_advisory_xact_lock(hashtext(?))', [`aldi-order:${orderNumberBase}`]);
++            let family = await trx('aldi_order_families').where({ base_order_number: orderNumberBase }).first();
++            if (!family) {
++                [family] = await trx('aldi_order_families').insert({ base_order_number: orderNumberBase }).onConflict('base_order_number').ignore().returning('*');
++                family = family || await trx('aldi_order_families').where({ base_order_number: orderNumberBase }).first();
++            }
++            family = await trx('aldi_order_families').where({ id: family.id }).first().forUpdate();
++            const duplicate = await trx('aldi_daily_orders').where({ order_family_id: family.id, pdf_hash: pdfHash }).first();
++            if (duplicate) throw new Error('DUPLICATE_PDF');
++
++            const previousOrder = family.current_order_id ? await trx('aldi_daily_orders').where({ id: family.current_order_id }).first() : null;
++            const previousLines = previousOrder ? await trx('aldi_daily_order_lines').where({ daily_order_id: previousOrder.id }) : [];
++            const previousMap = new Map(previousLines.map(line => [line.gtin, Number(line.ordered_cartons) || 0]));
++            const versionNumber = previousOrder ? Number(previousOrder.version_number) + 1 : 1;
++            const orderNumber = versionNumber === 1 ? orderNumberBase : `${orderNumberBase}-${versionNumber - 1}`;
++            const [newOrder] = await trx('aldi_daily_orders').insert({
++                order_number: orderNumber,
++                delivery_date: deliveryDateStr,
++                pallet_count: palletCount,
++                pdf_file_path: fileName,
++                network_folder_path: targetDir,
++                order_family_id: family.id,
++                version_number: versionNumber,
++                version_status: 'current',
++                pdf_hash: pdfHash
++            }).returning('*');
++
++            const incomingMap = new Map(lineItems.map(item => [item.gtin, item.quantity]));
++            const allGtins = new Set([...previousMap.keys(), ...incomingMap.keys()]);
++            for (const gtin of allGtins) {
++                let state = await trx('aldi_order_item_states').where({ order_family_id: family.id, gtin }).first().forUpdate();
++                if (!state) [state] = await trx('aldi_order_item_states').insert({ order_family_id: family.id, gtin }).returning('*');
++                const previousQty = previousMap.get(gtin) || 0;
++                const currentQty = incomingMap.get(gtin) || 0;
++                const delta = currentQty - previousQty;
++                const changeType = !previousMap.has(gtin) ? 'added' : !incomingMap.has(gtin) ? 'removed' : delta > 0 ? 'increased' : delta < 0 ? 'decreased' : 'unchanged';
++                const loadedRow = await trx('aldi_truck_lines').where({ order_item_state_id: state.id }).sum('ordered_cartons as total').first();
++                const loaded = Number(loadedRow && loadedRow.total) || 0;
++                const sent = Number(state.sent_cartons) || 0;
++                const conflict = currentQty < sent || currentQty < loaded;
++                await trx('aldi_order_item_states').where({ id: state.id }).update({
++                    requires_reconciliation: conflict,
++                    reconciliation_reason: conflict ? `Az ├║j rendelt mennyis├⌐g (${currentQty}) kisebb a Rakod├ísra k├╝ld├╢tt (${sent}) vagy kamionon l├⌐v┼æ (${loaded}) mennyis├⌐gn├⌐l.` : null,
++                    updated_at: trx.fn.now()
++                });
++                await trx('aldi_daily_order_lines').insert({
++                    daily_order_id: newOrder.id,
++                    gtin,
++                    ordered_cartons: currentQty,
++                    order_item_state_id: state.id,
++                    previous_ordered_cartons: previousQty,
++                    quantity_delta: delta,
++                    change_type: changeType,
++                    is_virtual_removed: !incomingMap.has(gtin)
++                });
++            }
+ 
+-        await db('aldi_daily_order_lines').insert(linesToInsert);
++            if (previousOrder) await trx('aldi_daily_orders').where({ id: previousOrder.id }).update({ version_status: 'superseded', superseded_by_order_id: newOrder.id, superseded_at: trx.fn.now() });
++            await trx('aldi_order_families').where({ id: family.id }).update({ current_order_id: newOrder.id, updated_at: trx.fn.now() });
++            return { newOrder, versionNumber, orderNumber };
++        });
+ 
+         res.json({
+             success: true,
+-            orderId: dailyOrderId,
+-            orderNumber,
++            orderId: result.newOrder.id,
++            orderNumber: result.orderNumber,
++            versionNumber: result.versionNumber,
+             palletCount,
+             deliveryDate: deliveryDateStr,
+             lineItemsCount: lineItems.length
+         });
+     } catch (err) {
++        if (writtenPath && fs.existsSync(writtenPath)) {
++            try { fs.unlinkSync(writtenPath); } catch (_) { /* napl├│zott DB hiba az els┼ædleges */ }
++        }
++        if (err.message === 'DUPLICATE_PDF') return res.status(409).json({ error: 'Ez a PDF-verzi├│ m├ír fel lett t├╢ltve.' });
+         console.error('Hiba a PDF feldolgoz├ísa k├╢zben:', err);
+         res.status(500).json({ error: 'Szerverhiba a PDF feldolgoz├ísa k├╢zben.' });
+     }
+@@ -170,20 +211,10 @@ router.get('/', async (req, res) => {
+             .select('*')
+             .orderBy('created_at', 'asc'); // Fontos: felt├╢lt├⌐si sorrendben k├⌐rj├╝k le a verzi├│k miatt
+ 
+-        const orderCounts = {};
+         const enrichedOrders = [];
+ 
+         for (let order of orders) {
+-            // Verzi├│sz├ím dinamikus sz├ím├¡t├ísa
+-            // A r├⌐gi logika "-1", "-2" suffixeket adott az azonos rendel├⌐ssz├ímokhoz.
+-            // Ezeket az alap rendel├⌐ssz├ímhoz tartoz├│nak tekintj├╝k a verzi├│sz├ím sz├ím├¡t├ís├íhoz.
+-            const baseOrderNumber = order.order_number.replace(/-\d+$/, '');
+-            if (!orderCounts[baseOrderNumber]) {
+-                orderCounts[baseOrderNumber] = 1;
+-            } else {
+-                orderCounts[baseOrderNumber]++;
+-            }
+-            order.version = `VERSION ${orderCounts[baseOrderNumber]}`;
++            order.version = `VERSION ${order.version_number || 1}`;
+ 
+             // Deviza (Rendel├⌐s t├¡pusa) dinamikus sz├ím├¡t├ísa a GTIN alapj├ín
+             // V├⌐gigmegy├╝nk az ├╢sszes t├⌐telsoron, am├¡g tal├ílunk ├⌐rv├⌐nyes deviza-peri├│dust
+@@ -250,12 +281,21 @@ router.get('/', async (req, res) => {
+ // Endpoint: GET /api/v1/aldi-daily-orders/:id/lines
+ router.get('/:id/lines', async (req, res) => {
+     try {
+-        const lines = await db('aldi_daily_order_lines')
+-            .where({ daily_order_id: req.params.id })
+-            .select('*');
++        const order = await db('aldi_daily_orders').where({ id: req.params.id }).first();
++        if (!order) return res.status(404).json({ error: 'Rendel├⌐s nem tal├ílhat├│.' });
++        const lines = await db('aldi_daily_order_lines as l')
++            .leftJoin('aldi_order_item_states as s', 's.id', 'l.order_item_state_id')
++            .where('l.daily_order_id', req.params.id)
++            .select('l.*', 's.sent_cartons', 's.requires_reconciliation', 's.reconciliation_reason');
+ 
+         // Augment with product names
+         for (let line of lines) {
++            const loadedRow = await db('aldi_truck_lines').where({ order_item_state_id: line.order_item_state_id }).sum('ordered_cartons as total').first();
++            line.loaded_cartons = Number(loadedRow && loadedRow.total) || 0;
++            line.sent_cartons = Number(line.sent_cartons) || 0;
++            line.available_cartons = Math.max(0, line.sent_cartons - line.loaded_cartons);
++            line.remaining_to_send = Math.max(0, Number(line.ordered_cartons) - line.sent_cartons);
++            line.version_status = order.version_status;
+             // Try chain_products first
+             const product = await db('chain_products')
+                 .where({ gtin: line.gtin })
+@@ -300,50 +340,176 @@ router.get('/:id/file', async (req, res) => {
+ });
+ 
+ // Endpoint: DELETE /api/v1/aldi-daily-orders/:id
+-// T├╢rli a rendel├⌐st ├⌐s a hozz├í tartoz├│ f├íjlt
++// T├╢rli a rendel├⌐st ├⌐s a hozz├í tartoz├│ f├íjlt, de csak ha nincs m├ír kamionra osztott t├⌐tel
+ router.delete('/:id', async (req, res) => {
+     try {
+         const orderId = req.params.id;
+-        const order = await db('aldi_daily_orders').where({ id: orderId }).first();
+-
+-        if (!order) {
+-            return res.status(404).json({ error: 'Rendel├⌐s nem tal├ílhat├│' });
+-        }
++        
++        let filesToDelete = [];
+ 
+-        // T├╢r├╢lj├╝k az adatb├ízisb├│l (a CASCADE miatt a t├⌐telek is t├╢rl┼ædnek, de az├⌐rt biztosra megy├╝nk)
+-        await db('aldi_daily_order_lines').where({ daily_order_id: orderId }).del();
+-        await db('aldi_daily_orders').where({ id: orderId }).del();
++        await db.transaction(async trx => {
++            const order = await trx('aldi_daily_orders').where({ id: orderId }).first().forUpdate();
++            if (!order) {
++                throw new Error('ORDER_NOT_FOUND');
++            }
++            if (order.version_status !== 'current') throw new Error('SUPERSEDED_DELETE');
++            const family = await trx('aldi_order_families').where({ id: order.order_family_id }).first().forUpdate();
++            const familyOrders = await trx('aldi_daily_orders').where({ order_family_id: family.id }).orderBy('id', 'asc').forUpdate();
++            filesToDelete = familyOrders.filter(item => item.network_folder_path && item.pdf_file_path).map(item => path.join(item.network_folder_path, item.pdf_file_path));
++
++            const orderIds = familyOrders.map(item => item.id);
++            const lines = await trx('aldi_daily_order_lines')
++                .whereIn('daily_order_id', orderIds)
++                .orderBy('id', 'asc')
++                .forUpdate();
++            const stateIds = [...new Set(lines.map(line => line.order_item_state_id).filter(Boolean))];
++            const loadedRows = stateIds.length ? await trx('aldi_truck_lines').whereIn('order_item_state_id', stateIds).where('ordered_cartons', '>', 0) : [];
++            if (loadedRows.length) throw new Error('FAMILY_HAS_LOADED_ITEMS');
++            const commissionRows = stateIds.length ? await trx('aldi_commission_lines').whereIn('order_item_state_id', stateIds) : [];
++            if (commissionRows.length) throw new Error('FAMILY_HAS_COMMISSION_ITEMS');
++            await trx('aldi_order_families').where({ id: family.id }).update({ current_order_id: null });
++            if (stateIds.length) await trx('aldi_truck_lines').whereIn('order_item_state_id', stateIds).delete();
++            await trx('aldi_daily_orders').whereIn('id', orderIds).delete();
++            await trx('aldi_order_item_states').where({ order_family_id: family.id }).delete();
++            await trx('aldi_order_families').where({ id: family.id }).delete();
++        });
+ 
+-        // T├╢r├╢lj├╝k a f├íjlt, ha l├⌐tezik
+-        if (order.network_folder_path && order.pdf_file_path) {
+-            const filePath = path.join(order.network_folder_path, order.pdf_file_path);
++        // 4. PDF t├╢rl├⌐s csak a sikeres adatb├ízis tranzakci├│ ut├ín
++        let warning = null;
++        for (const filePath of filesToDelete) {
+             if (fs.existsSync(filePath)) {
+-                fs.unlinkSync(filePath);
++                try {
++                    fs.unlinkSync(filePath);
++                } catch (unlinkErr) {
++                    console.error('Hiba a PDF f├íjl t├╢rl├⌐sekor:', unlinkErr);
++                    warning = 'Az adatb├ízis bejegyz├⌐sek t├╢rl┼ædtek, de egy vagy t├╢bb PDF elt├ívol├¡t├ísa sikertelen.';
++                }
+             }
+         }
+ 
+-        res.json({ success: true, message: 'Rendel├⌐s sikeresen t├╢r├╢lve' });
++        res.json({ success: true, message: 'Rendel├⌐s sikeresen t├╢r├╢lve', warning });
+     } catch (err) {
++        if (err.message === 'ORDER_NOT_FOUND') return res.status(404).json({ error: 'Rendel├⌐s nem tal├ílhat├│' });
++        if (err.message === 'SUPERSEDED_DELETE') return res.status(409).json({ error: 'El├⌐v├╝lt verzi├│ k├╝l├╢n nem t├╢r├╢lhet┼æ. A teljes rendel├⌐scsal├íd az aktu├ílis verzi├│ t├╢rl├⌐s├⌐vel t├ívol├¡that├│ el.' });
++        if (err.message === 'FAMILY_HAS_LOADED_ITEMS' || err.message === 'FAMILY_HAS_COMMISSION_ITEMS') return res.status(409).json({ error: 'A rendel├⌐scsal├íd nem t├╢r├╢lhet┼æ, mert valamelyik t├⌐tele kamionon vagy komissi├│ban van.' });
++        if (err.message && err.message.includes('nem t├╢r├╢lhet┼æ, mert')) {
++            return res.status(409).json({ error: err.message });
++        }
+         console.error('Hiba a rendel├⌐s t├╢rl├⌐se sor├ín:', err);
+         res.status(500).json({ error: 'Bels┼æ szerverhiba a t├╢rl├⌐s sor├ín' });
+     }
+ });
+ 
++// Endpoint: PATCH /api/v1/aldi-daily-orders/lines/:lineId/send-cartons
++// Idempotens r├⌐szleges vagy teljes t├⌐tel k├╝ld├⌐s
++router.patch('/lines/:lineId/send-cartons', async (req, res) => {
++    try {
++        const { lineId } = req.params;
++        const { target_sent_cartons } = req.body;
++        
++        if (target_sent_cartons === undefined || isNaN(target_sent_cartons) || target_sent_cartons < 0) {
++            return res.status(400).json({ error: '├ërv├⌐nytelen target_sent_cartons ├⌐rt├⌐k.' });
++        }
++
++        const result = await db.transaction(async trx => {
++            // 1. Lock order line
++            const line = await trx('aldi_daily_order_lines').where({ id: lineId }).first().forUpdate();
++            if (!line) throw new Error('LINE_NOT_FOUND');
++            const order = await trx('aldi_daily_orders').where({ id: line.daily_order_id }).first();
++            if (!order || order.version_status !== 'current') throw new Error('SUPERSEDED_ORDER');
++            const state = await trx('aldi_order_item_states').where({ id: line.order_item_state_id }).first().forUpdate();
++            if (!state) throw new Error('ITEM_STATE_NOT_FOUND');
++            if (state.requires_reconciliation) throw new Error('RECONCILIATION_REQUIRED');
++
++            // 2. ├ûsszegz├⌐s (loaded_cartons)
++            const loadedRes = await trx('aldi_truck_lines')
++                .where({ order_item_state_id: state.id })
++                .sum('ordered_cartons as total_loaded')
++                .first();
++            const loadedCartons = parseFloat(loadedRes.total_loaded) || 0;
++            const orderedCartons = parseFloat(line.ordered_cartons) || 0;
++            const targetSent = parseFloat(target_sent_cartons);
++
++            // 3. Invari├íns ellen┼ærz├⌐s
++            if (targetSent < loadedCartons) {
++                throw new Error(`Nem vonhat├│ vissza ennyi, mert ${loadedCartons} karton m├ír kamionon van.`);
++            }
++            if (targetSent > orderedCartons) {
++                throw new Error(`T├║lk├╝ld├⌐s: Maximum ${orderedCartons} karton k├╝ldhet┼æ.`);
++            }
++
++            // 4. M├│dos├¡t├ís
++            await trx('aldi_order_item_states').where({ id: state.id }).update({ sent_cartons: targetSent, updated_at: trx.fn.now() });
++            
++            // 5. Konzisztencia (sent_to_rakodas order szintre)
++            const anySent = await trx('aldi_daily_order_lines as l')
++                .join('aldi_order_item_states as s', 's.id', 'l.order_item_state_id')
++                .where('l.daily_order_id', line.daily_order_id)
++                .andWhere('s.sent_cartons', '>', 0)
++                .first();
++                
++            await trx('aldi_daily_orders')
++                .where({ id: line.daily_order_id })
++                .update({ sent_to_rakodas: !!anySent });
++
++            return {
++                ordered_cartons: orderedCartons,
++                sent_cartons: targetSent,
++                loaded_cartons: loadedCartons,
++                available_cartons: targetSent - loadedCartons,
++                remaining_to_send: orderedCartons - targetSent
++            };
++        });
++
++        res.json(result);
++    } catch (err) {
++        if (err.message === 'LINE_NOT_FOUND') return res.status(404).json({ error: 'T├⌐tel nem tal├ílhat├│.' });
++        if (err.message === 'ITEM_STATE_NOT_FOUND') return res.status(409).json({ error: 'A t├⌐tel verzi├│kon ├ít├¡vel┼æ ├íllapota hi├ínyzik.' });
++        if (err.message === 'SUPERSEDED_ORDER') return res.status(403).json({ error: 'El├⌐v├╝lt rendel├⌐sverzi├│b├│l nem k├╝ldhet┼æ t├⌐tel.' });
++        if (err.message === 'RECONCILIATION_REQUIRED') return res.status(409).json({ error: 'A t├⌐tel mennyis├⌐ge cs├╢kkent, ez├⌐rt el┼æbb rendezd a Rakod├íson vagy kamionon l├⌐v┼æ t├╢bbletet.' });
++        if (err.message.includes('Nem vonhat├│') || err.message.includes('T├║lk├╝ld├⌐s')) {
++            return res.status(409).json({ error: err.message });
++        }
++        console.error('Hiba t├⌐tel k├╝ld├⌐sekor:', err);
++        res.status(500).json({ error: 'Bels┼æ szerverhiba' });
++    }
++});
++
+ // Endpoint: PATCH /api/v1/aldi-daily-orders/:id/send-to-rakodas
+-// Be├íll├¡tja, hogy a rendel├⌐s ├ít lett k├╝ldve a Rakod├ís modulba
++// Teljes rendel├⌐s ├ítk├╝ld├⌐se
+ router.patch('/:id/send-to-rakodas', async (req, res) => {
+     try {
+         const orderId = req.params.id;
+-        const order = await db('aldi_daily_orders').where({ id: orderId }).first();
+-        if (!order) {
+-            return res.status(404).json({ error: 'Rendel├⌐s nem tal├ílhat├│.' });
+-        }
+-        if (order.sent_to_rakodas) {
+-            return res.status(409).json({ error: 'Ez a rendel├⌐s m├ír ├ít lett k├╝ldve a Rakod├ís modulba.' });
+-        }
+-        await db('aldi_daily_orders').where({ id: orderId }).update({ sent_to_rakodas: true });
++        
++        await db.transaction(async trx => {
++            const order = await trx('aldi_daily_orders').where({ id: orderId }).first();
++            if (!order) {
++                throw new Error('ORDER_NOT_FOUND');
++            }
++            if (order.version_status !== 'current') throw new Error('SUPERSEDED_ORDER');
++
++            // Lock mindent
++            const lines = await trx('aldi_daily_order_lines')
++                .where({ daily_order_id: orderId })
++                .orderBy('id', 'asc')
++                .forUpdate();
++
++            for (const line of lines) {
++                if (line.is_virtual_removed) continue;
++                const state = await trx('aldi_order_item_states').where({ id: line.order_item_state_id }).first().forUpdate();
++                if (!state) throw new Error('ITEM_STATE_NOT_FOUND');
++                if (state.requires_reconciliation) throw new Error('RECONCILIATION_REQUIRED');
++                await trx('aldi_order_item_states').where({ id: state.id }).update({ sent_cartons: line.ordered_cartons, updated_at: trx.fn.now() });
++            }
++
++            await trx('aldi_daily_orders').where({ id: orderId }).update({ sent_to_rakodas: true });
++        });
++        
+         res.json({ success: true, message: 'Rendel├⌐s ├ítk├╝ldve a Rakod├ís modulba.' });
+     } catch (err) {
++        if (err.message === 'ORDER_NOT_FOUND') return res.status(404).json({ error: 'Rendel├⌐s nem tal├ílhat├│.' });
++        if (err.message === 'SUPERSEDED_ORDER') return res.status(403).json({ error: 'El├⌐v├╝lt rendel├⌐sverzi├│ nem k├╝ldhet┼æ Rakod├ísra.' });
++        if (err.message === 'ITEM_STATE_NOT_FOUND' || err.message === 'RECONCILIATION_REQUIRED') return res.status(409).json({ error: 'A rendel├⌐s egyik t├⌐tele rendezetlen; el┼æbb rendezd a Rakod├íson vagy kamionon l├⌐v┼æ mennyis├⌐get.' });
+         console.error('Hiba a rendel├⌐s ├ítk├╝ld├⌐se sor├ín:', err);
+         res.status(500).json({ error: 'Bels┼æ szerverhiba az ├ítk├╝ld├⌐s sor├ín' });
+     }
