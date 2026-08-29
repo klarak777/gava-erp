@@ -151,14 +151,14 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
             const incomingMap = new Map(lineItems.map(item => [item.gtin, item.quantity]));
             const allGtins = new Set([...previousMap.keys(), ...incomingMap.keys()]);
+            const autoReconcileWarnings = [];
+
             for (const gtin of allGtins) {
                 let state = await trx('aldi_order_item_states').where({ order_family_id: family.id, gtin }).first().forUpdate();
                 if (!state) [state] = await trx('aldi_order_item_states').insert({ order_family_id: family.id, gtin }).returning('*');
                 const previousQty = previousMap.get(gtin) || 0;
                 const currentQty = incomingMap.get(gtin) || 0;
                 const delta = previousOrder ? currentQty - previousQty : 0;
-                // Az első verziónak nincs összehasonlítási alapja, ezért annak
-                // tételei nem számítanak változásnak és nem kaphatnak kiemelést.
                 const changeType = !previousOrder
                     ? 'unchanged'
                     : !previousMap.has(gtin)
@@ -170,15 +170,61 @@ router.post('/upload', upload.single('file'), async (req, res) => {
                                 : delta < 0
                                     ? 'decreased'
                                     : 'unchanged';
-                const loadedRow = await trx('aldi_truck_lines').where({ order_item_state_id: state.id }).sum('ordered_cartons as total').first();
-                const loaded = Number(loadedRow && loadedRow.total) || 0;
-                const sent = Number(state.sent_cartons) || 0;
-                const conflict = currentQty < sent || currentQty < loaded;
-                await trx('aldi_order_item_states').where({ id: state.id }).update({
-                    requires_reconciliation: conflict,
-                    reconciliation_reason: conflict ? `Az új rendelt mennyiség (${currentQty}) kisebb a Rakodásra küldött (${sent}) vagy kamionon lévő (${loaded}) mennyiségnél.` : null,
-                    updated_at: trx.fn.now()
-                });
+
+                // Auto-reconciliation: if new qty < already sent or on trucks, trim automatically
+                const truckLines = await trx('aldi_truck_lines')
+                    .where({ order_item_state_id: state.id })
+                    .orderBy('id', 'asc');
+                const totalLoaded = truckLines.reduce((s, r) => s + (Number(r.ordered_cartons) || 0), 0);
+                let currentSent = Number(state.sent_cartons) || 0;
+
+                if (currentQty < currentSent || currentQty < totalLoaded) {
+                    // Need to trim
+                    const targetMax = currentQty;
+                    let warning = `⚠️ Automatikus egyeztetés: ${gtin} - Az új rendelt mennyiség ${currentQty} karton.`;
+
+                    // 1. Trim truck lines if loaded > new qty
+                    if (totalLoaded > targetMax) {
+                        let excess = totalLoaded - targetMax;
+                        // Remove/reduce truck lines from the last one backwards
+                        const truckLinesDesc = [...truckLines].reverse();
+                        for (const tl of truckLinesDesc) {
+                            if (excess <= 0) break;
+                            const tlQty = Number(tl.ordered_cartons) || 0;
+                            if (tlQty <= excess) {
+                                await trx('aldi_truck_lines').where({ id: tl.id }).delete();
+                                excess -= tlQty;
+                            } else {
+                                await trx('aldi_truck_lines').where({ id: tl.id }).update({ ordered_cartons: tlQty - excess });
+                                excess = 0;
+                            }
+                        }
+                        warning += ` Kamionról visszavéve: ${totalLoaded - targetMax} karton.`;
+                    }
+
+                    // 2. Trim sent_cartons in item state
+                    const newSent = Math.min(currentSent, targetMax);
+                    currentSent = newSent;
+                    warning += ` Árú igényből visszavéve: ${Math.max(0, Number(state.sent_cartons) - newSent)} karton.`;
+
+                    await trx('aldi_order_item_states').where({ id: state.id }).update({
+                        sent_cartons: newSent,
+                        requires_reconciliation: false,
+                        reconciliation_reason: null,
+                        updated_at: trx.fn.now()
+                    });
+                    autoReconcileWarnings.push(warning);
+                } else {
+                    await trx('aldi_order_item_states').where({ id: state.id }).update({
+                        requires_reconciliation: false,
+                        reconciliation_reason: null,
+                        updated_at: trx.fn.now()
+                    });
+                }
+
+                // Update sent_to_rakodas flag: if any line still has remaining, set to false
+                const remainingForThis = Math.max(0, currentQty - currentSent);
+
                 await trx('aldi_daily_order_lines').insert({
                     daily_order_id: newOrder.id,
                     gtin,
@@ -193,7 +239,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
             if (previousOrder) await trx('aldi_daily_orders').where({ id: previousOrder.id }).update({ version_status: 'superseded', superseded_by_order_id: newOrder.id, superseded_at: trx.fn.now() });
             await trx('aldi_order_families').where({ id: family.id }).update({ current_order_id: newOrder.id, updated_at: trx.fn.now() });
-            return { newOrder, versionNumber, orderNumber };
+            return { newOrder, versionNumber, orderNumber, autoReconcileWarnings };
         });
 
         res.json({
@@ -203,7 +249,8 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             versionNumber: result.versionNumber,
             palletCount,
             deliveryDate: deliveryDateStr,
-            lineItemsCount: lineItems.length
+            lineItemsCount: lineItems.length,
+            autoReconcileWarnings: result.autoReconcileWarnings || []
         });
     } catch (err) {
         if (writtenPath && fs.existsSync(writtenPath)) {
