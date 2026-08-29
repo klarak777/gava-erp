@@ -952,9 +952,9 @@ export function renderAldiRendelesek(container, windowManager) {
                   <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">Cikkszám</th>
                   <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">Termék megnevezése</th>
                   <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">GTIN szám</th>
-                  <th style="padding:8px 12px; text-align:right; font-weight:700; color:#334155;">Rakodásra küldve</th>
                   <th style="padding:8px 12px; text-align:center; font-weight:700; color:#334155;">Változás</th>
                   <th style="padding:8px 12px; text-align:right; font-weight:700; color:#334155;">Rendelt mennyiség</th>
+                  <th style="padding:8px 12px; text-align:right; font-weight:700; color:#334155;">Rakodásra küldve</th>
                 </tr>
               </thead>
               <tbody>
@@ -986,9 +986,9 @@ export function renderAldiRendelesek(container, windowManager) {
                     <td style="padding:8px 12px; color:${isRemoved ? '#b91c1c' : '#475569'}; font-weight:600;">${cikk}</td>
                     <td style="${nameStyle}">${l.product_name}</td>
                     <td style="padding:8px 12px; color:${isRemoved ? '#b91c1c' : '#64748b'}; font-family:monospace;">${l.gtin || ''}</td>
-                    <td style="padding:8px 12px; text-align:right; font-weight:600; color:#334155;">${isRemoved ? '0' : sent} / ${ordered} karton</td>
                     <td style="padding:8px 12px;text-align:center;background:${changeBg};font-weight:700;color:${isRemoved ? '#b91c1c' : 'inherit'}">${changeText}</td>
                     <td style="padding:8px 12px; text-align:right; font-weight:700; color:${isRemoved ? '#b91c1c' : '#2563eb'}; text-decoration:${isRemoved ? 'line-through' : 'none'}">${isRemoved ? '0' : ordered} karton</td>
+                    <td style="padding:8px 12px; text-align:right; font-weight:600; color:#334155;">${isRemoved ? '0' : sent} / ${ordered} karton</td>
                   </tr>
                   `;
                 }).join('')}
