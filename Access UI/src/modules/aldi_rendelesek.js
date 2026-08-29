@@ -1020,6 +1020,8 @@ export function renderAldiRendelesek(container, windowManager) {
         `;
     };
 
+    const hasRemaining = lines.some(l => !l.is_virtual_removed && !l.requires_reconciliation && Math.max(0, parseFloat(l.ordered_cartons) - (parseFloat(l.sent_cartons) || 0)) > 0);
+
     const contentHtml = `
       <div style="display:flex; flex-direction:column; height:100%; background:#ffffff;">
         <div id="order-lines-container-${id}" style="flex:1; padding:16px 20px; overflow-y:auto;">
@@ -1027,7 +1029,7 @@ export function renderAldiRendelesek(container, windowManager) {
         </div>
         <div style="padding:12px 20px; border-top:1px solid #e2e8f0; background:#f8fafc; display:flex; justify-content:space-between; align-items:center;">
           <button id="export-btn-${id}" style="padding:6px 18px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid #10b981; background:#ffffff; color:#10b981; cursor:pointer; display:${lines.length > 0 && isCurrentVersion ? 'inline-flex' : 'none'}; align-items:center; gap:6px;">⬇️ Excel Export</button>
-          <button id="send-to-demands-btn-${id}" class="primary-btn" style="padding:6px 18px; border-radius:20px; font-size:13px; font-weight:600; display:${lines.length > 0 && isCurrentVersion ? 'inline-flex' : 'none'}; align-items:center; gap:6px; background:#2563eb; color:white; border:none; cursor:pointer;">Teljes rendelés rakodásra küldése &gt;&gt;&gt;</button>
+          ${hasRemaining && isCurrentVersion ? `<button id="send-to-demands-btn-${id}" class="primary-btn" style="padding:6px 18px; border-radius:20px; font-size:13px; font-weight:600; display:inline-flex; align-items:center; gap:6px; background:#2563eb; color:white; border:none; cursor:pointer;">Teljes rendelés rakodásra küldése &gt;&gt;&gt;</button>` : (isCurrentVersion && lines.length > 0 ? `<div style="color:#16a34a; font-weight:bold; font-size:13px; padding:6px 18px;">✓ Minden tétel átküldve</div>` : '')}
         </div>
       </div>
     `;
@@ -1076,6 +1078,12 @@ export function renderAldiRendelesek(container, windowManager) {
                       lines = await fetchLines();
                       container.innerHTML = generateTableHtml(lines);
                       attachEvents(); // Újra felkötjük az eseményeket
+                      
+                      const stillHasRemaining = lines.some(l => !l.is_virtual_removed && !l.requires_reconciliation && Math.max(0, parseFloat(l.ordered_cartons) - (parseFloat(l.sent_cartons) || 0)) > 0);
+                      const fullSendBtn = document.getElementById(`send-to-demands-btn-${id}`);
+                      if (fullSendBtn && !stillHasRemaining) {
+                          fullSendBtn.outerHTML = `<div style="color:#16a34a; font-weight:bold; font-size:13px; padding:6px 18px;">✓ Minden tétel átküldve</div>`;
+                      }
                       
                   } catch (err) {
                       console.error(err);
