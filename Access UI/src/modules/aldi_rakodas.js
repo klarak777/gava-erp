@@ -359,7 +359,7 @@ export function renderAldiRakodas(container, windowManager) {
           </td>
           <td style="text-align:center; padding:3px 2px;">
             <button class="btn-split-aldi-demand" data-id="${d.id}" title="Sor szétbontása (részmennyiségre)" 
-              style="background:#3b82f6; color:#fff; border:1px solid #2563eb; border-radius:4px; padding:2px 5px; font-size:11px; cursor:pointer; transition:all 0.2s;">➕</button>
+              style="background:#ffffff; color:#3b82f6; border:1px solid #cbd5e1; border-radius:4px; padding:2px 5px; font-size:14px; font-weight:900; cursor:pointer; transition:all 0.2s;">+</button>
           </td>
           <td style="text-align:center; padding:3px 2px;">
             <button class="btn-delete-aldi-demand" data-id="${d.id}" title="Törlés (visszaküldés Napi rendelésekbe)" 
