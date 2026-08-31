@@ -90,6 +90,7 @@ export function renderAldiRakodas(container, windowManager) {
                   <th style="min-width:65px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 4px;">RENDELÉSI SZÁM</th>
                   <th style="min-width:55px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 4px;">TÍPUS</th>
                   <th style="min-width:50px; text-align:center; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 4px;">KÜLDÉS</th>
+                  <th style="width:28px; text-align:center; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 2px;" title="Szétbontás">➕</th>
                   <th style="width:28px; text-align:center; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 2px;" title="Törlés">🗑️</th>
                 </tr>
               </thead>
@@ -100,7 +101,7 @@ export function renderAldiRakodas(container, windowManager) {
                   <td id="aldi-sum-cartons" style="text-align:right; padding:6px 2px; color:#0369a1; font-size:10px;">0</td>
                   <td></td>
                   <td id="aldi-sum-pallets" style="text-align:right; padding:6px 2px; color:#7c3aed; font-size:10px;">0.0</td>
-                  <td colspan="5" id="aldi-sum-trucks" style="text-align:right; padding:6px 14px; color:#ea580c; font-size:11px;">Szükséges kamion: 0.00</td>
+                  <td colspan="6" id="aldi-sum-trucks" style="text-align:right; padding:6px 14px; color:#ea580c; font-size:11px;">Szükséges kamion: 0.00</td>
                 </tr>
               </tfoot>
             </table>
@@ -355,6 +356,10 @@ export function renderAldiRakodas(container, windowManager) {
           <td style="text-align:center; padding:3px 4px;">
             <button class="btn-send-aldi-demand" data-id="${d.id}" title="Küldés vagy Visszavétel" 
               style="background:#ef4444; color:#fff; border:1px solid #dc2626; border-radius:4px; padding:2px 7px; font-size:11px; cursor:pointer; transition:all 0.2s;">➡</button>
+          </td>
+          <td style="text-align:center; padding:3px 2px;">
+            <button class="btn-split-aldi-demand" data-id="${d.id}" title="Sor szétbontása (részmennyiségre)" 
+              style="background:#3b82f6; color:#fff; border:1px solid #2563eb; border-radius:4px; padding:2px 5px; font-size:11px; cursor:pointer; transition:all 0.2s;">➕</button>
           </td>
           <td style="text-align:center; padding:3px 2px;">
             <button class="btn-delete-aldi-demand" data-id="${d.id}" title="Törlés (visszaküldés Napi rendelésekbe)" 
