@@ -227,36 +227,117 @@ html, body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: #f8f9fc;
 }
 
-.pda-dashboard__top {
-  background: var(--clr-primary);
-  color: #fff;
-  padding: 12px 16px 16px;
-  flex-shrink: 0;
-}
-
-.pda-dashboard__greeting {
-  font-size: 13px;
-  opacity: 0.8;
-}
-
-.pda-dashboard__user {
-  font-size: 18px;
-  font-weight: 700;
-  margin-top: 2px;
-}
-
-.pda-dashboard__location {
+.pda-dashboard__header {
+  background: #fff;
+  padding: 16px;
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 6px;
+  justify-content: space-between;
+  flex-shrink: 0;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.pda-dashboard__header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pda-dashboard__logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid var(--clr-accent);
+  padding: 2px;
+  object-fit: contain;
+}
+
+.pda-dashboard__company {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--clr-text);
+  line-height: 1.2;
+}
+
+.pda-dashboard__role {
+  font-size: 10px;
+  color: var(--clr-text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.pda-dashboard__name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--clr-text);
+}
+
+.pda-dashboard__header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.pda-dashboard__location-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8fafc;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #f1f5f9;
+}
+
+.pda-dashboard__loc-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--clr-primary);
+}
+
+.pda-dashboard__loc-label {
+  font-size: 9px;
+  color: var(--clr-text-muted);
+  font-weight: 600;
+}
+
+.pda-dashboard__loc-value {
   font-size: 12px;
-  background: rgba(255,255,255,0.15);
-  border-radius: 20px;
-  padding: 4px 12px;
-  width: fit-content;
+  font-weight: 700;
+  color: var(--clr-text);
+}
+
+.pda-dashboard__loc-arrow {
+  width: 14px;
+  height: 14px;
+  color: var(--clr-primary);
+}
+
+.pda-dashboard__notification {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  color: var(--clr-primary);
+}
+
+.pda-dashboard__notif-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: var(--clr-primary);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid #fff;
 }
 
 .pda-dashboard__scroll {
@@ -272,64 +353,96 @@ html, body {
 }
 
 .pda-menu-card {
-  background: var(--clr-bg-white);
-  border-radius: var(--radius-md);
-  padding: 18px 12px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px 12px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  box-shadow: var(--shadow-card);
+  gap: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
   cursor: pointer;
-  border: 1.5px solid var(--clr-border);
+  border: 1px solid #f1f5f9;
   transition: all 0.18s;
-  text-align: center;
+  position: relative;
 }
 
 .pda-menu-card:active {
-  background: #f5f3ff;
-  border-color: var(--clr-primary);
+  background: #f8fafc;
   transform: scale(0.97);
 }
 
 .pda-menu-card--disabled {
-  opacity: 0.4;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-.pda-menu-card__icon {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+.pda-menu-card--empty {
+  opacity: 0.3;
+  cursor: default;
+}
+.pda-menu-card--empty:active {
+  transform: none;
+  background: #fff;
+}
+
+.pda-menu-card__icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #f5f3ff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 26px;
+  color: var(--clr-primary);
+  flex-shrink: 0;
+}
+
+.pda-menu-card__icon-box svg {
+  width: 24px;
+  height: 24px;
+}
+
+.pda-menu-card__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .pda-menu-card__label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--clr-text);
-  line-height: 1.3;
+  line-height: 1.2;
 }
 
 .pda-menu-card__desc {
   font-size: 11px;
   color: var(--clr-text-muted);
-  line-height: 1.3;
+  line-height: 1.2;
+  margin-top: 4px;
+}
+
+.pda-menu-card__arrow {
+  width: 16px;
+  height: 16px;
+  color: #cbd5e1;
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 /* ── BOTTOM NAV ──────────────────────────────── */
 .pda-bottom-nav {
-  background: var(--clr-bg-white);
-  border-top: 1px solid var(--clr-border);
+  background: #fff;
+  border-top: 1px solid #edf2f7;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-around;
-  padding: 8px 0 12px;
+  padding: 8px 16px 20px;
   flex-shrink: 0;
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.03);
 }
 
 .pda-bottom-nav__item {
@@ -337,42 +450,46 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   cursor: pointer;
-  padding: 4px;
+  padding: 8px;
+  color: var(--clr-text-muted);
 }
 
-.pda-bottom-nav__icon { font-size: 22px; }
+.pda-bottom-nav__icon { width: 24px; height: 24px; }
 
 .pda-bottom-nav__label {
-  font-size: 10px;
-  color: var(--clr-text-muted);
+  font-size: 11px;
   font-weight: 600;
 }
 
-.pda-bottom-nav__item--active .pda-bottom-nav__label { color: var(--clr-primary); }
+.pda-bottom-nav__item--active { color: var(--clr-primary); }
 
 .pda-bottom-nav__cta {
   flex: 1;
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
+  position: relative;
 }
 
 .pda-bottom-nav__cta-btn {
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   background: var(--clr-primary);
-  border: none;
+  border: 4px solid #f8f9fc;
   color: #fff;
-  font-size: 24px;
   cursor: pointer;
-  box-shadow: var(--shadow-btn);
+  box-shadow: 0 4px 16px rgba(91,33,182,0.3);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: -20px;
+  margin-top: -32px;
   transition: all 0.2s;
+  position: relative;
+  z-index: 10;
 }
 
 .pda-bottom-nav__cta-btn:active { transform: scale(0.93); background: var(--clr-primary-d); }
