@@ -232,7 +232,7 @@ html, body {
 
 .pda-dashboard__header {
   background: #fff;
-  padding: 16px;
+  padding: 10px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -243,12 +243,12 @@ html, body {
 .pda-dashboard__header-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .pda-dashboard__logo {
-  width: 48px;
-  height: 48px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   border: 2px solid var(--clr-accent);
   padding: 2px;
@@ -256,18 +256,18 @@ html, body {
 }
 
 .pda-dashboard__company {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--clr-text);
   line-height: 1.2;
 }
 
 .pda-dashboard__role {
-  font-size: 10px;
+  font-size: 9px;
   color: var(--clr-text-muted);
   font-weight: 600;
   text-transform: uppercase;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .pda-dashboard__name {
@@ -279,92 +279,36 @@ html, body {
 .pda-dashboard__header-right {
   display: flex;
   align-items: center;
-  gap: 16px;
-}
-
-.pda-dashboard__location-box {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: #f8fafc;
-  padding: 6px 10px;
-  border-radius: 8px;
-  border: 1px solid #f1f5f9;
-}
-
-.pda-dashboard__loc-icon {
-  width: 18px;
-  height: 18px;
-  color: var(--clr-primary);
-}
-
-.pda-dashboard__loc-label {
-  font-size: 9px;
-  color: var(--clr-text-muted);
-  font-weight: 600;
-}
-
-.pda-dashboard__loc-value {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--clr-text);
-}
-
-.pda-dashboard__loc-arrow {
-  width: 14px;
-  height: 14px;
-  color: var(--clr-primary);
-}
-
-.pda-dashboard__notification {
-  position: relative;
-  width: 24px;
-  height: 24px;
-  color: var(--clr-primary);
-}
-
-.pda-dashboard__notif-badge {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  background: var(--clr-primary);
-  color: #fff;
-  font-size: 10px;
-  font-weight: 700;
-  width: 16px;
-  height: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  border: 2px solid #fff;
+  gap: 10px;
 }
 
 .pda-dashboard__scroll {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  overflow-x: hidden;
+  padding: 8px 6px;
 }
 
 .pda-dashboard__grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 6px;
 }
 
 .pda-menu-card {
   background: #fff;
-  border-radius: 14px;
-  padding: 12px 10px;
+  border-radius: 12px;
+  padding: 8px 6px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
   cursor: pointer;
   border: 1px solid #f1f5f9;
   transition: all 0.18s;
   position: relative;
   min-width: 0;
+  min-height: 52px;
 }
 
 .pda-menu-card:active {
@@ -378,7 +322,7 @@ html, body {
 }
 
 .pda-menu-card--empty {
-  opacity: 0.3;
+  opacity: 0.2;
   cursor: default;
 }
 .pda-menu-card--empty:active {
@@ -387,9 +331,9 @@ html, body {
 }
 
 .pda-menu-card__icon-box {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
   background: #f5f3ff;
   display: flex;
   align-items: center;
@@ -399,8 +343,8 @@ html, body {
 }
 
 .pda-menu-card__icon-box svg {
-  width: 20px;
-  height: 20px;
+  width: 17px;
+  height: 17px;
 }
 
 .pda-menu-card__content {
@@ -408,23 +352,24 @@ html, body {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  padding-right: 8px;
 }
 
 .pda-menu-card__label {
-  font-size: 13px;
+  font-size: 11.5px;
   font-weight: 700;
   color: var(--clr-text);
-  line-height: 1.2;
+  line-height: 1.15;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .pda-menu-card__desc {
-  font-size: 10px;
+  font-size: 8.5px;
   color: var(--clr-text-muted);
-  line-height: 1.2;
-  margin-top: 3px;
+  line-height: 1.15;
+  margin-top: 2px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -433,11 +378,11 @@ html, body {
 }
 
 .pda-menu-card__arrow {
-  width: 14px;
-  height: 14px;
+  width: 10px;
+  height: 10px;
   color: #cbd5e1;
   position: absolute;
-  right: 8px;
+  right: 4px;
   top: 50%;
   transform: translateY(-50%);
 }
