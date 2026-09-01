@@ -1,0 +1,452 @@
+/* =============================================
+   GAVA WMS PDA – Stílus (pda-style.css)
+   Newland MT93 | Android 13 | 390x810px
+   ============================================= */
+
+/* ── Reset & Base ────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:root {
+  --clr-primary:    #5b21b6;   /* mélylila – brand szín */
+  --clr-primary-d:  #4c1d95;
+  --clr-primary-l:  #7c3aed;
+  --clr-accent:     #c8102e;   /* Gava piros */
+  --clr-bg:         #f1f5f9;
+  --clr-bg-white:   #ffffff;
+  --clr-text:       #0f172a;
+  --clr-text-muted: #64748b;
+  --clr-border:     #e2e8f0;
+  --clr-success:    #16a34a;
+  --clr-danger:     #dc2626;
+  --radius-sm:      8px;
+  --radius-md:      14px;
+  --radius-lg:      22px;
+  --shadow-card:    0 2px 12px rgba(91,33,182,0.10);
+  --shadow-btn:     0 4px 16px rgba(91,33,182,0.25);
+}
+
+html, body {
+  margin: 0; padding: 0;
+  width: 100%; height: 100%;
+  font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: var(--clr-bg);
+  color: var(--clr-text);
+  overflow: hidden;
+  user-select: none;
+}
+
+#pda-app-root {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── View közös ──────────────────────────────── */
+.pda-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+
+.pda-view--hidden { display: none !important; }
+
+/* ── Header ──────────────────────────────────── */
+.pda-header {
+  background: var(--clr-primary);
+  color: #fff;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  min-height: 56px;
+}
+
+.pda-header__title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.pda-header__sub {
+  font-size: 11px;
+  opacity: 0.75;
+  margin-top: 1px;
+}
+
+.pda-header__right {
+  font-size: 12px;
+  opacity: 0.85;
+  text-align: right;
+}
+
+/* ── LOGIN KÉPERNYŐ ──────────────────────────── */
+.pda-login {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(160deg, #f5f3ff 0%, #ede9fe 50%, #ddd6fe 100%);
+  padding: 32px 24px;
+  gap: 0;
+}
+
+.pda-login__logo-wrap {
+  margin-bottom: 20px;
+}
+
+.pda-login__logo {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: contain;
+  box-shadow: 0 8px 32px rgba(200,16,46,0.25);
+}
+
+.pda-login__logo-fallback {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--clr-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  color: #fff;
+  font-weight: 900;
+  box-shadow: 0 8px 32px rgba(200,16,46,0.25);
+}
+
+.pda-login__company {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--clr-text);
+  margin-bottom: 4px;
+}
+
+.pda-login__welcome {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--clr-primary);
+  margin-bottom: 4px;
+}
+
+.pda-login__sub {
+  font-size: 14px;
+  color: var(--clr-text-muted);
+  margin-bottom: 32px;
+}
+
+.pda-login__form {
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pda-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pda-form-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--clr-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pda-form-input {
+  width: 100%;
+  height: 52px;
+  border: 1.5px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  padding: 0 16px;
+  font-size: 16px;
+  background: var(--clr-bg-white);
+  color: var(--clr-text);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.pda-form-input:focus {
+  border-color: var(--clr-primary);
+  box-shadow: 0 0 0 3px rgba(91,33,182,0.15);
+}
+
+.pda-form-input::placeholder { color: #94a3b8; }
+
+.pda-btn {
+  width: 100%;
+  height: 52px;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.pda-btn--primary {
+  background: var(--clr-primary);
+  color: #fff;
+  box-shadow: var(--shadow-btn);
+}
+
+.pda-btn--primary:active { background: var(--clr-primary-d); transform: scale(0.98); }
+
+.pda-login__footer {
+  margin-top: 40px;
+  font-size: 11px;
+  color: #94a3b8;
+  text-align: center;
+  line-height: 1.8;
+}
+
+/* ── DASHBOARD ───────────────────────────────── */
+.pda-dashboard {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pda-dashboard__top {
+  background: var(--clr-primary);
+  color: #fff;
+  padding: 12px 16px 16px;
+  flex-shrink: 0;
+}
+
+.pda-dashboard__greeting {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.pda-dashboard__user {
+  font-size: 18px;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.pda-dashboard__location {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 20px;
+  padding: 4px 12px;
+  width: fit-content;
+}
+
+.pda-dashboard__scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.pda-dashboard__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.pda-menu-card {
+  background: var(--clr-bg-white);
+  border-radius: var(--radius-md);
+  padding: 18px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  border: 1.5px solid var(--clr-border);
+  transition: all 0.18s;
+  text-align: center;
+}
+
+.pda-menu-card:active {
+  background: #f5f3ff;
+  border-color: var(--clr-primary);
+  transform: scale(0.97);
+}
+
+.pda-menu-card--disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pda-menu-card__icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+}
+
+.pda-menu-card__label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--clr-text);
+  line-height: 1.3;
+}
+
+.pda-menu-card__desc {
+  font-size: 11px;
+  color: var(--clr-text-muted);
+  line-height: 1.3;
+}
+
+/* ── BOTTOM NAV ──────────────────────────────── */
+.pda-bottom-nav {
+  background: var(--clr-bg-white);
+  border-top: 1px solid var(--clr-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 8px 0 12px;
+  flex-shrink: 0;
+}
+
+.pda-bottom-nav__item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.pda-bottom-nav__icon { font-size: 22px; }
+
+.pda-bottom-nav__label {
+  font-size: 10px;
+  color: var(--clr-text-muted);
+  font-weight: 600;
+}
+
+.pda-bottom-nav__item--active .pda-bottom-nav__label { color: var(--clr-primary); }
+
+.pda-bottom-nav__cta {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.pda-bottom-nav__cta-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--clr-primary);
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  box-shadow: var(--shadow-btn);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: -20px;
+  transition: all 0.2s;
+}
+
+.pda-bottom-nav__cta-btn:active { transform: scale(0.93); background: var(--clr-primary-d); }
+
+/* ── COMMISSION VIEW ─────────────────────────── */
+.pda-section-header {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--clr-text-muted);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 12px 16px 6px;
+}
+
+.pda-list {
+  padding: 0 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pda-list-card {
+  background: var(--clr-bg-white);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-card);
+  border: 1.5px solid var(--clr-border);
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.pda-list-card:active { border-color: var(--clr-primary); background: #f5f3ff; }
+
+.pda-list-card__title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--clr-text);
+}
+
+.pda-list-card__sub {
+  font-size: 12px;
+  color: var(--clr-text-muted);
+  margin-top: 3px;
+}
+
+.pda-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: 6px;
+}
+
+.pda-badge--active { background: #dcfce7; color: #15803d; }
+.pda-badge--pending { background: #fef9c3; color: #854d0e; }
+.pda-badge--done { background: #dbeafe; color: #1d4ed8; }
+
+/* ── Spinner ─────────────────────────────────── */
+.pda-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px;
+  font-size: 13px;
+  color: var(--clr-text-muted);
+}
+
+.pda-empty {
+  text-align: center;
+  padding: 40px 24px;
+  color: var(--clr-text-muted);
+  font-size: 14px;
+}
+
+/* ── Utility ─────────────────────────────────── */
+.pda-scroll { flex: 1; overflow-y: auto; }

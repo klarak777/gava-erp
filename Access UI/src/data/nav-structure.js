@@ -76,5 +76,12 @@ export const NAV_CATEGORIES = [
             { id: 'penny_belfoldi_fuvarok', title: 'Belföldi fuvarok', icon: '🚚', moduleId: 'penny_belfoldi_fuvarok', items: [] },
             { id: 'penny_komissios_utasitas', title: 'Komissiós utasítás', icon: '📋', moduleId: 'penny_komissios_utasitas', items: [] },
         ],
+    },
+    {
+        id: 'pda',
+        label: '📱 PDA',
+        groups: [
+            { id: 'pda_emulator', title: 'PDA Emulátor (Teszt)', icon: '📱', moduleId: 'pda_emulator', items: [] },
+        ],
     }
 ];

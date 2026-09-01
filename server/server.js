@@ -27,6 +27,7 @@ const path = require('path');
     next();
   });
 app.use(express.static(path.join(__dirname, '../Access UI')));
+app.use('/pda', express.static(path.join(__dirname, '../PDA UI')));
 app.use('/documents', express.static(path.join(__dirname, 'documents')));
 
 // Útvonalak (Routes) importálása
@@ -49,6 +50,7 @@ const chainProductsRouter = require('./src/routes/chain_products');
 const aldiWeeklyPricesRouter = require('./src/routes/aldi_weekly_prices');
 const aldiDailyOrdersRouter = require('./src/routes/aldi_daily_orders');
 const aldiCrossDockingRouter = require('./src/routes/aldi_cross_docking');
+const pdaRouter = require('./src/routes/pda');
 
 // Egyszerű teszt végpont
 app.get('/api/v1/status', (req, res) => {
@@ -79,6 +81,7 @@ app.use('/api/v1/chain-products', chainProductsRouter);
 app.use('/api/v1/aldi-weekly-prices', aldiWeeklyPricesRouter);
 app.use('/api/v1/aldi-daily-orders', aldiDailyOrdersRouter);
 app.use('/api/v1/aldi-cross-docking', aldiCrossDockingRouter);
+app.use('/api/v1/pda', pdaRouter);
 
 // Szerver indítása
 app.listen(PORT, () => {
