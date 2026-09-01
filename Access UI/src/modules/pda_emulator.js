@@ -14,9 +14,9 @@ function openPdaEmulatorOverlay() {
     return;
   }
 
-  // Newland MT93 m\u00e9retarány, de kicsinyítve, hogy jobban elf\u00e9rjen (pl. 320x680)
-  const PDA_W = 320;
-  const PDA_H = 680;
+  // Newland MT93 m\u00e9retarány (390x810), 80%-ra kicsinyítve, hogy kényelmesen elférjen a képernyőn
+  const PDA_W = 312;
+  const PDA_H = 648;
 
   const overlay = document.createElement('div');
   overlay.id = 'pda-emulator-overlay';
