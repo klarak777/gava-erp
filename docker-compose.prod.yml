@@ -42,7 +42,7 @@ services:
     restart: always
     volumes:
       - ./Access UI:/usr/share/nginx/html:ro
-      - ./PDA UI:/usr/share/nginx/html/pda:ro
+      - ./PDA UI:/usr/share/nginx/pda:ro
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
       - "3001:80" # Az ERP a 3001-es porton lesz elérhető!
