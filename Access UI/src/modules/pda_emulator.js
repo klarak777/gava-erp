@@ -167,13 +167,13 @@ function openPdaEmulatorOverlay() {
     isLandscape = !isLandscape;
     const screen = document.getElementById('pda-screen-container');
     if (isLandscape) {
-      frame.style.width = \`\${PDA_H + 28}px\`;
-      screen.style.width = \`\${PDA_H}px\`;
-      screen.style.height = \`\${PDA_W}px\`;
+      frame.style.width = `${PDA_H + 28}px`;
+      screen.style.width = `${PDA_H}px`;
+      screen.style.height = `${PDA_W}px`;
     } else {
-      frame.style.width = \`\${PDA_W + 28}px\`;
-      screen.style.width = \`\${PDA_W}px\`;
-      screen.style.height = \`\${PDA_H}px\`;
+      frame.style.width = `${PDA_W + 28}px`;
+      screen.style.width = `${PDA_W}px`;
+      screen.style.height = `${PDA_H}px`;
     }
   });
 }
