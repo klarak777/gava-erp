@@ -14,7 +14,7 @@ const MENU_ITEMS = [
 
 export function renderDashboard(container) {
   const user = appState.user;
-  const userName = user?.name || 'Teszt Felhasználó';
+  const userName = user?.name || 'Felhasználó';
 
   // Fill up to 10 slots
   const allItems = [...MENU_ITEMS];
@@ -29,23 +29,7 @@ export function renderDashboard(container) {
         <div class="pda-dashboard__header-left">
           <img src="/logo.ico" alt="Gava Logo" class="pda-dashboard__logo" onerror="this.style.display='none'">
           <div class="pda-dashboard__user-info">
-            <div class="pda-dashboard__company">Gava Hungria Kft.</div>
-            <div class="pda-dashboard__role">FELHASZNÁLÓ</div>
             <div class="pda-dashboard__name">${escHtml(userName)}</div>
-          </div>
-        </div>
-        <div class="pda-dashboard__header-right">
-          <div class="pda-dashboard__location-box">
-            <svg class="pda-dashboard__loc-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-            <div class="pda-dashboard__loc-text">
-              <div class="pda-dashboard__loc-label">RAKTÁR / TERÜLET</div>
-              <div class="pda-dashboard__loc-value">Központi raktár</div>
-            </div>
-            <svg class="pda-dashboard__loc-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-          </div>
-          <div class="pda-dashboard__notification">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-            <span class="pda-dashboard__notif-badge">2</span>
           </div>
         </div>
       </div>
