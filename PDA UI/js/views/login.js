@@ -10,7 +10,7 @@ export function renderLogin(container) {
       <div class="pda-login__logo-wrap">
         <img
           class="pda-login__logo"
-          src="/GAVA.png"
+          src="/logo.ico"
           alt="Gava"
           onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
         >

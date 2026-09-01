@@ -25,7 +25,7 @@ export function renderDashboard(container) {
             <div class="pda-dashboard__greeting">Szia,</div>
             <div class="pda-dashboard__user">${escHtml(userName)}</div>
           </div>
-          <img src="/GAVA.png" alt="Gava" style="height:36px; border-radius:50%; background:#fff; padding:3px;" onerror="this.style.display='none'">
+          <img src="/logo.ico" alt="Gava" style="height:36px; border-radius:50%; background:#fff; padding:3px;" onerror="this.style.display='none'">
         </div>
         <div class="pda-dashboard__location">
           <span>📍</span> Központi raktár
