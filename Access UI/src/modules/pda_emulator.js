@@ -88,14 +88,53 @@ function openPdaEmulatorOverlay() {
         ></iframe>
       </div>
 
-      <!-- Home gomb -->
-      <div style="display:flex;gap:22px;align-items:center;pointer-events:none;">
-        <div style="width:8px;height:8px;background:#334155;border-radius:50%;"></div>
-        <div style="width:36px;height:36px;background:#0f172a;border-radius:50%;border:2px solid #334155;display:flex;align-items:center;justify-content:center;">
-          <div style="width:15px;height:15px;background:#1e293b;border-radius:4px;border:1px solid #475569;"></div>
-        </div>
-        <div style="width:8px;height:8px;background:#334155;border-radius:50%;"></div>
+      <!-- Hardware gombok -->
+      <style>
+        .pda-hw-btn {
+          background: none;
+          border: none;
+          color: #64748b; /* sötétebb szürke, mint az eredeti képen */
+          cursor: pointer;
+          padding: 8px 12px;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .pda-hw-btn:hover {
+          color: #94a3b8;
+          transform: scale(1.05);
+        }
+        .pda-hw-btn:active {
+          color: #cbd5e1;
+          transform: scale(0.95);
+        }
+      </style>
+      <div style="display:flex;gap:30px;align-items:center;pointer-events:auto;margin-top:4px;width:100%;justify-content:center;">
+        <!-- Menü gomb -->
+        <button id="pda-hw-menu" class="pda-hw-btn" title="Menü">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="6" width="16" height="12" rx="1" ry="1"></rect>
+            <path d="M8 10h8"></path>
+            <path d="M8 14h8"></path>
+          </svg>
+        </button>
+        <!-- Home gomb (Házikó) -->
+        <button id="pda-hw-home" class="pda-hw-btn" title="Kezdőlap">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          </svg>
+        </button>
+        <!-- Vissza gomb (U-turn) -->
+        <button id="pda-hw-back" class="pda-hw-btn" title="Vissza">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 14L4 9l5-5"></path>
+            <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"></path>
+          </svg>
+        </button>
       </div>
+      <!-- Hangszóró rács alul -->
+      <div style="width:140px;height:4px;background:repeating-linear-gradient(90deg, #334155, #334155 2px, transparent 2px, transparent 4px);margin-top:6px;border-radius:2px;opacity:0.5;"></div>
     </div>
   `;
 
