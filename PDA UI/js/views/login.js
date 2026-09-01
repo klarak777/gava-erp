@@ -77,7 +77,7 @@ export function renderLogin(container) {
     submitBtn.innerHTML = '<span>⏳</span> Bejelentkezés...';
 
     try {
-      const res = await fetch('/api/v1/auth/pda-login', {
+      const res = await fetch('/api/v1/pda/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username }),
