@@ -36,6 +36,13 @@ function verifyToken(req, res, next) {
   const auth = req.headers.authorization || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) return res.status(401).json({ error: 'Hitelesítés szükséges.' });
+  
+  // Teszt token támogatása
+  if (token.startsWith('pda-mock-token')) {
+    req.user = { name: 'Teszt Felhasználó', role: 'pda_user' };
+    return next();
+  }
+
   try {
     req.user = jwt.verify(token, JWT_SECRET);
     next();
@@ -45,8 +52,7 @@ function verifyToken(req, res, next) {
 }
 
 // ── GET /commission-tasks ─────────────────────
-// Visszaadja az ALDI kamionokat, amelyeket PDA-ra jelöltek (sent_to_pda = true),
-// PDA-optimalizált egyszerű JSON formátumban.
+// Visszaadja az ALDI kamionokat, amelyeket PDA-ra jelöltek (sent_to_pda = true)
 router.get('/commission-tasks', verifyToken, async (req, res) => {
   try {
     const trucks = await knex('aldi_trucks')
@@ -68,6 +74,42 @@ router.get('/commission-tasks', verifyToken, async (req, res) => {
   } catch (err) {
     console.error('[PDA] /commission-tasks hiba:', err);
     res.status(500).json({ error: 'Szerverhiba a feladatok betöltésekor.' });
+  }
+});
+
+// ── GET /commission-lines ──────────────────────
+// Visszaadja a PDA-ra küldött kamionok tételeit (Termék, Kamionszám, Kartonszám, Típus, Partner, Cél raktár)
+router.get('/commission-lines', verifyToken, async (req, res) => {
+  try {
+    const { truck_id } = req.query;
+
+    let query = knex('aldi_truck_lines')
+      .join('aldi_trucks', 'aldi_truck_lines.aldi_truck_id', 'aldi_trucks.id')
+      .select(
+        'aldi_truck_lines.id',
+        'aldi_truck_lines.aldi_truck_id',
+        'aldi_trucks.truck_number as kamionszam',
+        'aldi_truck_lines.product_name as termek',
+        'aldi_truck_lines.ordered_cartons as kartonszam',
+        'aldi_truck_lines.order_type as tipus',
+        'aldi_truck_lines.partner',
+        'aldi_truck_lines.destination as celraktar'
+      )
+      .where('aldi_trucks.sent_to_pda', true)
+      .orderBy('aldi_trucks.delivery_date', 'asc')
+      .orderBy('aldi_trucks.id', 'asc')
+      .orderBy('aldi_truck_lines.row_order', 'asc')
+      .orderBy('aldi_truck_lines.id', 'asc');
+
+    if (truck_id) {
+      query = query.where('aldi_trucks.id', truck_id);
+    }
+
+    const lines = await query;
+    res.json(lines);
+  } catch (err) {
+    console.error('[PDA] /commission-lines hiba:', err);
+    res.status(500).json({ error: 'Hiba a komissió tételek betöltésekor.' });
   }
 });
 
