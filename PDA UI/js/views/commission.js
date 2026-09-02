@@ -171,11 +171,12 @@ export async function renderCommission(container, params = {}) {
           `).join('');
         }
       } else {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color: #ef4444;">Hiba a betöltéskor!</td></tr>';
+        const errData = await res.json().catch(() => ({}));
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 20px; color: #ef4444;">Hiba a betöltéskor (${res.status}: ${errData.error || res.statusText || 'Ismeretlen hiba'})</td></tr>`;
       }
     } catch (err) {
       console.error('PDA Commission fetch error:', err);
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color: #ef4444;">Hálózati hiba!</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 20px; color: #ef4444;">Hálózati hiba: ${err.message || 'Kapcsolódás sikertelen'}</td></tr>`;
     }
   }
 
