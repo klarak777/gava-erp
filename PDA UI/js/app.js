@@ -2,9 +2,9 @@
  * app.js – GAVA WMS PDA főalkalmazás és router
  */
 
-import { renderLogin } from './views/login.js';
-import { renderDashboard } from './views/dashboard.js';
-import { renderCommission } from './views/commission.js';
+import { renderLogin } from './views/login.js?v=2';
+import { renderDashboard } from './views/dashboard.js?v=2';
+import { renderCommission } from './views/commission.js?v=2';
 
 const root = document.getElementById('pda-app-root');
 

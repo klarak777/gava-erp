@@ -82,7 +82,7 @@ function openPdaEmulatorOverlay() {
       ">
         <iframe
           id="pda-screen-iframe"
-          src="/pda/"
+          src="/pda/?v=2"
           style="width:100%;height:100%;border:none;display:block;"
           title="GAVA WMS PDA"
         ></iframe>
