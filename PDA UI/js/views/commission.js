@@ -1,20 +1,9 @@
 /**
  * commission.js – PDA Komissió modul
  */
-import { showView } from '../app.js';
+import { showView, apiFetch } from '../app.js';
 
-export function renderCommission(container) {
-  // Példa adatok a kép alapján
-  const dummyData = [
-    {
-      termek: "Nektarin 7kg",
-      karton: 3000,
-      tipus: "Normál",
-      partner: "Gava Hungria",
-      celraktar: "AL001"
-    }
-  ];
-
+export async function renderCommission(container, params = {}) {
   container.innerHTML = `
     <style>
       .pda-comm-header {
@@ -114,16 +103,10 @@ export function renderCommission(container) {
               <th>Cél raktár</th>
             </tr>
           </thead>
-          <tbody>
-            ${dummyData.map(row => `
-              <tr>
-                <td>${row.termek}</td>
-                <td style="text-align:center;">${row.karton}</td>
-                <td>${row.tipus}</td>
-                <td>${row.partner}</td>
-                <td><strong>${row.celraktar}</strong></td>
-              </tr>
-            `).join('')}
+          <tbody id="pda-comm-tbody">
+            <tr>
+              <td colspan="5" style="text-align:center; padding: 20px; color: #94a3b8;">Nincs kiválasztott kamion vagy adatok betöltése folyamatban...</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -131,5 +114,38 @@ export function renderCommission(container) {
   `;
 
   container.querySelector('#pda-commission-back')?.addEventListener('click', () => showView('dashboard'));
+
+  if (params.truckId) {
+    const select = container.querySelector('#pda-terulet-select');
+    select.value = 'aldi'; // ALDI-ból jövünk
+
+    const tbody = container.querySelector('#pda-comm-tbody');
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">Adatok betöltése...</td></tr>';
+    
+    try {
+      const res = await apiFetch(`/api/v1/aldi-cross-docking/trucks/${params.truckId}/lines`);
+      if (res.ok) {
+        const lines = await res.json();
+        if (lines.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px; color: #94a3b8;">Nincs tétel a kamionon.</td></tr>';
+        } else {
+          tbody.innerHTML = lines.map(row => `
+            <tr>
+              <td>${row.product_name || ''}</td>
+              <td style="text-align:center;">${row.ordered_cartons || 0}</td>
+              <td>${row.order_type || ''}</td>
+              <td>${row.partner || ''}</td>
+              <td><strong>${row.destination || ''}</strong></td>
+            </tr>
+          `).join('');
+        }
+      } else {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px; color: #ef4444;">Hiba a betöltéskor!</td></tr>';
+      }
+    } catch(err) {
+      console.error('PDA Commission fetch error:', err);
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px; color: #ef4444;">Hálózati hiba!</td></tr>';
+    }
+  }
 }
 

@@ -254,6 +254,12 @@ export function renderAldiRakodas(container, windowManager) {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(truck)
             });
+            
+            // Trigger PDA emulator opening with the selected truck ID
+            window.dispatchEvent(new CustomEvent('app:navigate', { 
+              detail: { moduleId: 'pda_emulator', subModuleId: id } 
+            }));
+
           } catch (err) {
             console.error('PDA státusz hiba:', err);
           }

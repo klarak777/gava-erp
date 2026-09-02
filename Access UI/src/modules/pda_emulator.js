@@ -3,14 +3,19 @@
  * PDA Emul\u00e1tor modul \u2013 megnyit egy PDA m\u00e9retarány\u00fa ablakot az ERP-n bel\u00fcl.
  */
 
-export function renderPdaEmulator(container, windowManager) {
-  openPdaEmulatorOverlay();
+export function renderPdaEmulator(container, windowManager, subModuleId) {
+  openPdaEmulatorOverlay(subModuleId);
 }
 
-function openPdaEmulatorOverlay() {
+function openPdaEmulatorOverlay(truckId) {
   const existing = document.getElementById('pda-emulator-overlay');
+  
+  const pdaUrl = truckId ? `/pda/?v=3&view=commission&truck_id=${truckId}` : '/pda/?v=3';
+
   if (existing) {
     existing.style.display = 'flex';
+    const iframe = existing.querySelector('#pda-screen-iframe');
+    if (iframe && truckId) iframe.src = pdaUrl;
     return;
   }
 
@@ -82,7 +87,7 @@ function openPdaEmulatorOverlay() {
       ">
         <iframe
           id="pda-screen-iframe"
-          src="/pda/?v=2"
+          src="${pdaUrl}"
           style="width:100%;height:100%;border:none;display:block;"
           title="GAVA WMS PDA"
         ></iframe>

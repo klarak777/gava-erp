@@ -63,8 +63,16 @@ export async function apiFetch(path, options = {}) {
 
 // ── Indítás ────────────────────────────────────
 function init() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const startView = urlParams.get('view');
+  const truckId = urlParams.get('truck_id');
+
   if (appState.token && appState.user) {
-    showView('dashboard');
+    if (startView === 'commission' && truckId) {
+      showView('commission', { truckId: truckId });
+    } else {
+      showView('dashboard');
+    }
   } else {
     showView('login');
   }
