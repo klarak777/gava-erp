@@ -195,9 +195,9 @@ function openPdaEmulatorOverlay() {
     if (e.target === overlay) overlay.remove(); 
   });
 
-  // Újratöltés
+  // Újratöltés (gyorsítótár ürítésével)
   overlay.querySelector('#pda-emu-reload-btn').addEventListener('click', () => {
-    if (iframe) iframe.src = iframe.src;
+    if (iframe) iframe.src = '/pda/?_t=' + Date.now();
   });
 
   // Forgat\u00e1s (portré <-> fekvo)
