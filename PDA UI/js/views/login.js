@@ -61,7 +61,7 @@ export function renderLogin(container) {
   const errorEl = container.querySelector('#pda-login-error');
   const usernameInput = container.querySelector('#pda-username');
 
-  form.addEventListener('submit', async (e) => {
+  form.addEventListener('submit', (e) => {
     e.preventDefault();
     errorEl.style.display = 'none';
 
@@ -72,32 +72,8 @@ export function renderLogin(container) {
       return;
     }
 
-    const submitBtn = form.querySelector('button[type="submit"]');
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span>⏳</span> Bejelentkezés...';
-
-    try {
-      const res = await fetch('/api/v1/pda/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username }),
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        setAuth(data.token, data.user || { name: username });
-        showView('dashboard');
-      } else {
-        errorEl.textContent = data.error || 'Sikertelen bejelentkezés.';
-        errorEl.style.display = 'block';
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = '<span>🔑</span> Bejelentkezés';
-      }
-    } catch (err) {
-      errorEl.textContent = 'Hálózati hiba! Ellenőrizd a kapcsolatot.';
-      errorEl.style.display = 'block';
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = '<span>🔑</span> Bejelentkezés';
-    }
+    // Teszt mód: bármilyen névvel be lehet lépni, API nélkül
+    setAuth('pda-mock-token-' + Date.now(), { name: username });
+    showView('dashboard');
   });
 }
