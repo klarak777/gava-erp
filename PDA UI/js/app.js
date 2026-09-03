@@ -78,4 +78,16 @@ function init() {
   }
 }
 
+// ── Hardver gomb üzenetek ──────────────────────
+window.addEventListener('message', (event) => {
+  if (event.data && event.data.action === 'hw-home') {
+    if (appState.token) {
+      showView('dashboard');
+    }
+  } else if (event.data && event.data.action === 'hw-back') {
+    const hwBackEvent = new CustomEvent('hwBack');
+    window.dispatchEvent(hwBackEvent);
+  }
+});
+
 init();

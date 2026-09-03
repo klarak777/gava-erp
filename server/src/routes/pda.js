@@ -92,9 +92,10 @@ router.get('/commission-lines', verifyToken, async (req, res) => {
         'aldi_trucks.truck_number as kamionszam',
         'aldi_truck_lines.product_name as termek',
         'aldi_truck_lines.ordered_cartons as kartonszam',
-        'aldi_truck_lines.order_type as tipus',
+        'aldi_truck_lines.pallet_type as tipus',
         'aldi_truck_lines.partner',
-        'aldi_truck_lines.destination as celraktar'
+        'aldi_truck_lines.destination as celraktar',
+        'aldi_truck_lines.is_picked'
       )
       .where('aldi_trucks.sent_to_pda', true)
       .orderBy('aldi_trucks.delivery_date', 'asc')
@@ -111,6 +112,62 @@ router.get('/commission-lines', verifyToken, async (req, res) => {
   } catch (err) {
     console.error('[PDA] /commission-lines hiba:', err);
     res.status(500).json({ error: 'Hiba a komissió tételek betöltésekor.' });
+  }
+});
+
+// ── GET /packaging-types ───────────────────────
+router.get('/packaging-types', verifyToken, async (req, res) => {
+  try {
+    const data = await knex('ref_packaging_types').select('id', 'name', 'category', 'tare_weight_kg').where('is_active', true).orderBy('name');
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Hiba a göngyöleg típusok betöltésekor.' });
+  }
+});
+
+// ── GET /origin-countries ──────────────────────
+router.get('/origin-countries', verifyToken, async (req, res) => {
+  try {
+    const data = await knex('ref_origin_countries').select('id', 'name').where('is_active', true).orderBy('name');
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Hiba a származási országok betöltésekor.' });
+  }
+});
+
+// ── GET /pallet-types ──────────────────────────
+router.get('/pallet-types', verifyToken, async (req, res) => {
+  try {
+    const data = await knex('ref_pallet_types').select('id', 'name').where('is_active', true).orderBy('name');
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Hiba a raklap típusok betöltésekor.' });
+  }
+});
+
+// ── PUT /commission-lines/:id/pick ─────────────
+router.put('/commission-lines/:id/pick', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { picked_cartons, gross_weight, packaging_type, tare_weight, origin_country, lot_number, pallet_type } = req.body;
+    
+    await knex('aldi_truck_lines')
+      .where('id', id)
+      .update({
+        is_picked: true,
+        picked_cartons: picked_cartons !== undefined ? picked_cartons : knex.raw('ordered_cartons'),
+        gross_weight: gross_weight || null,
+        packaging_type: packaging_type || null,
+        tare_weight: tare_weight || null,
+        origin_country: origin_country || null,
+        lot_number: lot_number || null,
+        pallet_type: pallet_type || null
+      });
+
+    res.json({ success: true, message: 'Tétel komissiózva.' });
+  } catch (err) {
+    console.error('[PDA] /commission-lines/:id/pick hiba:', err);
+    res.status(500).json({ error: 'Hiba a tétel mentésekor.' });
   }
 });
 

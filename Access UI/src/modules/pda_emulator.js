@@ -220,4 +220,17 @@ function openPdaEmulatorOverlay(truckId) {
       screen.style.height = `${PDA_H}px`;
     }
   });
+
+  // Hardware gombok eseménykezelői
+  overlay.querySelector('#pda-hw-back')?.addEventListener('click', () => {
+    if (iframe && iframe.contentWindow) {
+      iframe.contentWindow.postMessage({ action: 'hw-back' }, '*');
+    }
+  });
+
+  overlay.querySelector('#pda-hw-home')?.addEventListener('click', () => {
+    if (iframe && iframe.contentWindow) {
+      iframe.contentWindow.postMessage({ action: 'hw-home' }, '*');
+    }
+  });
 }
