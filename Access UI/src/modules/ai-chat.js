@@ -591,6 +591,20 @@ export function initAiChat() {
                 method: 'POST',
                 body: formData
             });
+            if (!res.ok) {
+                let errorDetails = `HTTP ${res.status} (${res.statusText || 'Hiba'})`;
+                try {
+                    const errData = await res.json();
+                    if (errData && errData.error) errorDetails = errData.error;
+                } catch (_) {
+                    if (res.status === 413) {
+                        errorDetails = 'A fájl túl nagy (a webszerver 413 Request Entity Too Large hibával elutasította).';
+                    }
+                }
+                addMessage(`❌ Hiba a feltöltés során: ${errorDetails}`, 'system');
+                return;
+            }
+
             const data = await res.json();
 
             if (data.success) {
@@ -600,10 +614,11 @@ export function initAiChat() {
                 addMessage(`✅ ${file.name} sikeresen feldolgozva! Válasszon egy opciót vagy tegye fel a kérdését.`, 'system');
                 loadOptions(currentDocumentId);
             } else {
-                addMessage(`❌ Hiba a feltöltés során: ${data.error}`, 'system');
+                addMessage(`❌ Hiba a feltöltés során: ${data.error || 'Ismeretlen hiba'}`, 'system');
             }
         } catch (err) {
-            addMessage(`❌ Hálózati hiba a fájl feltöltésekor.`, 'system');
+            console.error('AI upload error:', err);
+            addMessage(`❌ Hálózati hiba a fájl feltöltésekor: ${err.message}`, 'system');
         } finally {
             uploadBtn.disabled = false;
             fileInput.value = ''; // reset
