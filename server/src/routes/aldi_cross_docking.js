@@ -10,6 +10,8 @@ router.get('/trucks', async (req, res) => {
       .select('aldi_trucks.*')
       .leftJoin('aldi_truck_lines', 'aldi_trucks.id', 'aldi_truck_lines.aldi_truck_id')
       .sum('aldi_truck_lines.pallets as total_pallets')
+      .sum('aldi_truck_lines.ordered_cartons as total_ordered_cartons')
+      .sum('aldi_truck_lines.picked_cartons as total_picked_cartons')
       .groupBy('aldi_trucks.id')
       .orderBy('aldi_trucks.id', 'asc');
     
@@ -17,6 +19,14 @@ router.get('/trucks', async (req, res) => {
       query = query.where('aldi_trucks.delivery_date', date);
     }
     const trucks = await query;
+    
+    // Állapot (%) kalkuláció
+    trucks.forEach(t => {
+      const ordered = parseFloat(t.total_ordered_cartons) || 0;
+      const picked = parseFloat(t.total_picked_cartons) || 0;
+      t.preparation_status = ordered > 0 ? Math.round((picked / ordered) * 100) : 0;
+    });
+    
     res.json(trucks);
   } catch (err) {
     console.error('Error fetching aldi_trucks:', err);
@@ -709,25 +719,19 @@ router.get('/commission-summary', async (req, res) => {
       .select('aldi_truck_id')
       .sum('ordered_cartons as total_ordered_cartons')
       .sum('pallets as total_ordered_pallets')
-      .groupBy('aldi_truck_id');
-      
-    const commissionLines = await knex('aldi_commission_lines')
-      .whereIn('aldi_truck_id', truckIds)
-      .select('aldi_truck_id')
-      .sum('cartons as total_commissioned_cartons')
+      .sum('picked_cartons as total_commissioned_cartons')
       .sum('gross_weight as total_gross_weight')
       .sum('net_weight as total_net_weight')
       .groupBy('aldi_truck_id');
       
     const summary = trucks.map(t => {
       const tl = truckLines.find(l => l.aldi_truck_id === t.id) || {};
-      const cl = commissionLines.find(c => c.aldi_truck_id === t.id) || {};
       
-      const ordered = parseInt(tl.total_ordered_cartons) || 0;
-      const commissioned = parseInt(cl.total_commissioned_cartons) || 0;
+      const ordered = parseFloat(tl.total_ordered_cartons) || 0;
+      const commissioned = parseFloat(tl.total_commissioned_cartons) || 0;
       const pallets = parseFloat(tl.total_ordered_pallets) || 0;
-      const gross = parseFloat(cl.total_gross_weight) || 0;
-      const net = parseFloat(cl.total_net_weight) || 0;
+      const gross = parseFloat(tl.total_gross_weight) || 0;
+      const net = parseFloat(tl.total_net_weight) || 0;
       
       const remaining = Math.max(0, ordered - commissioned);
       const status_percent = ordered > 0 ? Math.round((commissioned / ordered) * 100) : (commissioned > 0 ? 100 : 0);
