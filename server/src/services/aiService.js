@@ -112,9 +112,9 @@ async function processDocument(filename, buffer, mimetype) {
   // 2. Chunk text
   const chunks = chunkText(text, 2500);
 
-  // 3. Generate embeddings and store – kisebb kötegekben (BATCH_SIZE = 20),
-  // hogy a szigorúbb OpenAI fiók-limiteket se lépjük túl (pl. max 300k token/kérés)
-  const BATCH_SIZE = 20;
+  // 3. Generate embeddings and store – nagyobb kötegekben (BATCH_SIZE = 100),
+  // hogy felgyorsítsuk a feldolgozást és elkerüljük az 1 perces hálózati időkorlátot.
+  const BATCH_SIZE = 100;
   for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
     const batchChunks = chunks.slice(i, i + BATCH_SIZE);
 
