@@ -593,6 +593,10 @@ export function renderAldiRakodas(container, windowManager) {
             style="font-size:13px; padding:4px 8px; height:32px; width:100%;"
             placeholder="pl. 2.5"
             value="${demandPallets || ''}">
+          <div id="calc-cartons-box" style="margin-top:8px; font-size:12px; color:#334155; background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; padding:8px 10px; display:flex; justify-content:space-between; align-items:center;">
+            <div>Számított karton (PDA-ra): <strong id="calc-cartons-val" style="color:#0f172a; font-size:13px;">–</strong></div>
+            <div style="font-size:11px; color:#64748b;">(Váltás: ${demand.cartons_per_pallet || '-'} db/raklap)</div>
+          </div>
         </div>
         
         <div id="daily-inputs" style="display:none;">
@@ -611,8 +615,8 @@ export function renderAldiRakodas(container, windowManager) {
 
     const modal = windowManager.createModal({
       title: 'Tétel küldése kamionra / visszavétel',
-      width: 420,
-      height: 400,
+      width: 440,
+      height: 440,
       content: modalContent
     });
 
@@ -624,6 +628,30 @@ export function renderAldiRakodas(container, windowManager) {
     const pltWarningBox = modalEl.querySelector('#plt-warning-box');
     const truckAvailBox = modalEl.querySelector('#truck-avail-box');
     const availDisplay = modalEl.querySelector('#avail-pallets-display');
+    const palletsInput = modalEl.querySelector('#send-pallets');
+    const calcCartonsVal = modalEl.querySelector('#calc-cartons-val');
+
+    const updateCalcCartons = () => {
+      if (!calcCartonsVal) return;
+      const pVal = parseFloat(palletsInput?.value);
+      const cpp = parseFloat(demand.cartons_per_pallet);
+      if (!isNaN(pVal) && pVal > 0 && !isNaN(cpp) && cpp > 0) {
+        let cVal = Math.round(pVal * cpp);
+        if (demandPallets && Math.abs(pVal - parseFloat(demandPallets)) < 0.001) {
+          cVal = demand.available_cartons;
+        }
+        if (cVal > demand.available_cartons) {
+          cVal = demand.available_cartons;
+        }
+        calcCartonsVal.textContent = `${cVal} db`;
+      } else {
+        calcCartonsVal.textContent = '–';
+      }
+    };
+
+    if (palletsInput) {
+      palletsInput.addEventListener('input', updateCalcCartons);
+    }
 
     select.addEventListener('change', () => {
       if (select.value === 'daily_order') {
@@ -654,6 +682,7 @@ export function renderAldiRakodas(container, windowManager) {
           } else {
             availDisplay.textContent = '–';
           }
+          updateCalcCartons();
       } else {
           truckInputs.style.display = 'none';
           dailyInputs.style.display = 'none';
@@ -688,10 +717,28 @@ export function renderAldiRakodas(container, windowManager) {
             const qtyPallets = Number(modalEl.querySelector('#send-pallets').value);
             if (!qtyPallets || qtyPallets <= 0) return alert('Érvénytelen raklap mennyiség!');
             
+            const cpp = parseFloat(demand.cartons_per_pallet);
+            let qtyCartons = Math.round(qtyPallets * cpp);
+            if (demandPallets && Math.abs(qtyPallets - parseFloat(demandPallets)) < 0.001) {
+              qtyCartons = demand.available_cartons;
+            }
+            if (qtyCartons > demand.available_cartons) {
+              qtyCartons = demand.available_cartons;
+            }
+            
             const res = await fetch(`/api/v1/aldi-cross-docking/trucks/${targetTruckId}/lines`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ demand_id: demand.id, send_eu_pallets: qtyPallets })
+                body: JSON.stringify({
+                    aldi_daily_order_line_id: demand.id,
+                    product_name: demand.product_name,
+                    ordered_cartons: qtyCartons,
+                    cartons_per_pallet: demand.cartons_per_pallet,
+                    pallets: qtyPallets,
+                    delivery_date: demand.delivery_date,
+                    order_number: demand.order_number,
+                    order_type: demand.order_type
+                })
             });
             const data = await res.json().catch(() => ({}));
             if (!res.ok) throw new Error(data.error || 'Hiba történt a kamionra küldés során.');

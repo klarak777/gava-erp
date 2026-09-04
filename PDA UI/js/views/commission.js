@@ -98,6 +98,26 @@ export async function renderCommission(container, params = {}) {
       .pda-comm-row:active {
         background: #f1f5f9;
       }
+      .pda-input-error {
+        border: 2px solid #ef4444 !important;
+        background: #fef2f2 !important;
+        color: #991b1b !important;
+      }
+      .pda-form-error-msg {
+        color: #dc2626;
+        font-size: 12px;
+        font-weight: 600;
+        background: #fef2f2;
+        border: 1px solid #fca5a5;
+        border-radius: 6px;
+        padding: 8px 10px;
+        text-align: center;
+        display: none;
+        margin-top: 4px;
+      }
+      .pda-form-error-msg.visible {
+        display: block;
+      }
       .pda-comm-row.picked {
         background: #f0fdf4;
       }
@@ -151,6 +171,15 @@ export async function renderCommission(container, params = {}) {
         background: #fff;
         color: #0f172a;
         text-align: left;
+      }
+      .pda-form-group input::-webkit-outer-spin-button,
+      .pda-form-group input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      .pda-form-group input[type=number] {
+        -moz-appearance: textfield;
+        appearance: textfield;
       }
       .pda-form-group input[readonly] {
         background: #f1f5f9;
@@ -227,8 +256,9 @@ export async function renderCommission(container, params = {}) {
       <div class="pda-form-title" id="form-title">Termék név</div>
       <div class="pda-form-body">
         <div class="pda-form-group">
-          <label>Kartonszám</label>
-          <input type="number" id="form-karton" />
+          <label id="form-karton-label">Kartonszám</label>
+          <input type="number" id="form-karton" min="1" />
+          <div class="pda-form-error-msg" id="form-karton-error">⛔ A megadott mennyiség több mint a rendelt kartonszám!</div>
         </div>
         <div class="pda-form-group">
           <label>Bruttó kg</label>
@@ -324,6 +354,8 @@ export async function renderCommission(container, params = {}) {
 
   let currentLineId = null;
   let currentDestination = '';
+  let currentRemaining = 0;
+  let currentRowEl = null;
   
   // Dictionaries
   let packagingTypes = [];
@@ -359,19 +391,68 @@ export async function renderCommission(container, params = {}) {
   const gongyolegSel = container.querySelector('#form-gongyoleg');
   const kartonInput = container.querySelector('#form-karton');
   const taraInput = container.querySelector('#form-tara');
+  const kartonError = container.querySelector('#form-karton-error');
+  const kartonLabel = container.querySelector('#form-karton-label');
+  const submitBtn = container.querySelector('#form-submit');
+
+  // Szám beviteli mezők léptetésének tiltása (le/fel nyilak és egérgörgő tiltása) - csak kézi gépelés engedélyezett
+  container.querySelectorAll('input[type="number"]').forEach(inp => {
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+      }
+    });
+    inp.addEventListener('wheel', (e) => {
+      e.preventDefault();
+    }, { passive: false });
+  });
+
+  // true, ha a kiválasztott göngyöleg típushoz NINCS tára súly megadva (admin: Göngyöleg Típusok)
+  // → ilyenkor a rendszer nem számol automatikusan, a felhasználó adja meg kézzel.
+  let taraManual = false;
+
+  function validateCartonInput() {
+    const val = parseInt(kartonInput.value);
+    if (currentRemaining > 0 && Number.isInteger(val) && val > currentRemaining) {
+      kartonInput.classList.add('pda-input-error');
+      kartonError.classList.add('visible');
+      kartonError.textContent = `⛔ A megadott mennyiség (${val} db) több mint a rendelt kartonszám (${currentRemaining} db)!`;
+      submitBtn.disabled = true;
+      submitBtn.style.opacity = '0.5';
+    } else {
+      kartonInput.classList.remove('pda-input-error');
+      kartonError.classList.remove('visible');
+      submitBtn.disabled = false;
+      submitBtn.style.opacity = '1';
+    }
+  }
 
   function updateTara() {
     const selectedOption = gongyolegSel.options[gongyolegSel.selectedIndex];
     if (selectedOption && selectedOption.value) {
       const tareKg = parseFloat(selectedOption.getAttribute('data-tare')) || 0;
-      const cartons = parseFloat(kartonInput.value) || 0;
-      taraInput.value = (tareKg * cartons).toFixed(3);
+      if (tareKg > 0) {
+        taraManual = false;
+        taraInput.readOnly = true;
+        const cartons = parseFloat(kartonInput.value) || 0;
+        taraInput.value = (tareKg * cartons).toFixed(3);
+      } else {
+        // Nincs tára súly a típushoz → kézi bevitel, üres mező, nem írjuk felül
+        taraManual = true;
+        taraInput.readOnly = false;
+        taraInput.value = '';
+      }
     } else {
+      taraManual = false;
+      taraInput.readOnly = true;
       taraInput.value = '';
     }
   }
   gongyolegSel.addEventListener('change', updateTara);
-  kartonInput.addEventListener('input', updateTara);
+  kartonInput.addEventListener('input', () => {
+    if (!taraManual) updateTara(); // Kézi tára esetén a kartonszám nem írja felül
+    validateCartonInput();
+  });
 
   async function loadData() {
     const area = select.value;
@@ -394,26 +475,34 @@ export async function renderCommission(container, params = {}) {
           tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px; color: #94a3b8;">Nincs PDA-ra küldött aktív kamion / tétel.</td></tr>';
         } else {
           tbody.innerHTML = '';
-          lines.forEach(row => {
-            const tr = document.createElement('tr');
-            tr.className = 'pda-comm-row' + (row.is_picked ? ' picked' : '');
-            
-            const check = row.is_picked ? '<span style="color:#16a34a; font-weight:bold; margin-right:4px;">✔</span>' : '';
+          // Csak a még nem teljesen komissiózott sorok jelennek meg
+          const pendingLines = lines.filter(row => !row.is_picked);
+          if (pendingLines.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px; color: #16a34a; font-weight:700;">✔ Minden tétel komissiózva!</td></tr>';
+          } else {
+            pendingLines.forEach(row => {
+              const tr = document.createElement('tr');
+              tr.className = 'pda-comm-row';
 
-            tr.innerHTML = `
-              <td style="font-weight:600;">${check}${row.termek || '-'}</td>
-              <td><span class="pda-comm-truck-badge">${row.kamionszam || '-'}</span></td>
-              <td style="text-align:center;"><span class="pda-comm-carton-box">${row.kartonszam != null ? row.kartonszam : 0}</span></td>
-              <td>${row.tipus || '-'}</td>
-              <td>${row.partner || '-'}</td>
-              <td><strong>${row.celraktar || '-'}</strong></td>
-            `;
-            
-            tr.addEventListener('click', () => {
-              openForm(row);
+              const ordered = row.kartonszam != null ? parseInt(row.kartonszam) : 0;
+              const commissioned = row.komissziozott_kartonszam != null ? parseInt(row.komissziozott_kartonszam) : 0;
+              const remaining = Math.max(0, ordered - commissioned);
+
+              tr.innerHTML = `
+                <td style="font-weight:600;">${row.termek || '-'}</td>
+                <td><span class="pda-comm-truck-badge">${row.kamionszam || '-'}</span></td>
+                <td style="text-align:center;"><span class="pda-comm-carton-box" title="Rendelt: ${ordered}, Komissiózott: ${commissioned}. Hátralévő: ${remaining}">${remaining}</span></td>
+                <td>${row.tipus || '-'}</td>
+                <td>${row.partner || '-'}</td>
+                <td><strong>${row.celraktar || '-'}</strong></td>
+              `;
+              
+              tr.addEventListener('click', () => {
+                openForm(row, tr);
+              });
+              tbody.appendChild(tr);
             });
-            tbody.appendChild(tr);
-          });
+          }
         }
       } else {
         const errData = await res.json().catch(() => ({}));
@@ -425,15 +514,26 @@ export async function renderCommission(container, params = {}) {
     }
   }
 
-  function openForm(row) {
+  function openForm(row, rowEl) {
     currentLineId = row.id;
     currentDestination = row.celraktar || '';
+    currentRemaining = Math.max(0, (row.kartonszam || 0) - (row.komissziozott_kartonszam || 0));
+    currentRowEl = rowEl || null;
 
     container.querySelector('#form-title').innerText = row.termek || 'Termék';
     container.querySelector('#dest-title').innerText = currentDestination;
-    kartonInput.value = row.kartonszam || '';
+    kartonLabel.textContent = `Kartonszám (max. ${currentRemaining} db)`;
+    kartonInput.value = ''; // A kartonszámot mindig a felhasználó adja meg, nincs előtöltés
+    kartonInput.placeholder = currentRemaining > 0 ? `pl. ${currentRemaining}` : '0';
+    kartonInput.max = currentRemaining;
+    kartonInput.classList.remove('pda-input-error');
+    kartonError.classList.remove('visible');
+    submitBtn.disabled = false;
+    submitBtn.style.opacity = '1';
     container.querySelector('#form-brutto').value = '';
     gongyolegSel.value = '';
+    taraManual = false;
+    taraInput.readOnly = true;
     taraInput.value = '';
     container.querySelector('#form-orszag').value = '';
     container.querySelector('#form-lot').value = '';
@@ -442,11 +542,30 @@ export async function renderCommission(container, params = {}) {
     showPane(paneForm);
   }
 
-  container.querySelector('#form-submit').addEventListener('click', async () => {
+  submitBtn.addEventListener('click', async () => {
     if (!currentLineId) return;
 
+    const qty = parseInt(kartonInput.value);
+    if (!Number.isInteger(qty) || qty <= 0) {
+      alert('Add meg a komissiózott kartonszámot (pozitív egész szám)!');
+      return;
+    }
+    // Hard block: qty > remaining
+    if (currentRemaining > 0 && qty > currentRemaining) {
+      kartonInput.classList.add('pda-input-error');
+      kartonError.classList.add('visible');
+      kartonError.textContent = `⛔ A rendelt karton mennyisége (${currentRemaining} db) kevesebb, mint a megadott mennyiség (${qty} db). Csökkentsd a mennyiséget!`;
+      submitBtn.disabled = true;
+      submitBtn.style.opacity = '0.5';
+      return;
+    }
+    if (taraManual && !taraInput.value) {
+      alert('A göngyöleg típushoz nincs tára súly megadva – add meg kézzel a tára súlyt!');
+      return;
+    }
+
     const payload = {
-      picked_cartons: parseInt(kartonInput.value) || 0,
+      picked_cartons: qty,
       gross_weight: parseFloat(container.querySelector('#form-brutto').value) || null,
       packaging_type: gongyolegSel.value || null,
       tare_weight: parseFloat(taraInput.value) || null,
@@ -462,10 +581,31 @@ export async function renderCommission(container, params = {}) {
       });
 
       if (res.ok) {
-        // Második nézet megnyitása
-        showPane(paneDest);
+        const data = await res.json();
+        if (data.is_picked) {
+          // Tétel teljesen komissiózva: sor eltüntetése a listából
+          if (currentRowEl && currentRowEl.parentNode) {
+            currentRowEl.parentNode.removeChild(currentRowEl);
+          }
+          // Ha üres lett a tábla, üzenet
+          if (tbody.querySelectorAll('tr').length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px; color: #16a34a; font-weight:700;">✔ Minden tétel komissiózva!</td></tr>';
+          }
+          showPane(paneList);
+        } else {
+          // Részleges: frissítsük a sor kartonszámát a listában, majd menjünk a lokáció képernyőre
+          if (currentRowEl) {
+            const box = currentRowEl.querySelector('.pda-comm-carton-box');
+            if (box) {
+              box.textContent = data.remaining;
+              box.title = `Rendelt: ${data.ordered_cartons}, Komissiózott: ${data.picked_cartons}`;
+            }
+          }
+          showPane(paneDest);
+        }
       } else {
-        alert('Hiba mentéskor!');
+        const errData = await res.json().catch(() => ({}));
+        alert(errData.error || 'Hiba mentéskor!');
       }
     } catch (e) {
       alert('Hálózati hiba mentéskor!');

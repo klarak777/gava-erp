@@ -4,7 +4,7 @@
 
 import { renderLogin } from './views/login.js?v=2';
 import { renderDashboard } from './views/dashboard.js?v=2';
-import { renderCommission } from './views/commission.js?v=2';
+import { renderCommission } from './views/commission.js?v=3';
 
 const root = document.getElementById('pda-app-root');
 
@@ -89,5 +89,19 @@ window.addEventListener('message', (event) => {
     window.dispatchEvent(hwBackEvent);
   }
 });
+
+// ── Szám típusú beviteli mezők: léptetés letiltása (csak kézi gépelés engedélyezett) ──
+document.addEventListener('keydown', (e) => {
+  if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'number') {
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+    }
+  }
+});
+document.addEventListener('wheel', (e) => {
+  if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'number') {
+    e.preventDefault();
+  }
+}, { passive: false });
 
 init();

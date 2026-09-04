@@ -149,10 +149,10 @@ router.post('/trucks/:id/lines', async (req, res) => {
       order_type
     } = req.body;
 
-    // Validation: positive integer cartons only
-    const newCartons = Number(ordered_cartons);
-    if (!Number.isFinite(newCartons) || !Number.isInteger(newCartons) || newCartons <= 0) {
-        return res.status(400).json({ error: 'A kartonszámnak pozitív egész számnak kell lennie.' });
+    // Validation: positive cartons only
+    const newCartons = Math.round(Number(ordered_cartons));
+    if (!Number.isFinite(newCartons) || newCartons <= 0) {
+        return res.status(400).json({ error: 'A mennyiségnek pozitív számnak kell lennie.' });
     }
 
     const result = await knex.transaction(async trx => {
@@ -278,9 +278,9 @@ router.put('/truck-lines/:lineId', async (req, res) => {
     // Validate ordered_cartons if present
     let newCartons;
     if (updateData.ordered_cartons !== undefined) {
-        newCartons = Number(updateData.ordered_cartons);
-        if (!Number.isFinite(newCartons) || !Number.isInteger(newCartons) || newCartons <= 0) {
-            return res.status(400).json({ error: 'A kartonszámnak pozitív egész számnak kell lennie.' });
+        newCartons = Math.round(Number(updateData.ordered_cartons));
+        if (!Number.isFinite(newCartons) || newCartons <= 0) {
+            return res.status(400).json({ error: 'A mennyiségnek pozitív számnak kell lennie.' });
         }
         updateData.ordered_cartons = newCartons;
     }

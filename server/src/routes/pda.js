@@ -92,6 +92,7 @@ router.get('/commission-lines', verifyToken, async (req, res) => {
         'aldi_trucks.truck_number as kamionszam',
         'aldi_truck_lines.product_name as termek',
         'aldi_truck_lines.ordered_cartons as kartonszam',
+        knex.raw('COALESCE(aldi_truck_lines.picked_cartons, 0) as komissziozott_kartonszam'),
         'aldi_truck_lines.pallet_type as tipus',
         'aldi_truck_lines.partner',
         'aldi_truck_lines.destination as celraktar',
@@ -146,26 +147,72 @@ router.get('/pallet-types', verifyToken, async (req, res) => {
 });
 
 // ── PUT /commission-lines/:id/pick ─────────────
+// Komissió rögzítése (kumulatív):
+//   - picked_cartons nő a megadott mennyiséggel
+//   - ordered_cartons NINCS módosítva (az eredeti rendeltet tükrözi)
+//   - is_picked = true ha picked_cartons >= ordered_cartons
+//   - Ha qty > remaining: 409 hiba
 router.put('/commission-lines/:id/pick', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { picked_cartons, gross_weight, packaging_type, tare_weight, origin_country, lot_number, pallet_type } = req.body;
-    
-    await knex('aldi_truck_lines')
-      .where('id', id)
-      .update({
-        is_picked: true,
-        picked_cartons: picked_cartons !== undefined ? picked_cartons : knex.raw('ordered_cartons'),
-        gross_weight: gross_weight || null,
-        packaging_type: packaging_type || null,
-        tare_weight: tare_weight || null,
-        origin_country: origin_country || null,
-        lot_number: lot_number || null,
-        pallet_type: pallet_type || null
-      });
 
-    res.json({ success: true, message: 'Tétel komissiózva.' });
+    const qty = parseInt(picked_cartons);
+    if (!Number.isInteger(qty) || qty <= 0) {
+      return res.status(400).json({ error: 'A komissiózott kartonszám megadása kötelező (pozitív egész szám).' });
+    }
+
+    await knex.transaction(async (trx) => {
+      const line = await trx('aldi_truck_lines').where('id', id).first('id', 'ordered_cartons', 'picked_cartons');
+      if (!line) {
+        const err = new Error('not_found');
+        err.code = 'NOT_FOUND';
+        throw err;
+      }
+
+      const orderedCartons = parseInt(line.ordered_cartons) || 0;
+      const alreadyPicked = parseInt(line.picked_cartons) || 0;
+      const remaining = Math.max(0, orderedCartons - alreadyPicked);
+
+      if (qty > remaining) {
+        const overErr = new Error(`A megadott kartonszám (${qty} db) több mint a hátralévő rendelt mennyiség (${remaining} db).`);
+        overErr.code = 'OVER_QTY';
+        throw overErr;
+      }
+
+      const newPicked = alreadyPicked + qty;
+      const newRemaining = Math.max(0, orderedCartons - newPicked);
+      const isFullyPicked = newRemaining <= 0;
+
+      await trx('aldi_truck_lines')
+        .where('id', id)
+        .update({
+          is_picked: isFullyPicked,
+          picked_cartons: newPicked,
+          gross_weight: gross_weight || null,
+          packaging_type: packaging_type || null,
+          tare_weight: tare_weight || null,
+          origin_country: origin_country || null,
+          lot_number: lot_number || null,
+          pallet_type: pallet_type || null
+        });
+
+      res.json({
+        success: true,
+        message: isFullyPicked ? 'Tétel teljesen komissiózva, eltűnik a listából.' : `Részleges komissió rögzítve. Maradék: ${newRemaining} karton.`,
+        ordered_cartons: orderedCartons,
+        picked_cartons: newPicked,
+        remaining: newRemaining,
+        is_picked: isFullyPicked
+      });
+    });
   } catch (err) {
+    if (err.code === 'NOT_FOUND') {
+      return res.status(404).json({ error: 'A tétel nem található.' });
+    }
+    if (err.code === 'OVER_QTY') {
+      return res.status(409).json({ error: err.message });
+    }
     console.error('[PDA] /commission-lines/:id/pick hiba:', err);
     res.status(500).json({ error: 'Hiba a tétel mentésekor.' });
   }
