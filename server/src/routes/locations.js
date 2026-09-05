@@ -16,7 +16,7 @@ router.get('/', async (req, res) => {
 // Új tárhely hozzáadása
 router.post('/', async (req, res) => {
   try {
-    const { name, barcode, type_code, building_num, row_num, aisle_num, location_num, cooling_type } = req.body;
+    const { name, barcode, type_code, building_num, row_num, aisle_num, location_num, cooling_type, status, location_type, capacity, notes } = req.body;
     
     // Check for existing barcode
     const existing = await knex('aldi_locations').where('barcode', barcode).first();
@@ -25,7 +25,7 @@ router.post('/', async (req, res) => {
     }
 
     const [id] = await knex('aldi_locations').insert({
-      name, barcode, type_code, building_num, row_num, aisle_num, location_num, cooling_type
+      name, barcode, type_code, building_num, row_num, aisle_num, location_num, cooling_type, status, location_type, capacity, notes
     }).returning('id');
 
     const newLoc = await knex('aldi_locations').where('id', id.id || id).first();
@@ -39,7 +39,7 @@ router.post('/', async (req, res) => {
 // Tárhely módosítása
 router.put('/:id', async (req, res) => {
   try {
-    const { name, barcode, type_code, building_num, row_num, aisle_num, location_num, cooling_type } = req.body;
+    const { name, barcode, type_code, building_num, row_num, aisle_num, location_num, cooling_type, status, location_type, capacity, notes } = req.body;
     
     const existing = await knex('aldi_locations').where('barcode', barcode).whereNot('id', req.params.id).first();
     if (existing) {
@@ -47,7 +47,7 @@ router.put('/:id', async (req, res) => {
     }
 
     await knex('aldi_locations').where('id', req.params.id).update({
-      name, barcode, type_code, building_num, row_num, aisle_num, location_num, cooling_type, updated_at: knex.fn.now()
+      name, barcode, type_code, building_num, row_num, aisle_num, location_num, cooling_type, status, location_type, capacity, notes, updated_at: knex.fn.now()
     });
 
     const updated = await knex('aldi_locations').where('id', req.params.id).first();

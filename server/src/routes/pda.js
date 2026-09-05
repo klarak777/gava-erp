@@ -94,6 +94,7 @@ router.get('/commission-lines', verifyToken, async (req, res) => {
         'aldi_truck_lines.ordered_cartons as kartonszam',
         knex.raw('COALESCE(aldi_truck_lines.picked_cartons, 0) as komissziozott_kartonszam'),
         'aldi_truck_lines.pallet_type as tipus',
+        'aldi_truck_lines.cartons_per_pallet as plt',
         'aldi_truck_lines.partner',
         'aldi_truck_lines.destination as celraktar',
         'aldi_truck_lines.is_picked'

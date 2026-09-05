@@ -10,12 +10,12 @@ export function renderPdaEmulator(container, windowManager, subModuleId) {
 function openPdaEmulatorOverlay(truckId) {
   const existing = document.getElementById('pda-emulator-overlay');
   
-  const pdaUrl = truckId ? `/pda/?v=4&view=commission&truck_id=${truckId}` : '/pda/?v=4';
+  const pdaUrl = truckId ? `/pda/?v=8&view=commission&truck_id=${truckId}` : '/pda/?v=8';
 
   if (existing) {
     existing.style.display = 'flex';
     const iframe = existing.querySelector('#pda-screen-iframe');
-    if (iframe && truckId) iframe.src = pdaUrl;
+    if (iframe) iframe.src = pdaUrl;
     return;
   }
 

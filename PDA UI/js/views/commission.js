@@ -233,7 +233,6 @@ export async function renderCommission(container, params = {}) {
           <thead>
             <tr>
               <th class="th-termek">Termék</th>
-              <th>Kamion</th>
               <th>Karton</th>
               <th>Típus</th>
               <th>Partner</th>
@@ -241,7 +240,7 @@ export async function renderCommission(container, params = {}) {
             </tr>
           </thead>
           <tbody id="pda-comm-tbody">
-            <tr><td colspan="6" style="text-align:center; padding: 20px; color: #94a3b8;">Betöltés...</td></tr>
+            <tr><td colspan="5" style="text-align:center; padding: 20px; color: #94a3b8;">Betöltés...</td></tr>
           </tbody>
         </table>
       </div>
@@ -472,13 +471,13 @@ export async function renderCommission(container, params = {}) {
       if (res.ok) {
         const lines = await res.json();
         if (!lines || lines.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px; color: #94a3b8;">Nincs PDA-ra küldött aktív kamion / tétel.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 24px; color: #94a3b8;">Nincs PDA-ra küldött aktív tétel.</td></tr>';
         } else {
           tbody.innerHTML = '';
           // Csak a még nem teljesen komissiózott sorok jelennek meg
           const pendingLines = lines.filter(row => !row.is_picked);
           if (pendingLines.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px; color: #16a34a; font-weight:700;">✔ Minden tétel komissiózva!</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 24px; color: #16a34a; font-weight:700;">✔ Minden tétel komissiózva!</td></tr>';
           } else {
             pendingLines.forEach(row => {
               const tr = document.createElement('tr');
@@ -490,7 +489,6 @@ export async function renderCommission(container, params = {}) {
 
               tr.innerHTML = `
                 <td style="font-weight:600;">${row.termek || '-'}</td>
-                <td><span class="pda-comm-truck-badge">${row.kamionszam || '-'}</span></td>
                 <td style="text-align:center;"><span class="pda-comm-carton-box" title="Rendelt: ${ordered}, Komissiózott: ${commissioned}. Hátralévő: ${remaining}">${remaining}</span></td>
                 <td>${row.tipus || '-'}</td>
                 <td>${row.partner || '-'}</td>
@@ -522,7 +520,7 @@ export async function renderCommission(container, params = {}) {
 
     container.querySelector('#form-title').innerText = row.termek || 'Termék';
     container.querySelector('#dest-title').innerText = currentDestination;
-    kartonLabel.textContent = `Kartonszám (max. ${currentRemaining} db)`;
+    kartonLabel.textContent = (row.plt != null && row.plt !== '') ? `Kartonszám (${row.plt} db/plt)` : `Kartonszám (max. ${currentRemaining} db)`;
     kartonInput.value = ''; // A kartonszámot mindig a felhasználó adja meg, nincs előtöltés
     kartonInput.placeholder = currentRemaining > 0 ? `pl. ${currentRemaining}` : '0';
     kartonInput.max = currentRemaining;

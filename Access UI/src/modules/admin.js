@@ -1,13 +1,13 @@
 import { NAV_CATEGORIES } from '../data/nav-structure.js';
 import { setupCollapsibleSections, collapsibleSectionStyles, createCollapsibleSection } from '../utils/collapsible.js';
-import { openTarhelyekWindow } from './tarhelyek.js';
+import { openLokaciokWindow } from './lokaciok.js';
 
 export function renderAdmin(container, wm, subModuleId = null) {
     const group = NAV_CATEGORIES.flatMap(c => c.groups).find(g => g.id === 'admin_module');
     const items = group ? group.items : [];
 
     const actionMap = {
-        'admin-locations': () => openTarhelyekWindow(wm),
+        'admin-locations': () => openLokaciokWindow(wm),
         'admin-archived-partners': () => openArchivedPartnersTable(wm),
         'admin-references': () => openAdminTable(wm, 'Reference', 'partners', [
             { field: 'name', label: 'Name' },

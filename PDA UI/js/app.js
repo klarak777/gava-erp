@@ -4,7 +4,7 @@
 
 import { renderLogin } from './views/login.js?v=2';
 import { renderDashboard } from './views/dashboard.js?v=2';
-import { renderCommission } from './views/commission.js?v=3';
+import { renderCommission } from './views/commission.js?v=8';
 
 const root = document.getElementById('pda-app-root');
 
