@@ -586,7 +586,10 @@ export async function renderCommission(container, params = {}) {
     setTimeout(() => container.querySelector('#dest-vonalkod').focus(), 100);
   });
 
-  container.querySelector('#dest-ok').addEventListener('click', async () => {
+  container.querySelector('#dest-ok').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    if (btn.disabled) return;
+    
     const barcodeInput = container.querySelector('#dest-vonalkod');
     const barcode = barcodeInput.value.trim();
     
@@ -596,6 +599,9 @@ export async function renderCommission(container, params = {}) {
     }
     
     try {
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+
       // Egyetlen atomi kérés: komissiózás + lokáció hozzárendelés egyszerre.
       // Ha a lokáció megtelt → a picked_cartons NEM módosul (rollback).
       const res = await apiFetch(`/api/v1/pda/commission-lines/${currentLineId}/pick-and-assign`, {
@@ -637,6 +643,9 @@ export async function renderCommission(container, params = {}) {
       }
     } catch (e) {
       alert('Hálózati hiba a lokáció mentésekor!');
+    } finally {
+      btn.disabled = false;
+      btn.style.opacity = '1';
     }
   });
 

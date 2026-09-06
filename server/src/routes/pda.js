@@ -246,8 +246,8 @@ router.put('/commission-lines/:id/pick-and-assign', verifyToken, async (req, res
     let responseData = {};
 
     await knex.transaction(async (trx) => {
-      // 1. Tétel lekérése zárolással
-      const line = await trx('aldi_truck_lines').where('id', id).first();
+      // 1. Tétel lekérése zárolással (FOR UPDATE) hogy ne legyen dupla kattintásból eredő race condition
+      const line = await trx('aldi_truck_lines').where('id', id).forUpdate().first();
       if (!line) {
         const err = new Error('not_found'); err.code = 'NOT_FOUND'; throw err;
       }
