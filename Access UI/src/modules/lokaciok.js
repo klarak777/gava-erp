@@ -1,5 +1,20 @@
 export function openLokaciokWindow(wm) {
     wm.open('admin-locations', 'LOKÁCIÓK', (winContainer) => {
+        // Ablak méretezése és képernyő közepére pozicionálása
+        const winEl = winContainer.closest('.mdi-window');
+        if (winEl) {
+            winEl.style.width = '1200px';
+            winEl.style.height = '800px';
+            winEl.style.maxHeight = '92vh';
+
+            setTimeout(() => {
+                const left = Math.max(20, (window.innerWidth - winEl.offsetWidth) / 2);
+                const top = Math.max(70, (window.innerHeight - winEl.offsetHeight) / 2);
+                winEl.style.left = `${left}px`;
+                winEl.style.top = `${top}px`;
+            }, 10);
+        }
+
         let locations = [];
         let filteredLocations = [];
         let selectedLocation = null;
@@ -239,7 +254,7 @@ export function openLokaciokWindow(wm) {
             </div>
 
             <!-- Edit / Add Form Dialog -->
-            <dialog id="loc-form-dialog" style="padding:24px; border-radius:12px; border:none; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1); width:450px;">
+            <dialog id="loc-form-dialog" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); margin:0; padding:24px; border-radius:12px; border:none; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); width:450px;">
                 <h2 id="loc-form-title" style="margin:0 0 20px 0; font-size:16px; color:#1e293b;">Új Lokáció</h2>
                 <form id="loc-form">
                     <input type="hidden" id="f-id">
