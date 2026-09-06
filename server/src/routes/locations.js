@@ -29,20 +29,37 @@ router.get('/', async (req, res) => {
 // Lokáció aktuális készletének lekérdezése
 router.get('/:id/stock', async (req, res) => {
   try {
+    // 1. Összesítjük a készletet order_line_id alapján, hogy elkerüljük a JOIN robbanást
     const stockItems = await knex('aldi_stock_locations as s')
       .join('aldi_daily_order_lines as l', 'l.id', 's.order_line_id')
-      .leftJoin('chain_products as cp', 'cp.gtin', 'l.gtin')
-      .leftJoin('aldi_weekly_price_lines as wp', 'wp.gtin', 'l.gtin')
       .where('s.location_id', req.params.id)
-      .groupBy('l.gtin', 'cp.product_name', 'wp.xlsx_product_name', 'l.cartons_per_pallet')
+      .groupBy('l.gtin', 'l.cartons_per_pallet')
       .select(
         'l.gtin',
-        knex.raw('COALESCE(cp.product_name, wp.xlsx_product_name, l.gtin) as product_name'),
-        knex.raw('SUM(s.quantity_cartons)::integer as total_cartons'),
         'l.cartons_per_pallet',
+        knex.raw('SUM(s.quantity_cartons)::integer as total_cartons'),
         knex.raw('COUNT(s.id)::integer as item_count')
       )
       .orderBy('total_cartons', 'desc');
+
+    // 2. Külön kérésben hozzárendeljük a termékneveket, hogy ne sokszorozódjon a mennyiség
+    for (let item of stockItems) {
+      if (!item.gtin) continue;
+      // Megpróbáljuk a chain_products-ból
+      const cp = await knex('chain_products').where('gtin', item.gtin).first('product_name');
+      if (cp && cp.product_name) {
+        item.product_name = cp.product_name;
+        continue;
+      }
+      // Ha nincs, akkor aldi_weekly_price_lines-ből
+      const wp = await knex('aldi_weekly_price_lines').where('gtin', item.gtin).first('xlsx_product_name');
+      if (wp && wp.xlsx_product_name) {
+        item.product_name = wp.xlsx_product_name;
+        continue;
+      }
+      // Ha egyik sincs, legyen a GTIN
+      item.product_name = item.gtin;
+    }
 
     res.json(stockItems);
   } catch (error) {
