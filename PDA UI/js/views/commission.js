@@ -356,6 +356,7 @@ export async function renderCommission(container, params = {}) {
   let currentRemaining = 0;
   let currentRowEl = null;
   let lastPickedQuantity = 0;
+  let lastPickPayload = {}; // A "Megadás" képernyőn megadott adatok ideiglenes tárolása
   
   // Dictionaries
   let packagingTypes = [];
@@ -547,7 +548,6 @@ export async function renderCommission(container, params = {}) {
     if (!currentLineId) return;
 
     const qty = parseInt(kartonInput.value);
-    lastPickedQuantity = qty;
 
     if (!Number.isInteger(qty) || qty <= 0) {
       alert('Add meg a komissiózott kartonszámot (pozitív egész szám)!');
@@ -567,7 +567,10 @@ export async function renderCommission(container, params = {}) {
       return;
     }
 
-    const payload = {
+    // Tároljuk a form adatait – az API hívás csak a "Kész" gombra történik,
+    // hogy a komissiózás és a lokáció-hozzárendelés ATOMIAN, egy tranzakcióban menjen.
+    lastPickedQuantity = qty;
+    lastPickPayload = {
       picked_cartons: qty,
       gross_weight: parseFloat(container.querySelector('#form-brutto').value) || null,
       packaging_type: gongyolegSel.value || null,
@@ -577,44 +580,10 @@ export async function renderCommission(container, params = {}) {
       pallet_type: container.querySelector('#form-raklap').value || null
     };
 
-    try {
-      const res = await apiFetch(`/api/v1/pda/commission-lines/${currentLineId}/pick`, {
-        method: 'PUT',
-        body: JSON.stringify(payload)
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.is_picked) {
-          // Tétel teljesen komissiózva: sor eltüntetése a listából
-          if (currentRowEl && currentRowEl.parentNode) {
-            currentRowEl.parentNode.removeChild(currentRowEl);
-          }
-          // Ha üres lett a tábla, üzenet
-          if (tbody.querySelectorAll('tr').length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px; color: #16a34a; font-weight:700;">✔ Minden tétel komissiózva!</td></tr>';
-          }
-          showPane(paneDest);
-          setTimeout(() => container.querySelector('#dest-vonalkod').focus(), 100);
-        } else {
-          // Részleges: frissítsük a sor kartonszámát a listában, majd menjünk a lokáció képernyőre
-          if (currentRowEl) {
-            const box = currentRowEl.querySelector('.pda-comm-carton-box');
-            if (box) {
-              box.textContent = data.remaining;
-              box.title = `Rendelt: ${data.ordered_cartons}, Komissiózott: ${data.picked_cartons}`;
-            }
-          }
-          showPane(paneDest);
-          setTimeout(() => container.querySelector('#dest-vonalkod').focus(), 100);
-        }
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        alert(errData.error || 'Hiba mentéskor!');
-      }
-    } catch (e) {
-      alert('Hálózati hiba mentéskor!');
-    }
+    // Átlépünk a lokáció képernyőre (API hívás NÉLKÜL)
+    container.querySelector('#dest-vonalkod').value = '';
+    showPane(paneDest);
+    setTimeout(() => container.querySelector('#dest-vonalkod').focus(), 100);
   });
 
   container.querySelector('#dest-ok').addEventListener('click', async () => {
@@ -627,18 +596,44 @@ export async function renderCommission(container, params = {}) {
     }
     
     try {
-      const res = await apiFetch(`/api/v1/pda/commission-lines/${currentLineId}/assign-location`, {
+      // Egyetlen atomi kérés: komissiózás + lokáció hozzárendelés egyszerre.
+      // Ha a lokáció megtelt → a picked_cartons NEM módosul (rollback).
+      const res = await apiFetch(`/api/v1/pda/commission-lines/${currentLineId}/pick-and-assign`, {
         method: 'PUT',
-        body: JSON.stringify({ barcode, quantity: lastPickedQuantity })
+        body: JSON.stringify({ ...lastPickPayload, barcode })
       });
       
       if (res.ok) {
+        const data = await res.json();
         barcodeInput.value = '';
+
+        if (data.is_picked) {
+          // Tétel teljesen komissiózva: sor eltüntetése a listából
+          if (currentRowEl && currentRowEl.parentNode) {
+            currentRowEl.parentNode.removeChild(currentRowEl);
+          }
+          if (tbody.querySelectorAll('tr').length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px; color: #16a34a; font-weight:700;">✔ Minden tétel komissiózva!</td></tr>';
+          }
+        } else {
+          // Részleges: frissítsük a sor kartonszámát a listában
+          if (currentRowEl) {
+            const box = currentRowEl.querySelector('.pda-comm-carton-box');
+            if (box) {
+              box.textContent = data.remaining;
+              box.title = `Rendelt: ${data.ordered_cartons}, Komissiózott: ${data.picked_cartons}`;
+            }
+          }
+        }
+
         showPane(paneList);
-        loadData(); // Újratöltés, hogy frissüljön a lista
+        loadData();
       } else {
         const errData = await res.json().catch(() => ({}));
         alert(errData.error || 'Hiba a lokáció mentésekor!');
+        // A vonalkód mező kiürítése, hogy a felhasználó másik lokációt próbáljon
+        barcodeInput.value = '';
+        barcodeInput.focus();
       }
     } catch (e) {
       alert('Hálózati hiba a lokáció mentésekor!');
