@@ -298,7 +298,7 @@ export async function renderCommission(container, params = {}) {
       <div class="pda-form-body">
         <div class="pda-form-group">
           <label>Cél tárhely vonalkód</label>
-          <input type="text" id="dest-vonalkod" placeholder="Későbbi fejlesztés..." disabled />
+          <input type="text" id="dest-vonalkod" placeholder="Vonalkód beolvasása..." />
         </div>
       </div>
       <div class="pda-form-footer">
@@ -355,6 +355,7 @@ export async function renderCommission(container, params = {}) {
   let currentDestination = '';
   let currentRemaining = 0;
   let currentRowEl = null;
+  let lastPickedQuantity = 0;
   
   // Dictionaries
   let packagingTypes = [];
@@ -536,6 +537,8 @@ export async function renderCommission(container, params = {}) {
     container.querySelector('#form-orszag').value = '';
     container.querySelector('#form-lot').value = '';
     container.querySelector('#form-raklap').value = row.tipus || ''; // Alapból a raklap típus, ha van
+    container.querySelector('#dest-vonalkod').value = '';
+    lastPickedQuantity = 0;
 
     showPane(paneForm);
   }
@@ -544,6 +547,8 @@ export async function renderCommission(container, params = {}) {
     if (!currentLineId) return;
 
     const qty = parseInt(kartonInput.value);
+    lastPickedQuantity = qty;
+
     if (!Number.isInteger(qty) || qty <= 0) {
       alert('Add meg a komissiózott kartonszámot (pozitív egész szám)!');
       return;
@@ -589,7 +594,8 @@ export async function renderCommission(container, params = {}) {
           if (tbody.querySelectorAll('tr').length === 0) {
             tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px; color: #16a34a; font-weight:700;">✔ Minden tétel komissiózva!</td></tr>';
           }
-          showPane(paneList);
+          showPane(paneDest);
+          setTimeout(() => container.querySelector('#dest-vonalkod').focus(), 100);
         } else {
           // Részleges: frissítsük a sor kartonszámát a listában, majd menjünk a lokáció képernyőre
           if (currentRowEl) {
@@ -600,6 +606,7 @@ export async function renderCommission(container, params = {}) {
             }
           }
           showPane(paneDest);
+          setTimeout(() => container.querySelector('#dest-vonalkod').focus(), 100);
         }
       } else {
         const errData = await res.json().catch(() => ({}));
@@ -610,9 +617,32 @@ export async function renderCommission(container, params = {}) {
     }
   });
 
-  container.querySelector('#dest-ok').addEventListener('click', () => {
-    showPane(paneList);
-    loadData(); // Újratöltés, hogy megjelenjen a zöld pipa
+  container.querySelector('#dest-ok').addEventListener('click', async () => {
+    const barcodeInput = container.querySelector('#dest-vonalkod');
+    const barcode = barcodeInput.value.trim();
+    
+    if (!barcode) {
+      alert('Kérlek add meg a cél tárhely vonalkódját!');
+      return;
+    }
+    
+    try {
+      const res = await apiFetch(`/api/v1/pda/commission-lines/${currentLineId}/assign-location`, {
+        method: 'PUT',
+        body: JSON.stringify({ barcode, quantity: lastPickedQuantity })
+      });
+      
+      if (res.ok) {
+        barcodeInput.value = '';
+        showPane(paneList);
+        loadData(); // Újratöltés, hogy frissüljön a lista
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        alert(errData.error || 'Hiba a lokáció mentésekor!');
+      }
+    } catch (e) {
+      alert('Hálózati hiba a lokáció mentésekor!');
+    }
   });
 
   select.addEventListener('change', loadData);

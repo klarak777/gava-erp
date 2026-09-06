@@ -558,7 +558,7 @@ export function renderAldiRakodas(container, windowManager) {
       ? ((demand.available_cartons || 0) / demand.cartons_per_pallet).toFixed(2)
       : null;
 
-    const truckOptions = (state.trucks || []).filter(t => !t.sent_to_pda && !t.is_loaded).map(t => `<option value="${t.id}">${escHtml(t.truck_number)} - Szabad: ${(33 - (parseFloat(t.total_pallets)||0)).toFixed(2)} EU</option>`).join('');
+    const truckOptions = (state.trucks || []).filter(t => !t.is_loaded).map(t => `<option value="${t.id}">${escHtml(t.truck_number)} - Szabad: ${(33 - (parseFloat(t.total_pallets)||0)).toFixed(2)} EU</option>`).join('');
 
     const modalContent = `
       <div style="padding:20px 24px; display:flex; flex-direction:column; gap:14px;">

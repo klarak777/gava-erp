@@ -37,5 +37,8 @@
     "pgvector": "^0.3.0",
     "pizzip": "^3.2.0",
     "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "pg-copy-streams": "^7.0.0"
   }
 }

@@ -352,6 +352,17 @@ export function openLokaciokWindow(wm) {
                 const statusTxt = loc.status || 'Aktív';
                 const isSelected = selectedLocation && selectedLocation.id === loc.id;
                 
+                const cartons = parseInt(loc.current_cartons) || 0;
+                const occupiedPallets = parseFloat(loc.occupied_pallets) || 0;
+                const capacityPallets = loc.capacity || 1;
+                const isOver = occupiedPallets > capacityPallets;
+                const rawPct = (occupiedPallets / capacityPallets) * 100;
+                const pct = occupiedPallets > 0 ? Math.max(3, Math.min(100, Math.round(rawPct))) : 0;
+                
+                const occFormatted = occupiedPallets > 0 ? parseFloat(occupiedPallets.toFixed(1)) : 0;
+                const statusColor = isOver ? '#b91c1c' : (occupiedPallets > 0 ? '#0f766e' : '#94a3b8');
+                const barColor = isOver ? '#ef4444' : (occupiedPallets > 0 ? '#10b981' : '#cbd5e1');
+                
                 return `
                     <tr data-id="${loc.id}" class="${isSelected ? 'selected' : ''}">
                         <td style="font-weight:600;">${loc.barcode || ''}</td>
@@ -359,9 +370,13 @@ export function openLokaciokWindow(wm) {
                         <td>${loc.location_type || '-'}</td>
                         <td><span class="badge ${badgeClass}">${statusTxt}</span></td>
                         <td>
-                            <!-- Fake progress bar for Foglaltság (future) -->
-                            <div style="width:60px; height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden;">
-                                <div style="width:0%; height:100%; background:#10b981;"></div>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <div style="width:45px; height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden; flex-shrink:0;">
+                                    <div style="width:${pct}%; height:100%; background:${barColor};"></div>
+                                </div>
+                                <span style="font-size:11px; font-weight:${occupiedPallets > 0 ? '600' : '400'}; color:${statusColor}; white-space:nowrap;">
+                                    ${occFormatted} / ${capacityPallets} plt
+                                </span>
                             </div>
                         </td>
                         <td>
@@ -435,7 +450,7 @@ export function openLokaciokWindow(wm) {
             if (next) next.onclick = () => { if(currentPage < totalPages) { currentPage++; renderTable(); }};
         };
 
-        const renderDetails = () => {
+        const renderDetails = async () => {
             if (!selectedLocation) {
                 detailsContent.innerHTML = '<div style="color:#94a3b8; font-size:12px; text-align:center; padding:40px 0;">Válassz ki egy lokációt a listából!</div>';
                 winContainer.querySelector('#loc-stock-tbody').innerHTML = '<tr><td colspan="2" style="text-align:center; color:#94a3b8;">Nincs kiválasztott lokáció</td></tr>';
@@ -444,6 +459,25 @@ export function openLokaciokWindow(wm) {
             
             const loc = selectedLocation;
             const badgeClass = loc.status === 'Zárolt' ? 'badge-locked' : 'badge-active';
+            const stockTbody = winContainer.querySelector('#loc-stock-tbody');
+            stockTbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:#94a3b8; padding:15px 0;">Készlet betöltése...</td></tr>';
+            
+            // Készlet lekérdezése a szerverről
+            let stockItems = [];
+            try {
+                const stockRes = await fetch(`/api/v1/locations/${loc.id}/stock`);
+                if (stockRes.ok) {
+                    stockItems = await stockRes.json();
+                }
+            } catch(err) {
+                console.error('Hiba a készlet lekérdezésekor:', err);
+            }
+            
+            const totalCartons = stockItems.reduce((sum, item) => sum + (parseInt(item.total_cartons) || 0), 0);
+            const totalPallets = stockItems.reduce((sum, item) => sum + ((parseInt(item.total_cartons) || 0) / (item.cartons_per_pallet || 30)), 0);
+            const capPallets = loc.capacity || 1;
+            const occPalletsFormatted = totalPallets > 0 ? parseFloat(totalPallets.toFixed(1)) : 0;
+            const isOverCapacity = totalPallets > capPallets;
             
             detailsContent.innerHTML = `
                 <div class="details-grid">
@@ -457,7 +491,12 @@ export function openLokaciokWindow(wm) {
                     <div>${loc.location_type || 'Raklap'}</div>
                     
                     <strong>Foglaltság</strong>
-                    <div>0 / ${loc.capacity || 1}</div>
+                    <div>
+                        <strong style="color: ${isOverCapacity ? '#b91c1c' : '#0f172a'};">
+                            ${occPalletsFormatted} / ${capPallets} raklap
+                        </strong>
+                        <span style="color:#64748b; font-size:12px; margin-left:4px;">(${totalCartons} kt)</span>
+                    </div>
                     
                     <strong>Állapot</strong>
                     <div><span class="badge ${badgeClass}">${loc.status || 'Aktív'}</span></div>
@@ -465,7 +504,7 @@ export function openLokaciokWindow(wm) {
                     <strong>Vonalkód</strong>
                     <div style="display:flex; align-items:center; gap:4px;">
                         <input type="text" class="details-input" value="${loc.barcode || ''}" readonly>
-                        <button class="icon-btn" title="Másolás">📋</button>
+                        <button class="icon-btn" id="btn-copy-barcode" title="Másolás">📋</button>
                     </div>
                     
                     <strong>Megjegyzés</strong>
@@ -492,6 +531,15 @@ export function openLokaciokWindow(wm) {
             winContainer.querySelector('.btn-print').onclick = () => printBarcode(loc.name, loc.barcode);
             winContainer.querySelector('#btn-edit-detail').onclick = () => openForm(loc);
             
+            const copyBtn = winContainer.querySelector('#btn-copy-barcode');
+            if (copyBtn) {
+                copyBtn.onclick = () => {
+                    navigator.clipboard.writeText(loc.barcode || '');
+                    copyBtn.textContent = '✓';
+                    setTimeout(() => { copyBtn.textContent = '📋'; }, 1500);
+                };
+            }
+            
             winContainer.querySelector('#btn-delete-detail').onclick = async () => {
                 if(confirm('Biztosan törlöd ezt a lokációt?')) {
                     try {
@@ -516,7 +564,23 @@ export function openLokaciokWindow(wm) {
                 } catch(e) { alert('Hiba a módosításkor'); }
             };
             
-            winContainer.querySelector('#loc-stock-tbody').innerHTML = '<tr><td colspan="2" style="text-align:center; color:#94a3b8;">Üres lokáció</td></tr>';
+            // Készlet táblázat feltöltése
+            if (stockItems && stockItems.length > 0) {
+                stockTbody.innerHTML = stockItems.map(item => `
+                    <tr>
+                        <td style="padding:8px 4px;">
+                            <div style="font-weight:600; color:#1e293b; font-size:12px;">${item.product_name || 'Ismeretlen termék'}</div>
+                            <div style="font-size:11px; color:#64748b;">GTIN: ${item.gtin || '-'}</div>
+                        </td>
+                        <td style="text-align:right; padding:8px 4px;">
+                            ${item.cartons_per_pallet ? `<div style="font-weight:700; color:#0f172a; font-size:12px;">${(item.total_cartons / item.cartons_per_pallet).toFixed(1)} raklap</div>` : ''}
+                            <div style="font-size:10px; color:#64748b;">(${item.total_cartons} karton)</div>
+                        </td>
+                    </tr>
+                `).join('');
+            } else {
+                stockTbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:#94a3b8; padding:20px 0;">Üres lokáció (nincs készleten áru)</td></tr>';
+            }
         };
 
         const renderSummary = () => {
@@ -524,35 +588,36 @@ export function openLokaciokWindow(wm) {
             const active = locations.filter(l => l.status !== 'Zárolt').length;
             const totalCapacity = locations.reduce((sum, l) => sum + (l.capacity || 1), 0);
             
-            // Jelenleg még nincs összekötve a stock, így hardcoded 0
-            const currentStock = 0; 
-            const avgOccupancy = totalCapacity > 0 ? ((currentStock / totalCapacity) * 100).toFixed(1) : 0;
-            const freeCapacity = totalCapacity - currentStock;
+            const currentStockCartons = locations.reduce((sum, l) => sum + (parseInt(l.current_cartons) || 0), 0);
+            const totalOccupiedPallets = locations.reduce((sum, l) => sum + (parseFloat(l.occupied_pallets) || 0), 0);
+            const occupiedCount = locations.filter(l => (parseInt(l.current_cartons) || 0) > 0).length;
+            const avgOccupancyLocs = total > 0 ? ((occupiedCount / total) * 100).toFixed(1) : 0;
+            const freeCapacity = Math.max(0, totalCapacity - totalOccupiedPallets).toFixed(1);
             
             summaryContent.innerHTML = `
                 <div class="summary-item">
                     <strong>Összes lokáció</strong>
-                    <span class="summary-val">${total}</span>
+                    <span class="summary-val">${total} db</span>
                 </div>
                 <div class="summary-item">
                     <strong>Aktív lokáció</strong>
-                    <span class="summary-val green">${active}</span>
+                    <span class="summary-val green">${active} db</span>
                 </div>
                 <div class="summary-item">
-                    <strong>Foglaltság (átlag)</strong>
-                    <span class="summary-val">${avgOccupancy}%</span>
+                    <strong>Foglalt lokációk</strong>
+                    <span class="summary-val ${occupiedCount > 0 ? 'green' : ''}">${occupiedCount} db (${avgOccupancyLocs}%)</span>
                 </div>
                 <div class="summary-item" style="margin-top:12px; border-top:1px solid #e2e8f0; padding-top:12px;">
                     <strong>Teljes kapacitás</strong>
-                    <span class="summary-val">${totalCapacity}</span>
+                    <span class="summary-val">${totalCapacity} raklap</span>
                 </div>
                 <div class="summary-item">
                     <strong>Aktuális készlet</strong>
-                    <span class="summary-val blue">${currentStock}</span>
+                    <span class="summary-val blue">${totalOccupiedPallets.toFixed(1)} raklap (${currentStockCartons} karton)</span>
                 </div>
                 <div class="summary-item">
                     <strong>Szabad kapacitás</strong>
-                    <span class="summary-val blue">${freeCapacity}</span>
+                    <span class="summary-val blue">${freeCapacity} raklap</span>
                 </div>
             `;
         };

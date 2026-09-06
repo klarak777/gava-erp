@@ -219,4 +219,73 @@ router.put('/commission-lines/:id/pick', verifyToken, async (req, res) => {
   }
 });
 
+// ── PUT /commission-lines/:id/assign-location ──
+router.put('/commission-lines/:id/assign-location', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { barcode, quantity } = req.body;
+    
+    if (!barcode) {
+      return res.status(400).json({ error: 'Vonalkód megadása kötelező.' });
+    }
+
+    // Check if location exists
+    const location = await knex('aldi_locations').where('barcode', barcode).first();
+    if (!location) {
+      return res.status(404).json({ error: 'Érvénytelen vonalkód: a lokáció nem található.' });
+    }
+
+    const qty = parseInt(quantity) || 0;
+
+    await knex.transaction(async (trx) => {
+      const line = await trx('aldi_truck_lines').where('id', id).first();
+      if (!line) {
+         const err = new Error('not_found');
+         err.code = 'NOT_FOUND';
+         throw err;
+      }
+
+      // If we have an order line id and quantity > 0, we check capacity and insert
+      if (line.aldi_daily_order_line_id && qty > 0) {
+         const orderLine = await trx('aldi_daily_order_lines').where('id', line.aldi_daily_order_line_id).first();
+         
+         const currentLocStock = await trx('aldi_stock_locations as s')
+           .leftJoin('aldi_daily_order_lines as ol', 'ol.id', 's.order_line_id')
+           .where('s.location_id', location.id)
+           .select(trx.raw('SUM(s.quantity_cartons::decimal / NULLIF(ol.cartons_per_pallet, 0)) as occupied_pallets'))
+           .first();
+           
+         const existingPallets = parseFloat(currentLocStock?.occupied_pallets) || 0;
+         const incomingPallets = orderLine?.cartons_per_pallet ? (qty / orderLine.cartons_per_pallet) : 0;
+         const capacity = parseFloat(location.capacity) || 1;
+         
+         // Tolerance of 0.05 to avoid rounding issues (e.g. 1.0001 > 1.0)
+         if (existingPallets + incomingPallets > capacity + 0.05) {
+            const err = new Error('capacity_exceeded');
+            err.code = 'CAPACITY_EXCEEDED';
+            err.msg = `A lokáció megtelt! Kapacitás: ${capacity} raklap.\nFoglalt: ~${existingPallets.toFixed(1)} raklap\nÚj tétel: ~${incomingPallets.toFixed(1)} raklap.`;
+            throw err;
+         }
+
+         await trx('aldi_stock_locations').insert({
+            location_id: location.id,
+            order_line_id: line.aldi_daily_order_line_id,
+            quantity_cartons: qty
+         });
+      }
+    });
+
+    res.json({ success: true, location_name: location.name });
+  } catch (err) {
+    if (err.code === 'NOT_FOUND') {
+      return res.status(404).json({ error: 'A tétel nem található.' });
+    }
+    if (err.code === 'CAPACITY_EXCEEDED') {
+      return res.status(400).json({ error: err.msg });
+    }
+    console.error('[PDA] /commission-lines/:id/assign-location hiba:', err);
+    res.status(500).json({ error: 'Hiba a lokáció mentésekor.' });
+  }
+});
+
 module.exports = router;
