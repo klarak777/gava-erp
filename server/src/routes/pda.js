@@ -183,7 +183,7 @@ async function processPick(trx, id, reqData, locationId = null) {
       .leftJoin('aldi_daily_order_lines as ol', 'ol.id', 's.order_line_id')
       .leftJoin('aldi_truck_lines as tl', 'tl.id', 's.truck_line_id')
       .where('s.location_id', locationId)
-      .select(trx.raw('SUM(s.quantity_cartons::decimal / COALESCE(NULLIF(ol.cartons_per_pallet, 0), NULLIF(tl.cartons_per_pallet, 0), 1)) as occupied_pallets'))
+      .select(trx.raw('COUNT(s.id)::integer as occupied_pallets'))
       .first();
 
     const existingPallets = parseFloat(currentLocStock?.occupied_pallets) || 0;

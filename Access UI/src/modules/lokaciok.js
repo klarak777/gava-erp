@@ -588,7 +588,7 @@ export function openLokaciokWindow(wm) {
                             <div style="font-size:11px; color:#64748b;">GTIN: ${item.gtin || '-'}</div>
                         </td>
                         <td style="text-align:right; padding:8px 4px;">
-                            ${item.cartons_per_pallet ? `<div style="font-weight:700; color:#0f172a; font-size:12px;">${(item.total_cartons / item.cartons_per_pallet).toFixed(1)} raklap</div>` : ''}
+                            <div style="font-weight:700; color:#0f172a; font-size:12px;">${item.item_count} raklap</div>
                             <div style="font-size:10px; color:#64748b;">(${item.total_cartons} karton)</div>
                         </td>
                     </tr>
@@ -607,7 +607,7 @@ export function openLokaciokWindow(wm) {
             const totalOccupiedPallets = locations.reduce((sum, l) => sum + (parseFloat(l.occupied_pallets) || 0), 0);
             const occupiedCount = locations.filter(l => (parseInt(l.current_cartons) || 0) > 0).length;
             const avgOccupancyLocs = total > 0 ? ((occupiedCount / total) * 100).toFixed(1) : 0;
-            const freeCapacity = Math.max(0, totalCapacity - totalOccupiedPallets).toFixed(1);
+            const freeCapacity = Math.max(0, totalCapacity - totalOccupiedPallets);
             
             summaryContent.innerHTML = `
                 <div class="summary-item">
@@ -628,7 +628,7 @@ export function openLokaciokWindow(wm) {
                 </div>
                 <div class="summary-item">
                     <strong>Aktuális készlet</strong>
-                    <span class="summary-val blue">${totalOccupiedPallets.toFixed(1)} raklap (${currentStockCartons} karton)</span>
+                    <span class="summary-val blue">${totalOccupiedPallets} raklap (${currentStockCartons} karton)</span>
                 </div>
                 <div class="summary-item">
                     <strong>Szabad kapacitás</strong>

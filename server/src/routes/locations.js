@@ -12,7 +12,7 @@ router.get('/', async (req, res) => {
       .select(
         'l.*',
         knex.raw('COALESCE(SUM(s.quantity_cartons), 0)::integer as current_cartons'),
-        knex.raw('COALESCE(SUM(s.quantity_cartons::decimal / NULLIF(ol.cartons_per_pallet, 0)), 0)::decimal as occupied_pallets')
+        knex.raw('COUNT(s.id)::integer as occupied_pallets')
       )
       .orderBy('l.type_code')
       .orderBy('l.building_num')
