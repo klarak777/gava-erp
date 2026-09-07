@@ -763,7 +763,33 @@ router.get('/trucks/:id/commission-lines', async (req, res) => {
     const lines = await knex('aldi_commission_lines')
       .where('aldi_truck_id', req.params.id)
       .orderBy('id', 'asc');
-    res.json(lines);
+      
+    const truckLines = await knex('aldi_truck_lines')
+      .where('aldi_truck_id', req.params.id)
+      .andWhere('picked_cartons', '>', 0);
+      
+    // Find truck lines that have NO commission lines
+    const truckLineIdsWithCommission = new Set(lines.map(l => l.aldi_truck_line_id));
+    
+    const legacyLines = truckLines
+      .filter(l => !truckLineIdsWithCommission.has(l.id))
+      .map(l => ({
+        id: 'legacy-' + l.id,
+        aldi_truck_id: l.aldi_truck_id,
+        aldi_truck_line_id: l.id,
+        product_name: l.product_name,
+        cartons: l.picked_cartons,
+        pallets: l.pallets || 1,
+        gross_weight: l.gross_weight,
+        net_weight: l.net_weight,
+        pallet_type: l.pallet_type,
+        tare_weight: l.tare_weight,
+        carton_type: l.packaging_type,
+        lot_number: l.lot_number,
+        origin_country: l.origin_country
+      }));
+      
+    res.json([...lines, ...legacyLines]);
   } catch (err) {
     console.error('Error fetching commission lines:', err);
     res.status(500).json({ error: 'Internal server error' });
