@@ -175,15 +175,15 @@ async function processPick(trx, id, reqData, locationId = null) {
     const err = new Error(`A megadott kartonszám (${qty} db) több mint a hátralévő rendelt mennyiség (${remaining} db).`); err.code = 'OVER_QTY'; throw err;
   }
 
-  // 2. Kapacitás ellenőrzése (ha van lokáció és rendelés)
-  if (locationId && line.aldi_daily_order_line_id && qty > 0) {
-    const orderLine = await trx('aldi_daily_order_lines').where('id', line.aldi_daily_order_line_id).first();
+  // 2. Kapacitás ellenőrzése (ha van lokáció)
+  if (locationId && qty > 0) {
     const loc = await trx('aldi_locations').where('id', locationId).first();
     
     const currentLocStock = await trx('aldi_stock_locations as s')
       .leftJoin('aldi_daily_order_lines as ol', 'ol.id', 's.order_line_id')
+      .leftJoin('aldi_truck_lines as tl', 'tl.id', 's.truck_line_id')
       .where('s.location_id', locationId)
-      .select(trx.raw('SUM(s.quantity_cartons::decimal / NULLIF(ol.cartons_per_pallet, 0)) as occupied_pallets'))
+      .select(trx.raw('SUM(s.quantity_cartons::decimal / COALESCE(NULLIF(ol.cartons_per_pallet, 0), NULLIF(tl.cartons_per_pallet, 0), 1)) as occupied_pallets'))
       .first();
 
     const existingPallets = parseFloat(currentLocStock?.occupied_pallets) || 0;
@@ -199,7 +199,8 @@ async function processPick(trx, id, reqData, locationId = null) {
     // Lokáció mentése
     await trx('aldi_stock_locations').insert({
       location_id: locationId,
-      order_line_id: line.aldi_daily_order_line_id,
+      order_line_id: line.aldi_daily_order_line_id || null,
+      truck_line_id: line.aldi_daily_order_line_id ? null : line.id,
       quantity_cartons: qty
     });
   }
