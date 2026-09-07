@@ -326,7 +326,7 @@ export function renderAldiRakodas(container, windowManager) {
     demandsTbody.innerHTML = filtered.map(d => {
       const cartons = parseFloat(d.available_cartons) || 0;
       const cpp = (d.cartons_per_pallet !== null && d.cartons_per_pallet !== undefined && d.cartons_per_pallet !== '') ? parseFloat(d.cartons_per_pallet) : null;
-      const pallets = d.pallets !== null && d.pallets !== undefined ? parseFloat(d.pallets) : (cpp && cpp > 0 ? (cartons / cpp) : null);
+      const pallets = (cpp && cpp > 0) ? (cartons / cpp) : (d.pallets !== null && d.pallets !== undefined ? parseFloat(d.pallets) : null);
 
       sumCartons += cartons;
       if (pallets) sumPallets += pallets;
