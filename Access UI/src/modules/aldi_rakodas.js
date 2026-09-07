@@ -345,7 +345,7 @@ export function renderAldiRakodas(container, windowManager) {
           <td style="padding:2px 3px; text-align:right;">
             <input type="number" class="aldi-demand-cpp-input" data-id="${d.id}" value="${cpp !== null ? cpp : ''}" placeholder="" min="1" style="width:46px; height:24px; padding:1px 3px; font-size:11px; text-align:right; border:1px solid #cbd5e1; border-radius:3px; background:#fff; font-weight:600; color:#0f172a;">
           </td>
-          <td class="aldi-demand-pallets-cell" data-id="${d.id}" style="padding:4px 3px; text-align:right; font-weight:600; color:#2563eb;">${pallets ? Math.ceil(pallets) : '-'}</td>
+          <td class="aldi-demand-pallets-cell" data-id="${d.id}" style="padding:4px 3px; text-align:right; font-weight:600; color:#2563eb;">${pallets ? pallets.toFixed(2).replace(/\\.00$/, '') : '-'}</td>
           <td style="padding:4px 6px; color:#475569; white-space:nowrap;">${dateStr}</td>
           <td style="padding:4px 6px; color:#475569; white-space:nowrap;">${escHtml(d.order_number || '-')}</td>
           <td style="padding:4px 6px;">
