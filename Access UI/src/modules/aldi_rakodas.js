@@ -761,8 +761,8 @@ export function renderAldiRakodas(container, windowManager) {
     const title = isNew ? 'Új kamion rögzítése (ALDI)' : `Kamion szerkesztése: ${existing ? existing.truck_number : ''}`;
 
     const dateVal = existing && existing.delivery_date ? String(existing.delivery_date).substring(0, 10) : new Date().toISOString().substring(0, 10);
-    const usedPallets = existing ? Math.ceil(parseFloat(existing.total_pallets) || 0) : 0;
-    const freeSpots = Math.max(0, 33 - usedPallets).toFixed(2);
+    const usedPallets = existing ? parseFloat(existing.total_pallets) || 0 : 0;
+    const freeSpots = Math.max(0, 33 - usedPallets).toFixed(2).replace(/\.00$/, '');
 
     let defaultTruckNum = '';
     if (isNew && state.trucks) {
@@ -889,12 +889,15 @@ export function renderAldiRakodas(container, windowManager) {
                 </div>`;
               };
 
+              const exactPallets = (l.cartons_per_pallet && l.cartons_per_pallet > 0) ? (l.ordered_cartons / l.cartons_per_pallet) : parseFloat(l.pallets);
+              const displayPallets = exactPallets ? Number(exactPallets).toFixed(2).replace(/\.00$/, '') : '-';
+
               return `
               <tr>
                 <td style="padding:6px 8px; font-weight:600; color:#1e293b; min-width:200px; white-space:normal;">${escHtml(l.product_name)}</td>
                 <td style="padding:6px 4px; text-align:right; font-weight:700; width:70px;">${l.ordered_cartons}</td>
                 <td style="padding:6px 4px; text-align:right; width:80px;">${l.cartons_per_pallet || '-'}</td>
-                <td style="padding:6px 6px; text-align:right; color:#2563eb; width:55px;">${l.pallets ? Math.ceil(parseFloat(l.pallets)) : '-'}</td>
+                <td style="padding:6px 6px; text-align:right; color:#2563eb; width:55px;">${displayPallets}</td>
                 <td style="padding:6px 8px;">
                   <input type="text" class="inp-line-partner" data-id="${l.id}" value="${escHtml(l.partner || '')}" style="width:100px; padding:2px; font-size:11px;">
                 </td>
