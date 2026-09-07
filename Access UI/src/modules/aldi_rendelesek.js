@@ -92,8 +92,8 @@ export function renderAldiRendelesek(container, windowManager) {
 
   function openKomissioDetailWindow(truckId, truckNo, lines) {
     windowManager.open('komissio-detail-' + truckId, 'Komissió: ' + truckNo, (contentEl, wm) => {
-      // Csak a komissiózott tételeket mutatjuk
-      const pickedLines = lines.filter(l => l.is_picked);
+      // Csak a megkezdett vagy teljesen komissiózott tételeket mutatjuk
+      const pickedLines = lines.filter(l => l.is_picked || (parseFloat(l.picked_cartons) > 0));
       
       let sumCartons = 0, sumGross = 0, sumNet = 0, sumPallets = 0;
       pickedLines.forEach(l => {
