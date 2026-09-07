@@ -95,6 +95,20 @@ router.post('/sync', async (req, res) => {
       .where({ chain: chainUpper, is_active: true })
       .orderBy('id', 'asc');
 
+    // Automatikusan azonosítjuk a korábban feltöltött Heti Árak tételeket az új GTIN-ek alapján
+    if (chainUpper === 'ALDI') {
+      await db.raw(`
+        UPDATE aldi_weekly_price_lines
+        SET chain_product_id = cp.id,
+            is_gtin_matched = true
+        FROM chain_products cp
+        WHERE aldi_weekly_price_lines.chain_product_id IS NULL
+          AND aldi_weekly_price_lines.gtin = cp.gtin
+          AND cp.chain = 'ALDI'
+          AND cp.is_active = true
+      `);
+    }
+
     res.json({ success: true, products: updatedList });
   } catch (err) {
     console.error('Hiba a lánc termékek szinkronizálásakor:', err);
@@ -123,6 +137,18 @@ router.post('/', async (req, res) => {
       created_at: new Date(),
       updated_at: new Date()
     }).returning('*');
+
+    if (inserted && inserted.chain === 'ALDI') {
+      await db.raw(`
+        UPDATE aldi_weekly_price_lines
+        SET chain_product_id = cp.id,
+            is_gtin_matched = true
+        FROM chain_products cp
+        WHERE aldi_weekly_price_lines.chain_product_id IS NULL
+          AND aldi_weekly_price_lines.gtin = cp.gtin
+          AND cp.id = ?
+      `, [inserted.id]);
+    }
 
     res.status(201).json(inserted);
   } catch (err) {
@@ -155,6 +181,18 @@ router.put('/:id', async (req, res) => {
 
     if (!updated) {
       return res.status(404).json({ error: 'A megadott termék nem található!' });
+    }
+
+    if (updated.chain === 'ALDI') {
+      await db.raw(`
+        UPDATE aldi_weekly_price_lines
+        SET chain_product_id = cp.id,
+            is_gtin_matched = true
+        FROM chain_products cp
+        WHERE aldi_weekly_price_lines.chain_product_id IS NULL
+          AND aldi_weekly_price_lines.gtin = cp.gtin
+          AND cp.id = ?
+      `, [updated.id]);
     }
 
     res.json(updated);
