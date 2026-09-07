@@ -1,0 +1,489 @@
+SET
+ERROR:  syntax error at or near "?"
+LINE 1: ?--
+        ^
+SET
+SET
+SET
+SET
+ set_config 
+------------
+ 
+(1 row)
+
+SET
+SET
+SET
+SET
+SET
+SET
+ERROR:  relation "cargo_demands" already exists
+ALTER TABLE
+ERROR:  relation "cargo_demands_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "currencies" already exists
+ALTER TABLE
+ERROR:  relation "currencies_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "ekaer_records" already exists
+ALTER TABLE
+ERROR:  relation "ekaer_records_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "finance_tax_rates" already exists
+ALTER TABLE
+ERROR:  relation "finance_tax_rates_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "finance_transport_lines" already exists
+ALTER TABLE
+ERROR:  relation "finance_transport_lines_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "finance_truck_types" already exists
+ALTER TABLE
+ERROR:  relation "finance_truck_types_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "finance_unit_cost_lines" already exists
+ALTER TABLE
+ERROR:  relation "finance_unit_cost_lines_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "knex_migrations" already exists
+ALTER TABLE
+ERROR:  relation "knex_migrations_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "knex_migrations_lock" already exists
+ALTER TABLE
+ERROR:  relation "knex_migrations_lock_index_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "loading_events" already exists
+ALTER TABLE
+ERROR:  relation "loading_events_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "pallet_conversion" already exists
+ALTER TABLE
+ERROR:  relation "partner_agents" already exists
+ALTER TABLE
+ERROR:  relation "partner_agents_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "partner_attachments" already exists
+ALTER TABLE
+ERROR:  relation "partner_attachments_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "partner_bank_accounts" already exists
+ALTER TABLE
+ERROR:  relation "partner_bank_accounts_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "partner_categories" already exists
+ALTER TABLE
+ERROR:  relation "partner_categories_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "partner_characteristics" already exists
+ALTER TABLE
+ERROR:  relation "partner_characteristics_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "partner_communications" already exists
+ALTER TABLE
+ERROR:  relation "partner_communications_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "partner_contacts" already exists
+ALTER TABLE
+ERROR:  relation "partner_contacts_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "partner_credit_settings" already exists
+ALTER TABLE
+ERROR:  relation "partner_credit_settings_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "partner_discounts" already exists
+ALTER TABLE
+ERROR:  relation "partner_discounts_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "partner_events" already exists
+ALTER TABLE
+ERROR:  relation "partner_events_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "partner_identifiers" already exists
+ALTER TABLE
+ERROR:  relation "partner_identifiers_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "partner_restrictions" already exists
+ALTER TABLE
+ERROR:  relation "partner_restrictions_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "partner_sites" already exists
+ALTER TABLE
+ERROR:  relation "partner_sites_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "partners" already exists
+ALTER TABLE
+ERROR:  relation "partners_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "product_demands" already exists
+ALTER TABLE
+ERROR:  relation "product_demands_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "products" already exists
+ALTER TABLE
+ERROR:  relation "products_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "seasons" already exists
+ALTER TABLE
+ERROR:  relation "seasons_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "shipment_lines" already exists
+ALTER TABLE
+ERROR:  relation "shipment_lines_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "shipments" already exists
+ALTER TABLE
+ERROR:  relation "shipments_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "transport_orders" already exists
+ALTER TABLE
+ERROR:  relation "transport_orders_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "transporters" already exists
+ALTER TABLE
+ERROR:  relation "transporters_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "users" already exists
+ALTER TABLE
+ERROR:  relation "users_id_seq" already exists
+ALTER SEQUENCE
+ALTER SEQUENCE
+ERROR:  relation "v_shipment_costs" already exists
+ALTER VIEW
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+COPY 12
+COPY 10
+COPY 5582
+COPY 6
+COPY 0
+COPY 2
+COPY 0
+ERROR:  duplicate key value violates unique constraint "knex_migrations_pkey"
+DETAIL:  Key (id)=(1) already exists.
+CONTEXT:  COPY knex_migrations, line 1
+ERROR:  duplicate key value violates unique constraint "knex_migrations_lock_pkey"
+DETAIL:  Key (index)=(1) already exists.
+CONTEXT:  COPY knex_migrations_lock, line 1
+COPY 0
+COPY 26
+COPY 0
+COPY 0
+COPY 0
+COPY 0
+COPY 0
+COPY 0
+COPY 0
+COPY 9
+COPY 0
+COPY 0
+COPY 5204
+COPY 0
+COPY 1397
+COPY 4701
+COPY 0
+COPY 5452
+COPY 9
+COPY 30302
+COPY 6599
+COPY 5066
+COPY 158
+COPY 1
+ setval 
+--------
+     21
+(1 row)
+
+ setval 
+--------
+     10
+(1 row)
+
+ setval 
+--------
+   5582
+(1 row)
+
+ setval 
+--------
+      6
+(1 row)
+
+ setval 
+--------
+      1
+(1 row)
+
+ setval 
+--------
+      2
+(1 row)
+
+ setval 
+--------
+      1
+(1 row)
+
+ setval 
+--------
+     44
+(1 row)
+
+ setval 
+--------
+      1
+(1 row)
+
+ setval 
+--------
+      1
+(1 row)
+
+ setval 
+--------
+      1
+(1 row)
+
+ setval 
+--------
+      1
+(1 row)
+
+ setval 
+--------
+      1
+(1 row)
+
+ setval 
+--------
+      1
+(1 row)
+
+ setval 
+--------
+      1
+(1 row)
+
+ setval 
+--------
+      1
+(1 row)
+
+ setval 
+--------
+      1
+(1 row)
+
+ setval 
+--------
+      9
+(1 row)
+
+ setval 
+--------
+      1
+(1 row)
+
+ setval 
+--------
+      1
+(1 row)
+
+ setval 
+--------
+   5424
+(1 row)
+
+ setval 
+--------
+      1
+(1 row)
+
+ setval 
+--------
+   3024
+(1 row)
+
+ setval 
+--------
+   6951
+(1 row)
+
+ setval 
+--------
+      1
+(1 row)
+
+ setval 
+--------
+   5669
+(1 row)
+
+ setval 
+--------
+      9
+(1 row)
+
+ setval 
+--------
+  30345
+(1 row)
+
+ setval 
+--------
+   6614
+(1 row)
+
+ setval 
+--------
+   5069
+(1 row)
+
+ setval 
+--------
+    161
+(1 row)
+
+ setval 
+--------
+      1
+(1 row)
+
+ERROR:  multiple primary keys for table "cargo_demands" are not allowed
+ERROR:  relation "currencies_code_unique" already exists
+ERROR:  multiple primary keys for table "currencies" are not allowed
+ERROR:  multiple primary keys for table "ekaer_records" are not allowed
+ERROR:  multiple primary keys for table "finance_tax_rates" are not allowed
+ERROR:  multiple primary keys for table "finance_transport_lines" are not allowed
+ERROR:  multiple primary keys for table "finance_truck_types" are not allowed
+ERROR:  multiple primary keys for table "finance_unit_cost_lines" are not allowed
+ERROR:  multiple primary keys for table "knex_migrations_lock" are not allowed
+ERROR:  multiple primary keys for table "knex_migrations" are not allowed
+ERROR:  multiple primary keys for table "loading_events" are not allowed
+ERROR:  multiple primary keys for table "pallet_conversion" are not allowed
+ERROR:  multiple primary keys for table "partner_agents" are not allowed
+ERROR:  multiple primary keys for table "partner_attachments" are not allowed
+ERROR:  multiple primary keys for table "partner_bank_accounts" are not allowed
+ERROR:  multiple primary keys for table "partner_categories" are not allowed
+ERROR:  multiple primary keys for table "partner_characteristics" are not allowed
+ERROR:  multiple primary keys for table "partner_communications" are not allowed
+ERROR:  multiple primary keys for table "partner_contacts" are not allowed
+ERROR:  relation "partner_credit_settings_partner_id_unique" already exists
+ERROR:  multiple primary keys for table "partner_credit_settings" are not allowed
+ERROR:  multiple primary keys for table "partner_discounts" are not allowed
+ERROR:  multiple primary keys for table "partner_events" are not allowed
+ERROR:  multiple primary keys for table "partner_identifiers" are not allowed
+ERROR:  multiple primary keys for table "partner_restrictions" are not allowed
+ERROR:  multiple primary keys for table "partner_sites" are not allowed
+ERROR:  multiple primary keys for table "partners" are not allowed
+ERROR:  multiple primary keys for table "product_demands" are not allowed
+ERROR:  multiple primary keys for table "products" are not allowed
+ERROR:  relation "seasons_code_unique" already exists
+ERROR:  multiple primary keys for table "seasons" are not allowed
+ERROR:  multiple primary keys for table "shipment_lines" are not allowed
+ERROR:  relation "shipments_order_number_season_id_unique" already exists
+ERROR:  multiple primary keys for table "shipments" are not allowed
+ERROR:  multiple primary keys for table "transport_orders" are not allowed
+ERROR:  multiple primary keys for table "transporters" are not allowed
+ERROR:  multiple primary keys for table "users" are not allowed
+ERROR:  relation "users_username_unique" already exists
+ERROR:  constraint "cargo_demands_fulfilled_shipment_id_foreign" for relation "cargo_demands" already exists
+ERROR:  constraint "cargo_demands_product_id_foreign" for relation "cargo_demands" already exists
+ERROR:  constraint "ekaer_records_season_id_foreign" for relation "ekaer_records" already exists
+ERROR:  constraint "ekaer_records_shipment_id_foreign" for relation "ekaer_records" already exists
+ERROR:  constraint "ekaer_records_transporter_id_foreign" for relation "ekaer_records" already exists
+ERROR:  constraint "finance_transport_lines_currency_id_foreign" for relation "finance_transport_lines" already exists
+ERROR:  constraint "finance_transport_lines_partner_id_foreign" for relation "finance_transport_lines" already exists
+ERROR:  constraint "finance_transport_lines_shipment_id_foreign" for relation "finance_transport_lines" already exists
+ERROR:  constraint "finance_unit_cost_lines_product_id_foreign" for relation "finance_unit_cost_lines" already exists
+ERROR:  constraint "finance_unit_cost_lines_shipment_id_foreign" for relation "finance_unit_cost_lines" already exists
+ERROR:  constraint "loading_events_created_by_foreign" for relation "loading_events" already exists
+ERROR:  constraint "loading_events_shipment_id_foreign" for relation "loading_events" already exists
+ERROR:  constraint "partner_agents_partner_id_foreign" for relation "partner_agents" already exists
+ERROR:  constraint "partner_attachments_partner_id_foreign" for relation "partner_attachments" already exists
+ERROR:  constraint "partner_bank_accounts_partner_id_foreign" for relation "partner_bank_accounts" already exists
+ERROR:  constraint "partner_categories_partner_id_foreign" for relation "partner_categories" already exists
+ERROR:  constraint "partner_characteristics_partner_id_foreign" for relation "partner_characteristics" already exists
+ERROR:  constraint "partner_communications_partner_id_foreign" for relation "partner_communications" already exists
+ERROR:  constraint "partner_communications_site_id_foreign" for relation "partner_communications" already exists
+ERROR:  constraint "partner_contacts_partner_id_foreign" for relation "partner_contacts" already exists
+ERROR:  constraint "partner_contacts_site_id_foreign" for relation "partner_contacts" already exists
+ERROR:  constraint "partner_credit_settings_partner_id_foreign" for relation "partner_credit_settings" already exists
+ERROR:  constraint "partner_discounts_partner_id_foreign" for relation "partner_discounts" already exists
+ERROR:  constraint "partner_events_partner_id_foreign" for relation "partner_events" already exists
+ERROR:  constraint "partner_identifiers_partner_id_foreign" for relation "partner_identifiers" already exists
+ERROR:  constraint "partner_restrictions_partner_id_foreign" for relation "partner_restrictions" already exists
+ERROR:  constraint "partner_sites_partner_id_foreign" for relation "partner_sites" already exists
+ERROR:  constraint "product_demands_loading_event_id_foreign" for relation "product_demands" already exists
+ERROR:  constraint "product_demands_partner_id_foreign" for relation "product_demands" already exists
+ERROR:  constraint "product_demands_product_id_foreign" for relation "product_demands" already exists
+ERROR:  constraint "shipment_lines_partner_id_foreign" for relation "shipment_lines" already exists
+ERROR:  constraint "shipment_lines_product_id_foreign" for relation "shipment_lines" already exists
+ERROR:  constraint "shipment_lines_shipment_id_foreign" for relation "shipment_lines" already exists
+ERROR:  constraint "shipments_finance_truck_type_id_foreign" for relation "shipments" already exists
+ERROR:  constraint "shipments_season_id_foreign" for relation "shipments" already exists
+ERROR:  constraint "shipments_transporter_id_foreign" for relation "shipments" already exists
+ERROR:  constraint "transport_orders_season_id_foreign" for relation "transport_orders" already exists
+ERROR:  constraint "transport_orders_shipment_id_foreign" for relation "transport_orders" already exists
+ERROR:  constraint "transport_orders_transporter_id_foreign" for relation "transport_orders" already exists

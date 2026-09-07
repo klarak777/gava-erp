@@ -1,0 +1,45 @@
+# Dinamikus Raklap Választás és Súly Összesítés (ALDI Komissió)
+
+A kérés alapján a következő funkciókat valósítjuk meg a rendszerben:
+
+## 1. Göngyöleg és Raklap típusok dinamikus szétválasztása
+Jelenleg a PDA külön táblából (`ref_pallet_types`) olvassa a raklapokat. A kérés szerint mindkét listát a `ref_packaging_types` táblából kell feltölteni az alábbi logika szerint:
+- **Raklap Típusok:** Azok a rekordok, amelyek `name` vagy `category` mezője tartalmazza a "raklap" szót (kis/nagybetű függetlenül).
+- **Göngyöleg Típusok:** Az összes többi rekord, ami nem raklap.
+
+## 2. Kumulatív Súly Számítás a Backend-en
+A komissiózás során a `PUT /commission-lines/:id/pick-and-assign` végpontnak halmozottan (kumulatívan) kell mentenie a súlyadatokat, hogy a részteljesítések helyesen adódjanak össze.
+- **Számítási elv:** `Nettó kg = Bruttó kg - (Kartonok száma * Göngyöleg egység tára) - Raklap tára`
+- **Göngyöleg tára:** A PDA által küldött `tare_weight` a göngyöleg *összesített* tára súlya (kartonszám * egységsúly). Ezt már nem kell újra szorozni.
+- **Raklap tára:** A kiválasztott raklap típus törzsadatából (`ref_packaging_types.tare_weight_kg`) vesszük. Mivel a komissiózás részletekben történik, a raklap súlyát minden egyes beküldött részletből (pl. raklaponként rögzített tétel) levonjuk.
+- **Kumuláció:** Az adatbázisban lévő korábbi `gross_weight` és `net_weight` értékekhez hozzáadjuk az új részlet adatait:
+  `Új Bruttó = Régi Bruttó + Jelenlegi Bruttó`
+  `Új Nettó = Régi Nettó + Jelenlegi Nettó`
+
+## 3. ALDI Kamion Szerkesztő UI (Vizuális megjelenítés)
+A desktop alkalmazásban (`aldi_cross_docking.js`) a BRUTTÓ KG és NETTÓ KG oszlopokban egy vizuális folyamatjelzőt jelenítünk meg, amely a rakodottság (komissiózottság) százalékát tükrözi.
+- A kitöltöttség százaléka: `(Komissiózott Kartonszám / Rendelt Kartonszám) * 100` (ugyanaz, mint a meglévő állapotjelzőnél).
+- A sáv mindkét cellában (Bruttó, Nettó) vizuálisan megjelenik a háttérben.
+- A cella felirata az eddig összesített súlyt (Bruttó ill. Nettó kg) mutatja.
+- Mivel a Készültség és a Súly egy cellába (vagy egymás mellé vizuálisan) integrálva jelenik meg, az asztali nézet sokkal áttekinthetőbb lesz.
+
+> [!IMPORTANT]
+> **Százalék számítás logikája**
+> A százalékos sáv a *komissiózott* (összekészített és lokációra tett) kartonszám arányát mutatja a *rendelt* mennyiséghez képest. Tehát ez szigorúan a raktári összekészítettség állapota. Ha a kamionra rakás egy külön munkafolyamat, azt ez a sáv jelenleg nem méri (mivel a PDA komissiózás modulból dolgozunk).
+
+> [!WARNING]
+> **Súlyok korrekciója**
+> Ha egy tétel komissiózását visszavonják vagy módosítják (ha van ilyen funkció), a halmozott súlyértékek pontatlanok lehetnek. Jelenleg csak a hozzáadás (pick) van definiálva mint kumulatív művelet.
+
+## 4. Szükséges Kód Módosítások
+- **Backend (`pda.js`)**:
+  - `GET /packaging-types`: Visszaadja a `ref_packaging_types` tartalmát.
+  - `PUT /commission-lines/:id/pick-and-assign`: Implementálja a fenti kumulatív nettó/bruttó súlyszámítást és adatbázis-frissítést. A raklap súlyának kinyerése a DB-ből történik az azonosító alapján.
+- **PDA Frontend (`commission.js`)**:
+  - Raklap lista legördülő mező feltöltése dinamikusan a göngyöleg API-ból.
+  - A kiválasztott raklap ID-jának beküldése a backend felé.
+- **Desktop Frontend (`aldi_cross_docking.js`)**:
+  - A `renderTruckDetails` függvényben a Bruttó és Nettó cellák HTML struktúrájának átalakítása egy háttér-folyamatsáv (progress bar) alapú megjelenítésre.
+
+## Kérdések a megrendelőhöz (User Review Required)
+Nincs további nyitott kérdés, a leírás egyértelmű volt. Kérlek, kattints a **Proceed** gombra, ha egyetértesz a tervvel, és megkezdem az implementációt!

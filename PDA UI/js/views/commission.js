@@ -365,14 +365,19 @@ export async function renderCommission(container, params = {}) {
 
   async function loadDictionaries() {
     try {
-      const [packRes, origRes, palRes] = await Promise.all([
+      const [packRes, origRes] = await Promise.all([
         apiFetch('/api/v1/pda/packaging-types'),
-        apiFetch('/api/v1/pda/origin-countries'),
-        apiFetch('/api/v1/pda/pallet-types')
+        apiFetch('/api/v1/pda/origin-countries')
       ]);
-      if (packRes.ok) packagingTypes = await packRes.json();
+      
+      let allPackagings = [];
+      if (packRes.ok) allPackagings = await packRes.json();
       if (origRes.ok) originCountries = await origRes.json();
-      if (palRes.ok) palletTypes = await palRes.json();
+
+      // A meglévő törzsben a Raklap a Fajta mezőben szerepel (például Raklap / EU).
+      const isPallet = p => [p.name, p.category].some(value => String(value || '').toLowerCase().includes('raklap'));
+      palletTypes = allPackagings.filter(isPallet);
+      packagingTypes = allPackagings.filter(p => !isPallet(p));
 
       const renderOpts = (items, val, text) => '<option value="">Válassz...</option>' + items.map(i => `<option value="${i[val]}">${i[text]}</option>`).join('');
       
@@ -382,7 +387,12 @@ export async function renderCommission(container, params = {}) {
       ).join('');
 
       container.querySelector('#form-orszag').innerHTML = renderOpts(originCountries, 'name', 'name');
-      container.querySelector('#form-raklap').innerHTML = renderOpts(palletTypes, 'name', 'name');
+      
+      const raklapSel = container.querySelector('#form-raklap');
+      // ID-t (p.id) használunk value-ként a raklapoknál, hogy a backend ki tudja olvasni a súlyát
+      raklapSel.innerHTML = '<option value="">Válassz...</option>' + palletTypes.map(p => 
+        `<option value="${p.id}">${p.category ? p.category + ' ' : ''}${p.name}</option>`
+      ).join('');
     } catch (e) {
       console.warn('Szótárak betöltése sikertelen', e);
     }
@@ -537,7 +547,12 @@ export async function renderCommission(container, params = {}) {
     taraInput.value = '';
     container.querySelector('#form-orszag').value = '';
     container.querySelector('#form-lot').value = '';
-    container.querySelector('#form-raklap').value = row.tipus || ''; // Alapból a raklap típus, ha van
+    let selectedPalletId = '';
+    if (row.tipus && typeof palletTypes !== 'undefined') {
+      const p = palletTypes.find(pt => pt.name === row.tipus);
+      if (p) selectedPalletId = p.id;
+    }
+    container.querySelector('#form-raklap').value = selectedPalletId;
     container.querySelector('#dest-vonalkod').value = '';
     lastPickedQuantity = 0;
 
@@ -567,6 +582,15 @@ export async function renderCommission(container, params = {}) {
       return;
     }
 
+    if (!container.querySelector('#form-raklap').value) {
+      alert('Válassz raklaptípust!');
+      return;
+    }
+    const grossValue = Number(container.querySelector('#form-brutto').value);
+    if (!Number.isFinite(grossValue) || grossValue <= 0 || taraInput.value === '' || !Number.isFinite(Number(taraInput.value)) || Number(taraInput.value) < 0) {
+      alert('Adj meg pozitív bruttó súlyt és nem negatív göngyölegtárát!');
+      return;
+    }
     // Tároljuk a form adatait – az API hívás csak a "Kész" gombra történik,
     // hogy a komissiózás és a lokáció-hozzárendelés ATOMIAN, egy tranzakcióban menjen.
     lastPickedQuantity = qty;
@@ -574,7 +598,7 @@ export async function renderCommission(container, params = {}) {
       picked_cartons: qty,
       gross_weight: parseFloat(container.querySelector('#form-brutto').value) || null,
       packaging_type: gongyolegSel.value || null,
-      tare_weight: parseFloat(taraInput.value) || null,
+      tare_weight: taraInput.value === '' ? null : Number(taraInput.value),
       origin_country: container.querySelector('#form-orszag').value || null,
       lot_number: container.querySelector('#form-lot').value || null,
       pallet_type: container.querySelector('#form-raklap').value || null

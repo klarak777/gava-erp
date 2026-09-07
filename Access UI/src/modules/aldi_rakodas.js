@@ -871,7 +871,24 @@ export function renderAldiRakodas(container, windowManager) {
           if (lines.length === 0) {
             linesTbody.innerHTML = '<tr><td colspan="11" style="padding:20px; text-align:center; color:#94a3b8;">A kamion jelenleg üres. Küldj rá tételt az Áru igény táblázatból!</td></tr>';
           } else {
-            linesTbody.innerHTML = lines.map(l => `
+            linesTbody.innerHTML = lines.map(l => {
+              const picked = parseInt(l.picked_cartons) || 0;
+              const ordered = parseInt(l.ordered_cartons) || 0;
+              const pct = ordered > 0 ? Math.max(0, Math.min(100, Math.round((picked / ordered) * 100))) : 0;
+              const isReadOnly = picked > 0;
+              const bgGradient = `linear-gradient(90deg, #bbf7d0 ${pct}%, #ffffff ${pct}%)`;
+              const weightCell = (value, field) => {
+                const missing = value == null || value === '';
+                const display = missing ? 'Nincs adat' : `${Number(value).toLocaleString('hu-HU', { maximumFractionDigits: 2 })} kg`;
+                return `<div style="min-width:80px;">
+                  ${isReadOnly
+                    ? `<div role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="Komissiózottság" style="padding:4px 2px; font-size:11px; font-weight:600; text-align:center; border:1px solid #cbd5e1; border-radius:3px; background:${bgGradient};">${display}</div>`
+                    : `<input type="number" class="inp-line-${field}" data-id="${l.id}" value="${missing ? '' : Number(value)}" style="width:100%; padding:4px 2px; font-size:11px; background:${bgGradient}; border:1px solid #cbd5e1;" step="0.01">`}
+                  <div style="font-size:10px; color:#64748b; text-align:center; margin-top:3px;" title="Komissiózott: ${picked}/${ordered} karton">${pct}%</div>
+                </div>`;
+              };
+
+              return `
               <tr>
                 <td style="padding:6px 8px; font-weight:600; color:#1e293b; min-width:200px; white-space:normal;">${escHtml(l.product_name)}</td>
                 <td style="padding:6px 4px; text-align:right; font-weight:700; width:70px;">${l.ordered_cartons}</td>
@@ -885,18 +902,19 @@ export function renderAldiRakodas(container, windowManager) {
                 <td style="padding:6px 8px;">
                   <input type="text" class="inp-line-dest" data-id="${l.id}" value="${escHtml(l.destination || '')}" style="width:80px; padding:2px; font-size:11px;">
                 </td>
-                <td style="padding:6px 8px; width:65px;">
-                  <input type="number" class="inp-line-gross" data-id="${l.id}" value="${l.gross_weight || ''}" style="width:100%; padding:2px; font-size:11px;" step="0.01">
+                <td style="padding:6px 8px; width:80px;">
+                  ${weightCell(l.gross_weight, 'gross')}
                 </td>
-                <td style="padding:6px 8px; width:65px;">
-                  <input type="number" class="inp-line-net" data-id="${l.id}" value="${l.net_weight || ''}" style="width:100%; padding:2px; font-size:11px;" step="0.01">
+                <td style="padding:6px 8px; width:80px;">
+                  ${weightCell(l.net_weight, 'net')}
                 </td>
                 <td style="padding:4px 6px; text-align:center; width:55px; white-space:nowrap;">
                   <span class="drag-handle" data-id="${l.id}" title="Sor mozgatása (húzza fel/le)" style="cursor:grab; font-size:13px; color:#2563eb; padding:1px 2px; user-select:none; display:inline-block;">☰</span>
                   <button class="btn-del-truck-line" data-id="${l.id}" title="Tétel törlése a kamionról" style="background:none; border:none; cursor:pointer; color:#dc2626; font-size:14px; margin-left:4px;">✕</button>
                 </td>
               </tr>
-            `).join('');
+              `;
+            }).join('');
 
             linesTbody.querySelectorAll('.btn-del-truck-line').forEach(btn => {
               btn.addEventListener('click', async (e) => {
@@ -962,12 +980,21 @@ export function renderAldiRakodas(container, windowManager) {
               inp.addEventListener('change', async (e) => {
                 const row = e.target.closest('tr');
                 const lineId = row.querySelector('.drag-handle').dataset.id;
+                
+                const grossInput = row.querySelector('.inp-line-gross');
+                const netInput = row.querySelector('.inp-line-net');
+                
                 const payload = {
                   partner: row.querySelector('.inp-line-partner')?.value,
-                  destination: row.querySelector('.inp-line-dest')?.value,
-                  gross_weight: parseFloat(row.querySelector('.inp-line-gross')?.value) || null,
-                  net_weight: parseFloat(row.querySelector('.inp-line-net')?.value) || null
+                  destination: row.querySelector('.inp-line-dest')?.value
                 };
+                
+                if (grossInput && !grossInput.hasAttribute('readonly')) {
+                  payload.gross_weight = parseFloat(grossInput.value) || null;
+                }
+                if (netInput && !netInput.hasAttribute('readonly')) {
+                  payload.net_weight = parseFloat(netInput.value) || null;
+                }
                 
                 try {
                   const updateRes = await fetch(`/api/v1/aldi-cross-docking/truck-lines/${lineId}`, {
