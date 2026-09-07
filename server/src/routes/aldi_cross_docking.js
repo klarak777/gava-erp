@@ -771,23 +771,32 @@ router.get('/trucks/:id/commission-lines', async (req, res) => {
     // Find truck lines that have NO commission lines
     const truckLineIdsWithCommission = new Set(lines.map(l => l.aldi_truck_line_id));
     
+    const refPackagings = await knex('ref_packaging_types').select('name', 'tare_weight_kg');
+    const tareMap = new Map(refPackagings.map(p => [p.name, p.tare_weight_kg]));
+
     const legacyLines = truckLines
       .filter(l => !truckLineIdsWithCommission.has(l.id))
-      .map(l => ({
-        id: 'legacy-' + l.id,
-        aldi_truck_id: l.aldi_truck_id,
-        aldi_truck_line_id: l.id,
-        product_name: l.product_name,
-        cartons: l.picked_cartons,
-        pallets: l.pallets || 1,
-        gross_weight: l.gross_weight,
-        net_weight: l.net_weight,
-        pallet_type: l.pallet_type,
-        tare_weight: l.tare_weight,
-        carton_type: l.packaging_type,
-        lot_number: l.lot_number,
-        origin_country: l.origin_country
-      }));
+      .map(l => {
+        let unitTare = l.tare_weight;
+        if (l.packaging_type && tareMap.has(l.packaging_type)) {
+          unitTare = tareMap.get(l.packaging_type);
+        }
+        return {
+          id: 'legacy-' + l.id,
+          aldi_truck_id: l.aldi_truck_id,
+          aldi_truck_line_id: l.id,
+          product_name: l.product_name,
+          cartons: l.picked_cartons,
+          pallets: l.pallets || 1,
+          gross_weight: l.gross_weight,
+          net_weight: l.net_weight,
+          pallet_type: l.pallet_type,
+          tare_weight: unitTare,
+          carton_type: l.packaging_type,
+          lot_number: l.lot_number,
+          origin_country: l.origin_country
+        };
+      });
       
     res.json([...lines, ...legacyLines]);
   } catch (err) {
