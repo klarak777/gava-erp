@@ -54,7 +54,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         const palletMatch = text.match(/Total\s+Number\s+of\s+Pallets\s*\(Estimated\):\s*([\d\.,]+)/i);
         let palletCount = 0;
         if (palletMatch) {
-            palletCount = parseFloat(palletMatch[1].replace(',', '.'));
+            palletCount = Math.ceil(parseFloat(palletMatch[1].replace(',', '.')));
         }
 
         // 3. Extract Delivery Date from Line Item rows

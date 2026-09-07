@@ -429,7 +429,7 @@ router.get('/demands', async (req, res) => {
             }
 
             const cpp = line.cartons_per_pallet ? parseInt(line.cartons_per_pallet) : null;
-            const calcPallets = (cpp && cpp > 0) ? (remaining / cpp) : null;
+            const calcPallets = (cpp && cpp > 0) ? Math.ceil(remaining / cpp) : null;
 
             demands.push({
                 id: line.id,
@@ -627,7 +627,7 @@ router.post('/truck-lines/:lineId/transfer', async (req, res) => {
       const sourceCartons = Number(sourceLine.ordered_cartons) || 0;
       if (moveCartons > sourceCartons) throw new Error('TOO_MUCH');
       const remainingCartons = sourceCartons - moveCartons;
-      const remainingPallets = remainingCartons / cpp;
+      const remainingPallets = Math.ceil(remainingCartons / cpp);
       let commission = await trx('aldi_commission_lines').where({ aldi_truck_line_id: sourceLine.id }).first().forUpdate();
       if (!commission) {
         const legacyCommission = await trx('aldi_commission_lines').where({ aldi_truck_id: sourceLine.aldi_truck_id, product_name: sourceLine.product_name }).forUpdate();
@@ -787,7 +787,7 @@ router.get('/trucks/:id/commission-lines', async (req, res) => {
           aldi_truck_line_id: l.id,
           product_name: l.product_name,
           cartons: l.picked_cartons,
-          pallets: l.pallets || 1,
+          pallets: 1,
           gross_weight: l.gross_weight,
           net_weight: l.net_weight,
           pallet_type: l.pallet_type,

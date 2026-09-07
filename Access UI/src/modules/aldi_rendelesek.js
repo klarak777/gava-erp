@@ -123,7 +123,7 @@ export function renderAldiRendelesek(container, windowManager) {
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">RAKLAP</th>
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">SZÁRMAZÁSI ORSZÁG</th>
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">KARTON TÍPUS</th>
-                  <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">TÁRA SÚLY (/un)</th>
+                  <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">TÁRA SÚLY (KG/un)</th>
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">RAKLAP TÍPUS</th>
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">LOT SZÁM</th>
                 </tr>
@@ -455,7 +455,7 @@ export function renderAldiRendelesek(container, windowManager) {
                   </span>
                 </td>
                 <td style="padding:10px 14px; text-align:center; font-weight:700; color:#1e293b;">
-                  ${o.pallet_count != null && o.pallet_count !== '' ? o.pallet_count : '-'}
+                  ${o.pallet_count != null && o.pallet_count !== '' ? Math.ceil(o.pallet_count) : '-'}
                 </td>
                 <td style="padding:10px 14px; text-align:center;">
                   <button class="aldi-view-order-btn" data-id="${o.id}" data-orderno="${o.order_number}" data-date="${formattedDate}" data-status="${o.version_status || 'current'}" style="background:none; border:none; cursor:pointer; font-size:16px;" title="Tételek megtekintése">📋</button>
@@ -725,7 +725,7 @@ export function renderAldiRendelesek(container, windowManager) {
                 <tr style="border-bottom:1px solid #f1f5f9; ${idx % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;'}">
                   <td style="padding:10px; font-weight:500;">${formattedDate}</td>
                   <td style="padding:10px; font-weight:700;">${t.truck_number}</td>
-                  <td style="padding:10px; text-align:right;">${t.pallets || 0}</td>
+                  <td style="padding:10px; text-align:right;">${t.pallets ? Math.ceil(t.pallets) : 0}</td>
                   <td style="padding:10px; text-align:right;">${t.ordered_cartons || 0}</td>
                   <td style="padding:10px; text-align:right;">${t.gross_weight || 0}</td>
                   <td style="padding:10px; text-align:right;">${t.net_weight || 0}</td>

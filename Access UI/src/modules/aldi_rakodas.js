@@ -345,7 +345,7 @@ export function renderAldiRakodas(container, windowManager) {
           <td style="padding:2px 3px; text-align:right;">
             <input type="number" class="aldi-demand-cpp-input" data-id="${d.id}" value="${cpp !== null ? cpp : ''}" placeholder="" min="1" style="width:46px; height:24px; padding:1px 3px; font-size:11px; text-align:right; border:1px solid #cbd5e1; border-radius:3px; background:#fff; font-weight:600; color:#0f172a;">
           </td>
-          <td class="aldi-demand-pallets-cell" data-id="${d.id}" style="padding:4px 3px; text-align:right; font-weight:600; color:#2563eb;">${pallets ? pallets.toFixed(2) : '-'}</td>
+          <td class="aldi-demand-pallets-cell" data-id="${d.id}" style="padding:4px 3px; text-align:right; font-weight:600; color:#2563eb;">${pallets ? Math.ceil(pallets) : '-'}</td>
           <td style="padding:4px 6px; color:#475569; white-space:nowrap;">${dateStr}</td>
           <td style="padding:4px 6px; color:#475569; white-space:nowrap;">${escHtml(d.order_number || '-')}</td>
           <td style="padding:4px 6px;">
@@ -558,7 +558,8 @@ export function renderAldiRakodas(container, windowManager) {
       ? ((demand.available_cartons || 0) / demand.cartons_per_pallet).toFixed(2)
       : null;
 
-    const truckOptions = (state.trucks || []).filter(t => !t.is_loaded).map(t => `<option value="${t.id}">${escHtml(t.truck_number)} - Szabad: ${(33 - (parseFloat(t.total_pallets)||0)).toFixed(2)} EU</option>`).join('');
+    const truckOptions = (state.trucks || []).filter(t => !t.is_loaded).map(t => `<option value="${t.id}">${escHtml(t.truck_number)} - Szabad: ${(33 - Math.ceil(parseFloat(t.total_pallets)||0))} EU</option>`).join('');
+
 
     const modalContent = `
       <div style="padding:20px 24px; display:flex; flex-direction:column; gap:14px;">
@@ -676,7 +677,7 @@ export function renderAldiRakodas(container, windowManager) {
           const tid = parseInt(select.value);
           const truck = state.trucks.find(t => t.id === tid);
           if (truck) {
-            const used = parseFloat(truck.total_pallets) || 0;
+            const used = Math.ceil(parseFloat(truck.total_pallets) || 0);
             const free = Math.max(0, 33 - used).toFixed(2);
             availDisplay.textContent = `${free}`;
           } else {
@@ -760,7 +761,7 @@ export function renderAldiRakodas(container, windowManager) {
     const title = isNew ? 'Új kamion rögzítése (ALDI)' : `Kamion szerkesztése: ${existing ? existing.truck_number : ''}`;
 
     const dateVal = existing && existing.delivery_date ? String(existing.delivery_date).substring(0, 10) : new Date().toISOString().substring(0, 10);
-    const usedPallets = existing ? (parseFloat(existing.total_pallets) || 0) : 0;
+    const usedPallets = existing ? Math.ceil(parseFloat(existing.total_pallets) || 0) : 0;
     const freeSpots = Math.max(0, 33 - usedPallets).toFixed(2);
 
     let defaultTruckNum = '';
@@ -893,7 +894,7 @@ export function renderAldiRakodas(container, windowManager) {
                 <td style="padding:6px 8px; font-weight:600; color:#1e293b; min-width:200px; white-space:normal;">${escHtml(l.product_name)}</td>
                 <td style="padding:6px 4px; text-align:right; font-weight:700; width:70px;">${l.ordered_cartons}</td>
                 <td style="padding:6px 4px; text-align:right; width:80px;">${l.cartons_per_pallet || '-'}</td>
-                <td style="padding:6px 6px; text-align:right; color:#2563eb; width:55px;">${l.pallets ? parseFloat(l.pallets).toFixed(2) : '-'}</td>
+                <td style="padding:6px 6px; text-align:right; color:#2563eb; width:55px;">${l.pallets ? Math.ceil(parseFloat(l.pallets)) : '-'}</td>
                 <td style="padding:6px 8px;">
                   <input type="text" class="inp-line-partner" data-id="${l.id}" value="${escHtml(l.partner || '')}" style="width:100px; padding:2px; font-size:11px;">
                 </td>
