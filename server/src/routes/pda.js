@@ -187,7 +187,7 @@ async function processPick(trx, id, reqData, locationId = null) {
       .first();
 
     const existingPallets = parseFloat(currentLocStock?.occupied_pallets) || 0;
-    const incomingPallets = orderLine?.cartons_per_pallet ? (qty / orderLine.cartons_per_pallet) : 0;
+    const incomingPallets = 1; // Minden PDA megadás 1 raklap
     const capacity = parseFloat(loc.capacity) || 1;
 
     if (existingPallets + incomingPallets > capacity + 0.05) {
@@ -206,13 +206,9 @@ async function processPick(trx, id, reqData, locationId = null) {
 
   // 3. Súly és raklap kalkuláció
   const cartonsPerPallet = parseInt(line.cartons_per_pallet) || 0;
-  let newPallets = 0;
+  let newPallets = 1; // Minden PDA megadás pontosan 1 raklapot jelent
   let palletTareKg = 0;
   let palletTypeName = null;
-
-  if (cartonsPerPallet > 0) {
-    newPallets = Math.ceil((alreadyPicked + qty) / cartonsPerPallet) - Math.ceil(alreadyPicked / cartonsPerPallet);
-  }
 
   if (pallet_type) {
     // pallet_type a ref_packaging_types ID-ja a frontend módosítás óta
@@ -220,8 +216,8 @@ async function processPick(trx, id, reqData, locationId = null) {
     if (!palInfo || !palInfo.is_active || ![palInfo.name, palInfo.category].some(value => String(value || '').toLowerCase().includes('raklap'))) {
       const err = new Error('Válassz érvényes, aktív raklaptípust.'); err.code = 'BAD_REQUEST'; throw err;
     }
-    if (cartonsPerPallet <= 0 || palInfo.tare_weight_kg == null || !Number.isFinite(Number(palInfo.tare_weight_kg)) || Number(palInfo.tare_weight_kg) <= 0) {
-      const err = new Error('A nettó számításához érvényes karton/raklap mennyiség és raklaptára szükséges.'); err.code = 'INVALID_WEIGHT'; throw err;
+    if (palInfo.tare_weight_kg == null || !Number.isFinite(Number(palInfo.tare_weight_kg)) || Number(palInfo.tare_weight_kg) <= 0) {
+      const err = new Error('A nettó számításához érvényes raklaptára szükséges.'); err.code = 'INVALID_WEIGHT'; throw err;
     }
     if (alreadyPicked > 0 && line.pallet_type && line.pallet_type !== palInfo.name) {
       const err = new Error('A megkezdett tételt ugyanazzal a raklaptípussal folytasd.'); err.code = 'BAD_REQUEST'; throw err;
@@ -247,8 +243,9 @@ async function processPick(trx, id, reqData, locationId = null) {
   }
   
   if (!isNaN(reqGross) && reqGross > 0) {
-    if (reqGross < reqTare + (newPallets * palletTareKg)) {
-      const err = new Error(`A bruttó súly (${reqGross} kg) kisebb, mint a göngyöleg (${reqTare} kg) és az új raklapok (${newPallets} db x ${palletTareKg} kg) tára összege!`);
+    const totalTare = (reqTare * qty) + (newPallets * palletTareKg);
+    if (reqGross < totalTare) {
+      const err = new Error(`A bruttó súly (${reqGross} kg) kisebb, mint a göngyöleg (${reqTare} kg x ${qty} db) és az új raklapok (${newPallets} db x ${palletTareKg} kg) tára összege!`);
       err.code = 'INVALID_WEIGHT'; throw err;
     }
   } else if (gross_weight !== undefined && gross_weight !== null && gross_weight !== '') {
@@ -258,7 +255,7 @@ async function processPick(trx, id, reqData, locationId = null) {
 
   let currentPickNet = null;
   if (!isNaN(reqGross) && reqGross > 0) {
-    currentPickNet = reqGross - reqTare - (newPallets * palletTareKg);
+    currentPickNet = reqGross - (reqTare * qty) - (newPallets * palletTareKg);
     if (currentPickNet < 0) {
       const err = new Error('Számítási hiba: a nettó súly negatív!'); err.code = 'INVALID_WEIGHT'; throw err;
     }

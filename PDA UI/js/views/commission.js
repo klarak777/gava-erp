@@ -268,7 +268,7 @@ export async function renderCommission(container, params = {}) {
           <select id="form-gongyoleg"></select>
         </div>
         <div class="pda-form-group">
-          <label>Göngyöleg tára súly</label>
+          <label>Göngyöleg tára (/un)</label>
           <input type="number" step="0.001" id="form-tara" readonly />
         </div>
         <div class="pda-form-group">
@@ -445,8 +445,7 @@ export async function renderCommission(container, params = {}) {
       if (tareKg > 0) {
         taraManual = false;
         taraInput.readOnly = true;
-        const cartons = parseFloat(kartonInput.value) || 0;
-        taraInput.value = (tareKg * cartons).toFixed(3);
+        taraInput.value = (tareKg).toFixed(3);
       } else {
         // Nincs tára súly a típushoz → kézi bevitel, üres mező, nem írjuk felül
         taraManual = true;

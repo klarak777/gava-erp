@@ -80,7 +80,7 @@ export function renderAldiRendelesek(container, windowManager) {
 
   async function fetchKomissioDetail(truckId, truckNo) {
     try {
-      const res = await fetch(`/api/v1/aldi-cross-docking/trucks/${truckId}/lines`);
+      const res = await fetch(`/api/v1/aldi-cross-docking/trucks/${truckId}/commission-lines`);
       if (res.ok) {
         const truckLines = await res.json();
         openKomissioDetailWindow(truckId, truckNo, truckLines);
@@ -92,12 +92,12 @@ export function renderAldiRendelesek(container, windowManager) {
 
   function openKomissioDetailWindow(truckId, truckNo, lines) {
     windowManager.open('komissio-detail-' + truckId, 'Komissió: ' + truckNo, (contentEl, wm) => {
-      // Csak a megkezdett vagy teljesen komissiózott tételeket mutatjuk
-      const pickedLines = lines.filter(l => l.is_picked || (parseFloat(l.picked_cartons) > 0));
+      // Az összes kapott sor már egy-egy megkezdett vagy befejezett komissió (raklap)
+      const pickedLines = lines;
       
       let sumCartons = 0, sumGross = 0, sumNet = 0, sumPallets = 0;
       pickedLines.forEach(l => {
-        sumCartons += (parseFloat(l.picked_cartons) || parseFloat(l.ordered_cartons) || parseFloat(l.cartons) || 0);
+        sumCartons += (parseFloat(l.cartons) || 0);
         sumGross += (parseFloat(l.gross_weight) || 0);
         sumNet += (parseFloat(l.net_weight) || 0);
         sumPallets += (parseFloat(l.pallets) || 0);
@@ -123,7 +123,7 @@ export function renderAldiRendelesek(container, windowManager) {
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">RAKLAP</th>
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">SZÁRMAZÁSI ORSZÁG</th>
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">KARTON TÍPUS</th>
-                  <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">TÁRA SÚLY</th>
+                  <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">TÁRA SÚLY (/un)</th>
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">RAKLAP TÍPUS</th>
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">LOT SZÁM</th>
                 </tr>
@@ -132,7 +132,7 @@ export function renderAldiRendelesek(container, windowManager) {
                 ${pickedLines.length === 0 ? '<tr><td colspan="10" style="padding:16px; text-align:center; color:#94a3b8;">Nincsenek még komissiózott tételek.</td></tr>' : pickedLines.map((l, idx) => `
                   <tr class="komissio-item-row" style="border-bottom:1px solid #f1f5f9; background:${idx % 2 === 1 ? '#fafafa' : '#ffffff'};">
                     <td style="padding:8px; font-weight:600; color:#1e293b;">${l.product_name || '-'}</td>
-                    <td style="padding:8px;">${l.picked_cartons || l.ordered_cartons || l.cartons || '-'}</td>
+                    <td style="padding:8px;">${l.cartons || '-'}</td>
                     <td style="padding:8px;">${l.gross_weight || '-'}</td>
                     <td style="padding:8px;">${l.net_weight || '-'}</td>
                     <td style="padding:8px;">${l.pallets || '-'}</td>
