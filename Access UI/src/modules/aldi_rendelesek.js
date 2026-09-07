@@ -242,6 +242,12 @@ export function renderAldiRendelesek(container, windowManager) {
           }));
         }
         state.hasUnsavedChanges = false;
+        
+        // Frissítjük a Heti árak felületet is, ha van kiválasztott hét
+        if (state.hetiArakSelectedWeekId) {
+          await fetchHetiArakLines(state.hetiArakSelectedWeekId);
+        }
+        
         renderModule();
         alert('💾 Termékadatok sikeresen elmentve az adatbázisba!');
       } else {
