@@ -461,7 +461,7 @@ export function renderAldiRendelesek(container, windowManager) {
                   </span>
                 </td>
                 <td style="padding:10px 14px; text-align:center; font-weight:700; color:#1e293b;">
-                  ${o.pallet_count != null && o.pallet_count !== '' ? Math.ceil(o.pallet_count) : '-'}
+                  ${o.pallet_count != null && o.pallet_count !== '' && o.pallet_count > 0 ? Math.ceil(o.pallet_count) : '-'}
                 </td>
                 <td style="padding:10px 14px; text-align:center;">
                   <button class="aldi-view-order-btn" data-id="${o.id}" data-orderno="${o.order_number}" data-date="${formattedDate}" data-status="${o.version_status || 'current'}" style="background:none; border:none; cursor:pointer; font-size:16px;" title="Tételek megtekintése">📋</button>

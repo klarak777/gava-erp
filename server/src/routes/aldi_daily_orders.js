@@ -51,7 +51,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
         // 2. Extract Pallet Count
         // "Total Number of Pallets (Estimated): 13"
-        const palletMatch = text.match(/Total\s+Number\s+of\s+Pallets\s*\(Estimated\):\s*([\d\.,]+)/i);
+        const palletMatch = text.match(/Total\s+Number\s+of\s+Pallets\s*\(Estimated\):[ \t]*([\d\.,]+)/i);
         let palletCount = 0;
         if (palletMatch) {
             palletCount = Math.ceil(parseFloat(palletMatch[1].replace(',', '.')));
