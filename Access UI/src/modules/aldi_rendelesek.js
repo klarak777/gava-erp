@@ -607,7 +607,7 @@ export function renderAldiRendelesek(container, windowManager) {
          if (isPastDay) {
             cellBg = '#f1f5f9';
             textColor = '#94a3b8';
-            rendeltStr = '-';
+            // A valós rendelés (rendeltStr) marad, csak a többit rejtjük el
             becsultStr = '-';
             hianyStr = '-';
             disabledInput = 'disabled';
