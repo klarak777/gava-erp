@@ -593,7 +593,7 @@ export function renderAldiRendelesek(container, windowManager) {
          futoKeszlet = balance.closing;
          
          const isCurrentWeek = weekDates.includes(todayStr);
-         const isPastDay = weekDates[6] >= todayStr && dayDateStr !== todayStr;
+         const isPastDay = dayDateStr < todayStr;
          
          let cellBg = isActionDay ? '#bbf7d0' : '#ffffff';
          let textColor = '#0f172a';
@@ -607,9 +607,6 @@ export function renderAldiRendelesek(container, windowManager) {
          if (isPastDay) {
             cellBg = '#f1f5f9';
             textColor = '#94a3b8';
-            // A valós rendelés (rendeltStr) marad, csak a többit rejtjük el
-            becsultStr = '-';
-            hianyStr = '-';
             disabledInput = 'disabled';
          }
          
