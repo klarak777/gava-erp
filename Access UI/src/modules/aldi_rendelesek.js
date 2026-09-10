@@ -644,9 +644,9 @@ export function renderAldiRendelesek(container, windowManager) {
        keszletRows += `
          <tr style="background:#fff; color:#0f172a;">
            <td style="padding:8px; border:1px solid #e2e8f0; font-weight:600; background:#dcfce7; color:#0f172a;">${termekNev}</td>
-           <td style="padding:8px; border:1px solid #e2e8f0;">
-             <input type="number" class="lekotes-stock-input" data-article="${pg.display_name}" data-field="initial_stock" value="${stockInput.initial_stock !== undefined && stockInput.initial_stock !== null ? stockInput.initial_stock : ''}" style="width:60px; text-align:center; padding:4px; border:1px solid #cbd5e1; border-radius:4px; font-size:12px; color:#0f172a; background:transparent;">
-           </td>
+           <td style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:#fef08a;">
+              <input type="number" class="lekotes-stock-input" data-article="${pg.display_name}" data-field="initial_stock" value="${stockInput.initial_stock !== undefined && stockInput.initial_stock !== null ? stockInput.initial_stock : ''}" style="width:60px; text-align:center; padding:4px; border:1px solid #ca8a04; border-radius:4px; font-size:12px; color:#0f172a; background:#fef9c3; font-weight:700;">
+            </td>
            ${keszletCells}
          </tr>
        `;
@@ -718,7 +718,7 @@ export function renderAldiRendelesek(container, windowManager) {
             <thead>
               <tr style="background:#f1f5f9; border-bottom:2px solid #cbd5e1;">
                 <th rowspan="2" style="padding:8px; border:1px solid #e2e8f0;">Termék</th>
-                <th rowspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center;">Raktárkészlet</th>
+                <th rowspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:#fde047; color:#0f172a; font-weight:700;">Raktárkészlet</th>
                 <th colspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center;">Szerda</th>
                 <th colspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center;">Csütörtök</th>
                 <th colspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center;">Péntek</th>

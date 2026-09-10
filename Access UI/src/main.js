@@ -37,7 +37,7 @@ import { renderAdmin } from './modules/admin.js';
 import { renderPennyStock } from './modules/penny_stock.js';
 import { renderPennyBelfoldiFuvarok } from './modules/penny_belfoldi_fuvarok.js';
 import { renderPennyKomissiosUtasitas } from './modules/penny_komissios_utasitas.js';
-import { renderAldiRendelesek } from './modules/aldi_rendelesek.js';
+import { renderAldiRendelesek } from './modules/aldi_rendelesek.js?v=0.8.6';
 import { renderAldiStock } from './modules/aldi_stock.js';
 import { renderAldiQuality } from './modules/aldi_quality.js';
 import { renderAldiRakodas } from './modules/aldi_rakodas.js';
