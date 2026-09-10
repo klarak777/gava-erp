@@ -1,3 +1,4 @@
+import { budapestToday, estimatedDistribution, dailyBalance } from '../utils/weeklyCommitments.js';
 /**
  * GAVA ERP – ALDI Rendelések modul
  * v1.4.0 – Heti árak fül hozzáadva: XLSX feltöltés, GTIN alapú termékazonosítás,
@@ -307,6 +308,7 @@ export function renderAldiRendelesek(container, windowManager) {
 
   // ─── DOM container ────────────────────────────────────────────────────────────
 
+  let pendingStockSaves = 0;
   const wrapper = document.createElement('div');
   wrapper.style.cssText = 'padding: 16px 28px; display:flex; flex-direction:column; gap:16px; flex:1; min-height:100%;';
   container.appendChild(wrapper);
@@ -528,10 +530,10 @@ export function renderAldiRendelesek(container, windowManager) {
     const items = state.hetiLekotesData.items || [];
     const dailyOrders = state.hetiLekotesData.daily_orders || [];
     const weekDates = state.hetiLekotesData.week_dates || [];
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = budapestToday();
 
     items.forEach(item => {
-      const pid = item.product_id || item.display_name;
+      const pid = item.display_name;
       if (!productGroups[pid]) {
         productGroups[pid] = {
            product_id: item.product_id,
@@ -539,92 +541,35 @@ export function renderAldiRendelesek(container, windowManager) {
            product_name: item.product_name,
            action_period: null,
            total_action: 0,
+           actionPeriods: {},
            total_normal: 0,
         };
       }
       if (item.type === 'action') {
         productGroups[pid].action_period = item.action_period;
-        productGroups[pid].total_action = item.total_forecast_cartons;
+        productGroups[pid].total_action += Number(item.total_forecast_cartons);
+        const periods = productGroups[pid].actionPeriods;
+        periods[item.action_period || ''] = (periods[item.action_period || ''] || 0) + Number(item.total_forecast_cartons);
       } else {
-        productGroups[pid].total_normal = item.total_forecast_cartons;
+        productGroups[pid].total_normal += Number(item.total_forecast_cartons);
       }
     });
 
     // Helper: calculate distribution percentage
-    function getEstimatedDistribution(totalAction, totalNormal, actionStr) {
-      let result = { wed: 0, thu: 0, fri: 0, sat: 0, sun: 0, mon: 0, tue: 0 };
-      let actionDays = [];
-      let actionDuration = 0;
-
-      if (actionStr) {
-         let m = actionStr.match(/(\d{2})\.(\d{2})\.\s*-\s*(\d{2})\.(\d{2})\./);
-         if (m) {
-             // Kiszámoljuk az akció hosszát fix szökőévvel, hogy a napok száma stabil legyen
-             const start = new Date(`2024-${m[2]}-${m[1]}T00:00:00Z`);
-             const end = new Date(`2024-${m[4]}-${m[3]}T00:00:00Z`);
-             actionDuration = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
-             
-             // Kiszámoljuk a valós napokat a színezéshez (itt már az évet is használjuk)
-             const syy = state.hetiLekotesYear || new Date().getFullYear();
-             const realStart = new Date(`${syy}-${m[2]}-${m[1]}`);
-             const realEnd = new Date(`${syy}-${m[4]}-${m[3]}`);
-             for (let i = 0; i < 7; i++) {
-                 if (!weekDates[i]) continue;
-                 const dayDate = new Date(weekDates[i]);
-                 if (dayDate >= realStart && dayDate <= realEnd) {
-                     actionDays.push(days[i].key);
-                 }
-             }
-         }
-      }
-      
-      const hasAction = actionDuration > 0;
-      
-      if (hasAction && totalAction > 0) {
-          if (actionDuration === 4) {
-              // Szerda-Szombat akció (4 napos)
-              result.wed = totalAction * 0.30;
-              result.thu = totalAction * 0.30;
-              result.fri = totalAction * 0.22;
-              result.sat = totalAction * 0.18;
-          } else if (actionDuration === 3) {
-              // Vasárnap-Kedd akció (3 napos)
-              result.sun = totalAction * 0.40;
-              result.mon = totalAction * 0.40;
-              result.tue = totalAction * 0.20;
-          } else if (actionDuration === 2) {
-              // Péntek-Szombat akció (2 napos)
-              result.fri = totalAction * 0.70;
-              result.sat = totalAction * 0.30;
-          } else {
-              // Ismeretlen hosszúságú akció esetén egyenletes elosztás az akciós napokon
-              if (actionDays.length > 0) {
-                  const split = totalAction / actionDays.length;
-                  actionDays.forEach(d => result[d] = split);
-              }
-          }
-      }
-
-      if (totalNormal > 0) {
-         if (result.wed === 0) result.wed = totalNormal * 0.17;
-         if (result.thu === 0) result.thu = totalNormal * 0.17;
-         if (result.fri === 0) result.fri = totalNormal * 0.17;
-         if (result.sat === 0) result.sat = totalNormal * 0.13;
-         if (result.sun === 0) result.sun = totalNormal * 0.14;
-         if (result.mon === 0) result.mon = totalNormal * 0.11;
-         if (result.tue === 0) result.tue = totalNormal * 0.11;
-      }
-
-      Object.keys(result).forEach(k => result[k] = Math.round(result[k]));
-      return { result, actionDays };
-    }
+    function getEstimatedDistribution(a, n, p) { return estimatedDistribution(a, n, p, weekDates); }
 
     let lekotesRows = '';
     let keszletRows = '';
 
     Object.values(productGroups).forEach(pg => {
        const stockInput = (state.hetiLekotesData.stocks || []).find(s => s.article_number == pg.display_name || (s.product_id && s.product_id == pg.product_id)) || {};
-       const { result: distribution, actionDays } = getEstimatedDistribution(pg.total_action, pg.total_normal, pg.action_period);
+       const { result: distribution } = getEstimatedDistribution(0, pg.total_normal, null);
+       const actionDays = [];
+       for (const [period, quantity] of Object.entries(pg.actionPeriods)) {
+         const estimate = getEstimatedDistribution(quantity, 0, period);
+         for (const key of estimate.actionDays) { distribution[key] = estimate.result[key]; if (!actionDays.includes(key)) actionDays.push(key); }
+       }
+       pg.action_period = Object.keys(pg.actionPeriods).join(', ');
        
        let cells = '';
        let keszletCells = '';
@@ -643,12 +588,12 @@ export function renderAldiRendelesek(container, windowManager) {
          const rendeltNum = orderObj ? orderObj.total : undefined;
          const becsultNum = distribution[day.key];
          
-         const levonas = rendeltNum !== undefined ? rendeltNum : becsultNum;
-         futoKeszlet = futoKeszlet + erkezo - levonas;
-         hiany = futoKeszlet < 0 ? Math.abs(futoKeszlet) : 0;
+         const balance = dailyBalance(futoKeszlet, erkezo, rendeltNum, becsultNum);
+         hiany = balance.shortage;
+         futoKeszlet = balance.closing;
          
          const isCurrentWeek = weekDates.includes(todayStr);
-         const isPastDay = isCurrentWeek && dayDateStr < todayStr;
+         const isPastDay = weekDates[6] >= todayStr && dayDateStr !== todayStr;
          
          let cellBg = isActionDay ? '#bbf7d0' : '#ffffff';
          let textColor = '#0f172a';
@@ -818,24 +763,28 @@ export function renderAldiRendelesek(container, windowManager) {
     }
   }
 
-  async function fetchHetiLekotesData() {
+  async function fetchHetiLekotesData(silent = false) {
      if (!state.hetiLekotesSelectedWeek) {
        state.hetiLekotesIsLoading = false;
        renderModule();
        return;
      }
-     state.hetiLekotesIsLoading = true;
-     renderModule();
+     if (!silent) { state.hetiLekotesIsLoading = true; renderModule(); }
+     const requestedYear = state.hetiLekotesYear, requestedWeek = state.hetiLekotesSelectedWeek;
+     let changed = !silent;
      try {
        const res = await fetch(`/api/v1/aldi-weekly-commitments/${state.hetiLekotesYear}/${state.hetiLekotesSelectedWeek}`);
+       if (!res.ok) throw new Error('HTTP ' + res.status);
        const data = await res.json();
+       if (requestedYear !== state.hetiLekotesYear || requestedWeek !== state.hetiLekotesSelectedWeek || (silent && pendingStockSaves)) return;
+       changed = !silent || JSON.stringify(data) !== JSON.stringify(state.hetiLekotesData);
        state.hetiLekotesData = data || { commitment: null, items: [], stocks: [], daily_orders: [], week_dates: [] };
      } catch (err) {
        console.error('Heti lekötés adatok betöltési hiba:', err);
-       alert('Nem sikerült betölteni a lekötés adatokat.');
+       if (!silent) alert('Nem sikerült betölteni a lekötés adatokat.');
      } finally {
        state.hetiLekotesIsLoading = false;
-       renderModule();
+       if (changed) renderModule();
      }
   }
   
@@ -862,7 +811,7 @@ export function renderAldiRendelesek(container, windowManager) {
 
           <!-- Drag & Drop zone -->
           <div id="aldi-lekotes-dropzone" style="border:2px dashed #7dd3fc; background:#f0f9ff; border-radius:10px; padding:28px 16px; text-align:center; cursor:pointer; transition:all 0.2s;">
-            <input type="file" id="aldi-lekotes-file-input" accept=".xlsx,.xls" style="display:none;">
+            <input type="file" id="aldi-lekotes-file-input" accept=".xlsx" style="display:none;">
             <div style="font-size:40px; margin-bottom:8px;">📊</div>
             <div style="font-size:13px; font-weight:700; color:#0369a1; margin-bottom:4px;" id="aldi-lekotes-dropzone-text">
               Húzza ide az XLSX fájlt, vagy kattintson a tallózáshoz
@@ -886,6 +835,12 @@ export function renderAldiRendelesek(container, windowManager) {
       </div>
     `;
 
+    if (state.hetiLekotesSelectedWeek) {
+      const label = document.createElement('label');
+      label.style.cssText = 'display:block;padding:12px;background:white';
+      label.innerHTML = '<input type="checkbox" id="commitment-replace"> Kiválasztott hét javítása (KW' + state.hetiLekotesSelectedWeek + ')';
+      modalOverlay.firstElementChild.appendChild(label);
+    }
     document.body.appendChild(modalOverlay);
 
     let selectedFile = null;
@@ -933,9 +888,9 @@ export function renderAldiRendelesek(container, windowManager) {
 
       const formData = new FormData();
       formData.append('file', selectedFile);
+      formData.append('year', state.hetiLekotesYear);
       if (state.hetiLekotesSelectedWeek) {
-        formData.append('week_number', state.hetiLekotesSelectedWeek);
-        formData.append('year', state.hetiLekotesYear);
+        if (modalOverlay.querySelector('#commitment-replace')?.checked) formData.append('replace_week', state.hetiLekotesSelectedWeek);
       }
 
       uploadBtn.textContent = '⏳ Feldolgozás...';
@@ -1079,7 +1034,7 @@ export function renderAldiRendelesek(container, windowManager) {
             </thead>
             <tbody>
               ${(() => {
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = budapestToday();
         return lines.map((line, idx) => {
           const isMatched = line.is_gtin_matched;
           const displayName = isMatched
@@ -2690,7 +2645,7 @@ function doExcelExport(lines, orderNo, dateStr) {
       renderModule();
       if (state.hetiLekotesWeeks.length === 0) {
         fetchHetiLekotesWeeks();
-      } else if (state.hetiLekotesSelectedWeek && (!state.hetiLekotesData || !state.hetiLekotesData.items || state.hetiLekotesData.items.length === 0)) {
+      } else if (state.hetiLekotesSelectedWeek) {
         fetchHetiLekotesData();
       }
     });
@@ -2846,6 +2801,7 @@ function doExcelExport(lines, orderNo, dateStr) {
          stockObj[field] = val;
 
          // 2. Újraszámolás és felület frissítése görgetési pozíció megtartásával
+         pendingStockSaves++;
          renderModule();
 
          // 3. Mentés a szerveren háttérben
@@ -2864,11 +2820,11 @@ function doExcelExport(lines, orderNo, dateStr) {
            });
            if (!res.ok) {
              const errData = await res.json().catch(() => ({}));
-             console.error('Készlet mentési hiba:', errData);
+             throw new Error(errData.error || 'HTTP ' + res.status);
            }
          } catch (err) {
-           console.error(err);
-         }
+           console.error(err); alert('Mentés sikertelen: ' + err.message); await fetchHetiLekotesData();
+         } finally { pendingStockSaves--; }
       });
     });
 
@@ -3028,6 +2984,18 @@ function doExcelExport(lines, orderNo, dateStr) {
   }
 
   // ─── Initial load ─────────────────────────────────────────────────────────────
+  let refreshingCommitments = false;
+  let previousDay = budapestToday();
+  const refreshTimer = setInterval(async () => {
+    if (!wrapper.isConnected) { clearInterval(refreshTimer); return; }
+    if (state.activeTab !== 'heti' || document.hidden || refreshingCommitments || pendingStockSaves) return;
+    const today = budapestToday();
+    if (today !== previousDay) { previousDay = today; renderModule(); }
+    if (wrapper.contains(document.activeElement) && document.activeElement.matches('input,select')) return;
+    refreshingCommitments = true;
+    try { await fetchHetiLekotesData(true); } finally { refreshingCommitments = false; }
+  }, 5000);
+
   fetchProductsFromDb();
   fetchKomissioSummary();
   fetchNapiRendelesek();

@@ -5,6 +5,8 @@ const path = require('path');
 const fs = require('fs');
 const xlsx = require('xlsx');
 const db = require('../db/db');
+const { getAldiWeekBoundaries } = require('../utils/aldiWeeklyDates');
+const crypto = require('crypto');
 
 // Konfiguráció
 const IS_WINDOWS = process.platform === 'win32';
@@ -18,10 +20,10 @@ const upload = multer({
   storage,
   limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || file.mimetype === 'application/vnd.ms-excel') {
+    if (path.extname(file.originalname).toLowerCase() === '.xlsx') {
       cb(null, true);
     } else {
-      cb(new Error('Csak XLSX vagy XLS fájlok tölthetők fel.'));
+      cb(new Error('Csak XLSX fájl tölthető fel.'));
     }
   }
 });
@@ -44,8 +46,8 @@ function parseDatesAndWeek(filename) {
     let type = null;
 
     const lowerName = filename.toLowerCase();
-    if (lowerName.includes('keresleti') || lowerName.includes('normál') || lowerName.includes('normal')) type = 'normal';
-    else if (lowerName.includes('terv') || lowerName.includes('akciós') || lowerName.includes('akcios')) type = 'action';
+    if ((/\bhlk\b/i.test(lowerName) || lowerName.includes('keresleti')) || lowerName.includes('normál') || lowerName.includes('normal')) type = 'normal';
+    else if ((/\bhla\b/i.test(lowerName) || lowerName.includes('terv')) || lowerName.includes('akciós') || lowerName.includes('akcios')) type = 'action';
 
     if (!type) {
         throw new Error("A fájlnévből nem derül ki, hogy Akciós (Terv) vagy Normál (Keresleti) feltöltésről van-e szó.");
@@ -76,7 +78,7 @@ function parseDatesAndWeek(filename) {
         let d = new Date(startDate);
         for (let i = 0; i < 7; i++) {
             if (d.getDay() === 3) break;
-            d.setDate(d.getDate() + 1);
+            d.setDate(d.getDate() - 1);
         }
         week_number = getISOWeekOfWednesday(d);
     }
@@ -88,21 +90,27 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     let trx;
     try {
         if (!req.file) throw new Error("Nincs fájl kiválasztva.");
-        
+
         let { year, week_number, type } = parseDatesAndWeek(req.file.originalname);
-        
-        if (!week_number) {
-            if (req.body.week_number && req.body.year) {
-                week_number = parseInt(req.body.week_number, 10);
-                year = parseInt(req.body.year, 10);
-            } else {
-                throw new Error("Nem sikerült megállapítani a hetet a fájlnévből, és nem volt előzetesen kiválasztott hét.");
-            }
-        }
-        
-        const week_str = `KW${week_number}`;
 
         trx = await db.transaction();
+        await trx.raw('SELECT pg_advisory_xact_lock(860036)');
+        if (!week_number) {
+            year = Number(req.body.year) || year;
+            const latest = await trx('aldi_weekly_commitments').where({ year }).orderBy('week_number', 'desc').first();
+            const field = type === 'normal' ? 'normal_file_path' : 'action_file_path';
+            if (req.body.replace_week) week_number = Number(req.body.replace_week);
+            else if (!latest) week_number = 36;
+            else if (!latest[field]) week_number = latest.week_number;
+            else {
+                const oldPath = path.join(ALDI_BASE_PATH, String(year), latest[field]);
+                const unchanged = fs.existsSync(oldPath) && fs.readFileSync(oldPath).equals(req.file.buffer);
+                week_number = unchanged ? latest.week_number : latest.week_number + 1;
+                if (!getAldiWeekBoundaries(year, week_number)) { year++; week_number = 1; }
+            }
+        }
+        if (!getAldiWeekBoundaries(year, week_number)) throw new Error('Invalid ALDI year/week');
+        const week_str = 'KW' + String(week_number).padStart(2, '0');
 
         let commitment = await trx('aldi_weekly_commitments').where({ year, week_number }).first().forUpdate();
         if (!commitment) {
@@ -116,19 +124,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         if (!fs.existsSync(targetDir)) {
             fs.mkdirSync(targetDir, { recursive: true });
         }
-        
-        const suffix = type === 'normal' ? 'HLK' : 'HLA';
-        const fileName = `${week_str} ${suffix}.xlsx`;
-        const targetPath = path.join(targetDir, fileName);
-        
-        fs.writeFileSync(targetPath, req.file.buffer);
-
-        const updateData = {};
-        if (type === 'normal') updateData.normal_file_path = fileName;
-        else updateData.action_file_path = fileName;
-        await trx('aldi_weekly_commitments').where({ id: commitment.id }).update(updateData);
-
-        await trx('aldi_weekly_commitment_items').where({ commitment_id: commitment.id, type }).delete();
 
         const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
@@ -145,54 +140,55 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         if (headerRowIdx === -1) throw new Error("Nem található 'Display' oszlop a táblázatban.");
 
         const headers = jsonData[headerRowIdx];
-        const displayIdx = headers.findIndex(h => h && h.toLowerCase().includes('display'));
-        const actionPeriodIdx = headers.findIndex(h => h && h.toLowerCase().includes('akciós időszak'));
-        
+        const nameIdx = headers.findIndex(h => typeof h === 'string' && /term.*(nev|le.r.s)/i.test(h.normalize('NFD').replace(/[\u0300-\u036f]/g, '')));
+        const displayIdx = headers.findIndex(h => typeof h === 'string' && h.toLowerCase().includes('display'));
+        const actionPeriodIdx = headers.findIndex(h => typeof h === 'string' && h.toLowerCase().includes('akciós időszak'));
+
         let qtyIdx = -1;
         if (type === 'normal') {
-            qtyIdx = headers.findIndex(h => h && h.toLowerCase().includes('becsült mennyiség'));
+            qtyIdx = headers.findIndex(h => typeof h === 'string' && h.toLowerCase().includes('becsült mennyiség'));
         } else {
-            qtyIdx = headers.findIndex(h => h && h.toLowerCase().includes('értékesítési előrejelzés'));
+            qtyIdx = headers.findIndex(h => typeof h === 'string' && h.toLowerCase().includes('értékesítési előrejelzés'));
         }
-        
+
         if (qtyIdx === -1) throw new Error(`Nem található mennyiség oszlop a ${type} típushoz.`);
 
         const itemsToInsert = [];
-        
-        // Load chain products mapped by article number (cikkszám)
-        const chainProds = await trx('chain_products').where('chain', 'ALDI');
-        const prodMap = new Map();
-        chainProds.forEach(p => { if (p.article_number) prodMap.set(p.article_number.toString().trim(), p); });
 
         for (let i = headerRowIdx + 1; i < jsonData.length; i++) {
             const row = jsonData[i];
             const displayStr = row[displayIdx] ? row[displayIdx].toString().trim() : '';
             if (!displayStr) continue;
-            
+
             const qtyStr = row[qtyIdx];
             let qty = 0;
             if (typeof qtyStr === 'number') qty = qtyStr;
             else if (typeof qtyStr === 'string') qty = parseFloat(qtyStr.replace(/\s/g, '').replace(',', '.'));
-            
-            if (isNaN(qty) || qty <= 0) continue; 
-            
+
+            if (!Number.isFinite(qty) || qty < 0) throw new Error('Invalid quantity: ' + displayStr);
+
             // Map directly by ALDI item code (strict exact match)
-            const prod = prodMap.get(displayStr);
-            const productId = prod ? prod.id : null; // we keep product_id if mapped
+            const productId = null; // Canonical identity is display_name (ALDI article), not a products FK.
 
             itemsToInsert.push({
                 commitment_id: commitment.id,
                 product_id: productId, // can be null if missing
                 type: type,
-                display_name: displayStr, // item code
+                display_name: displayStr, // ALDI article number
+                xlsx_product_name: nameIdx >= 0 && row[nameIdx] ? String(row[nameIdx]).trim() : null,
                 action_period: actionPeriodIdx !== -1 && row[actionPeriodIdx] ? row[actionPeriodIdx].toString().trim() : null,
                 total_forecast_cartons: qty
             });
         }
 
-        if (itemsToInsert.length > 0) {
-            await trx('aldi_weekly_commitment_items').insert(itemsToInsert);
-        }
+        if (!itemsToInsert.length) throw new Error('No valid product rows');
+        const suffix = type === 'normal' ? 'HLK' : 'HLA';
+        const revision = Date.now() + '-' + crypto.randomBytes(4).toString('hex');
+        const fileName = revision + ' ' + week_str + ' ' + suffix + '.xlsx';
+        fs.writeFileSync(path.join(targetDir, fileName), req.file.buffer, { flag: 'wx' });
+        await trx('aldi_weekly_commitments').where({ id: commitment.id }).update({ [type === 'normal' ? 'normal_file_path' : 'action_file_path']: fileName });
+        await trx('aldi_weekly_commitment_items').where({ commitment_id: commitment.id, type }).delete();
+        await trx('aldi_weekly_commitment_items').insert(itemsToInsert);
 
         await trx.commit();
         res.json({ success: true, message: `Sikeresen feldolgozva ${itemsToInsert.length} sor.`, commitment: { id: commitment.id, year: commitment.year, week_number: commitment.week_number } });
@@ -205,29 +201,9 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
 // Helper a pontos dátumok kiszámításához egy héten
 function getDatesOfISOWeek(year, week) {
-    const simple = new Date(year, 0, 1 + (week - 1) * 7);
-    const dow = simple.getDay();
-    const ISOweekStart = simple;
-    if (dow <= 4)
-        ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
-    else
-        ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
-    
-    // ISO week start is Monday. Aldi week start is Wednesday (Monday + 2 days)
-    const dates = [];
-    const wednesday = new Date(ISOweekStart);
-    wednesday.setDate(wednesday.getDate() + 2);
-    
-    for (let i = 0; i < 7; i++) {
-        const d = new Date(wednesday);
-        d.setDate(d.getDate() + i);
-        
-        const yy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const dd = String(d.getDate()).padStart(2, '0');
-        dates.push(`${yy}-${mm}-${dd}`);
-    }
-    return dates; // [wed, thu, fri, sat, sun, mon, tue]
+    const bounds = getAldiWeekBoundaries(year, week);
+    if (!bounds) throw new Error('Invalid week');
+    return Array.from({ length: 7 }, (_, i) => new Date(Date.parse(bounds.start) + i * 86400000).toISOString().slice(0, 10));
 }
 
 router.get('/weeks/:year', async (req, res) => {
@@ -244,18 +220,18 @@ router.get('/:year/:week_number', async (req, res) => {
     try {
         const { year, week_number } = req.params;
         const commitment = await db('aldi_weekly_commitments').where({ year, week_number }).first();
-        
+
         let items = [];
         let stocks = [];
         let daily_orders = [];
 
         if (commitment) {
-            // Join chain_products to get the exact ALDI product_name 
-            items = await db('aldi_weekly_commitment_items as i')
-                .leftJoin('chain_products as cp', 'cp.article_number', 'i.display_name')
-                .select('i.*', 'cp.product_name')
-                .where({ commitment_id: commitment.id });
-                
+            // Join chain_products to get the exact ALDI product_name
+            items = await db('aldi_weekly_commitment_items').where({ commitment_id: commitment.id });
+            const products = await db('chain_products').where('chain', 'ALDI');
+            const byArticle = new Map(products.map(p => [String(p.article_number).trim(), p.product_name]));
+            items = items.map(item => ({ ...item, product_name: byArticle.get(item.display_name) || item.xlsx_product_name }));
+
             stocks = await db('aldi_weekly_stock_inputs').where({ year, week_number });
         }
 
@@ -266,18 +242,25 @@ router.get('/:year/:week_number', async (req, res) => {
 
         const realOrders = await db('aldi_daily_order_lines as l')
             .join('aldi_daily_orders as o', 'o.id', 'l.daily_order_id')
-            .join('chain_products as cp', 'cp.gtin', 'l.gtin')
             .where('o.version_status', 'current')
             .whereBetween('o.delivery_date', [startDate, endDate])
-            .select('o.delivery_date', 'cp.article_number', 'l.ordered_cartons');
+            .select('o.delivery_date', 'l.gtin', 'l.ordered_cartons');
+        const cpRows = await db('chain_products').where('chain', 'ALDI').select('gtin', 'article_number');
+        const articleByGtin = new Map();
+        for (const cp of cpRows) {
+            if (articleByGtin.has(cp.gtin) && articleByGtin.get(cp.gtin) !== cp.article_number) throw new Error('Ambiguous GTIN: ' + cp.gtin);
+            articleByGtin.set(cp.gtin, cp.article_number);
+        }
 
         // Grouping
         const ordersByDateAndItem = {};
         for (const o of realOrders) {
+            o.article_number = articleByGtin.get(o.gtin);
+            if (!o.article_number) continue;
             // delivery_date could be a Date object depending on driver, format to YYYY-MM-DD
             let d = o.delivery_date;
             if (typeof d !== 'string') d = d.toISOString().split('T')[0];
-            
+
             const key = `${d}_${o.article_number}`;
             if (!ordersByDateAndItem[key]) {
                 ordersByDateAndItem[key] = { date: d, article_number: o.article_number, total: 0 };
@@ -303,7 +286,7 @@ router.post('/stock', async (req, res) => {
     const { article_number, year, week_number } = payload;
     const prodId = payload.product_id && payload.product_id !== 'null' && !isNaN(parseInt(payload.product_id, 10)) ? parseInt(payload.product_id, 10) : null;
     const artNo = (article_number || payload.display_name || payload.product_id || '').toString().trim();
-    
+
     if (!artNo || !year || !week_number) {
         return res.status(400).json({ error: 'Hiányzó azonosító (article_number, year, week_number)' });
     }
@@ -311,17 +294,20 @@ router.post('/stock', async (req, res) => {
     let trx;
     try {
         trx = await db.transaction();
+        await trx.raw('SELECT pg_advisory_xact_lock(860037)');
         let record = await trx('aldi_weekly_stock_inputs')
             .where({ article_number: artNo, year: parseInt(year, 10), week_number: parseInt(week_number, 10) })
             .first()
             .forUpdate();
-        
+
         const data = {};
         const fields = ['initial_stock', 'inc_wed', 'inc_thu', 'inc_fri', 'inc_sat', 'inc_sun', 'inc_mon', 'inc_tue'];
-        
+
         for (const f of fields) {
             if (payload[f] !== undefined) {
-                data[f] = parseFloat(payload[f]) || 0;
+                const value = payload[f] === '' ? 0 : Number(payload[f]);
+                if (!Number.isFinite(value) || value < 0) throw new Error('Invalid stock quantity');
+                data[f] = value;
             }
         }
 
@@ -341,7 +327,7 @@ router.post('/stock', async (req, res) => {
                 ...data
             });
         }
-        
+
         await trx.commit();
         res.json({ success: true });
     } catch (err) {
