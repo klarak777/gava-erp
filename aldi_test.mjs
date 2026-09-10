@@ -55,8 +55,7 @@ export function renderAldiRendelesek(container, windowManager) {
     // Heti lekötés state
     hetiLekotesYear: new Date().getFullYear(),
     hetiLekotesSelectedWeek: null,
-    hetiLekotesWeeks: [],
-    hetiLekotesData: { commitment: null, items: [], stocks: [], daily_orders: [], week_dates: [] },
+    hetiLekotesData: { commitment: null, items: [], stocks: [] },
     hetiLekotesIsLoading: false,
     
     // Komissió state
@@ -314,12 +313,7 @@ export function renderAldiRendelesek(container, windowManager) {
   // ─── Fő render ────────────────────────────────────────────────────────────────
 
   function renderModule() {
-    // Görgő és fókusz mentése újra-renderelés előtt
-    const savedContainerScrollTop = container ? container.scrollTop : 0;
-    const savedContainerScrollLeft = container ? container.scrollLeft : 0;
-    const savedWinScrollY = window.scrollY;
-    const savedWinScrollX = window.scrollX;
-
+    // Fókusz mentése újra-renderelés előtt
     const activeEl = document.activeElement;
     let focusSelector = null;
     let selectionStart = null;
@@ -330,8 +324,6 @@ export function renderAldiRendelesek(container, windowManager) {
         focusSelector = '#' + activeEl.id;
       } else if (activeEl.dataset && activeEl.dataset.index && activeEl.dataset.field) {
         focusSelector = `input[data-index="${activeEl.dataset.index}"][data-field="${activeEl.dataset.field}"]`;
-      } else if (activeEl.dataset && activeEl.dataset.article && activeEl.dataset.field) {
-        focusSelector = `input[data-article="${activeEl.dataset.article}"][data-field="${activeEl.dataset.field}"]`;
       }
       if (focusSelector && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
         try {
@@ -399,13 +391,6 @@ export function renderAldiRendelesek(container, windowManager) {
         }
       }
     }
-
-    // Görgő visszaállítása
-    if (container) {
-      container.scrollTop = savedContainerScrollTop;
-      container.scrollLeft = savedContainerScrollLeft;
-    }
-    window.scrollTo(savedWinScrollX, savedWinScrollY);
   }
 
   // ─── Napi rendelés fül ────────────────────────────────────────────────────────
@@ -499,19 +484,18 @@ export function renderAldiRendelesek(container, windowManager) {
 
   // ─── Heti lekötés fül ─────────────────────────────────────────────────────────
 
-  function renderHetiLekotesHtml() {
+    function renderHetiLekotesHtml() {
     if (state.hetiLekotesIsLoading) {
       return `<div style="padding:40px; text-align:center; color:#64748b; font-size:14px;">⏳ Lekötés adatok betöltése...</div>`;
     }
 
-    const buildHetiLekotesWeekOptions = () => {
-      if (state.hetiLekotesWeeks.length === 0) {
-        return '<option value="">-- Nincs feltöltött hét --</option>';
+    const buildWeekOptions = () => {
+      let opts = '<option value="">Válassz hetet...</option>';
+      for (let i = 1; i <= 52; i++) {
+        const selected = (state.hetiLekotesSelectedWeek == i) ? 'selected' : '';
+        opts += `<option value="${i}" ${selected}>KW${i}</option>`;
       }
-      return state.hetiLekotesWeeks.map(w => {
-        const selected = (state.hetiLekotesSelectedWeek == w) ? 'selected' : '';
-        return `<option value="${w}" ${selected}>KW${w}</option>`;
-      }).join('');
+      return opts;
     };
 
     const days = [
@@ -536,7 +520,7 @@ export function renderAldiRendelesek(container, windowManager) {
         productGroups[pid] = {
            product_id: item.product_id,
            display_name: item.display_name,
-           product_name: item.product_name,
+           product_name: item.product_name, // Ezt a backendről kapjuk a JOIN után
            action_period: null,
            total_action: 0,
            total_normal: 0,
@@ -553,56 +537,45 @@ export function renderAldiRendelesek(container, windowManager) {
     // Helper: calculate distribution percentage
     function getEstimatedDistribution(totalAction, totalNormal, actionStr) {
       let result = { wed: 0, thu: 0, fri: 0, sat: 0, sun: 0, mon: 0, tue: 0 };
+      
+      // We parse the exact action period dates
+      // Pl: 13.08. - 16.08.
       let actionDays = [];
-      let actionDuration = 0;
-
       if (actionStr) {
          let m = actionStr.match(/(\d{2})\.(\d{2})\.\s*-\s*(\d{2})\.(\d{2})\./);
          if (m) {
-             // Kiszámoljuk az akció hosszát fix szökőévvel, hogy a napok száma stabil legyen
-             const start = new Date(`2024-${m[2]}-${m[1]}T00:00:00Z`);
-             const end = new Date(`2024-${m[4]}-${m[3]}T00:00:00Z`);
-             actionDuration = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
-             
-             // Kiszámoljuk a valós napokat a színezéshez (itt már az évet is használjuk)
              const syy = state.hetiLekotesYear || new Date().getFullYear();
-             const realStart = new Date(`${syy}-${m[2]}-${m[1]}`);
-             const realEnd = new Date(`${syy}-${m[4]}-${m[3]}`);
+             const start = new Date(`${syy}-${m[2]}-${m[1]}`);
+             const end = new Date(`${syy}-${m[4]}-${m[3]}`);
              for (let i = 0; i < 7; i++) {
                  if (!weekDates[i]) continue;
                  const dayDate = new Date(weekDates[i]);
-                 if (dayDate >= realStart && dayDate <= realEnd) {
+                 if (dayDate >= start && dayDate <= end) {
                      actionDays.push(days[i].key);
                  }
              }
          }
       }
       
-      const hasAction = actionDuration > 0;
+      const hasAction = actionDays.length > 0;
+      const isActionWedSat = hasAction && actionDays.includes('wed') && actionDays.includes('sat') && !actionDays.includes('sun');
+      const isActionSunTue = hasAction && actionDays.includes('sun') && actionDays.includes('tue');
+      const isActionFriSat = hasAction && actionDays.includes('fri') && actionDays.includes('sat') && !actionDays.includes('wed');
       
-      if (hasAction && totalAction > 0) {
-          if (actionDuration === 4) {
-              // Szerda-Szombat akció (4 napos)
-              result.wed = totalAction * 0.30;
-              result.thu = totalAction * 0.30;
-              result.fri = totalAction * 0.22;
-              result.sat = totalAction * 0.18;
-          } else if (actionDuration === 3) {
-              // Vasárnap-Kedd akció (3 napos)
-              result.sun = totalAction * 0.40;
-              result.mon = totalAction * 0.40;
-              result.tue = totalAction * 0.20;
-          } else if (actionDuration === 2) {
-              // Péntek-Szombat akció (2 napos)
-              result.fri = totalAction * 0.70;
-              result.sat = totalAction * 0.30;
-          } else {
-              // Ismeretlen hosszúságú akció esetén egyenletes elosztás az akciós napokon
-              if (actionDays.length > 0) {
-                  const split = totalAction / actionDays.length;
-                  actionDays.forEach(d => result[d] = split);
-              }
-          }
+      if (isActionWedSat && totalAction > 0) {
+          result.wed = totalAction * 0.30;
+          result.thu = totalAction * 0.30;
+          result.fri = totalAction * 0.22;
+          result.sat = totalAction * 0.18;
+      } else if (isActionSunTue && totalAction > 0) {
+          result.sun = totalAction * 0.40;
+          result.mon = totalAction * 0.40;
+          result.tue = totalAction * 0.20;
+      } else if (isActionFriSat && totalAction > 0) {
+          result.fri = totalAction * 0.70;
+          result.sat = totalAction * 0.30;
+      } else if (totalAction > 0) {
+          result.wed = totalAction / 7; result.thu = totalAction / 7; result.fri = totalAction / 7; result.sat = totalAction / 7; result.sun = totalAction / 7; result.mon = totalAction / 7; result.tue = totalAction / 7;
       }
 
       if (totalNormal > 0) {
@@ -623,7 +596,7 @@ export function renderAldiRendelesek(container, windowManager) {
     let keszletRows = '';
 
     Object.values(productGroups).forEach(pg => {
-       const stockInput = (state.hetiLekotesData.stocks || []).find(s => s.article_number == pg.display_name || (s.product_id && s.product_id == pg.product_id)) || {};
+       const stockInput = (state.hetiLekotesData.stocks || []).find(s => s.product_id == pg.product_id) || {};
        const { result: distribution, actionDays } = getEstimatedDistribution(pg.total_action, pg.total_normal, pg.action_period);
        
        let cells = '';
@@ -633,54 +606,45 @@ export function renderAldiRendelesek(container, windowManager) {
        
        days.forEach((day, index) => {
          const dayDateStr = weekDates[index];
+         const isFuture = dayDateStr && dayDateStr > todayStr;
+         
          const isActionDay = actionDays.includes(day.key);
+         const bg = isActionDay ? '#fef08a' : ''; // okkersárga háttér
+         
+         let rendeltStr = '-';
+         let becsultStr = '-';
          
          const incKey = 'inc_' + day.key;
          const erkezo = parseFloat(stockInput[incKey]) || 0;
          let hiany = 0;
 
-         const orderObj = dailyOrders.find(o => o.date === dayDateStr && o.article_number === pg.display_name);
-         const rendeltNum = orderObj ? orderObj.total : undefined;
-         const becsultNum = distribution[day.key];
-         
-         const levonas = rendeltNum !== undefined ? rendeltNum : becsultNum;
-         futoKeszlet = futoKeszlet + erkezo - levonas;
-         hiany = futoKeszlet < 0 ? Math.abs(futoKeszlet) : 0;
-         
-         const isCurrentWeek = weekDates.includes(todayStr);
-         const isPastDay = isCurrentWeek && dayDateStr < todayStr;
-         
-         let cellBg = isActionDay ? '#bbf7d0' : '#ffffff';
-         let textColor = '#0f172a';
-         let disabledInput = '';
-         
-         let rendeltStr = rendeltNum !== undefined ? rendeltNum : '-';
-         let becsultStr = becsultNum || 0;
-         let hianyStr = hiany > 0 ? Math.round(hiany) : '';
-         let erkezoVal = stockInput[incKey] !== undefined && stockInput[incKey] !== null ? stockInput[incKey] : '';
-
-         if (isPastDay) {
-            cellBg = '#f1f5f9';
-            textColor = '#94a3b8';
-            rendeltStr = '-';
-            becsultStr = '-';
-            hianyStr = '-';
-            disabledInput = 'disabled';
+         if (!isFuture) {
+             const orderObj = dailyOrders.find(o => o.date === dayDateStr && o.article_number === pg.display_name);
+             const rendeltNum = orderObj ? orderObj.total : undefined;
+             const becsultNum = distribution[day.key];
+             
+             rendeltStr = rendeltNum !== undefined ? rendeltNum : '-';
+             becsultStr = becsultNum || 0;
+             
+             const levonas = rendeltNum !== undefined ? rendeltNum : becsultNum;
+             futoKeszlet = futoKeszlet + erkezo - levonas;
+             hiany = futoKeszlet < 0 ? Math.abs(futoKeszlet) : 0;
+         } else {
+             // Jövőbeli nap, csak érkező készlet lehet, de levonás nem
+             // Kérés: a táblázatban egyáltalán ne látszódjon a becsült szám (kötőjel)
          }
          
          cells += `
-           <td style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:${cellBg}; color:${textColor}; font-weight:${isActionDay && !isPastDay ? 'bold' : 'normal'};">${rendeltStr}</td>
-           <td style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:${cellBg}; color:${textColor}; font-weight:${isActionDay && !isPastDay ? 'bold' : 'normal'};">${becsultStr}</td>
+           <td style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:${bg}">${rendeltStr}</td>
+           <td style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:${bg}; color:${isActionDay ? '#16a34a' : '#64748b'}; font-weight:${isActionDay ? 'bold' : 'normal'};">${becsultStr}</td>
          `;
          
-         let keszletBg = isPastDay ? '#f1f5f9' : (isActionDay ? '#f0fdf4' : '#ffffff');
-         
          keszletCells += `
-           <td style="padding:8px; border:1px solid #e2e8f0; background:${keszletBg};">
-             <input type="number" class="lekotes-stock-input" data-article="${pg.display_name}" data-field="${incKey}" value="${erkezoVal}" ${disabledInput} style="width:50px; text-align:center; padding:4px; border:1px solid #cbd5e1; border-radius:4px; font-size:12px; color:${isPastDay ? '#94a3b8' : '#0f172a'}; background:transparent;">
+           <td style="padding:8px; border:1px solid #e2e8f0;">
+             <input type="number" class="lekotes-stock-input" data-pid="${pg.product_id}" data-field="${incKey}" value="${erkezo || ''}" style="width:50px; text-align:center; padding:4px; border:1px solid #cbd5e1; border-radius:4px; font-size:12px;">
            </td>
-           <td style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:${keszletBg}; color:${isPastDay ? '#94a3b8' : '#ef4444'}; font-weight:${isPastDay ? 'normal' : 'bold'};">
-             ${hianyStr}
+           <td style="padding:8px; border:1px solid #e2e8f0; text-align:center; color:#ef4444; font-weight:bold;">
+             ${hiany > 0 ? Math.round(hiany) : ''}
            </td>
          `;
        });
@@ -688,19 +652,19 @@ export function renderAldiRendelesek(container, windowManager) {
        const termekNev = pg.product_name ? pg.product_name : `⚠️ ${pg.display_name}`;
 
        lekotesRows += `
-         <tr style="background:#fff; color:#0f172a;">
-           <td style="padding:8px; border:1px solid #e2e8f0; font-weight:600; background:#dcfce7; color:#0f172a;">${termekNev}</td>
-           <td style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:#fde047; color:#0f172a; font-weight:700;">${pg.action_period || '-'}</td>
-           <td style="padding:8px; border:1px solid #e2e8f0; text-align:center; font-weight:bold; color:#0f172a;">${pg.total_action || pg.total_normal || '-'}</td>
+         <tr style="background:#fff;">
+           <td style="padding:8px; border:1px solid #e2e8f0; font-weight:600; color:#16a34a;">${termekNev}</td>
+           <td style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:#d97706; color:#fff; font-weight:bold;">${pg.action_period || '-'}</td>
+           <td style="padding:8px; border:1px solid #e2e8f0; text-align:center; font-weight:bold;">${pg.total_action || pg.total_normal || '-'}</td>
            ${cells}
          </tr>
        `;
        
        keszletRows += `
-         <tr style="background:#fff; color:#0f172a;">
-           <td style="padding:8px; border:1px solid #e2e8f0; font-weight:600; background:#dcfce7; color:#0f172a;">${termekNev}</td>
+         <tr style="background:#fff;">
+           <td style="padding:8px; border:1px solid #e2e8f0; font-weight:600; color:#16a34a;">${termekNev}</td>
            <td style="padding:8px; border:1px solid #e2e8f0;">
-             <input type="number" class="lekotes-stock-input" data-article="${pg.display_name}" data-field="initial_stock" value="${stockInput.initial_stock !== undefined && stockInput.initial_stock !== null ? stockInput.initial_stock : ''}" style="width:60px; text-align:center; padding:4px; border:1px solid #cbd5e1; border-radius:4px; font-size:12px; color:#0f172a; background:transparent;">
+             <input type="number" class="lekotes-stock-input" data-pid="${pg.product_id}" data-field="initial_stock" value="${stockInput.initial_stock || ''}" style="width:60px; text-align:center; padding:4px; border:1px solid #cbd5e1; border-radius:4px; font-size:12px;">
            </td>
            ${keszletCells}
          </tr>
@@ -725,14 +689,15 @@ export function renderAldiRendelesek(container, windowManager) {
             <div style="display:flex; align-items:center; gap:8px;">
               <label style="font-size:13px; font-weight:600; color:#475569;">Hét:</label>
               <select id="aldi-lekotes-week-select" style="padding:6px 12px; border-radius:6px; border:1px solid #cbd5e1; font-size:13px; outline:none; cursor:pointer; min-width:140px;">
-                ${buildHetiLekotesWeekOptions()}
+                ${buildWeekOptions()}
               </select>
             </div>
           </div>
           <div style="display:flex; gap:12px;">
-             <button id="aldi-lekotes-upload-btn" style="height:34px; padding:0 18px; border-radius:20px; font-size:13px; font-weight:600; background:#0284c7; color:#fff; border:none; display:inline-flex; align-items:center; gap:8px; cursor:pointer; box-shadow:0 2px 6px rgba(2,132,199,0.25); transition:background 0.2s;">
-            📤 Lekötés feltöltése
-          </button>
+             <button id="aldi-lekotes-upload-btn" style="background:#fff; border:1px solid #cbd5e1; padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600; color:#0f172a; cursor:pointer; transition:all 0.2s; box-shadow:0 1px 2px rgba(0,0,0,0.05); display:flex; align-items:center; gap:6px;">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+              Fájl feltöltése
+            </button>
           </div>
         </div>
 
@@ -795,43 +760,17 @@ export function renderAldiRendelesek(container, windowManager) {
       </div>
     `;
   }
-
-  async function fetchHetiLekotesWeeks() {
-    state.hetiLekotesIsLoading = true;
-    renderModule();
-    try {
-      const res = await fetch(`/api/v1/aldi-weekly-commitments/weeks/${state.hetiLekotesYear}`);
-      const data = await res.json();
-      state.hetiLekotesWeeks = Array.isArray(data) ? data : [];
-      if (state.hetiLekotesWeeks.length > 0 && !state.hetiLekotesSelectedWeek) {
-        state.hetiLekotesSelectedWeek = Math.max(...state.hetiLekotesWeeks);
-      }
-      if (state.hetiLekotesSelectedWeek) {
-        await fetchHetiLekotesData();
-        return;
-      }
-    } catch (err) {
-      console.error('Heti lekötés hetek hiba:', err);
-    } finally {
-      state.hetiLekotesIsLoading = false;
-      renderModule();
-    }
-  }
-
+  
   async function fetchHetiLekotesData() {
-     if (!state.hetiLekotesSelectedWeek) {
-       state.hetiLekotesIsLoading = false;
-       renderModule();
-       return;
-     }
+     if (!state.hetiLekotesSelectedWeek) return;
      state.hetiLekotesIsLoading = true;
      renderModule();
      try {
        const res = await fetch(`/api/v1/aldi-weekly-commitments/${state.hetiLekotesYear}/${state.hetiLekotesSelectedWeek}`);
        const data = await res.json();
-       state.hetiLekotesData = data || { commitment: null, items: [], stocks: [], daily_orders: [], week_dates: [] };
+       state.hetiLekotesData = data;
      } catch (err) {
-       console.error('Heti lekötés adatok betöltési hiba:', err);
+       console.error(err);
        alert('Nem sikerült betölteni a lekötés adatokat.');
      } finally {
        state.hetiLekotesIsLoading = false;
@@ -840,150 +779,71 @@ export function renderAldiRendelesek(container, windowManager) {
   }
   
   function openHetiLekotesUploadModal() {
-    const modalOverlay = document.createElement('div');
-    modalOverlay.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.4); z-index:9999; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);';
-
-    modalOverlay.innerHTML = `
-      <div style="background:#ffffff; width:92%; max-width:480px; border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,0.25); overflow:hidden; border:1px solid #cbd5e1; display:flex; flex-direction:column;">
-
-        <!-- Modal Header -->
-        <div style="padding:14px 20px; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; justify-content:space-between; background:#0f172a;">
-          <h3 style="margin:0; font-size:14px; font-weight:700; color:#f8fafc; display:flex; align-items:center; gap:8px;">📤 Heti lekötés feltöltése</h3>
-          <button id="aldi-lekotes-modal-close" style="background:none; border:none; font-size:16px; cursor:pointer; color:#94a3b8; font-weight:700;">✕</button>
-        </div>
-
-        <!-- Modal Body -->
-        <div style="padding:18px 22px; display:flex; flex-direction:column; gap:14px;">
-
-          <!-- Info banner -->
-          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; font-size:12px; color:#475569; line-height:1.5;">
-            A feltöltött fájlnév alapján a rendszer automatikusan felismeri a típust (<strong>Keresleti / Normál</strong> vagy <strong>Terv / Akciós</strong>), valamint a naptári hetet.
+    const modalHtml = `
+      <div id="aldi-lekotes-upload-modal" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(15,23,42,0.6); display:flex; align-items:center; justify-content:center; z-index:9999; padding:20px; font-family:'Inter', sans-serif; backdrop-filter:blur(4px);">
+        <div style="background:#ffffff; border-radius:16px; width:100%; max-width:400px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); overflow:hidden; transform:scale(0.95); animation:aldiModalIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;">
+          <div style="padding:20px 24px; background:#1e293b; display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="margin:0; font-size:14px; font-weight:700; color:#f8fafc; display:flex; align-items:center; gap:8px;">
+              📥 Excel feltöltése
+            </h3>
+            <button id="aldi-lekotes-modal-close" style="background:none; border:none; color:#94a3b8; font-size:18px; cursor:pointer; padding:0; line-height:1; transition:color 0.2s;">×</button>
           </div>
-
-          <!-- Drag & Drop zone -->
-          <div id="aldi-lekotes-dropzone" style="border:2px dashed #7dd3fc; background:#f0f9ff; border-radius:10px; padding:28px 16px; text-align:center; cursor:pointer; transition:all 0.2s;">
-            <input type="file" id="aldi-lekotes-file-input" accept=".xlsx,.xls" style="display:none;">
-            <div style="font-size:40px; margin-bottom:8px;">📊</div>
-            <div style="font-size:13px; font-weight:700; color:#0369a1; margin-bottom:4px;" id="aldi-lekotes-dropzone-text">
-              Húzza ide az XLSX fájlt, vagy kattintson a tallózáshoz
+          <div style="padding:24px;">
+            <div style="margin-bottom:24px; background:#f1f5f9; padding:20px; border-radius:8px; border:2px dashed #cbd5e1; text-align:center;">
+              <p style="margin:0 0 10px 0; font-size:12px; color:#64748b;">Húzd be ide a fájlt, vagy kattints a tallózáshoz.</p>
+              <input type="file" id="aldi-lekotes-up-file" accept=".xlsx,.xls" style="width:100%; font-size:13px;">
             </div>
-            <div style="font-size:11px; color:#64748b;">Normál (Keresleti) vagy Akciós (Terv) XLSX fájl</div>
+            <button id="aldi-lekotes-up-submit" style="width:100%; background:#2563eb; color:#fff; border:none; padding:12px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; transition:background 0.2s;">
+              Feltöltés és Feldolgozás
+            </button>
           </div>
-
-          <!-- Státusz üzenet -->
-          <div id="aldi-lekotes-upload-status" style="display:none; padding:10px 14px; border-radius:8px; font-size:12px; font-weight:600;"></div>
-        </div>
-
-        <!-- Modal Footer -->
-        <div style="padding:14px 22px; border-top:1px solid #e2e8f0; background:#f8fafc; display:flex; justify-content:flex-end; gap:10px;">
-          <button id="aldi-lekotes-modal-cancel" style="padding:7px 22px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid #cbd5e1; background:#ffffff; color:#334155; cursor:pointer;">
-            Mégsem
-          </button>
-          <button id="aldi-lekotes-modal-upload-btn" style="padding:7px 24px; border-radius:20px; font-size:13px; font-weight:700; border:none; background:#0284c7; color:#ffffff; cursor:pointer; display:inline-flex; align-items:center; gap:8px; box-shadow:0 2px 6px rgba(2,132,199,0.3);">
-            📤 Feltöltés
-          </button>
         </div>
       </div>
     `;
-
-    document.body.appendChild(modalOverlay);
-
-    let selectedFile = null;
-    const fileInput = modalOverlay.querySelector('#aldi-lekotes-file-input');
-    const dropzone = modalOverlay.querySelector('#aldi-lekotes-dropzone');
-    const dropzoneText = modalOverlay.querySelector('#aldi-lekotes-dropzone-text');
-    const statusDiv = modalOverlay.querySelector('#aldi-lekotes-upload-status');
-    const uploadBtn = modalOverlay.querySelector('#aldi-lekotes-modal-upload-btn');
-
-    // Fájl kezelés
-    dropzone.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', (e) => {
-      if (e.target.files && e.target.files[0]) {
-        selectedFile = e.target.files[0];
-        dropzoneText.textContent = `✅ ${selectedFile.name}`;
-        dropzone.style.border = '2px solid #22c55e';
-        dropzone.style.background = '#f0fdf4';
-      }
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    document.getElementById('aldi-lekotes-modal-close').addEventListener('click', () => {
+      document.getElementById('aldi-lekotes-upload-modal').remove();
     });
-    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.style.background = '#e0f2fe'; });
-    dropzone.addEventListener('dragleave', () => {
-      dropzone.style.background = selectedFile ? '#f0fdf4' : '#f0f9ff';
-    });
-    dropzone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-        selectedFile = e.dataTransfer.files[0];
-        dropzoneText.textContent = `✅ ${selectedFile.name}`;
-        dropzone.style.border = '2px solid #22c55e';
-        dropzone.style.background = '#f0fdf4';
-      }
-    });
-
-    modalOverlay.querySelector('#aldi-lekotes-modal-close')?.addEventListener('click', () => modalOverlay.remove());
-    modalOverlay.querySelector('#aldi-lekotes-modal-cancel')?.addEventListener('click', () => modalOverlay.remove());
-
-    uploadBtn.addEventListener('click', async () => {
-      if (!selectedFile) {
-        statusDiv.style.display = 'block';
-        statusDiv.style.background = '#fef2f2';
-        statusDiv.style.color = '#dc2626';
-        statusDiv.textContent = '❌ Kérlek válassz XLSX fájlt!';
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      if (state.hetiLekotesSelectedWeek) {
-        formData.append('week_number', state.hetiLekotesSelectedWeek);
-        formData.append('year', state.hetiLekotesYear);
-      }
-
-      uploadBtn.textContent = '⏳ Feldolgozás...';
-      uploadBtn.disabled = true;
-      statusDiv.style.display = 'none';
-
-      try {
-        const res = await fetch('/api/v1/aldi-weekly-commitments/upload', {
-          method: 'POST',
-          body: formData
-        });
-        const data = await res.json();
-        if (data.success) {
-          statusDiv.style.display = 'block';
-          statusDiv.style.background = '#f0fdf4';
-          statusDiv.style.color = '#16a34a';
-          statusDiv.textContent = `✅ ${data.message}`;
-
-          if (data.commitment && data.commitment.week_number) {
-            state.hetiLekotesSelectedWeek = data.commitment.week_number;
-            if (data.commitment.year) state.hetiLekotesYear = data.commitment.year;
-          }
-
-          setTimeout(() => {
-            modalOverlay.remove();
-            fetchHetiLekotesWeeks();
-          }, 1000);
-        } else {
-          statusDiv.style.display = 'block';
-          statusDiv.style.background = '#fef2f2';
-          statusDiv.style.color = '#dc2626';
-          statusDiv.textContent = `❌ Hiba: ${data.error || 'Ismeretlen hiba'}`;
-          uploadBtn.textContent = '📤 Feltöltés';
-          uploadBtn.disabled = false;
-        }
-      } catch (err) {
-        console.error(err);
-        statusDiv.style.display = 'block';
-        statusDiv.style.background = '#fef2f2';
-        statusDiv.style.color = '#dc2626';
-        statusDiv.textContent = '❌ Hálózati hiba a feltöltés során.';
-        uploadBtn.textContent = '📤 Feltöltés';
-        uploadBtn.disabled = false;
-      }
+    
+    document.getElementById('aldi-lekotes-up-submit').addEventListener('click', async () => {
+       const fileInput = document.getElementById('aldi-lekotes-up-file');
+       
+       if (!fileInput.files.length) return alert('Válassz fájlt!');
+       
+       const formData = new FormData();
+       formData.append('file', fileInput.files[0]);
+       
+       const btn = document.getElementById('aldi-lekotes-up-submit');
+       btn.textContent = 'Feldolgozás...';
+       btn.disabled = true;
+       
+       try {
+         const res = await fetch('/api/v1/aldi-weekly-commitments/upload', {
+           method: 'POST',
+           body: formData
+         });
+         const data = await res.json();
+         if (data.success) {
+           alert(data.message);
+           document.getElementById('aldi-lekotes-upload-modal').remove();
+           // Ha új fájl lett feltöltve, kérjük le újra az adatokat, és frissítsük a táblázatot
+           // Akár a selecteket is frissíthetjük
+           fetchHetiLekotesData(); 
+         } else {
+           alert('Hiba: ' + data.error);
+         }
+       } catch (e) {
+         console.error(e);
+         alert('Hálózati hiba.');
+       } finally {
+         btn.textContent = 'Feltöltés és Feldolgozás';
+         btn.disabled = false;
+       }
     });
   }
 
-  // ─── Heti árak fül ────────────────────────────────────────────────────────────
+// ─── Heti árak fül ────────────────────────────────────────────────────────────
 
   function buildYearOptions() {
     const currentYear = new Date().getFullYear();
@@ -2685,15 +2545,7 @@ function doExcelExport(lines, orderNo, dateStr) {
   function bindEvents() {
     // Tab switching
     wrapper.querySelector('#aldi-tab-napi')?.addEventListener('click', () => { state.activeTab = 'napi'; renderModule(); });
-    wrapper.querySelector('#aldi-tab-heti')?.addEventListener('click', () => {
-      state.activeTab = 'heti';
-      renderModule();
-      if (state.hetiLekotesWeeks.length === 0) {
-        fetchHetiLekotesWeeks();
-      } else if (state.hetiLekotesSelectedWeek && (!state.hetiLekotesData || !state.hetiLekotesData.items || state.hetiLekotesData.items.length === 0)) {
-        fetchHetiLekotesData();
-      }
-    });
+    wrapper.querySelector('#aldi-tab-heti')?.addEventListener('click', () => { state.activeTab = 'heti'; if (state.hetiLekotesSelectedWeek) fetchHetiLekotesData(); else renderModule(); });
     wrapper.querySelector('#aldi-tab-heti-arak')?.addEventListener('click', () => {
       state.activeTab = 'heti_arak';
       if (state.hetiArakWeeks.length === 0) {
@@ -2809,7 +2661,7 @@ function doExcelExport(lines, orderNo, dateStr) {
       hetiLekotesYearSelect.addEventListener('change', (e) => {
         state.hetiLekotesYear = parseInt(e.target.value, 10);
         state.hetiLekotesSelectedWeek = null;
-        fetchHetiLekotesWeeks();
+        renderModule();
       });
     }
 
@@ -2821,56 +2673,34 @@ function doExcelExport(lines, orderNo, dateStr) {
       });
     }
 
-    wrapper.querySelector('#aldi-lekotes-upload-btn')?.addEventListener('click', openHetiLekotesUploadModal);
+    wrapper.querySelector('#aldi-lekotes-upload-btn')?.addEventListener('click', () => openHetiLekotesUploadModal());
 
     wrapper.querySelectorAll('.lekotes-stock-input').forEach(input => {
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          e.target.blur();
-        }
-      });
-
       input.addEventListener('change', async (e) => {
-         const articleNo = e.target.dataset.article || e.target.dataset.pid;
+         const pid = e.target.dataset.pid;
          const field = e.target.dataset.field;
          const val = e.target.value;
          
-         // 1. Lokális state azonnali frissítése a számításokhoz
-         if (!state.hetiLekotesData) state.hetiLekotesData = {};
-         if (!state.hetiLekotesData.stocks) state.hetiLekotesData.stocks = [];
-         let stockObj = state.hetiLekotesData.stocks.find(s => s.article_number == articleNo);
-         if (!stockObj) {
-           stockObj = { article_number: articleNo, year: state.hetiLekotesYear, week_number: state.hetiLekotesSelectedWeek };
-           state.hetiLekotesData.stocks.push(stockObj);
-         }
-         stockObj[field] = val;
-
-         // 2. Újraszámolás és felület frissítése görgetési pozíció megtartásával
-         renderModule();
-
-         // 3. Mentés a szerveren háttérben
          const payload = {
-            article_number: articleNo,
+            product_id: pid,
             year: state.hetiLekotesYear,
             week_number: state.hetiLekotesSelectedWeek,
             [field]: val
          };
          
          try {
-           const res = await fetch('/api/v1/aldi-weekly-commitments/stock', {
+           await fetch('/api/v1/aldi-weekly-commitments/stock', {
              method: 'POST',
              headers: { 'Content-Type': 'application/json' },
              body: JSON.stringify(payload)
            });
-           if (!res.ok) {
-             const errData = await res.json().catch(() => ({}));
-             console.error('Készlet mentési hiba:', errData);
-           }
+           fetchHetiLekotesData();
          } catch (err) {
            console.error(err);
          }
       });
     });
+
 
     // Deviza periódus gombok
     wrapper.querySelectorAll('.aldi-arak-currency-btn').forEach(btn => {

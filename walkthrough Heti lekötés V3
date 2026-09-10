@@ -1,0 +1,44 @@
+# Heti Lekötés V3 - Fejlesztések Összefoglalója
+
+Sikeresen implementáltam a Heti Lekötés (Weekly Commitment) modul kért változtatásait, amik jelentősen megkönnyítik az adatok feltöltését, és a megjelenített adatok valós idejű, pontos számításait biztosítják.
+
+### 1. Fájlfeltöltés Egyszerűsítése
+A felületen most már egyetlen **"Fájl feltöltése"** gomb található.
+- Az Excel fájlok beolvasásánál a rendszer **automatikusan felismeri** a fájlnévből a feltöltés típusát:
+  - Ha a név tartalmazza a `Keresleti` szót, akkor **Normál feltöltésként** értelmezi.
+  - Ha a név tartalmazza a `Terv` szót, akkor **Akciós (Terv) feltöltésként** menti.
+- Szintén automatikusan kinyeri a fájlnévből a hét számot a feltüntetett dátumok (`DD.MM.YYYY`) alapján (Szerdát véve a hét kezdetének), így azt nem kell kézzel megadni.
+
+### 2. Készletmentés Logikájának Javítása
+A backend oldali készletmentés (`POST /stock`) funkció megújult. Ezentúl nem írja felül (és nem is nullázza ki) a korábban megadott készleteket a `coalesce` hiányosságaiból fakadóan. Ha csak egy adott naphoz írsz be érkező készletet, a többi nap és az aktuális készlet adatai **sértetlenek maradnak**.
+
+### 3. Tényleges "Rendelt" Értékek (Backend)
+- A "Lekötés & Rendelés" táblázatban megjelenő **Rendelt** oszlop adatai most már közvetlenül az aktuális (`current` állapotú) Napi Rendelés adatbázisból érkeznek, napra és termékre szűrve.
+- Ha egy terméknél vagy napnál nem történt megrendelés, ott továbbra is kötőjel (`-`) fog megjelenni.
+
+### 4. Precíz %-os Becslés Számolás (Kerekítve)
+A táblázat oszlopainak becsült (Becsült) adatai most már egy sokkal intelligensebb százalékos logikát használnak:
+- A táblázatban lefut egy keresés, ami összeveti a pontos naptári napokat az **Akciós időszak** dátumtartományával.
+- Az Akciós termékek a korábban megadott százalékok alapján (pl. Szerda-Szombat akció: 30%, 30%, 22%, 18%) kerekítve számolódnak a "Értékesítési előrejelzés" alapján.
+- A Normál termékek szintén a megfelelő %-os rátákkal (17%, 17%, stb.) számolódnak a "Becsült mennyiség" alapján.
+
+### 5. Jövőbeli Napok Kezelése
+A mai naphoz viszonyítva a jövőbeli napok:
+- **Kötőjellel (`-`)** jelennek meg a Rendelt és Becsült értékek mezőiben.
+- Ezekből az adatokból a Készlet lista során **nem számolunk le hiányt**, mivel azok az értékek még nem biztosak.
+
+### 6. Frontend UI Kiemelések
+- A cikkazonosító (Display) helyett a táblázat a **zöld színnel** emelt terméknevet (pl. *Natur Joghurt, 500g*) jeleníti meg, ami egyenesen a `chain_products` adattáblából kapcsolódik a fájl alapján.
+- Az **akciós napok oszlopainak háttere** világos okkersárga (sárga) lett.
+- Az akciós napokon a becsült mennyiség zöld színű és vastag, hogy még könnyebben felismerhető legyen.
+
+### 7. Automatikus Frissítés
+Minden alkalommal, amikor:
+1. Átkattintasz a **Napi rendelés** fülről a **Heti lekötés** fülre.
+2. Vagy egy új Excel fájlt töltesz fel.
+
+A lekötés táblázata automatikusan lekéri a legfrissebb napi rendelési adatokat és újra kiszámolja az elosztást anélkül, hogy oldalfrissítésre (F5) lenne szükség.
+
+---
+> [!TIP]
+> **Kérlek ellenőrizd az új "Heti lekötés" funkciót az ERP rendszerben a böngésződben.** A `npm start` háttérszervert sikeresen újraindítottam, így az új backend logika is élesedett. Kérlek írd meg, ha valami módosítást kérsz a számításokon vagy a megjelenésen!
