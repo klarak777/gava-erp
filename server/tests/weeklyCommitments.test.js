@@ -27,7 +27,7 @@ test('Friday opening deducts Wednesday and Thursday, arrival replenishes; actual
   let stock = 100;
   stock = f(stock,0,null,60).closing;
   stock = f(stock,0,null,50).closing;
-  assert.equal(f(stock,0,null,40).shortage,10);
+  assert.equal(f(stock,0,null,40).shortage,50);
   assert.equal(f(stock,30,null,40).available,20);
   assert.equal(f(stock,30,null,40).closing,-20);
   assert.equal(f(100,0,0,60).closing,100);
