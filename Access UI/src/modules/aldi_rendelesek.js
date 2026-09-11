@@ -623,8 +623,7 @@ export function renderAldiRendelesek(container, windowManager) {
          
          let rendeltStr = rendeltNum !== undefined ? Math.round(rendeltNum) : '-';
          let becsultStr = Math.round(becsultNum || 0);
-         let keszletStr = Math.round(futoKeszlet);
-         let keszletColor = futoKeszlet < 0 ? '#ef4444' : (isPastDay ? '#94a3b8' : '#0f172a');
+         let hianyStr = hiany > 0 ? Math.round(hiany) : '';
          let erkezoVal = stockInput[incKey] !== undefined && stockInput[incKey] !== null ? Math.round(Number(stockInput[incKey])) : '';
 
          if (isPastDay) {
@@ -644,8 +643,8 @@ export function renderAldiRendelesek(container, windowManager) {
            <td style="padding:8px; border:1px solid #e2e8f0; background:${keszletBg};">
              <input type="number" class="lekotes-stock-input" data-article="${pg.display_name}" data-field="${incKey}" value="${erkezoVal}" ${disabledInput} style="width:50px; text-align:center; padding:4px; border:1px solid #cbd5e1; border-radius:4px; font-size:12px; color:${isPastDay ? '#94a3b8' : '#0f172a'}; background:transparent;">
            </td>
-           <td style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:${keszletBg}; color:${keszletColor}; font-weight:${isPastDay ? 'normal' : 'bold'};">
-             ${keszletStr}
+           <td style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:${keszletBg}; color:${isPastDay ? '#94a3b8' : '#ef4444'}; font-weight:${isPastDay ? 'normal' : 'bold'};">
+             ${hianyStr}
            </td>
          `;
        });
@@ -751,7 +750,7 @@ export function renderAldiRendelesek(container, windowManager) {
                 <th colspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center;">Kedd</th>
               </tr>
               <tr style="background:#f8fafc; border-bottom:1px solid #e2e8f0;">
-                ${days.map(d => `<th style="padding:6px; border:1px solid #e2e8f0; text-align:center; font-size:11px; color:#16a34a;">Érkező</th><th style="padding:6px; border:1px solid #e2e8f0; text-align:center; font-size:11px; color:#0f172a;">Készlet</th>`).join('')}
+                ${days.map(d => `<th style="padding:6px; border:1px solid #e2e8f0; text-align:center; font-size:11px; color:#16a34a;">Érkező</th><th style="padding:6px; border:1px solid #e2e8f0; text-align:center; font-size:11px; color:#ef4444;">Hiány</th>`).join('')}
               </tr>
             </thead>
             <tbody>

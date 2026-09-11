@@ -181,5 +181,6 @@ export function estimatedDistribution(totalAction, totalNormal, period, dates, d
 export function dailyBalance(opening, incoming, actual, estimate) {
   const available = Number(opening || 0) + Number(incoming || 0);
   const consumption = actual == null ? Number(estimate || 0) : Number(actual);
-  return { available, shortage: Math.max(0, -available), closing: available - consumption };
+  const closing = available - consumption;
+  return { available, shortage: Math.max(0, -closing), closing };
 }
