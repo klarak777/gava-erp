@@ -6,7 +6,6 @@ const fs = require('fs');
 const xlsx = require('xlsx');
 const db = require('../db/db');
 const { getAldiWeekBoundaries } = require('../utils/aldiWeeklyDates');
-const crypto = require('crypto');
 
 // Konfiguráció
 const IS_WINDOWS = process.platform === 'win32';
@@ -130,6 +129,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         const sheet = workbook.Sheets[sheetName];
         const jsonData = xlsx.utils.sheet_to_json(sheet, { defval: null, header: 1 });
 
+        // A 'Display' oszlop fejlécsorát keressük (első 20 soron belül)
         let headerRowIdx = -1;
         for (let i = 0; i < Math.min(jsonData.length, 20); i++) {
             if (jsonData[i].some(cell => cell && typeof cell === 'string' && cell.toLowerCase().includes('display'))) {
@@ -144,14 +144,23 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         const displayIdx = headers.findIndex(h => typeof h === 'string' && h.toLowerCase().includes('display'));
         const actionPeriodIdx = headers.findIndex(h => typeof h === 'string' && h.toLowerCase().includes('akciós időszak'));
 
+        // Normál típusnál: 'becsült mennyiség' oszlop tartalmazza az összesített értéket
         let qtyIdx = -1;
         if (type === 'normal') {
             qtyIdx = headers.findIndex(h => typeof h === 'string' && h.toLowerCase().includes('becsült mennyiség'));
-        } else {
-            qtyIdx = headers.findIndex(h => typeof h === 'string' && h.toLowerCase().includes('értékesítési előrejelzés'));
+            if (qtyIdx === -1) throw new Error('Nem található mennyiség oszlop a normal típushoz.');
         }
-
-        if (qtyIdx === -1) throw new Error(`Nem található mennyiség oszlop a ${type} típushoz.`);
+        // Action típusnál: F-L oszlop (index 5-11) fix pozíció alapján naponta
+        // F=Csütörtök, G=Péntek, H=Szombat, I=Vasárnap, J=Hétfő, K=Kedd, L=Szerda
+        const ACTION_DAY_COLS = [
+            { col: 5, key: 'thu' }, // F
+            { col: 6, key: 'fri' }, // G
+            { col: 7, key: 'sat' }, // H
+            { col: 8, key: 'sun' }, // I
+            { col: 9, key: 'mon' }, // J
+            { col: 10, key: 'tue' }, // K
+            { col: 11, key: 'wed' }, // L
+        ];
 
         const itemsToInsert = [];
 
@@ -160,32 +169,55 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             const displayStr = row[displayIdx] ? row[displayIdx].toString().trim() : '';
             if (!displayStr) continue;
 
-            const qtyStr = row[qtyIdx];
+            const productId = null;
+            const xlsxName = nameIdx >= 0 && row[nameIdx] ? String(row[nameIdx]).trim() : null;
+            const actionPeriodStr = actionPeriodIdx !== -1 && row[actionPeriodIdx] ? row[actionPeriodIdx].toString().trim() : null;
+
             let qty = 0;
-            if (typeof qtyStr === 'number') qty = qtyStr;
-            else if (typeof qtyStr === 'string') qty = parseFloat(qtyStr.replace(/\s/g, '').replace(',', '.'));
+            let dailyValues = null;
 
-            if (!Number.isFinite(qty) || qty < 0) throw new Error('Invalid quantity: ' + displayStr);
-
-            // Map directly by ALDI item code (strict exact match)
-            const productId = null; // Canonical identity is display_name (ALDI article), not a products FK.
+            if (type === 'normal') {
+                const qtyStr = row[qtyIdx];
+                if (typeof qtyStr === 'number') qty = qtyStr;
+                else if (typeof qtyStr === 'string') qty = parseFloat(qtyStr.replace(/\s/g, '').replace(',', '.'));
+                if (!Number.isFinite(qty) || qty < 0) throw new Error('Invalid quantity: ' + displayStr);
+            } else {
+                // Action típus: naponta kinyerjük az F-L (index 5-11) oszlop értékeit
+                dailyValues = {};
+                let total = 0;
+                for (const { col, key } of ACTION_DAY_COLS) {
+                    const cellVal = row[col];
+                    let v = 0;
+                    if (typeof cellVal === 'number') v = cellVal;
+                    else if (typeof cellVal === 'string') v = parseFloat(cellVal.replace(/\s/g, '').replace(',', '.')) || 0;
+                    if (v < 0) v = 0;
+                    dailyValues[key] = v;
+                    total += v;
+                }
+                qty = total;
+            }
 
             itemsToInsert.push({
                 commitment_id: commitment.id,
-                product_id: productId, // can be null if missing
+                product_id: productId,
                 type: type,
-                display_name: displayStr, // ALDI article number
-                xlsx_product_name: nameIdx >= 0 && row[nameIdx] ? String(row[nameIdx]).trim() : null,
-                action_period: actionPeriodIdx !== -1 && row[actionPeriodIdx] ? row[actionPeriodIdx].toString().trim() : null,
-                total_forecast_cartons: qty
+                display_name: displayStr,
+                xlsx_product_name: xlsxName,
+                action_period: actionPeriodStr,
+                total_forecast_cartons: qty,
+                daily_values: dailyValues ? JSON.stringify(dailyValues) : null
             });
         }
 
         if (!itemsToInsert.length) throw new Error('No valid product rows');
-        const suffix = type === 'normal' ? 'HLK' : 'HLA';
-        const revision = Date.now() + '-' + crypto.randomBytes(4).toString('hex');
-        const fileName = revision + ' ' + week_str + ' ' + suffix + '.xlsx';
-        fs.writeFileSync(path.join(targetDir, fileName), req.file.buffer, { flag: 'wx' });
+
+        // Fájlnév: emberi olvashatóság, revision nélkül, ha már létezik, felülírjuk
+        const filePrefix = type === 'normal'
+            ? `Keresleti adatok ${week_str}`
+            : `Rendelési terv ${week_str}`;
+        const fileName = `${filePrefix}.xlsx`;
+        const filePath = path.join(targetDir, fileName);
+        fs.writeFileSync(filePath, req.file.buffer);
         await trx('aldi_weekly_commitments').where({ id: commitment.id }).update({ [type === 'normal' ? 'normal_file_path' : 'action_file_path']: fileName });
         await trx('aldi_weekly_commitment_items').where({ commitment_id: commitment.id, type }).delete();
         await trx('aldi_weekly_commitment_items').insert(itemsToInsert);

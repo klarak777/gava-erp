@@ -542,6 +542,7 @@ export function renderAldiRendelesek(container, windowManager) {
            action_period: null,
            total_action: 0,
            actionPeriods: {},
+           actionDailyValues: {},
            total_normal: 0,
         };
       }
@@ -550,13 +551,17 @@ export function renderAldiRendelesek(container, windowManager) {
         productGroups[pid].total_action += Number(item.total_forecast_cartons);
         const periods = productGroups[pid].actionPeriods;
         periods[item.action_period || ''] = (periods[item.action_period || ''] || 0) + Number(item.total_forecast_cartons);
+        if (item.daily_values) {
+          const dv = typeof item.daily_values === 'string' ? JSON.parse(item.daily_values) : item.daily_values;
+          productGroups[pid].actionDailyValues[item.action_period || ''] = dv;
+        }
       } else {
         productGroups[pid].total_normal += Number(item.total_forecast_cartons);
       }
     });
 
     // Helper: calculate distribution percentage
-    function getEstimatedDistribution(a, n, p) { return estimatedDistribution(a, n, p, weekDates); }
+    function getEstimatedDistribution(a, n, p, dailyValues) { return estimatedDistribution(a, n, p, weekDates, dailyValues || null); }
 
     let lekotesRows = '';
     let keszletRows = '';
@@ -566,7 +571,8 @@ export function renderAldiRendelesek(container, windowManager) {
        const { result: distribution } = getEstimatedDistribution(0, pg.total_normal, null);
        const actionDays = [];
        for (const [period, quantity] of Object.entries(pg.actionPeriods)) {
-         const estimate = getEstimatedDistribution(quantity, 0, period);
+         const dailyValues = pg.actionDailyValues[period] || null;
+         const estimate = getEstimatedDistribution(quantity, 0, period, dailyValues);
          for (const key of estimate.actionDays) { distribution[key] = estimate.result[key]; if (!actionDays.includes(key)) actionDays.push(key); }
        }
        pg.action_period = Object.keys(pg.actionPeriods).join(', ');
@@ -599,10 +605,10 @@ export function renderAldiRendelesek(container, windowManager) {
          let textColor = '#0f172a';
          let disabledInput = '';
          
-         let rendeltStr = rendeltNum !== undefined ? rendeltNum : '-';
-         let becsultStr = becsultNum || 0;
+         let rendeltStr = rendeltNum !== undefined ? Math.round(rendeltNum) : '-';
+         let becsultStr = Math.round(becsultNum || 0);
          let hianyStr = hiany > 0 ? Math.round(hiany) : '';
-         let erkezoVal = stockInput[incKey] !== undefined && stockInput[incKey] !== null ? stockInput[incKey] : '';
+         let erkezoVal = stockInput[incKey] !== undefined && stockInput[incKey] !== null ? Math.round(Number(stockInput[incKey])) : '';
 
          if (isPastDay) {
             cellBg = '#f1f5f9';
