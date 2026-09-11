@@ -681,6 +681,9 @@ export function renderAldiRendelesek(container, windowManager) {
              <button id="aldi-lekotes-upload-btn" style="height:34px; padding:0 18px; border-radius:20px; font-size:13px; font-weight:600; background:#0284c7; color:#fff; border:none; display:inline-flex; align-items:center; gap:8px; cursor:pointer; box-shadow:0 2px 6px rgba(2,132,199,0.25); transition:background 0.2s;">
             📤 Lekötés feltöltése
           </button>
+          <button id="aldi-lekotes-reprocess-btn" title="Visszamenőleges újrafeldolgozás: a szerveren tárolt Excel fájlokból pótolja a hiányzó napi adatokat" style="height:34px; padding:0 14px; border-radius:20px; font-size:13px; font-weight:600; background:#f59e0b; color:#fff; border:none; display:inline-flex; align-items:center; gap:6px; cursor:pointer; box-shadow:0 2px 6px rgba(245,158,11,0.25); transition:background 0.2s;">
+            🔄 Adatok újrafeldolgozása
+          </button>
           </div>
         </div>
 
@@ -2780,6 +2783,32 @@ function doExcelExport(lines, orderNo, dateStr) {
     }
 
     wrapper.querySelector('#aldi-lekotes-upload-btn')?.addEventListener('click', openHetiLekotesUploadModal);
+
+    wrapper.querySelector('#aldi-lekotes-reprocess-btn')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const origText = btn.innerHTML;
+      btn.innerHTML = '⏳ Feldolgozás...';
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/v1/aldi-weekly-commitments/reprocess', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          const details = (data.details || []).map(d =>
+            `KW${d.week} (${d.year}): ${d.status === 'ok' ? `${d.updated_rows} sor frissítve` : d.status}`
+          ).join('\n');
+          alert(`✅ ${data.message}\n\nRészletek:\n${details}`);
+          await fetchHetiLekotesData();
+        } else {
+          alert(`❌ Hiba: ${data.error || 'Ismeretlen hiba'}`);
+        }
+      } catch (err) {
+        console.error('Reprocess error:', err);
+        alert('❌ Hálózati hiba az újrafeldolgozás során.');
+      } finally {
+        btn.innerHTML = origText;
+        btn.disabled = false;
+      }
+    });
 
     wrapper.querySelectorAll('.lekotes-stock-input').forEach(input => {
       input.addEventListener('keydown', (e) => {

@@ -369,4 +369,112 @@ router.post('/stock', async (req, res) => {
     }
 });
 
+// --- Visszamenőleges újrafeldolgozás: meglévő action Excel-ekből daily_values pótlása ---
+router.post('/reprocess', async (req, res) => {
+    const ACTION_DAY_COLS = [
+        { col: 5, key: 'thu' }, // F = Csütörtök
+        { col: 6, key: 'fri' }, // G = Péntek
+        { col: 7, key: 'sat' }, // H = Szombat
+        { col: 8, key: 'sun' }, // I = Vasárnap
+        { col: 9, key: 'mon' }, // J = Hétfő
+        { col: 10, key: 'tue' }, // K = Kedd
+        { col: 11, key: 'wed' }, // L = Szerda
+    ];
+
+    try {
+        // 1. Lekérjük az összes commitment-et amelyhez action fájl van feltöltve
+        const commitments = await db('aldi_weekly_commitments')
+            .whereNotNull('action_file_path')
+            .select('id', 'year', 'week_number', 'action_file_path');
+
+        let totalUpdated = 0;
+        let totalSkipped = 0;
+        const results = [];
+
+        for (const commitment of commitments) {
+            const filePath = path.join(ALDI_BASE_PATH, String(commitment.year), commitment.action_file_path);
+
+            if (!fs.existsSync(filePath)) {
+                results.push({ week: commitment.week_number, year: commitment.year, status: 'fájl_nem_található', path: filePath });
+                totalSkipped++;
+                continue;
+            }
+
+            // 2. Excel kiolvasása
+            const buffer = fs.readFileSync(filePath);
+            const workbook = xlsx.read(buffer, { type: 'buffer' });
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+            const jsonData = xlsx.utils.sheet_to_json(sheet, { defval: null, header: 1 });
+
+            // 3. Header sor megkeresése ('Display' oszlop alapján)
+            let headerRowIdx = -1;
+            for (let i = 0; i < Math.min(jsonData.length, 20); i++) {
+                if (jsonData[i].some(cell => cell && typeof cell === 'string' && cell.toLowerCase().includes('display'))) {
+                    headerRowIdx = i;
+                    break;
+                }
+            }
+
+            if (headerRowIdx === -1) {
+                results.push({ week: commitment.week_number, year: commitment.year, status: 'nincs_display_oszlop' });
+                totalSkipped++;
+                continue;
+            }
+
+            const headers = jsonData[headerRowIdx];
+            const displayIdx = headers.findIndex(h => typeof h === 'string' && h.toLowerCase().includes('display'));
+            const actionPeriodIdx = headers.findIndex(h => typeof h === 'string' && h.toLowerCase().includes('akciós időszak'));
+
+            // 4. Soronként napi értékek kiszámítása és DB frissítés
+            let weekUpdated = 0;
+            for (let i = headerRowIdx + 1; i < jsonData.length; i++) {
+                const row = jsonData[i];
+                const displayStr = row[displayIdx] ? row[displayIdx].toString().trim() : '';
+                if (!displayStr) continue;
+
+                const dailyValues = {};
+                for (const { col, key } of ACTION_DAY_COLS) {
+                    const cellVal = row[col];
+                    let v = 0;
+                    if (typeof cellVal === 'number') v = cellVal;
+                    else if (typeof cellVal === 'string') v = parseFloat(cellVal.replace(/\s/g, '').replace(',', '.')) || 0;
+                    if (v < 0) v = 0;
+                    dailyValues[key] = v;
+                }
+                const total = Object.values(dailyValues).reduce((s, v) => s + v, 0);
+
+                const actionPeriodStr = actionPeriodIdx !== -1 && row[actionPeriodIdx]
+                    ? row[actionPeriodIdx].toString().trim() : null;
+
+                // Csak azokat frissítjük ahol daily_values NULL volt
+                const updated = await db('aldi_weekly_commitment_items')
+                    .where({ commitment_id: commitment.id, type: 'action', display_name: displayStr })
+                    .whereNull('daily_values')
+                    .update({
+                        daily_values: JSON.stringify(dailyValues),
+                        total_forecast_cartons: total,
+                        ...(actionPeriodStr ? { action_period: actionPeriodStr } : {})
+                    });
+                weekUpdated += updated;
+            }
+
+            totalUpdated += weekUpdated;
+            results.push({ week: commitment.week_number, year: commitment.year, status: 'ok', updated_rows: weekUpdated });
+        }
+
+        res.json({
+            success: true,
+            message: `Újrafeldolgozás kész. Összesen ${totalUpdated} sor frissítve.`,
+            total_updated: totalUpdated,
+            total_skipped: totalSkipped,
+            details: results
+        });
+    } catch (err) {
+        console.error('Reprocess error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
+
