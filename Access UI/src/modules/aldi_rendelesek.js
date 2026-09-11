@@ -625,7 +625,7 @@ export function renderAldiRendelesek(container, windowManager) {
          
          let rendeltStr = rendeltNum !== undefined ? Math.round(rendeltNum) : '-';
          let becsultStr = Math.round(becsultNum || 0);
-         let hianyStr = hiany > 0 ? Math.round(hiany) : '';
+         let hianyStr = hiany > 0 ? `-${Math.round(hiany)}` : '';
          let erkezoVal = stockInput[incKey] !== undefined && stockInput[incKey] !== null ? Math.round(Number(stockInput[incKey])) : '';
 
          if (isPastDay) {
@@ -669,10 +669,10 @@ export function renderAldiRendelesek(container, windowManager) {
            <td style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:#fef9c3;">
              <input type="number" step="1" min="0" aria-label="Nyitó raktárkészlet" class="lekotes-stock-input" data-article="${pg.display_name}" data-field="initial_stock" value="${stockInput.initial_stock !== undefined && stockInput.initial_stock !== null ? Math.round(Number(stockInput.initial_stock)) : ''}" style="width:75px; text-align:center; padding:4px; border:1px solid #ca8a04; border-radius:4px; font-size:12px; color:#0f172a; background:#ffffff; font-weight:700;">
            </td>
+           ${keszletCells}
            <td style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:#fef08a;">
              <div class="lekotes-current-stock" style="font-size:13px; font-weight:700; color:${displayedStock < 0 ? '#dc2626' : '#0f172a'};">${displayedStock}</div>
            </td>
-           ${keszletCells}
          </tr>
        `;
     });
@@ -747,7 +747,6 @@ export function renderAldiRendelesek(container, windowManager) {
               <tr style="background:#f1f5f9; border-bottom:2px solid #cbd5e1;">
                 <th rowspan="2" style="padding:8px; border:1px solid #e2e8f0;">Termék</th>
                 <th rowspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:#fef08a; color:#0f172a; font-weight:700;">Nyitó raktárkészlet</th>
-                <th rowspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:#fde047; color:#0f172a; font-weight:700;">Záró raktárkészlet</th>
                 <th colspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center;">Szerda</th>
                 <th colspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center;">Csütörtök</th>
                 <th colspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center;">Péntek</th>
@@ -755,6 +754,7 @@ export function renderAldiRendelesek(container, windowManager) {
                 <th colspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center;">Vasárnap</th>
                 <th colspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center;">Hétfő</th>
                 <th colspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center;">Kedd</th>
+                <th rowspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:#fde047; color:#0f172a; font-weight:700;">Záró raktárkészlet</th>
               </tr>
               <tr style="background:#f8fafc; border-bottom:1px solid #e2e8f0;">
                 ${days.map(d => `<th style="padding:6px; border:1px solid #e2e8f0; text-align:center; font-size:11px; color:#16a34a;">Érkező</th><th style="padding:6px; border:1px solid #e2e8f0; text-align:center; font-size:11px; color:#ef4444;">Hiány</th>`).join('')}

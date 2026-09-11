@@ -48,3 +48,26 @@ test('actual stock cell changes with estimates, actual orders, zero and arrivals
   state.hetiLekotesData.daily_orders[0].total=200;
   assert.equal(displayed(),1379);
 });
+
+test('shortage is displayed with negative sign and closing stock is at the end after tuesday', async () => {
+  const util = await helpers;
+  const ui = fs.readFileSync(path.join(__dirname, '../../Access UI/src/modules/aldi_rendelesek.js'), 'utf8');
+  const start = ui.indexOf('  function renderHetiLekotesHtml()');
+  const end = ui.indexOf('  async function fetchHetiLekotesWeeks()',start);
+  const state = {
+    hetiLekotesYear:2026, hetiLekotesSelectedWeek:37, hetiLekotesWeeks:[37],
+    hetiLekotesData:{
+      items:[{type:'normal',display_name:'530766',product_name:'Korte',total_forecast_cartons:1000}],
+      stocks:[{article_number:'530766',initial_stock:0}],
+      daily_orders:[],week_dates:dates
+    }
+  };
+  const render = vm.runInNewContext(ui.slice(start,end)+'\nrenderHetiLekotesHtml', {
+    ...util, state, budapestToday:()=> '2026-09-11', buildYearOptions:()=>''
+  });
+  const html = render();
+  assert.match(html, />\s*-170\s*</);
+  const keddIdx = html.indexOf('>Kedd</th>');
+  const zaroHeaderIdx = html.indexOf('>Záró raktárkészlet</th>');
+  assert.ok(zaroHeaderIdx > keddIdx, 'Záró raktárkészlet header should be after Kedd');
+});
