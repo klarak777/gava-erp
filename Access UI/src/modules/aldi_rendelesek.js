@@ -670,7 +670,7 @@ export function renderAldiRendelesek(container, windowManager) {
              <input type="number" step="1" min="0" aria-label="Nyitó raktárkészlet" class="lekotes-stock-input" data-article="${pg.display_name}" data-field="initial_stock" value="${stockInput.initial_stock !== undefined && stockInput.initial_stock !== null ? Math.round(Number(stockInput.initial_stock)) : ''}" style="width:75px; text-align:center; padding:4px; border:1px solid #ca8a04; border-radius:4px; font-size:12px; color:#0f172a; background:#ffffff; font-weight:700;">
            </td>
            <td style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:#fef08a;">
-             <div class="lekotes-current-stock" style="font-size:16px; font-weight:700; color:${displayedStock < 0 ? '#dc2626' : '#0f172a'};">${displayedStock}</div>
+             <div class="lekotes-current-stock" style="font-size:13px; font-weight:700; color:${displayedStock < 0 ? '#dc2626' : '#0f172a'};">${displayedStock}</div>
            </td>
            ${keszletCells}
          </tr>
