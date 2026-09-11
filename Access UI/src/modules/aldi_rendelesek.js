@@ -603,7 +603,7 @@ export function renderAldiRendelesek(container, windowManager) {
          const isActionDay = actionDays.includes(day.key);
          
          const incKey = 'inc_' + day.key;
-         const erkezo = parseFloat(stockInput[incKey]) || 0;
+         const erkezo = Math.round(parseFloat(stockInput[incKey]) || 0);
          let hiany = 0;
 
          const orderObj = dailyOrders.find(o => o.date === dayDateStr && o.article_number === pg.display_name);
@@ -2836,7 +2836,8 @@ function doExcelExport(lines, orderNo, dateStr) {
       input.addEventListener('change', async (e) => {
          const articleNo = e.target.dataset.article || e.target.dataset.pid;
          const field = e.target.dataset.field;
-         const val = e.target.value;
+         const rawVal = e.target.value.trim();
+         const val = rawVal !== '' && !isNaN(Number(rawVal)) ? Math.round(Number(rawVal)) : rawVal;
          
          // 1. Lokális state azonnali frissítése a számításokhoz
          if (!state.hetiLekotesData) state.hetiLekotesData = {};

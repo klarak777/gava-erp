@@ -337,7 +337,7 @@ router.post('/stock', async (req, res) => {
 
         for (const f of fields) {
             if (payload[f] !== undefined) {
-                const value = payload[f] === '' ? 0 : Number(payload[f]);
+                const value = payload[f] === '' ? 0 : Math.round(Number(payload[f]));
                 if (!Number.isFinite(value) || value < 0) throw new Error('Invalid stock quantity');
                 data[f] = value;
             }
