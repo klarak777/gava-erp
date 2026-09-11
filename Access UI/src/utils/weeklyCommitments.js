@@ -184,3 +184,13 @@ export function dailyBalance(opening, incoming, actual, estimate) {
   const closing = available - consumption;
   return { available, shortage: Math.max(0, -closing), closing };
 }
+
+// Keep the editable weekly opening separate from the derived stock.
+// Future consumption/arrivals must not change today's displayed balance.
+export function stockAtDate(initialStock, dates, closingStocks, today) {
+  let stock = Math.round(Number(initialStock) || 0);
+  dates.forEach((date, index) => {
+    if (date <= today && closingStocks[index] != null) stock = Math.round(Number(closingStocks[index]));
+  });
+  return stock;
+}

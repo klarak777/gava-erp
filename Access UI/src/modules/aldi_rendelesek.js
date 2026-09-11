@@ -1,4 +1,4 @@
-import { budapestToday, estimatedDistribution, dailyBalance } from '../utils/weeklyCommitments.js';
+import { budapestToday, estimatedDistribution, dailyBalance, stockAtDate } from '../utils/weeklyCommitments.js';
 /**
  * GAVA ERP – ALDI Rendelések modul
  * v1.4.0 – Heti árak fül hozzáadva: XLSX feltöltés, GTIN alapú termékazonosítás,
@@ -597,6 +597,7 @@ export function renderAldiRendelesek(container, windowManager) {
        let keszletCells = '';
        
        let futoKeszlet = Math.round(parseFloat(stockInput.initial_stock) || 0);
+       const closingStocks = [];
        
        days.forEach((day, index) => {
          const dayDateStr = weekDates[index];
@@ -613,6 +614,7 @@ export function renderAldiRendelesek(container, windowManager) {
          const balance = dailyBalance(futoKeszlet, erkezo, rendeltNum, becsultNum);
          hiany = balance.shortage;
          futoKeszlet = balance.closing;
+         closingStocks.push(futoKeszlet);
          
          const isCurrentWeek = weekDates.includes(todayStr);
          const isPastDay = dayDateStr < todayStr;
@@ -660,11 +662,18 @@ export function renderAldiRendelesek(container, windowManager) {
          </tr>
        `;
        
+       const displayedStock = stockAtDate(stockInput.initial_stock, weekDates, closingStocks, todayStr);
+       const stockDate = weekDates[6] && weekDates[6] < todayStr ? weekDates[6] : todayStr;
+       const stockCaption = weekDates[0] > todayStr ? 'Heti nyitó' : `${stockDate} nap végére számítva`;
        keszletRows += `
          <tr style="background:#fff; color:#0f172a;">
            <td style="padding:8px; border:1px solid #e2e8f0; font-weight:600; background:#dcfce7; color:#0f172a;">${termekNev}</td>
            <td style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:#fef08a;">
-              <input type="number" class="lekotes-stock-input" data-article="${pg.display_name}" data-field="initial_stock" value="${stockInput.initial_stock !== undefined && stockInput.initial_stock !== null ? Math.round(Number(stockInput.initial_stock)) : ''}" style="width:60px; text-align:center; padding:4px; border:1px solid #ca8a04; border-radius:4px; font-size:12px; color:#0f172a; background:#fef9c3; font-weight:700;">
+              <div class="lekotes-current-stock" style="font-size:16px; font-weight:700; color:${displayedStock < 0 ? '#dc2626' : '#0f172a'};">${displayedStock}</div>
+              <div style="font-size:10px; color:#64748b; margin:3px 0;">${stockCaption}</div>
+              <details><summary style="font-size:11px; cursor:pointer;">Heti nyitókészlet</summary>
+                <input type="number" step="1" min="0" aria-label="Heti nyitókészlet" class="lekotes-stock-input" data-article="${pg.display_name}" data-field="initial_stock" value="${stockInput.initial_stock !== undefined && stockInput.initial_stock !== null ? Math.round(Number(stockInput.initial_stock)) : ''}" style="width:75px; text-align:center; padding:4px; border:1px solid #ca8a04; border-radius:4px; font-size:12px; color:#0f172a; background:#fef9c3; font-weight:700;">
+              </details>
             </td>
            ${keszletCells}
          </tr>
