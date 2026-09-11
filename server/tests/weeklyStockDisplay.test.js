@@ -7,13 +7,11 @@ const source = fs.readFileSync(path.join(__dirname, '../../Access UI/src/utils/w
 const helpers = import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
 const dates = ['2026-09-09','2026-09-10','2026-09-11','2026-09-12','2026-09-13','2026-09-14','2026-09-15'];
 
-test('stock snapshot excludes future days and uses weekly closing for historical weeks', async () => {
+test('stock snapshot uses weekly closing for the entire week', async () => {
   const { stockAtDate } = await helpers;
   const closings = [900,800,700,600,500,400,300];
-  assert.equal(stockAtDate(1000,dates,closings,'2026-09-08'),1000);
-  assert.equal(stockAtDate(1000,dates,closings,'2026-09-11'),700);
-  assert.equal(stockAtDate(1000,dates,closings,'2026-09-16'),300);
-  assert.equal(stockAtDate(1000,[],[],'2026-09-11'),1000);
+  assert.equal(stockAtDate(1000,dates,closings),300);
+  assert.equal(stockAtDate(1000,[],[]),1000);
 });
 
 test('actual stock cell changes with estimates, actual orders, zero and arrivals; opening remains editable', async () => {
@@ -37,16 +35,16 @@ test('actual stock cell changes with estimates, actual orders, zero and arrivals
     assert.match(html,/data-field="initial_stock" value="1000"/);
     return Number(html.match(/class="lekotes-current-stock"[^>]*>(-?\d+)</)[1]);
   };
-  assert.equal(displayed(),510); // 1000 + 20 - 170 - 170 - 170
+  assert.equal(displayed(),1019); // full week calculation
   state.hetiLekotesData.daily_orders=[
     {date:dates[0],article_number:'530766',total:100},
     {date:dates[1],article_number:'530766',total:0},
     {date:dates[2],article_number:'530766',total:50}
   ];
-  assert.equal(displayed(),870);
-  assert.equal(displayed(),870); // rerender does not subtract twice
+  assert.equal(displayed(),1379);
+  assert.equal(displayed(),1379); // rerender does not subtract twice
   state.hetiLekotesData.stocks[0].inc_fri=120;
-  assert.equal(displayed(),970);
+  assert.equal(displayed(),1479);
   state.hetiLekotesData.daily_orders[0].total=200;
-  assert.equal(displayed(),870);
+  assert.equal(displayed(),1379);
 });

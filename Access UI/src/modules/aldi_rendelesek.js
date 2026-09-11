@@ -662,9 +662,8 @@ export function renderAldiRendelesek(container, windowManager) {
          </tr>
        `;
        
-       const displayedStock = stockAtDate(stockInput.initial_stock, weekDates, closingStocks, todayStr);
-       const stockDate = weekDates[6] && weekDates[6] < todayStr ? weekDates[6] : todayStr;
-       const stockCaption = weekDates[0] > todayStr ? 'Heti nyitó' : `${stockDate} nap végére számítva`;
+       const displayedStock = stockAtDate(stockInput.initial_stock, weekDates, closingStocks);
+       const stockCaption = 'Teljes heti zárókészlet';
        keszletRows += `
          <tr style="background:#fff; color:#0f172a;">
            <td style="padding:8px; border:1px solid #e2e8f0; font-weight:600; background:#dcfce7; color:#0f172a;">${termekNev}</td>

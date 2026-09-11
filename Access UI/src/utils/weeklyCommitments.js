@@ -186,11 +186,11 @@ export function dailyBalance(opening, incoming, actual, estimate) {
 }
 
 // Keep the editable weekly opening separate from the derived stock.
-// Future consumption/arrivals must not change today's displayed balance.
-export function stockAtDate(initialStock, dates, closingStocks, today) {
+// A felhasználói kérés alapján: a teljes hetet figyelembe kell venni, nem csak a mai napot.
+export function stockAtDate(initialStock, dates, closingStocks) {
   let stock = Math.round(Number(initialStock) || 0);
   dates.forEach((date, index) => {
-    if (date <= today && closingStocks[index] != null) stock = Math.round(Number(closingStocks[index]));
+    if (closingStocks[index] != null) stock = Math.round(Number(closingStocks[index]));
   });
   return stock;
 }
