@@ -96,73 +96,80 @@ export function estimatedDistribution(totalAction, totalNormal, period, dates, d
   const actionDays = [];
 
   if (!period) {
-    // Nincs akciós időszak: minden napra normál elosztás
+    // Nincs akciós időszak megadva: normál arányok a totalNormal-ból
     const normalRates = [.17, .17, .17, .13, .14, .11, .11];
     dayKeys.forEach((k, i) => { result[k] = Math.round(Number(totalNormal || 0) * normalRates[i]); });
     return { result, actionDays };
   }
 
-  // 1. Az Excel napokhoz tartozó akciós időszak meghatározása dátum alapján
   const match = period.match(/(\d{2})\.(\d{2})\.\s*[-–]\s*(\d{2})\.(\d{2})\./);
   if (!match) return { result, actionDays, warning: 'Ismeretlen akciós időszak.' };
 
-  // Az Excel nap kulcsai: thu, fri, sat, sun, mon, tue, wed → a hét 7 dátumához
-  // Dátum párosítás: az Excel napjának megfelelő dátum az ALDI héten belül
-  // Excel F=Thu az ALDI hét 2. napja (dates[1]), G=Fri → dates[2], ... L=Wed → dates[0]
-  const excelKeyToDatesIdx = { thu: 1, fri: 2, sat: 3, sun: 4, mon: 5, tue: 6, wed: 0 };
+  // Az Excel F-L oszlopai a tényleges naptári napokhoz tartoznak:
+  // F=Csütörtök → dates[1], G=Péntek → dates[2], H=Szombat → dates[3],
+  // I=Vasárnap → dates[4], J=Hétfő → dates[5], K=Kedd → dates[6],
+  // L=Szerda (KÖVETKEZŐ szerda, nem a kezdő!) → dates[0] + 7 nap
+  const nextWedStr = new Date(Date.parse(dates[0]) + 7 * 86400000).toISOString().slice(0, 10);
+  const excelKeyToDate = {
+    thu: dates[1], fri: dates[2], sat: dates[3], sun: dates[4],
+    mon: dates[5], tue: dates[6], wed: nextWedStr
+  };
 
+  // Excel kulcs → UI cél kulcs (1 nappal eltolva, mert az Excel értéke az előző napra vonatkozik)
+  // thu(Csü Excel) → wed(Sze UI), fri(Pé Excel) → thu(Csü UI), stb.
+  const excelToUi = { thu: 'wed', fri: 'thu', sat: 'fri', sun: 'sat', mon: 'sun', tue: 'mon', wed: 'tue' };
+
+  // Akciós időszak dátumainak meghatározása
   const year = Number(dates[0]?.slice(0, 4));
-  let actionStartMs = null, actionEndMs = null;
+  let actionStartStr = null, actionEndStr = null;
   for (const y of [year - 1, year, year + 1]) {
     const start = `${y}-${match[2]}-${match[1]}`;
     const endYear = match[4] + match[3] < match[2] + match[1] ? y + 1 : y;
     const end = `${endYear}-${match[4]}-${match[3]}`;
-    const sMs = Date.parse(start), eMs = Date.parse(end);
-    if (!Number.isFinite(sMs) || !Number.isFinite(eMs)) continue;
-    if (end < dates[0] || start > dates[6]) continue;
-    actionStartMs = sMs;
-    actionEndMs = eMs;
-    break;
+    // Az akció átfedi-e az Excel napok dátumait? (beleértve a következő szerdát)
+    const excelDates = Object.values(excelKeyToDate);
+    if (!Number.isFinite(Date.parse(start)) || !Number.isFinite(Date.parse(end))) continue;
+    if (excelDates.some(d => d >= start && d <= end)) {
+      actionStartStr = start;
+      actionEndStr = end;
+      break;
+    }
   }
 
-  // 2. Akciós napok beazonosítása az Excel daily_values kulcsain
-  const excelActionKeys = []; // Excel kulcsok (thu, fri, sat...)
-  const uiActionDays = [];    // UI kulcsok (wed, thu, fri...)
+  // Akciós Excel-napok azonosítása: amelyek tényleges dátuma az akciós időszakba esik
+  const excelActionKeys = [];
+  const uiActionDays = [];
 
-  if (actionStartMs !== null) {
-    for (const [excelKey, datesIdx] of Object.entries(excelKeyToDatesIdx)) {
-      const dateStr = dates[datesIdx];
-      const dateMs = Date.parse(dateStr);
-      if (dateMs >= actionStartMs && dateMs <= actionEndMs) {
+  if (actionStartStr) {
+    for (const [excelKey, excelDate] of Object.entries(excelKeyToDate)) {
+      if (excelDate >= actionStartStr && excelDate <= actionEndStr) {
         excelActionKeys.push(excelKey);
-        const uiKey = ACTION_EXCEL_TO_UI[excelKey];
+        const uiKey = excelToUi[excelKey];
         uiActionDays.push(uiKey);
         actionDays.push(uiKey);
       }
     }
   }
 
-  // 3. Akciós összeg: az Excel akciós napok értékeinek összege
+  // Akciós összeg: a daily_values akciós Excel-napjainak összege
   const actionSum = excelActionKeys.reduce((s, k) => s + (Number(dailyValues[k]) || 0), 0);
 
-  // 4. Nem-akciós összeg: a maradék Excel napok értékeinek összege
+  // Nem-akciós összeg: a maradék Excel-napok daily_values összege
   const excelAllKeys = ['thu', 'fri', 'sat', 'sun', 'mon', 'tue', 'wed'];
   const nonActionExcelKeys = excelAllKeys.filter(k => !excelActionKeys.includes(k));
   const normalSum = nonActionExcelKeys.reduce((s, k) => s + (Number(dailyValues[k]) || 0), 0);
 
-  // 5. Akciós napok elosztása: az akciós időszak hosszától függő százalékok
+  // Akciós UI napok értékei: az akciós összeg × időszak-százalékok
   const actionRates = { 2: [0.70, 0.30], 3: [0.40, 0.40, 0.20], 4: [0.30, 0.30, 0.22, 0.18] };
   const duration = uiActionDays.length;
   const rates = actionRates[duration];
   if (rates && actionSum > 0) {
-    uiActionDays.forEach((uiKey, i) => {
-      result[uiKey] = Math.round(actionSum * rates[i]);
-    });
+    uiActionDays.forEach((uiKey, i) => { result[uiKey] = Math.round(actionSum * rates[i]); });
   }
 
-  // 6. Nem-akciós napok elosztása a kontextus-alapú százalékokkal
-  const normalRates = getNormalRatesForContext(uiActionDays);
-  for (const [uiKey, rate] of Object.entries(normalRates)) {
+  // Nem-akciós UI napok értékei: a nem-akciós összeg × kontextus-alapú százalékok
+  const nonActionRates = getNormalRatesForContext(uiActionDays);
+  for (const [uiKey, rate] of Object.entries(nonActionRates)) {
     if (!uiActionDays.includes(uiKey)) {
       result[uiKey] = Math.round(normalSum * rate);
     }

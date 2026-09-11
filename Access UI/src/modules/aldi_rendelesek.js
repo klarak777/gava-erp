@@ -553,7 +553,16 @@ export function renderAldiRendelesek(container, windowManager) {
         periods[item.action_period || ''] = (periods[item.action_period || ''] || 0) + Number(item.total_forecast_cartons);
         if (item.daily_values) {
           const dv = typeof item.daily_values === 'string' ? JSON.parse(item.daily_values) : item.daily_values;
-          productGroups[pid].actionDailyValues[item.action_period || ''] = dv;
+          const pvKey = item.action_period || '';
+          const existing = productGroups[pid].actionDailyValues[pvKey];
+          if (existing) {
+            // Több sor azonos termékre/időszakra: napi értékek összeadása
+            ['thu', 'fri', 'sat', 'sun', 'mon', 'tue', 'wed'].forEach(k => {
+              existing[k] = (Number(existing[k]) || 0) + (Number(dv[k]) || 0);
+            });
+          } else {
+            productGroups[pid].actionDailyValues[pvKey] = { ...dv };
+          }
         }
       } else {
         productGroups[pid].total_normal += Number(item.total_forecast_cartons);
@@ -573,14 +582,21 @@ export function renderAldiRendelesek(container, windowManager) {
        for (const [period, quantity] of Object.entries(pg.actionPeriods)) {
          const dailyValues = pg.actionDailyValues[period] || null;
          const estimate = getEstimatedDistribution(quantity, 0, period, dailyValues);
-         for (const key of estimate.actionDays) { distribution[key] = estimate.result[key]; if (!actionDays.includes(key)) actionDays.push(key); }
+         if (dailyValues) {
+           // Ha daily_values elérhető: az összes nap (akciós + akción kívüli) a Rendelési tervből jön
+           Object.assign(distribution, estimate.result);
+         } else {
+           // Ha nincs daily_values: csak az akciós napokat írjuk felül (régi viselkedés)
+           for (const key of estimate.actionDays) { distribution[key] = estimate.result[key]; }
+         }
+         for (const key of estimate.actionDays) { if (!actionDays.includes(key)) actionDays.push(key); }
        }
        pg.action_period = Object.keys(pg.actionPeriods).join(', ');
        
        let cells = '';
        let keszletCells = '';
        
-       let futoKeszlet = parseFloat(stockInput.initial_stock) || 0;
+       let futoKeszlet = Math.round(parseFloat(stockInput.initial_stock) || 0);
        
        days.forEach((day, index) => {
          const dayDateStr = weekDates[index];
@@ -648,7 +664,7 @@ export function renderAldiRendelesek(container, windowManager) {
          <tr style="background:#fff; color:#0f172a;">
            <td style="padding:8px; border:1px solid #e2e8f0; font-weight:600; background:#dcfce7; color:#0f172a;">${termekNev}</td>
            <td style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:#fef08a;">
-              <input type="number" class="lekotes-stock-input" data-article="${pg.display_name}" data-field="initial_stock" value="${stockInput.initial_stock !== undefined && stockInput.initial_stock !== null ? stockInput.initial_stock : ''}" style="width:60px; text-align:center; padding:4px; border:1px solid #ca8a04; border-radius:4px; font-size:12px; color:#0f172a; background:#fef9c3; font-weight:700;">
+              <input type="number" class="lekotes-stock-input" data-article="${pg.display_name}" data-field="initial_stock" value="${stockInput.initial_stock !== undefined && stockInput.initial_stock !== null ? Math.round(Number(stockInput.initial_stock)) : ''}" style="width:60px; text-align:center; padding:4px; border:1px solid #ca8a04; border-radius:4px; font-size:12px; color:#0f172a; background:#fef9c3; font-weight:700;">
             </td>
            ${keszletCells}
          </tr>

@@ -447,15 +447,22 @@ router.post('/reprocess', async (req, res) => {
                 const actionPeriodStr = actionPeriodIdx !== -1 && row[actionPeriodIdx]
                     ? row[actionPeriodIdx].toString().trim() : null;
 
-                // Csak azokat frissítjük ahol daily_values NULL volt
-                const updated = await db('aldi_weekly_commitment_items')
+                // Csak azokat frissítjük ahol daily_values NULL volt, ÉS az action_period egyezik
+                let query = db('aldi_weekly_commitment_items')
                     .where({ commitment_id: commitment.id, type: 'action', display_name: displayStr })
-                    .whereNull('daily_values')
-                    .update({
-                        daily_values: JSON.stringify(dailyValues),
-                        total_forecast_cartons: total,
-                        ...(actionPeriodStr ? { action_period: actionPeriodStr } : {})
-                    });
+                    .whereNull('daily_values');
+
+                if (actionPeriodStr) {
+                    query = query.where('action_period', actionPeriodStr);
+                } else {
+                    query = query.whereNull('action_period');
+                }
+
+                const updated = await query.update({
+                    daily_values: JSON.stringify(dailyValues),
+                    total_forecast_cartons: total,
+                    ...(actionPeriodStr ? { action_period: actionPeriodStr } : {})
+                });
                 weekUpdated += updated;
             }
 
