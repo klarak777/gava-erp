@@ -29,11 +29,26 @@ router.get('/', async (req, res) => {
 // Lokáció aktuális készletének lekérdezése
 router.get('/:id/stock', async (req, res) => {
   try {
+    const loc = await knex('aldi_locations').where('id', req.params.id).first();
+    if (!loc) {
+      return res.status(404).json({ error: 'Lokáció nem található' });
+    }
+
+    let locationIds = [req.params.id];
+    if (loc.location_type === 'Szülő') {
+      const children = await knex('aldi_locations').where('parent_id', req.params.id).select('id');
+      if (children.length > 0) {
+        locationIds = children.map(c => c.id);
+      } else {
+        locationIds = [-1]; // Ha nincs gyermek, ne adjon vissza semmit
+      }
+    }
+
     // 1. Összesítjük a készletet order_line_id vagy truck_line_id alapján
     const stockItems = await knex('aldi_stock_locations as s')
       .leftJoin('aldi_daily_order_lines as l', 'l.id', 's.order_line_id')
       .leftJoin('aldi_truck_lines as tl', 'tl.id', 's.truck_line_id')
-      .where('s.location_id', req.params.id)
+      .whereIn('s.location_id', locationIds)
       .groupByRaw('COALESCE(l.gtin, tl.product_name), COALESCE(l.cartons_per_pallet, tl.cartons_per_pallet)')
       .select(
         knex.raw('COALESCE(l.gtin, tl.product_name) as gtin'),
@@ -79,7 +94,7 @@ router.get('/:id/stock', async (req, res) => {
 // Új tárhely hozzáadása
 router.post('/', async (req, res) => {
   try {
-    const { name, barcode, type_code, building_num, row_num, aisle_num, location_num, cooling_type, status, location_type, capacity, notes } = req.body;
+    const { name, barcode, type_code, building_num, row_num, aisle_num, location_num, cooling_type, status, location_type, capacity, notes, parent_id } = req.body;
     
     // Check for existing barcode
     const existing = await knex('aldi_locations').where('barcode', barcode).first();
@@ -88,7 +103,7 @@ router.post('/', async (req, res) => {
     }
 
     const [id] = await knex('aldi_locations').insert({
-      name, barcode, type_code, building_num, row_num, aisle_num, location_num, cooling_type, status, location_type, capacity, notes
+      name, barcode, type_code, building_num, row_num, aisle_num, location_num, cooling_type, status, location_type, capacity, notes, parent_id
     }).returning('id');
 
     const newLoc = await knex('aldi_locations').where('id', id.id || id).first();
@@ -102,7 +117,7 @@ router.post('/', async (req, res) => {
 // Tárhely módosítása
 router.put('/:id', async (req, res) => {
   try {
-    const { name, barcode, type_code, building_num, row_num, aisle_num, location_num, cooling_type, status, location_type, capacity, notes } = req.body;
+    const { name, barcode, type_code, building_num, row_num, aisle_num, location_num, cooling_type, status, location_type, capacity, notes, parent_id } = req.body;
     
     const existing = await knex('aldi_locations').where('barcode', barcode).whereNot('id', req.params.id).first();
     if (existing) {
@@ -110,7 +125,7 @@ router.put('/:id', async (req, res) => {
     }
 
     await knex('aldi_locations').where('id', req.params.id).update({
-      name, barcode, type_code, building_num, row_num, aisle_num, location_num, cooling_type, status, location_type, capacity, notes, updated_at: knex.fn.now()
+      name, barcode, type_code, building_num, row_num, aisle_num, location_num, cooling_type, status, location_type, capacity, notes, parent_id, updated_at: knex.fn.now()
     });
 
     const updated = await knex('aldi_locations').where('id', req.params.id).first();

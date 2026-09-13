@@ -18,6 +18,7 @@ export function openLokaciokWindow(wm) {
         let locations = [];
         let filteredLocations = [];
         let selectedLocation = null;
+        let expandedParents = new Set();
         let searchQuery = '';
         let statusFilter = 'all';
         let currentPage = 1;
@@ -337,24 +338,52 @@ export function openLokaciokWindow(wm) {
 
         const applyFilters = () => {
             const q = searchQuery.toLowerCase().trim();
-            filteredLocations = locations.filter(loc => {
+            
+            // Először megkeressük, mik egyeznek alapból
+            const directMatches = locations.filter(loc => {
                 const matchSearch = !q || 
                     (loc.barcode && loc.barcode.toLowerCase().includes(q)) || 
                     (loc.name && loc.name.toLowerCase().includes(q));
-                
                 const matchStatus = statusFilter === 'all' || loc.status === statusFilter;
-                
                 return matchSearch && matchStatus;
             });
+
+            // Ha egy gyermek illeszkedik, a szülőjét is hozzá kell adni (hogy lássuk a fában)
+            const matchSet = new Set(directMatches.map(l => l.id));
+            directMatches.forEach(loc => {
+                if (loc.parent_id) matchSet.add(loc.parent_id);
+                // Ha a szülőre kerestünk, az összes gyerekét is érdemes mutatni
+                if (loc.location_type === 'Szülő') {
+                    locations.forEach(c => {
+                        if (c.parent_id === loc.id && (statusFilter === 'all' || c.status === statusFilter)) {
+                            matchSet.add(c.id);
+                        }
+                    });
+                }
+            });
+
+            filteredLocations = locations.filter(l => matchSet.has(l.id));
+            
+            // Ha keresünk valamit, automatikusan nyissuk le a találatokat tartalmazó szülőket
+            if (q) {
+                filteredLocations.forEach(l => {
+                    if (l.parent_id) expandedParents.add(l.parent_id);
+                });
+            } else {
+                expandedParents.clear(); // Üres keresésnél csukjuk be
+            }
+            
             currentPage = 1;
             renderTable();
         };
 
         const renderTable = () => {
-            const totalItems = filteredLocations.length;
+            // Főlistában csak a szülőket, vagy a szülő nélküli elemeket listázzuk, amik átmentek a szűrőn
+            const topLevel = filteredLocations.filter(l => !l.parent_id);
+            const totalItems = topLevel.length;
             const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
             const start = (currentPage - 1) * itemsPerPage;
-            const paginatedItems = filteredLocations.slice(start, start + itemsPerPage);
+            const paginatedItems = topLevel.slice(start, start + itemsPerPage);
 
             if (paginatedItems.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px;">Nincs találat.</td></tr>';
@@ -363,45 +392,65 @@ export function openLokaciokWindow(wm) {
             }
 
             tbody.innerHTML = paginatedItems.map(loc => {
-                const badgeClass = loc.status === 'Zárolt' ? 'badge-locked' : 'badge-active';
-                const statusTxt = loc.status || 'Aktív';
-                const isSelected = selectedLocation && selectedLocation.id === loc.id;
-                
-                const cartons = parseInt(loc.current_cartons) || 0;
-                const occupiedPallets = parseFloat(loc.occupied_pallets) || 0;
-                const capacityPallets = loc.capacity || 1;
-                const isOver = occupiedPallets > capacityPallets;
-                const rawPct = (occupiedPallets / capacityPallets) * 100;
-                const pct = occupiedPallets > 0 ? Math.max(3, Math.min(100, Math.round(rawPct))) : 0;
-                
-                const occFormatted = occupiedPallets > 0 ? parseFloat(occupiedPallets.toFixed(1)) : 0;
-                const statusColor = isOver ? '#b91c1c' : (occupiedPallets > 0 ? '#0f766e' : '#94a3b8');
-                const barColor = isOver ? '#ef4444' : (occupiedPallets > 0 ? '#10b981' : '#cbd5e1');
-                
-                return `
-                    <tr data-id="${loc.id}" class="${isSelected ? 'selected' : ''}">
-                        <td style="font-weight:600;">${loc.barcode || ''}</td>
-                        <td>${loc.name || ''}</td>
-                        <td>${loc.location_type || '-'}</td>
-                        <td><span class="badge ${badgeClass}">${statusTxt}</span></td>
-                        <td>
-                            <div style="display:flex; align-items:center; gap:8px;">
-                                <div style="width:45px; height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden; flex-shrink:0;">
-                                    <div style="width:${pct}%; height:100%; background:${barColor};"></div>
+                const renderRow = (l, isChild = false) => {
+                    const badgeClass = l.status === 'Zárolt' ? 'badge-locked' : 'badge-active';
+                    const statusTxt = l.status || 'Aktív';
+                    const isSelected = selectedLocation && selectedLocation.id === l.id;
+                    const isExpanded = expandedParents.has(l.id);
+                    
+                    const cartons = parseInt(l.current_cartons) || 0;
+                    const occupiedPallets = parseFloat(l.occupied_pallets) || 0;
+                    const capacityPallets = l.capacity || 1;
+                    const isOver = occupiedPallets > capacityPallets;
+                    const rawPct = (occupiedPallets / capacityPallets) * 100;
+                    const pct = occupiedPallets > 0 ? Math.max(3, Math.min(100, Math.round(rawPct))) : 0;
+                    
+                    const occFormatted = occupiedPallets > 0 ? parseFloat(occupiedPallets.toFixed(1)) : 0;
+                    const statusColor = isOver ? '#b91c1c' : (occupiedPallets > 0 ? '#0f766e' : '#94a3b8');
+                    const barColor = isOver ? '#ef4444' : (occupiedPallets > 0 ? '#10b981' : '#cbd5e1');
+                    
+                    let expandBtn = '';
+                    if (!isChild && locations.some(child => child.parent_id === l.id)) {
+                        expandBtn = `<button class="icon-btn expand-btn" data-id="${l.id}" style="margin-right: 8px;">${isExpanded ? '▼' : '▶'}</button>`;
+                    }
+                    
+                    return `
+                        <tr data-id="${l.id}" class="${isSelected ? 'selected' : ''}" style="${isChild ? 'background: #fdfdfd;' : ''}">
+                            <td style="font-weight:${isChild ? 'normal' : '600'}; padding-left: ${isChild ? '30px' : '12px'};">
+                                ${!isChild ? expandBtn : '<span style="color:#cbd5e1;margin-right:8px;">└</span>'}
+                                ${l.barcode || ''}
+                            </td>
+                            <td>${l.name || ''}</td>
+                            <td>${l.location_type || '-'}</td>
+                            <td><span class="badge ${badgeClass}">${statusTxt}</span></td>
+                            <td>
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <div style="width:45px; height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden; flex-shrink:0;">
+                                        <div style="width:${pct}%; height:100%; background:${barColor};"></div>
+                                    </div>
+                                    <span style="font-size:11px; font-weight:${occupiedPallets > 0 ? '600' : '400'}; color:${statusColor}; white-space:nowrap;">
+                                        ${occFormatted} / ${capacityPallets} plt
+                                    </span>
                                 </div>
-                                <span style="font-size:11px; font-weight:${occupiedPallets > 0 ? '600' : '400'}; color:${statusColor}; white-space:nowrap;">
-                                    ${occFormatted} / ${capacityPallets} plt
-                                </span>
-                            </div>
-                        </td>
-                        <td>
-                            <button class="icon-btn print-barcode-btn" data-barcode="${loc.barcode}" title="Vonalkód nyomtatása">🖨️</button>
-                        </td>
-                        <td>
-                            <button class="icon-btn edit-btn" data-id="${loc.id}">🖌️</button>
-                        </td>
-                    </tr>
-                `;
+                            </td>
+                            <td>
+                                <button class="icon-btn print-barcode-btn" data-barcode="${l.barcode}" title="Vonalkód nyomtatása">🖨️</button>
+                            </td>
+                            <td>
+                                <button class="icon-btn edit-btn" data-id="${l.id}">🖌️</button>
+                            </td>
+                        </tr>
+                    `;
+                };
+
+                let html = renderRow(loc, false);
+                if (expandedParents.has(loc.id)) {
+                    const children = filteredLocations.filter(child => child.parent_id === loc.id);
+                    children.forEach(child => {
+                        html += renderRow(child, true);
+                    });
+                }
+                return html;
             }).join('');
 
             // Setup events
@@ -412,6 +461,19 @@ export function openLokaciokWindow(wm) {
                     selectedLocation = locations.find(l => l.id === id);
                     renderTable(); // for highlighting
                     renderDetails();
+                });
+            });
+            
+            tbody.querySelectorAll('.expand-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const id = parseInt(btn.dataset.id);
+                    if (expandedParents.has(id)) {
+                        expandedParents.delete(id);
+                    } else {
+                        expandedParents.add(id);
+                    }
+                    renderTable();
                 });
             });
             
@@ -644,7 +706,27 @@ export function openLokaciokWindow(wm) {
             winContainer.querySelector('#f-name').value = loc ? loc.name : '';
             winContainer.querySelector('#f-location_type').value = loc ? (loc.location_type || '') : '';
             winContainer.querySelector('#f-status').value = loc ? (loc.status || 'Aktív') : 'Aktív';
-            winContainer.querySelector('#f-capacity').value = loc ? (loc.capacity || 1) : 1;
+            
+            const capInput = winContainer.querySelector('#f-capacity');
+            capInput.value = loc ? (loc.capacity || 1) : 1;
+            if (loc && loc.location_type === 'Szülő') {
+                capInput.setAttribute('readonly', 'true');
+                capInput.style.backgroundColor = '#f1f5f9';
+            } else {
+                capInput.removeAttribute('readonly');
+                capInput.style.backgroundColor = '';
+            }
+            
+            // Rejtett parent_id
+            let pIdInput = winContainer.querySelector('#f-parent_id');
+            if (!pIdInput) {
+                pIdInput = document.createElement('input');
+                pIdInput.type = 'hidden';
+                pIdInput.id = 'f-parent_id';
+                winContainer.querySelector('#loc-form').appendChild(pIdInput);
+            }
+            pIdInput.value = loc && loc.parent_id ? loc.parent_id : '';
+            
             winContainer.querySelector('#f-notes').value = loc ? (loc.notes || '') : '';
             
             // Compatibility fields for backward compatibility
@@ -709,6 +791,7 @@ export function openLokaciokWindow(wm) {
             e.preventDefault();
             const id = winContainer.querySelector('#f-id').value;
             
+            const pIdVal = winContainer.querySelector('#f-parent_id')?.value;
             const payload = {
                 barcode: winContainer.querySelector('#f-barcode').value,
                 name: winContainer.querySelector('#f-name').value,
@@ -716,6 +799,7 @@ export function openLokaciokWindow(wm) {
                 status: winContainer.querySelector('#f-status').value,
                 capacity: parseInt(winContainer.querySelector('#f-capacity').value) || 1,
                 notes: winContainer.querySelector('#f-notes').value,
+                parent_id: pIdVal ? parseInt(pIdVal) : null,
                 // Backward compatibility
                 type_code: winContainer.querySelector('#f-type_code').value,
                 building_num: parseInt(winContainer.querySelector('#f-building_num').value),
