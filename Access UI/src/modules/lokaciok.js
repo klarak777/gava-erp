@@ -398,11 +398,21 @@ export function openLokaciokWindow(wm) {
                     const isSelected = selectedLocation && selectedLocation.id === l.id;
                     const isExpanded = expandedParents.has(l.id);
                     
-                    const cartons = parseInt(l.current_cartons) || 0;
-                    const occupiedPallets = parseFloat(l.occupied_pallets) || 0;
-                    const capacityPallets = l.capacity || 1;
+                    const children = locations.filter(child => child.parent_id === l.id);
+                    const isParent = !isChild && (l.location_type === 'Szülő' || children.length > 0);
+
+                    let cartons = parseInt(l.current_cartons) || 0;
+                    let occupiedPallets = parseFloat(l.occupied_pallets) || 0;
+                    let capacityPallets = l.capacity || 1;
+
+                    if (isParent && children.length > 0) {
+                        capacityPallets = children.reduce((sum, c) => sum + (parseInt(c.capacity) || 0), 0);
+                        cartons = children.reduce((sum, c) => sum + (parseInt(c.current_cartons) || 0), 0);
+                        occupiedPallets = children.reduce((sum, c) => sum + (parseFloat(c.occupied_pallets) || 0), 0);
+                    }
+
                     const isOver = occupiedPallets > capacityPallets;
-                    const rawPct = (occupiedPallets / capacityPallets) * 100;
+                    const rawPct = capacityPallets > 0 ? (occupiedPallets / capacityPallets) * 100 : 0;
                     const pct = occupiedPallets > 0 ? Math.max(3, Math.min(100, Math.round(rawPct))) : 0;
                     
                     const occFormatted = occupiedPallets > 0 ? parseFloat(occupiedPallets.toFixed(1)) : 0;
@@ -410,7 +420,7 @@ export function openLokaciokWindow(wm) {
                     const barColor = isOver ? '#ef4444' : (occupiedPallets > 0 ? '#10b981' : '#cbd5e1');
                     
                     let expandBtn = '';
-                    if (!isChild && locations.some(child => child.parent_id === l.id)) {
+                    if (!isChild && children.length > 0) {
                         expandBtn = `<button class="icon-btn expand-btn" data-id="${l.id}" style="margin-right: 8px;">${isExpanded ? '▼' : '▶'}</button>`;
                     }
                     
@@ -552,7 +562,13 @@ export function openLokaciokWindow(wm) {
             
             const totalCartons = stockItems.reduce((sum, item) => sum + (parseInt(item.total_cartons) || 0), 0);
             const totalPallets = stockItems.reduce((sum, item) => sum + ((parseInt(item.total_cartons) || 0) / (item.cartons_per_pallet || 30)), 0);
-            const capPallets = loc.capacity || 1;
+            
+            const children = locations.filter(c => c.parent_id === loc.id);
+            const isParent = loc.location_type === 'Szülő' || children.length > 0;
+            const capPallets = (isParent && children.length > 0)
+                ? children.reduce((sum, c) => sum + (parseInt(c.capacity) || 0), 0)
+                : (loc.capacity || 1);
+
             const occPalletsFormatted = totalPallets > 0 ? parseFloat(totalPallets.toFixed(1)) : 0;
             const isOverCapacity = totalPallets > capPallets;
             
@@ -663,12 +679,15 @@ export function openLokaciokWindow(wm) {
         const renderSummary = () => {
             const total = locations.length;
             const active = locations.filter(l => l.status !== 'Zárolt').length;
-            const totalCapacity = locations.reduce((sum, l) => sum + (l.capacity || 1), 0);
             
-            const currentStockCartons = locations.reduce((sum, l) => sum + (parseInt(l.current_cartons) || 0), 0);
-            const totalOccupiedPallets = locations.reduce((sum, l) => sum + (parseFloat(l.occupied_pallets) || 0), 0);
-            const occupiedCount = locations.filter(l => (parseInt(l.current_cartons) || 0) > 0).length;
-            const avgOccupancyLocs = total > 0 ? ((occupiedCount / total) * 100).toFixed(1) : 0;
+            // Csak a fizikai tárhelyeket (nem szülőket) számoljuk a kapacitásba a duplikálás elkerülése végett
+            const storageLocations = locations.filter(l => l.location_type !== 'Szülő');
+            const totalCapacity = storageLocations.reduce((sum, l) => sum + (parseInt(l.capacity) || 1), 0);
+            
+            const currentStockCartons = storageLocations.reduce((sum, l) => sum + (parseInt(l.current_cartons) || 0), 0);
+            const totalOccupiedPallets = storageLocations.reduce((sum, l) => sum + (parseFloat(l.occupied_pallets) || 0), 0);
+            const occupiedCount = storageLocations.filter(l => (parseInt(l.current_cartons) || 0) > 0).length;
+            const avgOccupancyLocs = storageLocations.length > 0 ? ((occupiedCount / storageLocations.length) * 100).toFixed(1) : 0;
             const freeCapacity = Math.max(0, totalCapacity - totalOccupiedPallets);
             
             summaryContent.innerHTML = `
@@ -708,13 +727,21 @@ export function openLokaciokWindow(wm) {
             winContainer.querySelector('#f-status').value = loc ? (loc.status || 'Aktív') : 'Aktív';
             
             const capInput = winContainer.querySelector('#f-capacity');
-            capInput.value = loc ? (loc.capacity || 1) : 1;
-            if (loc && loc.location_type === 'Szülő') {
+            const children = loc ? locations.filter(c => c.parent_id === loc.id) : [];
+            const isParent = loc && (loc.location_type === 'Szülő' || children.length > 0);
+            const computedCap = (isParent && children.length > 0)
+                ? children.reduce((sum, c) => sum + (parseInt(c.capacity) || 0), 0)
+                : (loc ? (loc.capacity || 1) : 1);
+
+            capInput.value = computedCap;
+            if (isParent) {
                 capInput.setAttribute('readonly', 'true');
                 capInput.style.backgroundColor = '#f1f5f9';
+                capInput.title = 'A sor (szülő) kapacitása a tárhelyek összegéből adódik, automatikusan számított.';
             } else {
                 capInput.removeAttribute('readonly');
                 capInput.style.backgroundColor = '';
+                capInput.removeAttribute('title');
             }
             
             // Rejtett parent_id
@@ -826,11 +853,13 @@ export function openLokaciokWindow(wm) {
                 }
                 
                 dialog.close();
-                if(id && selectedLocation && selectedLocation.id == id) {
-                    // Refresh selected
-                    selectedLocation = null;
+                await loadData();
+                if (selectedLocation) {
+                    selectedLocation = locations.find(l => l.id === selectedLocation.id) || null;
+                    if (selectedLocation) {
+                        renderDetails();
+                    }
                 }
-                loadData();
             } catch (err) {
                 console.error(err);
                 alert('Hálózati hiba');

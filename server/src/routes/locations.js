@@ -2,6 +2,13 @@ const express = require('express');
 const router = express.Router();
 const knex = require('../db/db');
 
+async function updateParentCapacity(parentId) {
+  if (!parentId) return;
+  const res = await knex('aldi_locations').where('parent_id', parentId).sum('capacity as total');
+  const total = parseInt(res[0].total) || 0;
+  await knex('aldi_locations').where('id', parentId).update({ capacity: total, updated_at: knex.fn.now() });
+}
+
 // Összes tárhely lekérdezése (készlet összesítéssel)
 router.get('/', async (req, res) => {
   try {
@@ -19,6 +26,28 @@ router.get('/', async (req, res) => {
       .orderBy('l.row_num')
       .orderBy('l.aisle_num')
       .orderBy('l.location_num');
+
+    // Szülő (Sor) lokációk kapacitásának és készletének dinamikus összesítése
+    const parentMap = {};
+    for (const loc of locations) {
+      if (loc.parent_id) {
+        if (!parentMap[loc.parent_id]) {
+          parentMap[loc.parent_id] = { capacity: 0, current_cartons: 0, occupied_pallets: 0 };
+        }
+        parentMap[loc.parent_id].capacity += (parseInt(loc.capacity) || 0);
+        parentMap[loc.parent_id].current_cartons += (parseInt(loc.current_cartons) || 0);
+        parentMap[loc.parent_id].occupied_pallets += (parseFloat(loc.occupied_pallets) || 0);
+      }
+    }
+
+    for (const loc of locations) {
+      if (parentMap[loc.id]) {
+        loc.capacity = parentMap[loc.id].capacity;
+        loc.current_cartons = parentMap[loc.id].current_cartons;
+        loc.occupied_pallets = parentMap[loc.id].occupied_pallets;
+      }
+    }
+
     res.json(locations);
   } catch (error) {
     console.error('Error fetching locations:', error);
@@ -106,6 +135,10 @@ router.post('/', async (req, res) => {
       name, barcode, type_code, building_num, row_num, aisle_num, location_num, cooling_type, status, location_type, capacity, notes, parent_id
     }).returning('id');
 
+    if (parent_id) {
+      await updateParentCapacity(parent_id);
+    }
+
     const newLoc = await knex('aldi_locations').where('id', id.id || id).first();
     res.status(201).json(newLoc);
   } catch (error) {
@@ -124,9 +157,18 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ error: 'Ez a vonalkód már létezik egy másik tárhelynél!' });
     }
 
+    const oldLoc = await knex('aldi_locations').where('id', req.params.id).first();
+
     await knex('aldi_locations').where('id', req.params.id).update({
       name, barcode, type_code, building_num, row_num, aisle_num, location_num, cooling_type, status, location_type, capacity, notes, parent_id, updated_at: knex.fn.now()
     });
+
+    if (parent_id) {
+      await updateParentCapacity(parent_id);
+    }
+    if (oldLoc && oldLoc.parent_id && oldLoc.parent_id !== parent_id) {
+      await updateParentCapacity(oldLoc.parent_id);
+    }
 
     const updated = await knex('aldi_locations').where('id', req.params.id).first();
     res.json(updated);
@@ -139,7 +181,13 @@ router.put('/:id', async (req, res) => {
 // Tárhely törlése
 router.delete('/:id', async (req, res) => {
   try {
+    const oldLoc = await knex('aldi_locations').where('id', req.params.id).first();
     await knex('aldi_locations').where('id', req.params.id).del();
+    
+    if (oldLoc && oldLoc.parent_id) {
+      await updateParentCapacity(oldLoc.parent_id);
+    }
+
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting location:', error);
