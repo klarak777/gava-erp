@@ -402,20 +402,20 @@ export function openLokaciokWindow(wm) {
                     const isParent = !isChild && (l.location_type === 'Szülő' || children.length > 0);
 
                     let cartons = parseInt(l.current_cartons) || 0;
-                    let occupiedPallets = parseFloat(l.occupied_pallets) || 0;
-                    let capacityPallets = l.capacity || 1;
+                    let occupiedPallets = parseInt(l.occupied_pallets) || 0;
+                    let capacityPallets = parseInt(l.capacity) || 1;
 
                     if (isParent && children.length > 0) {
                         capacityPallets = children.reduce((sum, c) => sum + (parseInt(c.capacity) || 0), 0);
                         cartons = children.reduce((sum, c) => sum + (parseInt(c.current_cartons) || 0), 0);
-                        occupiedPallets = children.reduce((sum, c) => sum + (parseFloat(c.occupied_pallets) || 0), 0);
+                        occupiedPallets = children.reduce((sum, c) => sum + (parseInt(c.occupied_pallets) || 0), 0);
                     }
 
                     const isOver = occupiedPallets > capacityPallets;
                     const rawPct = capacityPallets > 0 ? (occupiedPallets / capacityPallets) * 100 : 0;
                     const pct = occupiedPallets > 0 ? Math.max(3, Math.min(100, Math.round(rawPct))) : 0;
                     
-                    const occFormatted = occupiedPallets > 0 ? parseFloat(occupiedPallets.toFixed(1)) : 0;
+                    const occFormatted = occupiedPallets || 0;
                     const statusColor = isOver ? '#b91c1c' : (occupiedPallets > 0 ? '#0f766e' : '#94a3b8');
                     const barColor = isOver ? '#ef4444' : (occupiedPallets > 0 ? '#10b981' : '#cbd5e1');
                     
@@ -561,15 +561,15 @@ export function openLokaciokWindow(wm) {
             }
             
             const totalCartons = stockItems.reduce((sum, item) => sum + (parseInt(item.total_cartons) || 0), 0);
-            const totalPallets = stockItems.reduce((sum, item) => sum + ((parseInt(item.total_cartons) || 0) / (item.cartons_per_pallet || 30)), 0);
+            const totalPallets = stockItems.reduce((sum, item) => sum + (parseInt(item.item_count) || 0), 0);
             
             const children = locations.filter(c => c.parent_id === loc.id);
             const isParent = loc.location_type === 'Szülő' || children.length > 0;
             const capPallets = (isParent && children.length > 0)
                 ? children.reduce((sum, c) => sum + (parseInt(c.capacity) || 0), 0)
-                : (loc.capacity || 1);
+                : (parseInt(loc.capacity) || 1);
 
-            const occPalletsFormatted = totalPallets > 0 ? parseFloat(totalPallets.toFixed(1)) : 0;
+            const occPalletsFormatted = totalPallets;
             const isOverCapacity = totalPallets > capPallets;
             
             detailsContent.innerHTML = `
@@ -685,7 +685,7 @@ export function openLokaciokWindow(wm) {
             const totalCapacity = storageLocations.reduce((sum, l) => sum + (parseInt(l.capacity) || 1), 0);
             
             const currentStockCartons = storageLocations.reduce((sum, l) => sum + (parseInt(l.current_cartons) || 0), 0);
-            const totalOccupiedPallets = storageLocations.reduce((sum, l) => sum + (parseFloat(l.occupied_pallets) || 0), 0);
+            const totalOccupiedPallets = storageLocations.reduce((sum, l) => sum + (parseInt(l.occupied_pallets) || 0), 0);
             const occupiedCount = storageLocations.filter(l => (parseInt(l.current_cartons) || 0) > 0).length;
             const avgOccupancyLocs = storageLocations.length > 0 ? ((occupiedCount / storageLocations.length) * 100).toFixed(1) : 0;
             const freeCapacity = Math.max(0, totalCapacity - totalOccupiedPallets);

@@ -36,7 +36,7 @@ router.get('/', async (req, res) => {
         }
         parentMap[loc.parent_id].capacity += (parseInt(loc.capacity) || 0);
         parentMap[loc.parent_id].current_cartons += (parseInt(loc.current_cartons) || 0);
-        parentMap[loc.parent_id].occupied_pallets += (parseFloat(loc.occupied_pallets) || 0);
+        parentMap[loc.parent_id].occupied_pallets += (parseInt(loc.occupied_pallets) || 0);
       }
     }
 
