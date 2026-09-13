@@ -23,6 +23,9 @@ export function openLokaciokWindow(wm) {
         let statusFilter = 'all';
         let currentPage = 1;
         const itemsPerPage = 10;
+        let currentStockItems = [];
+        let currentIsParent = false;
+        let currentLoc = null;
 
         winContainer.innerHTML = `
             <style>
@@ -237,19 +240,22 @@ export function openLokaciokWindow(wm) {
                         <h2 class="panel-title">ÖSSZESÍTÉS</h2>
                         <div class="summary-list" id="loc-summary-content"></div>
                     </div>
-                    <div class="loc-card" style="margin-bottom:0;">
+                    <div class="loc-card" style="margin-bottom:0; display:flex; flex-direction:column;">
                         <h2 class="panel-title">KÉSZLET A LOKÁCIÓN</h2>
-                        <table class="loc-table">
-                            <thead>
-                                <tr>
-                                    <th>Név</th>
-                                    <th style="text-align:right;">Mennyiség</th>
-                                </tr>
-                            </thead>
-                            <tbody id="loc-stock-tbody">
-                                <tr><td colspan="2" style="text-align:center; color:#94a3b8;">Nincs adat</td></tr>
-                            </tbody>
-                        </table>
+                        <input type="text" id="loc-stock-search" class="loc-input" placeholder="Tétel keresése..." style="width:100%; margin-bottom:12px; display:none;">
+                        <div style="flex:1; overflow-y:auto; min-height:100px;">
+                            <table class="loc-table">
+                                <thead>
+                                    <tr>
+                                        <th>Név</th>
+                                        <th style="text-align:right;">Mennyiség</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="loc-stock-tbody">
+                                    <tr><td colspan="2" style="text-align:center; color:#94a3b8;">Nincs adat</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -537,34 +543,110 @@ export function openLokaciokWindow(wm) {
             if (next) next.onclick = () => { if(currentPage < totalPages) { currentPage++; renderTable(); }};
         };
 
+        const renderStockList = (searchQ = '') => {
+            const stockTbody = winContainer.querySelector('#loc-stock-tbody');
+            if (!currentLoc) {
+                stockTbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:#94a3b8;">Nincs kiválasztott lokáció</td></tr>';
+                return;
+            }
+            
+            const q = searchQ.toLowerCase().trim();
+            const filtered = currentStockItems.filter(item => {
+                return !q || 
+                    (item.product_name && item.product_name.toLowerCase().includes(q)) || 
+                    (item.gtin && item.gtin.toLowerCase().includes(q));
+            });
+            
+            if (filtered && filtered.length > 0) {
+                stockTbody.innerHTML = filtered.map(item => {
+                    const locInfo = currentIsParent && item.location_name ? `<div style="font-size:10px; color:#3b82f6; margin-top:2px;">📍 ${item.location_name}</div>` : '';
+                    
+                    return `
+                    <tr class="stock-item-row" data-loc-id="${item.location_id || ''}" style="${currentIsParent && item.location_id ? 'cursor:pointer;' : ''}">
+                        <td style="padding:8px 4px;">
+                            <div style="font-weight:600; color:#1e293b; font-size:12px;">${item.product_name || 'Ismeretlen termék'}</div>
+                            <div style="font-size:11px; color:#64748b;">GTIN: ${item.gtin || '-'}</div>
+                            ${locInfo}
+                        </td>
+                        <td style="text-align:right; padding:8px 4px;">
+                            <div style="font-weight:700; color:#0f172a; font-size:12px;">${item.item_count} raklap</div>
+                            <div style="font-size:10px; color:#64748b;">(${item.total_cartons} karton)</div>
+                        </td>
+                    </tr>
+                `}).join('');
+                
+                if (currentIsParent) {
+                    stockTbody.querySelectorAll('.stock-item-row').forEach(tr => {
+                        tr.addEventListener('click', () => {
+                            const targetLocId = parseInt(tr.dataset.locId);
+                            if (targetLocId && targetLocId !== currentLoc.id) {
+                                const targetLoc = locations.find(l => l.id === targetLocId);
+                                if (targetLoc) {
+                                    selectedLocation = targetLoc;
+                                    if (targetLoc.parent_id) expandedParents.add(targetLoc.parent_id);
+                                    
+                                    const stockSearchInput = winContainer.querySelector('#loc-stock-search');
+                                    if(stockSearchInput) stockSearchInput.value = '';
+
+                                    renderTable();
+                                    renderDetails();
+                                    
+                                    setTimeout(() => {
+                                        const tbody = winContainer.querySelector('#loc-tbody');
+                                        const row = tbody.querySelector(`tr[data-id="${targetLoc.id}"]`);
+                                        if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    }, 100);
+                                }
+                            }
+                        });
+                    });
+                }
+            } else {
+                stockTbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:#94a3b8; padding:20px 0;">Üres lokáció (nincs készleten áru a megadott feltételekkel)</td></tr>';
+            }
+        };
+
         const renderDetails = async () => {
+            const stockSearchInput = winContainer.querySelector('#loc-stock-search');
             if (!selectedLocation) {
+                currentLoc = null;
+                currentIsParent = false;
+                currentStockItems = [];
+                if (stockSearchInput) stockSearchInput.style.display = 'none';
                 detailsContent.innerHTML = '<div style="color:#94a3b8; font-size:12px; text-align:center; padding:40px 0;">Válassz ki egy lokációt a listából!</div>';
-                winContainer.querySelector('#loc-stock-tbody').innerHTML = '<tr><td colspan="2" style="text-align:center; color:#94a3b8;">Nincs kiválasztott lokáció</td></tr>';
+                renderStockList();
                 return;
             }
             
             const loc = selectedLocation;
+            currentLoc = loc;
             const badgeClass = loc.status === 'Zárolt' ? 'badge-locked' : 'badge-active';
             const stockTbody = winContainer.querySelector('#loc-stock-tbody');
             stockTbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:#94a3b8; padding:15px 0;">Készlet betöltése...</td></tr>';
             
+            const children = locations.filter(c => c.parent_id === loc.id);
+            const isParent = loc.location_type === 'Szülő' || children.length > 0;
+            currentIsParent = isParent;
+            
+            if (stockSearchInput) {
+                stockSearchInput.style.display = isParent ? 'block' : 'none';
+                stockSearchInput.value = ''; // clear search when location changes
+            }
+            
             // Készlet lekérdezése a szerverről
-            let stockItems = [];
+            currentStockItems = [];
             try {
                 const stockRes = await fetch(`/api/v1/locations/${loc.id}/stock`);
                 if (stockRes.ok) {
-                    stockItems = await stockRes.json();
+                    currentStockItems = await stockRes.json();
                 }
             } catch(err) {
                 console.error('Hiba a készlet lekérdezésekor:', err);
             }
             
-            const totalCartons = stockItems.reduce((sum, item) => sum + (parseInt(item.total_cartons) || 0), 0);
-            const totalPallets = stockItems.reduce((sum, item) => sum + (parseInt(item.item_count) || 0), 0);
+            const totalCartons = currentStockItems.reduce((sum, item) => sum + (parseInt(item.total_cartons) || 0), 0);
+            const totalPallets = currentStockItems.reduce((sum, item) => sum + (parseInt(item.item_count) || 0), 0);
             
-            const children = locations.filter(c => c.parent_id === loc.id);
-            const isParent = loc.location_type === 'Szülő' || children.length > 0;
             const capPallets = (isParent && children.length > 0)
                 ? children.reduce((sum, c) => sum + (parseInt(c.capacity) || 0), 0)
                 : (parseInt(loc.capacity) || 1);
@@ -657,23 +739,8 @@ export function openLokaciokWindow(wm) {
                 } catch(e) { alert('Hiba a módosításkor'); }
             };
             
-            // Készlet táblázat feltöltése
-            if (stockItems && stockItems.length > 0) {
-                stockTbody.innerHTML = stockItems.map(item => `
-                    <tr>
-                        <td style="padding:8px 4px;">
-                            <div style="font-weight:600; color:#1e293b; font-size:12px;">${item.product_name || 'Ismeretlen termék'}</div>
-                            <div style="font-size:11px; color:#64748b;">GTIN: ${item.gtin || '-'}</div>
-                        </td>
-                        <td style="text-align:right; padding:8px 4px;">
-                            <div style="font-weight:700; color:#0f172a; font-size:12px;">${item.item_count} raklap</div>
-                            <div style="font-size:10px; color:#64748b;">(${item.total_cartons} karton)</div>
-                        </td>
-                    </tr>
-                `).join('');
-            } else {
-                stockTbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:#94a3b8; padding:20px 0;">Üres lokáció (nincs készleten áru)</td></tr>';
-            }
+            // Készlet megjelenítése
+            renderStockList();
         };
 
         const renderSummary = () => {
@@ -805,6 +872,13 @@ export function openLokaciokWindow(wm) {
             searchQuery = e.target.value;
             applyFilters();
         });
+        
+        const stockSearchInputEl = winContainer.querySelector('#loc-stock-search');
+        if (stockSearchInputEl) {
+            stockSearchInputEl.addEventListener('input', (e) => {
+                renderStockList(e.target.value);
+            });
+        }
         
         statusFilterInput.addEventListener('change', (e) => {
             statusFilter = e.target.value;

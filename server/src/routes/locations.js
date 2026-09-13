@@ -77,13 +77,17 @@ router.get('/:id/stock', async (req, res) => {
     const stockItems = await knex('aldi_stock_locations as s')
       .leftJoin('aldi_daily_order_lines as l', 'l.id', 's.order_line_id')
       .leftJoin('aldi_truck_lines as tl', 'tl.id', 's.truck_line_id')
+      .leftJoin('aldi_locations as loc', 'loc.id', 's.location_id')
       .whereIn('s.location_id', locationIds)
-      .groupByRaw('COALESCE(l.gtin, tl.product_name), COALESCE(l.cartons_per_pallet, tl.cartons_per_pallet)')
+      .groupByRaw('COALESCE(l.gtin, tl.product_name), COALESCE(l.cartons_per_pallet, tl.cartons_per_pallet), loc.id, loc.name, loc.barcode')
       .select(
         knex.raw('COALESCE(l.gtin, tl.product_name) as gtin'),
         knex.raw('COALESCE(l.cartons_per_pallet, tl.cartons_per_pallet) as cartons_per_pallet'),
         knex.raw('SUM(s.quantity_cartons)::integer as total_cartons'),
-        knex.raw('COUNT(s.id)::integer as item_count')
+        knex.raw('COUNT(s.id)::integer as item_count'),
+        'loc.id as location_id',
+        'loc.name as location_name',
+        'loc.barcode as location_barcode'
       )
       .orderBy('total_cartons', 'desc');
 
