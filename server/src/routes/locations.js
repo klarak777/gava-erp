@@ -81,8 +81,8 @@ router.get('/:id/stock', async (req, res) => {
       .whereIn('s.location_id', locationIds)
       .select(
         's.id as stock_id',
-        knex.raw('COALESCE(l.gtin, tl.product_name) as gtin'),
-        knex.raw('COALESCE(l.cartons_per_pallet, tl.cartons_per_pallet) as cartons_per_pallet'),
+        knex.raw('COALESCE(tl.product_name, l.gtin) as gtin'),
+        knex.raw('COALESCE(tl.cartons_per_pallet, l.cartons_per_pallet) as cartons_per_pallet'),
         knex.raw('s.quantity_cartons::integer as total_cartons'),
         knex.raw('1::integer as item_count'),
         's.gross_weight',
@@ -90,13 +90,18 @@ router.get('/:id/stock', async (req, res) => {
         's.created_at',
         'loc.id as location_id',
         'loc.name as location_name',
-        'loc.barcode as location_barcode'
+        'loc.barcode as location_barcode',
+        'tl.product_name as truck_product_name'
       )
       .orderBy('s.created_at', 'desc')
       .orderBy('s.id', 'desc');
 
     // 2. Külön kérésben hozzárendeljük a termékneveket, hogy ne sokszorozódjon a mennyiség
     for (let item of stockItems) {
+      if (item.truck_product_name) {
+        item.product_name = item.truck_product_name;
+        continue;
+      }
       if (!item.gtin) continue;
       
       // Ha a gtin valójában a terméknév (mert truck_line_id-ből jött és nem számokból áll)
@@ -139,22 +144,38 @@ router.delete('/stock/:stock_id/revert', async (req, res) => {
       }
 
       // Ha kamionos komissió (PDA)
-      if (stock.truck_line_id) {
-        const truckLine = await trx('aldi_truck_lines').where('id', stock.truck_line_id).forUpdate().first();
+      let targetTruckLineId = stock.truck_line_id;
+      if (!targetTruckLineId && stock.order_line_id) {
+        const foundTL = await trx('aldi_truck_lines').where('aldi_daily_order_line_id', stock.order_line_id).first();
+        if (foundTL) targetTruckLineId = foundTL.id;
+      }
+
+      if (targetTruckLineId) {
+        const truckLine = await trx('aldi_truck_lines').where('id', targetTruckLineId).forUpdate().first();
         if (truckLine) {
           const newPicked = Math.max(0, (truckLine.picked_cartons || 0) - stock.quantity_cartons);
-          await trx('aldi_truck_lines').where('id', stock.truck_line_id).update({
+          await trx('aldi_truck_lines').where('id', targetTruckLineId).update({
             picked_cartons: newPicked,
             is_picked: newPicked >= truckLine.ordered_cartons
           });
         }
         
         // Töröljük a legutóbbi megfelelő commission_line-t (hozzávetőleges párosítás)
-        const commLine = await trx('aldi_commission_lines')
-          .where('aldi_truck_line_id', stock.truck_line_id)
-          .andWhere('cartons', stock.quantity_cartons)
-          .orderBy('id', 'desc')
-          .first();
+        let commLine = null;
+        if (stock.gross_weight) {
+          commLine = await trx('aldi_commission_lines')
+            .where('aldi_truck_line_id', targetTruckLineId)
+            .andWhere('gross_weight', stock.gross_weight)
+            .orderBy('id', 'desc')
+            .first();
+        }
+        if (!commLine) {
+          commLine = await trx('aldi_commission_lines')
+            .where('aldi_truck_line_id', targetTruckLineId)
+            .andWhere('cartons', stock.quantity_cartons)
+            .orderBy('id', 'desc')
+            .first();
+        }
           
         if (commLine) {
           await trx('aldi_commission_lines').where('id', commLine.id).del();

@@ -270,7 +270,7 @@ async function processPick(trx, id, reqData, locationId = null) {
     await trx('aldi_stock_locations').insert({
       location_id: locationId,
       order_line_id: line.aldi_daily_order_line_id || null,
-      truck_line_id: line.aldi_daily_order_line_id ? null : line.id,
+      truck_line_id: line.id,
       quantity_cartons: qty,
       gross_weight: !isNaN(reqGross) && reqGross > 0 ? reqGross : null,
       net_weight: currentPickNet !== null ? currentPickNet : null
