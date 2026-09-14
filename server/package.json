@@ -1,11 +1,12 @@
 {
   "name": "server",
-  "version": "0.8.7.7",
+  "version": "0.8.8",
   "description": "",
   "main": "index.js",
   "scripts": {
     "test": "node --test tests/*.test.js",
     "start": "npm run migrate && node server.js",
+    "dev": "npm start",
     "migrate": "knex migrate:latest --knexfile knexfile.js",
     "migrate:rollback": "knex migrate:rollback --knexfile knexfile.js",
     "audit:aldi-versioning": "node scripts/auditAldiOrderVersioning.js",
