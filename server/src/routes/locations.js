@@ -77,12 +77,13 @@ router.get('/:id/stock', async (req, res) => {
     const stockItems = await knex('aldi_stock_locations as s')
       .leftJoin('aldi_daily_order_lines as l', 'l.id', 's.order_line_id')
       .leftJoin('aldi_truck_lines as tl', 'tl.id', 's.truck_line_id')
+      .leftJoin('aldi_daily_order_lines as tl_dol', 'tl_dol.id', 'tl.aldi_daily_order_line_id')
       .leftJoin('aldi_locations as loc', 'loc.id', 's.location_id')
       .whereIn('s.location_id', locationIds)
       .select(
         's.id as stock_id',
-        knex.raw('COALESCE(tl.product_name, l.gtin) as gtin'),
-        knex.raw('COALESCE(tl.cartons_per_pallet, l.cartons_per_pallet) as cartons_per_pallet'),
+        knex.raw('COALESCE(l.gtin, tl_dol.gtin) as gtin'),
+        knex.raw('COALESCE(tl.cartons_per_pallet, l.cartons_per_pallet, tl_dol.cartons_per_pallet) as cartons_per_pallet'),
         knex.raw('s.quantity_cartons::integer as total_cartons'),
         knex.raw('1::integer as item_count'),
         's.gross_weight',
@@ -96,34 +97,47 @@ router.get('/:id/stock', async (req, res) => {
       .orderBy('s.created_at', 'desc')
       .orderBy('s.id', 'desc');
 
-    // 2. Külön kérésben hozzárendeljük a termékneveket, hogy ne sokszorozódjon a mennyiség
+    // 2. Terméknév és cikkszám szigorú hozzárendelése a GTIN / cikkszám alapján a terméktörzsből (chain_products)
     for (let item of stockItems) {
-      if (item.truck_product_name) {
-        item.product_name = item.truck_product_name;
-        continue;
+      let cp = null;
+      if (item.gtin) {
+        // Elsődlegesen a GTIN vagy cikkszám alapján a terméktörzsből
+        cp = await knex('chain_products')
+          .where('chain', 'ALDI')
+          .andWhere(function() {
+            this.where('gtin', item.gtin).orWhere('article_number', item.gtin);
+          })
+          .first();
+      } else if (item.truck_product_name) {
+        // Ha nem volt közvetlen GTIN a készleten, a kamionsor alapján keressük meg a cikktörzsben
+        cp = await knex('chain_products')
+          .where('chain', 'ALDI')
+          .andWhere(function() {
+            this.where('product_name', item.truck_product_name)
+              .orWhere('gtin', item.truck_product_name)
+              .orWhere('article_number', item.truck_product_name);
+          })
+          .first();
       }
-      if (!item.gtin) continue;
-      
-      // Ha a gtin valójában a terméknév (mert truck_line_id-ből jött és nem számokból áll)
-      if (!/^\d{13,14}$/.test(item.gtin)) {
-        item.product_name = item.gtin;
-        continue;
-      }
-      
-      // Megpróbáljuk a chain_products-ból
-      const cp = await knex('chain_products').where('gtin', item.gtin).first('product_name');
-      if (cp && cp.product_name) {
+
+      if (cp) {
         item.product_name = cp.product_name;
+        if (!item.gtin) item.gtin = cp.gtin;
+        item.article_number = cp.article_number;
         continue;
       }
-      // Ha nincs, akkor aldi_weekly_price_lines-ből
-      const wp = await knex('aldi_weekly_price_lines').where('gtin', item.gtin).first('xlsx_product_name');
-      if (wp && wp.xlsx_product_name) {
-        item.product_name = wp.xlsx_product_name;
-        continue;
+
+      // Ha nincs a chain_products-ban, heti ártáblázatból nézzük meg
+      if (item.gtin) {
+        const wp = await knex('aldi_weekly_price_lines').where('gtin', item.gtin).first('xlsx_product_name');
+        if (wp && wp.xlsx_product_name) {
+          item.product_name = wp.xlsx_product_name;
+          continue;
+        }
+        item.product_name = item.gtin;
+      } else {
+        item.product_name = item.truck_product_name || 'Ismeretlen termék';
       }
-      // Ha egyik sincs, legyen a GTIN
-      item.product_name = item.gtin;
     }
 
     res.json(stockItems);

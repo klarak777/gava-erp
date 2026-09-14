@@ -574,7 +574,7 @@ export function openLokaciokWindow(wm) {
                     <tr class="stock-item-row" data-loc-id="${item.location_id || ''}" data-stock-id="${item.stock_id || ''}" style="${currentIsParent && item.location_id ? 'cursor:pointer;' : ''}">
                         <td style="padding:8px 4px;">
                             <div style="font-weight:600; color:#1e293b; font-size:12px;">${item.product_name || 'Ismeretlen termék'}</div>
-                            <div style="font-size:11px; color:#64748b;">GTIN: ${item.gtin || '-'}</div>
+                            <div style="font-size:11px; color:#64748b;">GTIN: ${item.gtin || '-'}${item.article_number ? ` | Cikkszám: ${item.article_number}` : ''}</div>
                             ${weightInfo}
                             ${locInfo}
                         </td>
