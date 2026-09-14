@@ -605,6 +605,10 @@ export function openLokaciokWindow(wm) {
                         
                         try {
                             const res = await fetch(`/api/v1/locations/stock/${stockId}/revert`, { method: 'DELETE' });
+                            const contentType = res.headers.get('content-type') || '';
+                            if (!contentType.includes('application/json')) {
+                                throw new Error(`A szerver nem válaszolt megfelelően (${res.status}). Lehet, hogy a szerver nem frissült – kérd meg az adminisztrátort, hogy futtassa a deploy parancsot!`);
+                            }
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || 'Hiba a tétel visszavonásakor');
                             
