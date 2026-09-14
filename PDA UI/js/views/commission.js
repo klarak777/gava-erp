@@ -260,8 +260,8 @@ export async function renderCommission(container, params = {}) {
           <div class="pda-form-error-msg" id="form-karton-error">⛔ A megadott mennyiség több mint a rendelt kartonszám!</div>
         </div>
         <div class="pda-form-group">
-          <label>Bruttó kg</label>
-          <input type="number" step="0.01" id="form-brutto" />
+          <label>Bruttó kg <span style="color:red;">*</span></label>
+          <input type="number" step="0.01" id="form-brutto" required />
         </div>
         <div class="pda-form-group">
           <label>Göngyöleg típus</label>

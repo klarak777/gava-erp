@@ -128,6 +128,50 @@ router.get('/:id/stock', async (req, res) => {
   }
 });
 
+// Tétel törlése a lokációról (Visszavonás komissiózásról)
+router.delete('/stock/:stock_id/revert', async (req, res) => {
+  try {
+    const stockId = req.params.stock_id;
+    await knex.transaction(async trx => {
+      const stock = await trx('aldi_stock_locations').where('id', stockId).forUpdate().first();
+      if (!stock) {
+        throw new Error('A tétel nem található a tárhelyen.');
+      }
+
+      // Ha kamionos komissió (PDA)
+      if (stock.truck_line_id) {
+        const truckLine = await trx('aldi_truck_lines').where('id', stock.truck_line_id).forUpdate().first();
+        if (truckLine) {
+          const newPicked = Math.max(0, (truckLine.picked_cartons || 0) - stock.quantity_cartons);
+          await trx('aldi_truck_lines').where('id', stock.truck_line_id).update({
+            picked_cartons: newPicked,
+            is_picked: newPicked >= truckLine.ordered_cartons
+          });
+        }
+        
+        // Töröljük a legutóbbi megfelelő commission_line-t (hozzávetőleges párosítás)
+        const commLine = await trx('aldi_commission_lines')
+          .where('aldi_truck_line_id', stock.truck_line_id)
+          .andWhere('cartons', stock.quantity_cartons)
+          .orderBy('id', 'desc')
+          .first();
+          
+        if (commLine) {
+          await trx('aldi_commission_lines').where('id', commLine.id).del();
+        }
+      }
+
+      // Végül a raklap törlése a lokációról
+      await trx('aldi_stock_locations').where('id', stockId).del();
+    });
+
+    res.json({ success: true, message: 'Tétel sikeresen visszavonva a komissiózásról.' });
+  } catch (error) {
+    console.error('Error reverting stock:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+});
+
 // Új tárhely hozzáadása
 router.post('/', async (req, res) => {
   try {

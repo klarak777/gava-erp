@@ -249,10 +249,11 @@ export function openLokaciokWindow(wm) {
                                     <tr>
                                         <th>Név</th>
                                         <th style="text-align:right;">Mennyiség</th>
+                                        <th style="width:40px;"></th>
                                     </tr>
                                 </thead>
                                 <tbody id="loc-stock-tbody">
-                                    <tr><td colspan="2" style="text-align:center; color:#94a3b8;">Nincs adat</td></tr>
+                                    <tr><td colspan="3" style="text-align:center; color:#94a3b8;">Nincs adat</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -546,7 +547,7 @@ export function openLokaciokWindow(wm) {
         const renderStockList = (searchQ = '') => {
             const stockTbody = winContainer.querySelector('#loc-stock-tbody');
             if (!currentLoc) {
-                stockTbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:#94a3b8;">Nincs kiválasztott lokáció</td></tr>';
+                stockTbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#94a3b8;">Nincs kiválasztott lokáció</td></tr>';
                 return;
             }
             
@@ -581,12 +582,40 @@ export function openLokaciokWindow(wm) {
                             <div style="font-weight:700; color:#0f172a; font-size:12px;">1 raklap</div>
                             <div style="font-size:10px; color:#64748b;">(${item.total_cartons} karton)</div>
                         </td>
+                        <td style="text-align:right; padding:8px 4px; vertical-align:middle;">
+                            <button class="icon-btn revert-stock-btn" title="Tétel visszavonása a komissiózásról" style="color:#ef4444;">🗑️</button>
+                        </td>
                     </tr>
                 `}).join('');
                 
+                stockTbody.querySelectorAll('.stock-item-row .revert-stock-btn').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        const tr = e.target.closest('tr');
+                        const stockId = tr.dataset.stockId;
+                        if (!stockId) return;
+                        
+                        if (!confirm('Biztosan visszavonod ezt a tételt a komissiózásról?\nA raklap lekerül a tárhelyről és újra komissiózható lesz.')) return;
+                        
+                        try {
+                            const res = await fetch(`/api/v1/locations/stock/${stockId}/revert`, { method: 'DELETE' });
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.error || 'Hiba a tétel visszavonásakor');
+                            
+                            showNotification('Siker', 'Tétel visszavonva a komissiózásról.', 'success');
+                            // Refresh mindent
+                            await fetchLocations(); 
+                            if (currentLoc) await fetchStock(currentLoc.id);
+                        } catch (err) {
+                            showNotification('Hiba', err.message, 'error');
+                        }
+                    });
+                });
+
                 if (currentIsParent) {
                     stockTbody.querySelectorAll('.stock-item-row').forEach(tr => {
-                        tr.addEventListener('click', () => {
+                        tr.addEventListener('click', (e) => {
+                            if(e.target.closest('button')) return;
                             const targetLocId = parseInt(tr.dataset.locId);
                             if (targetLocId && targetLocId !== currentLoc.id) {
                                 const targetLoc = locations.find(l => l.id === targetLocId);
