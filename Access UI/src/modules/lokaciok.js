@@ -554,22 +554,31 @@ export function openLokaciokWindow(wm) {
             const filtered = currentStockItems.filter(item => {
                 return !q || 
                     (item.product_name && item.product_name.toLowerCase().includes(q)) || 
-                    (item.gtin && item.gtin.toLowerCase().includes(q));
+                    (item.gtin && item.gtin.toLowerCase().includes(q)) ||
+                    (item.location_name && item.location_name.toLowerCase().includes(q));
             });
             
             if (filtered && filtered.length > 0) {
-                stockTbody.innerHTML = filtered.map(item => {
+                stockTbody.innerHTML = filtered.map((item, index) => {
                     const locInfo = currentIsParent && item.location_name ? `<div style="font-size:10px; color:#3b82f6; margin-top:2px;">📍 ${item.location_name}</div>` : '';
                     
+                    let weightInfo = '';
+                    if (item.gross_weight != null && parseFloat(item.gross_weight) > 0) {
+                        const gw = parseFloat(item.gross_weight).toFixed(1);
+                        const nw = (item.net_weight != null && parseFloat(item.net_weight) > 0) ? parseFloat(item.net_weight).toFixed(1) : null;
+                        weightInfo = `<div style="font-size:11px; color:#059669; font-weight:600; margin-top:2px;">⚖️ ${gw} kg bruttó${nw ? ` (${nw} kg nettó)` : ''}</div>`;
+                    }
+                    
                     return `
-                    <tr class="stock-item-row" data-loc-id="${item.location_id || ''}" style="${currentIsParent && item.location_id ? 'cursor:pointer;' : ''}">
+                    <tr class="stock-item-row" data-loc-id="${item.location_id || ''}" data-stock-id="${item.stock_id || ''}" style="${currentIsParent && item.location_id ? 'cursor:pointer;' : ''}">
                         <td style="padding:8px 4px;">
                             <div style="font-weight:600; color:#1e293b; font-size:12px;">${item.product_name || 'Ismeretlen termék'}</div>
                             <div style="font-size:11px; color:#64748b;">GTIN: ${item.gtin || '-'}</div>
+                            ${weightInfo}
                             ${locInfo}
                         </td>
-                        <td style="text-align:right; padding:8px 4px;">
-                            <div style="font-weight:700; color:#0f172a; font-size:12px;">${item.item_count} raklap</div>
+                        <td style="text-align:right; padding:8px 4px; vertical-align:middle;">
+                            <div style="font-weight:700; color:#0f172a; font-size:12px;">1 raklap</div>
                             <div style="font-size:10px; color:#64748b;">(${item.total_cartons} karton)</div>
                         </td>
                     </tr>

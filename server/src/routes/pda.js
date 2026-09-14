@@ -195,14 +195,6 @@ async function processPick(trx, id, reqData, locationId = null) {
       err.code = 'CAPACITY_EXCEEDED';
       throw err;
     }
-
-    // Lokáció mentése
-    await trx('aldi_stock_locations').insert({
-      location_id: locationId,
-      order_line_id: line.aldi_daily_order_line_id || null,
-      truck_line_id: line.aldi_daily_order_line_id ? null : line.id,
-      quantity_cartons: qty
-    });
   }
 
   // 3. Súly és raklap kalkuláció
@@ -262,7 +254,18 @@ async function processPick(trx, id, reqData, locationId = null) {
     }
   }
 
-  // 4. Részlet naplózása (Auditálhatóság)
+  // 4. Lokáció mentése és részlet naplózása (Auditálhatóság)
+  if (locationId && qty > 0) {
+    await trx('aldi_stock_locations').insert({
+      location_id: locationId,
+      order_line_id: line.aldi_daily_order_line_id || null,
+      truck_line_id: line.aldi_daily_order_line_id ? null : line.id,
+      quantity_cartons: qty,
+      gross_weight: !isNaN(reqGross) && reqGross > 0 ? reqGross : null,
+      net_weight: currentPickNet !== null ? currentPickNet : null
+    });
+  }
+
   await trx('aldi_commission_lines').insert({
     aldi_truck_id: line.aldi_truck_id,
     aldi_truck_line_id: id,
