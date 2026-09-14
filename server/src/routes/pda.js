@@ -175,25 +175,36 @@ async function processPick(trx, id, reqData, locationId = null) {
     const err = new Error(`A megadott kartonszám (${qty} db) több mint a hátralévő rendelt mennyiség (${remaining} db).`); err.code = 'OVER_QTY'; throw err;
   }
 
-  // 2. Kapacitás ellenőrzése (ha van lokáció)
+  // 2. Kapacitás ellenőrzése (ha van lokáció) – FOR UPDATE zárolással a race condition ellen
   if (locationId && qty > 0) {
-    const loc = await trx('aldi_locations').where('id', locationId).first();
-    
-    const currentLocStock = await trx('aldi_stock_locations as s')
-      .leftJoin('aldi_daily_order_lines as ol', 'ol.id', 's.order_line_id')
-      .leftJoin('aldi_truck_lines as tl', 'tl.id', 's.truck_line_id')
-      .where('s.location_id', locationId)
-      .select(trx.raw('COUNT(s.id)::integer as occupied_pallets'))
-      .first();
+    const loc = await trx('aldi_locations').where('id', locationId).forUpdate().first();
 
-    const existingPallets = parseFloat(currentLocStock?.occupied_pallets) || 0;
-    const incomingPallets = 1; // Minden PDA megadás 1 raklap
-    const capacity = parseFloat(loc.capacity) || 1;
+    if (!loc) {
+      const err = new Error('A megadott lokáció nem található.'); err.code = 'NOT_FOUND'; throw err;
+    }
 
-    if (existingPallets + incomingPallets > capacity + 0.05) {
-      const err = new Error(`A lokáció megtelt! Kapacitás: ${capacity} raklap.\nFoglalt: ${existingPallets.toFixed(2)} raklap\nÚj tétel: ${incomingPallets.toFixed(2)} raklap.\n\nA tétel NEM lett levonva – próbálj másik lokációt!`);
-      err.code = 'CAPACITY_EXCEEDED';
-      throw err;
+    const capacity = parseInt(loc.capacity) || 0;
+
+    // Ha a kapacitás 0, az azt jelenti, hogy nincs meghatározva – ne blokkoljuk
+    if (capacity > 0) {
+      const currentLocStock = await trx('aldi_stock_locations')
+        .where('location_id', locationId)
+        .count('id as occupied_pallets')
+        .first();
+
+      const existingPallets = parseInt(currentLocStock?.occupied_pallets) || 0;
+      const incomingPallets = 1; // Minden PDA megadás 1 raklap
+
+      if (existingPallets + incomingPallets > capacity) {
+        const err = new Error(
+          `A lokáció megtelt! Kapacitás: ${capacity} raklap.\n` +
+          `Foglalt: ${existingPallets} raklap\n` +
+          `Már nincs szabad hely ezen a tárhelyen!\n\n` +
+          `A tétel NEM lett rögzítve – válassz másik lokációt!`
+        );
+        err.code = 'CAPACITY_EXCEEDED';
+        throw err;
+      }
     }
   }
 
