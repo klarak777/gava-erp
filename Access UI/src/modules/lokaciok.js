@@ -592,22 +592,30 @@ export function openLokaciokWindow(wm) {
                     btn.addEventListener('click', async (e) => {
                         e.stopPropagation();
                         const tr = e.target.closest('tr');
-                        const stockId = tr.dataset.stockId;
-                        if (!stockId) return;
+                        const stockId = tr?.dataset?.stockId;
+                        if (!stockId) {
+                            alert('Hiba: nem található a raklap azonosítója!');
+                            return;
+                        }
                         
                         if (!confirm('Biztosan visszavonod ezt a tételt a komissiózásról?\nA raklap lekerül a tárhelyről és újra komissiózható lesz.')) return;
+                        
+                        btn.textContent = '⏳';
+                        btn.disabled = true;
                         
                         try {
                             const res = await fetch(`/api/v1/locations/stock/${stockId}/revert`, { method: 'DELETE' });
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || 'Hiba a tétel visszavonásakor');
                             
-                            showNotification('Siker', 'Tétel visszavonva a komissiózásról.', 'success');
-                            // Refresh mindent
-                            await fetchLocations(); 
-                            if (currentLoc) await fetchStock(currentLoc.id);
+                            alert('✅ Tétel sikeresen visszavonva a komissiózásról!');
+                            // Frissítjük az adatokat + a jobb oldali részleteket is
+                            await loadData();
+                            if (selectedLocation) await renderDetails();
                         } catch (err) {
-                            showNotification('Hiba', err.message, 'error');
+                            btn.textContent = '🗑️';
+                            btn.disabled = false;
+                            alert('❌ Hiba: ' + err.message);
                         }
                     });
                 });
