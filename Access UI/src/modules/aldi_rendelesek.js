@@ -621,7 +621,6 @@ export function renderAldiRendelesek(container, windowManager) {
          
          let cellBg = isActionDay ? '#bbf7d0' : '#ffffff';
          let textColor = '#0f172a';
-         let disabledInput = '';
          
          let rendeltStr = rendeltNum !== undefined ? Math.round(rendeltNum) : '-';
          let becsultStr = Math.round(becsultNum || 0);
@@ -631,7 +630,6 @@ export function renderAldiRendelesek(container, windowManager) {
          if (isPastDay) {
             cellBg = '#f1f5f9';
             textColor = '#94a3b8';
-            disabledInput = 'disabled';
          }
          
          cells += `
@@ -643,7 +641,7 @@ export function renderAldiRendelesek(container, windowManager) {
          
          keszletCells += `
            <td style="padding:8px; border:1px solid #e2e8f0; background:${keszletBg};">
-             <input type="number" class="lekotes-stock-input" data-article="${pg.display_name}" data-field="${incKey}" value="${erkezoVal}" ${disabledInput} style="width:50px; text-align:center; padding:4px; border:1px solid #cbd5e1; border-radius:4px; font-size:12px; color:${isPastDay ? '#94a3b8' : '#0f172a'}; background:transparent;">
+             <input type="number" class="lekotes-stock-input" data-article="${pg.display_name}" data-field="${incKey}" value="${erkezoVal}" style="width:50px; text-align:center; padding:4px; border:1px solid #cbd5e1; border-radius:4px; font-size:12px; color:#0f172a; background:#ffffff;">
            </td>
            <td style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:${keszletBg}; color:${isPastDay ? '#94a3b8' : '#ef4444'}; font-weight:${isPastDay ? 'normal' : 'bold'};">
              ${hianyStr}
