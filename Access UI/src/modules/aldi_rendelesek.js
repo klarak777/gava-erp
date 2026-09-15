@@ -1940,31 +1940,69 @@ function doExcelExport(lines, orderNo, dateStr) {
               document.body.appendChild(warnOverlay);
               
               warnOverlay.querySelector('#aldi-warn-ok-btn').addEventListener('click', () => {
-                  warnOverlay.remove();
-                  modalOverlay.remove();
-                  renderModule();
+                warnOverlay.remove();
+                modalOverlay.remove();
+                renderModule();
               });
-          } else {
+            } else {
               setTimeout(() => {
                 modalOverlay.remove();
                 renderModule();
               }, 2000);
+            }
+          } else if (res.status === 409) {
+            if (result.action === 'identical') {
+              statusDiv.style.background = '#fef2f2';
+              statusDiv.style.color = '#dc2626';
+              statusDiv.textContent = `❌ ${result.error}`;
+              uploadBtn.disabled = false;
+              uploadBtn.textContent = '📤 Újrapróbálkozás';
+            } else if (result.action === 'confirm_overwrite') {
+              statusDiv.style.display = 'none';
+              
+              const confirmModal = document.createElement('div');
+              confirmModal.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:10000; display:flex; align-items:center; justify-content:center;';
+              confirmModal.innerHTML = `
+                <div style="background:#fff; width:450px; border-radius:12px; padding:24px; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+                  <h3 style="margin-top:0; color:#b45309; border-bottom:1px solid #fef08a; padding-bottom:10px;">⚠️ Ütközés észlelve</h3>
+                  <p style="font-size:14px; color:#475569; margin-bottom:20px;">${result.error}</p>
+                  <div style="display:flex; justify-content:flex-end; gap:12px;">
+                    <button id="conflict-cancel" style="padding:8px 16px; border-radius:6px; border:1px solid #cbd5e1; background:#fff; cursor:pointer;">Mégsem</button>
+                    <button id="conflict-overwrite" style="padding:8px 16px; border-radius:6px; border:none; background:#ea580c; color:#fff; cursor:pointer;">Felülírás</button>
+                  </div>
+                </div>
+              `;
+              document.body.appendChild(confirmModal);
+              
+              confirmModal.querySelector('#conflict-cancel').addEventListener('click', () => {
+                confirmModal.remove();
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = '📤 Újrapróbálkozás';
+              });
+              
+              confirmModal.querySelector('#conflict-overwrite').addEventListener('click', () => {
+                confirmModal.remove();
+                performUpload('overwrite');
+              });
+            }
+          } else {
+            statusDiv.style.background = '#fef2f2';
+            statusDiv.style.color = '#dc2626';
+            statusDiv.textContent = `❌ Hiba: ${result.error || 'Ismeretlen hiba'}`;
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = '📤 Feltöltés';
           }
-        } else {
+        } catch (e) {
+          console.error('Upload hiba:', e);
           statusDiv.style.background = '#fef2f2';
           statusDiv.style.color = '#dc2626';
-          statusDiv.textContent = `❌ Hiba: ${result.error || 'Ismeretlen hiba'}`;
+          statusDiv.textContent = `❌ Hálózati hiba: ${e.message}`;
           uploadBtn.disabled = false;
           uploadBtn.textContent = '📤 Feltöltés';
         }
-      } catch (e) {
-        console.error('Upload hiba:', e);
-        statusDiv.style.background = '#fef2f2';
-        statusDiv.style.color = '#dc2626';
-        statusDiv.textContent = `❌ Hálózati hiba: ${e.message}`;
-        uploadBtn.disabled = false;
-        uploadBtn.textContent = '📤 Feltöltés';
-      }
+      };
+
+      performUpload();
     });
   }
 
