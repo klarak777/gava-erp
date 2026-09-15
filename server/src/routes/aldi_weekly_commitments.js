@@ -90,10 +90,58 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     try {
         if (!req.file) throw new Error("Nincs fájl kiválasztva.");
 
+        // 1. Parse from filename as fallback
         let { year, week_number, type } = parseDatesAndWeek(req.file.originalname);
+
+        // 2. Parse Excel early to find header date
+        const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const jsonData = xlsx.utils.sheet_to_json(sheet, { defval: null, header: 1 });
+
+        let headerRowIdx = -1;
+        for (let i = 0; i < Math.min(jsonData.length, 20); i++) {
+            if (jsonData[i].some(cell => cell && typeof cell === 'string' && cell.toLowerCase().includes('display'))) {
+                headerRowIdx = i;
+                break;
+            }
+        }
+        if (headerRowIdx === -1) throw new Error("Nem található 'Display' oszlop a táblázatban.");
+
+        const headers = jsonData[headerRowIdx];
+        
+        // Keresünk dátumot az "Értékesítési előrejelzés" oszlopban
+        let headerDateStr = null;
+        for (let h of headers) {
+            if (typeof h === 'string' && h.toLowerCase().includes('előrejelzés')) {
+                let m = h.match(/(\d{2})\.(\d{2})\.(?:\d{4})?\s*-\s*(\d{2})\.(\d{2})\.(?:\d{4})?/);
+                if (m) {
+                    let y = year || new Date().getFullYear();
+                    headerDateStr = `${y}-${m[2]}-${m[1]}`; // YYYY-MM-DD
+                    break;
+                }
+            }
+        }
+
+        if (headerDateStr) {
+            // "Szerdától indul a hét és keddig tart." - az ALDI excelnél csütörtök-szerda van írva, 
+            // így levonunk 1 napot, hogy megkapjuk a szerdai kezdődátumot
+            let d = new Date(headerDateStr);
+            d.setDate(d.getDate() - 1);
+            year = d.getFullYear();
+            
+            // find Wednesday
+            for (let i = 0; i < 7; i++) {
+                if (d.getDay() === 3) break;
+                d.setDate(d.getDate() - 1);
+            }
+            week_number = getISOWeekOfWednesday(d);
+            year = d.getFullYear();
+        }
 
         trx = await db.transaction();
         await trx.raw('SELECT pg_advisory_xact_lock(860036)');
+        
         if (!week_number) {
             year = Number(req.body.year) || year;
             const latest = await trx('aldi_weekly_commitments').where({ year }).orderBy('week_number', 'desc').first();
@@ -112,7 +160,9 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         const week_str = 'KW' + String(week_number).padStart(2, '0');
 
         let commitment = await trx('aldi_weekly_commitments').where({ year, week_number }).first().forUpdate();
+        let isNewCommitment = false;
         if (!commitment) {
+            isNewCommitment = true;
             [commitment] = await trx('aldi_weekly_commitments').insert({
                 year, week_number, week_str
             }).returning('*');
@@ -124,45 +174,21 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             fs.mkdirSync(targetDir, { recursive: true });
         }
 
-        const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        const jsonData = xlsx.utils.sheet_to_json(sheet, { defval: null, header: 1 });
-
-        // A 'Display' oszlop fejlécsorát keressük (első 20 soron belül)
-        let headerRowIdx = -1;
-        for (let i = 0; i < Math.min(jsonData.length, 20); i++) {
-            if (jsonData[i].some(cell => cell && typeof cell === 'string' && cell.toLowerCase().includes('display'))) {
-                headerRowIdx = i;
-                break;
-            }
-        }
-        if (headerRowIdx === -1) throw new Error("Nem található 'Display' oszlop a táblázatban.");
-
-        const headers = jsonData[headerRowIdx];
         const nameIdx = headers.findIndex(h => typeof h === 'string' && /term.*(nev|le.r.s)/i.test(h.normalize('NFD').replace(/[\u0300-\u036f]/g, '')));
         const displayIdx = headers.findIndex(h => typeof h === 'string' && h.toLowerCase().includes('display'));
         const actionPeriodIdx = headers.findIndex(h => typeof h === 'string' && h.toLowerCase().includes('akciós időszak'));
 
-        // Normál típusnál: 'becsült mennyiség' oszlop tartalmazza az összesített értéket
         let qtyIdx = -1;
         if (type === 'normal') {
             qtyIdx = headers.findIndex(h => typeof h === 'string' && h.toLowerCase().includes('becsült mennyiség'));
             if (qtyIdx === -1) throw new Error('Nem található mennyiség oszlop a normal típushoz.');
         }
-        // Action típusnál: F-L oszlop (index 5-11) fix pozíció alapján naponta
-        // F=Csütörtök, G=Péntek, H=Szombat, I=Vasárnap, J=Hétfő, K=Kedd, L=Szerda
         const ACTION_DAY_COLS = [
-            { col: 5, key: 'thu' }, // F
-            { col: 6, key: 'fri' }, // G
-            { col: 7, key: 'sat' }, // H
-            { col: 8, key: 'sun' }, // I
-            { col: 9, key: 'mon' }, // J
-            { col: 10, key: 'tue' }, // K
-            { col: 11, key: 'wed' }, // L
+            { col: 5, key: 'thu' }, { col: 6, key: 'fri' }, { col: 7, key: 'sat' }, 
+            { col: 8, key: 'sun' }, { col: 9, key: 'mon' }, { col: 10, key: 'tue' }, { col: 11, key: 'wed' },
         ];
 
-        const itemsToInsert = [];
+        let itemsToInsert = [];
 
         for (let i = headerRowIdx + 1; i < jsonData.length; i++) {
             const row = jsonData[i];
@@ -182,7 +208,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
                 else if (typeof qtyStr === 'string') qty = parseFloat(qtyStr.replace(/\s/g, '').replace(',', '.'));
                 if (!Number.isFinite(qty) || qty < 0) throw new Error('Invalid quantity: ' + displayStr);
             } else {
-                // Action típus: naponta kinyerjük az F-L (index 5-11) oszlop értékeit
                 dailyValues = {};
                 let total = 0;
                 for (const { col, key } of ACTION_DAY_COLS) {
@@ -211,7 +236,66 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
         if (!itemsToInsert.length) throw new Error('No valid product rows');
 
-        // Fájlnév: emberi olvashatóság, revision nélkül, ha már létezik, felülírjuk
+        // Konfliktus kezelés / Merge logika
+        const existingItems = isNewCommitment ? [] : await trx('aldi_weekly_commitment_items').where({ commitment_id: commitment.id, type });
+        let conflicts = [];
+        let finalItemsToInsert = [];
+
+        if (existingItems.length > 0) {
+            for (let newItem of itemsToInsert) {
+                const existing = existingItems.find(e => e.display_name === newItem.display_name && e.action_period === newItem.action_period);
+                if (existing) {
+                    conflicts.push({
+                        id: existing.id,
+                        display_name: newItem.display_name,
+                        action_period: newItem.action_period,
+                        old_qty: existing.total_forecast_cartons,
+                        new_qty: newItem.total_forecast_cartons,
+                        newItem: newItem
+                    });
+                } else {
+                    finalItemsToInsert.push(newItem);
+                }
+            }
+        } else {
+            finalItemsToInsert = itemsToInsert;
+        }
+
+        const mergeAction = req.body.merge_action; // 'add' vagy 'overwrite'
+
+        if (conflicts.length > 0 && !mergeAction) {
+            await trx.rollback();
+            return res.status(409).json({ 
+                requires_resolution: true, 
+                conflicts: conflicts.map(c => ({ 
+                    display_name: c.display_name, 
+                    action_period: c.action_period, 
+                    old_qty: c.old_qty, 
+                    new_qty: c.new_qty 
+                }))
+            });
+        }
+
+        if (mergeAction === 'overwrite') {
+            for (let conflict of conflicts) {
+                await trx('aldi_weekly_commitment_items')
+                    .where({ id: conflict.id })
+                    .update({
+                        total_forecast_cartons: conflict.newItem.total_forecast_cartons,
+                        daily_values: conflict.newItem.daily_values,
+                        xlsx_product_name: conflict.newItem.xlsx_product_name
+                    });
+            }
+        } else if (mergeAction === 'add') {
+            // Ha 'add', akkor csak az újakat szúrjuk be (amik nem voltak a conflicts-ban). 
+            // A finalItemsToInsert már eleve nem tartalmazza a konfliktusosokat, így nincs más dolgunk.
+        }
+
+        // Beszúrjuk az új, teljesen ismeretlen tételeket
+        if (finalItemsToInsert.length > 0) {
+            await trx('aldi_weekly_commitment_items').insert(finalItemsToInsert);
+        }
+
         const filePrefix = type === 'normal'
             ? `Keresleti adatok ${week_str}`
             : `Rendelési terv ${week_str}`;
@@ -219,11 +303,9 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         const filePath = path.join(targetDir, fileName);
         fs.writeFileSync(filePath, req.file.buffer);
         await trx('aldi_weekly_commitments').where({ id: commitment.id }).update({ [type === 'normal' ? 'normal_file_path' : 'action_file_path']: fileName });
-        await trx('aldi_weekly_commitment_items').where({ commitment_id: commitment.id, type }).delete();
-        await trx('aldi_weekly_commitment_items').insert(itemsToInsert);
 
         await trx.commit();
-        res.json({ success: true, message: `Sikeresen feldolgozva ${itemsToInsert.length} sor.`, commitment: { id: commitment.id, year: commitment.year, week_number: commitment.week_number } });
+        res.json({ success: true, message: `Sikeresen feldolgozva ${itemsToInsert.length} sor (ebből ${finalItemsToInsert.length} új, ${conflicts.length} egyező).`, commitment: { id: commitment.id, year: commitment.year, week_number: commitment.week_number } });
     } catch (err) {
         if (trx) await trx.rollback();
         console.error("Upload error:", err);

@@ -17,7 +17,7 @@ const path = require('path');
 const fs = require('fs');
 const xlsx = require('xlsx');
 const db = require('../db/db');
-const { validateAldiPeriod } = require('../utils/aldiWeeklyDates');
+const { validateAldiPeriod, getAldiWeekFromDate, findFirstWednesday } = require('../utils/aldiWeeklyDates');
 
 // ─── Konfiguráció ─────────────────────────────────────────────────────────────
 const IS_WINDOWS = process.platform === 'win32';
@@ -102,6 +102,17 @@ function buildNetworkFolderPath(year, weekCode) {
   }
 }
 
+/**
+ * Eltávolítja az Incoterm kódokat (pl. DDP) az ár szövegekből
+ */
+function stripIncoterm(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/\b(DDP|EXW|FCA|CPT|CIP|DAP|DPU|FAS|FOB|CFR|CIF)\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 // ─── GET /api/v1/aldi-weekly-prices?year=2026 ────────────────────────────────
 router.get('/', async (req, res) => {
   try {
@@ -180,17 +191,11 @@ router.get('/:id/lines', async (req, res) => {
 // ─── POST /api/v1/aldi-weekly-prices/upload ──────────────────────────────────
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
-    const { year, weekCode, weekNumber } = req.body;
+    const { merge_action } = req.body;
 
     if (!req.file) {
       return res.status(400).json({ error: 'Nincs feltöltött fájl.' });
     }
-    if (!year || !weekCode) {
-      return res.status(400).json({ error: 'Év és hét megadása kötelező.' });
-    }
-
-    const parsedYear = parseInt(year, 10);
-    const parsedWeekNum = parseInt(weekNumber, 10) || extractWeekNumber(weekCode);
 
     // 1. XLSX parse
     const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
@@ -245,6 +250,79 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       const gtinVal = colMap['Rendelési GTIN'] !== undefined ? String(row[colMap['Rendelési GTIN']]).trim() : '';
       if (!pName && !gtinVal) continue;
       dataRows.push(row);
+    }
+
+    if (dataRows.length === 0) {
+      return res.status(400).json({ error: 'Nem találtunk feldolgozható adatsorokat a fájlban.' });
+    }
+
+    // Dátumok és hét meghatározása az első szerdát tartalmazó, vagy első érvényes "Szállítási időszak" alapján
+    let foundWeek = null;
+    for (const row of dataRows) {
+      const deliveryStr = colMap['Szállítási időszak'] !== undefined ? String(row[colMap['Szállítási időszak']]) : '';
+      const { start: rawStart, end: rawEnd } = parseDeliveryPeriod(deliveryStr);
+      if (rawStart) {
+        const firstWed = findFirstWednesday(rawStart, rawEnd);
+        const wInfo = getAldiWeekFromDate(firstWed);
+        if (wInfo) {
+          foundWeek = wInfo;
+          break;
+        }
+      }
+    }
+
+    if (!foundWeek) {
+      return res.status(400).json({ error: 'Nem található érvényes Szállítási időszak a fájlban, a hét azonosítása sikertelen.' });
+    }
+
+    const parsedYear = foundWeek.year;
+    const parsedWeekNum = foundWeek.weekNumber;
+    const weekCode = toWeekCode(parsedWeekNum);
+
+    // Konfliktus ellenőrzése
+    let existingWeekRecord = await db('aldi_weekly_prices')
+      .where({ year: parsedYear, week_code: weekCode })
+      .first();
+
+    if (existingWeekRecord && merge_action !== 'overwrite') {
+      const oldLines = await db('aldi_weekly_price_lines').where('weekly_price_id', existingWeekRecord.id).orderBy('row_order', 'asc');
+      
+      let isIdentical = false;
+      if (oldLines.length === dataRows.length) {
+        isIdentical = true;
+        for (let i = 0; i < dataRows.length; i++) {
+          const oldLine = oldLines[i];
+          const row = dataRows[i];
+          
+          const gtin = colMap['Rendelési GTIN'] !== undefined ? String(row[colMap['Rendelési GTIN']]).trim() : '';
+          const carton = colMap['Kartontartalom'] !== undefined ? parseInt(row[colMap['Kartontartalom']], 10) || null : null;
+          const unitCost = colMap['Egységköltség'] !== undefined ? stripIncoterm(row[colMap['Egységköltség']]) : '';
+          
+          if (
+            oldLine.gtin !== (gtin || null) || 
+            oldLine.carton_content !== carton ||
+            oldLine.unit_cost !== unitCost
+          ) {
+            isIdentical = false;
+            break;
+          }
+        }
+      }
+      
+      if (isIdentical) {
+        return res.status(409).json({
+          success: false,
+          action: 'identical',
+          error: 'Azonos hétre azonos tartalommal már került fájl feltöltésre.'
+        });
+      } else {
+        return res.status(409).json({
+          success: false,
+          action: 'confirm_overwrite',
+          error: 'Erre a hétre már létezik eltérő tartalmú heti ár. Szeretné felülírni a teljes heti adatot az új fájllal?',
+          weekRecord: existingWeekRecord
+        });
+      }
     }
 
     // 2. GTIN azonosítás a chain_products táblából (chain = 'ALDI')
@@ -367,8 +445,8 @@ router.post('/upload', upload.single('file'), async (req, res) => {
           carton_content: colMap['Kartontartalom'] !== undefined ? parseInt(row[colMap['Kartontartalom']], 10) || null : null,
           origin,
           packaging: colMap['Szállítási csomagolás'] !== undefined ? String(row[colMap['Szállítási csomagolás']]).trim() : '',
-          crate_cost: colMap['Rekeszköltség'] !== undefined ? String(row[colMap['Rekeszköltség']]).trim() : '',
-          unit_cost: colMap['Egységköltség'] !== undefined ? String(row[colMap['Egységköltség']]).trim() : '',
+          crate_cost: colMap['Rekeszköltség'] !== undefined ? stripIncoterm(row[colMap['Rekeszköltség']]) : '',
+          unit_cost: colMap['Egységköltség'] !== undefined ? stripIncoterm(row[colMap['Egységköltség']]) : '',
           delivery_period_start: finalStart,
           delivery_period_end: finalEnd,
           original_period_start: rawStart,

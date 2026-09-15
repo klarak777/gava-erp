@@ -905,6 +905,10 @@ export function renderAldiRendelesek(container, windowManager) {
     modalOverlay.querySelector('#aldi-lekotes-modal-cancel')?.addEventListener('click', () => modalOverlay.remove());
 
     uploadBtn.addEventListener('click', async () => {
+      await performUpload();
+    });
+
+    async function performUpload(mergeAction = null) {
       if (!selectedFile) {
         statusDiv.style.display = 'block';
         statusDiv.style.background = '#fef2f2';
@@ -919,6 +923,9 @@ export function renderAldiRendelesek(container, windowManager) {
       if (state.hetiLekotesSelectedWeek) {
         if (modalOverlay.querySelector('#commitment-replace')?.checked) formData.append('replace_week', state.hetiLekotesSelectedWeek);
       }
+      if (mergeAction) {
+        formData.append('merge_action', mergeAction);
+      }
 
       uploadBtn.textContent = '⏳ Feldolgozás...';
       uploadBtn.disabled = true;
@@ -929,6 +936,17 @@ export function renderAldiRendelesek(container, windowManager) {
           method: 'POST',
           body: formData
         });
+
+        if (res.status === 409) {
+            const data = await res.json();
+            if (data.requires_resolution) {
+                showMergeResolutionModal(data.conflicts);
+                uploadBtn.textContent = '📤 Feltöltés';
+                uploadBtn.disabled = false;
+                return;
+            }
+        }
+
         const data = await res.json();
         if (data.success) {
           statusDiv.style.display = 'block';
@@ -962,7 +980,64 @@ export function renderAldiRendelesek(container, windowManager) {
         uploadBtn.textContent = '📤 Feltöltés';
         uploadBtn.disabled = false;
       }
-    });
+    }
+
+    function showMergeResolutionModal(conflicts) {
+        const resolutionOverlay = document.createElement('div');
+        resolutionOverlay.style.position = 'fixed';
+        resolutionOverlay.style.top = '0';
+        resolutionOverlay.style.left = '0';
+        resolutionOverlay.style.width = '100%';
+        resolutionOverlay.style.height = '100%';
+        resolutionOverlay.style.background = 'rgba(0,0,0,0.5)';
+        resolutionOverlay.style.display = 'flex';
+        resolutionOverlay.style.alignItems = 'center';
+        resolutionOverlay.style.justifyContent = 'center';
+        resolutionOverlay.style.zIndex = '10001';
+
+        const modalDiv = document.createElement('div');
+        modalDiv.style.background = 'white';
+        modalDiv.style.padding = '24px';
+        modalDiv.style.borderRadius = '12px';
+        modalDiv.style.width = '600px';
+        modalDiv.style.maxWidth = '90%';
+        modalDiv.style.boxShadow = '0 10px 25px rgba(0,0,0,0.2)';
+
+        let listHtml = conflicts.map(c => `<li><strong>${c.display_name}</strong> (Időszak: ${c.action_period || '-'})</li>`).join('');
+
+        modalDiv.innerHTML = `
+            <h2 style="margin-top: 0; color: #1e293b; font-size: 1.25rem;">⚠️ Ütköző tételek találhatók</h2>
+            <p style="color: #475569; margin-bottom: 12px;">
+                Az Excel fájlban szereplő alábbi termékek már szerepelnek a kiválasztott hétre feltöltött adatok között:
+            </p>
+            <ul style="background: #f8fafc; padding: 12px 12px 12px 32px; border-radius: 6px; margin-bottom: 16px; color: #334155; font-size: 0.9rem; max-height: 200px; overflow-y: auto;">
+                ${listHtml}
+            </ul>
+            <p style="color: #475569; margin-bottom: 24px;">
+                Mit szeretnél tenni ezekkel a tételekkel? (A többi, teljesen új termék mindenképpen hozzáadódik a listához.)
+            </p>
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                <button id="res-cancel" style="padding: 8px 16px; border: 1px solid #cbd5e1; background: white; border-radius: 6px; cursor: pointer;">Mégsem</button>
+                <button id="res-add" style="padding: 8px 16px; border: none; background: #3b82f6; color: white; border-radius: 6px; cursor: pointer;">Tétel(ek) hozzá adása (Új sorként)</button>
+                <button id="res-overwrite" style="padding: 8px 16px; border: none; background: #ef4444; color: white; border-radius: 6px; cursor: pointer;">Meglévő Felülírása</button>
+            </div>
+        `;
+
+        resolutionOverlay.appendChild(modalDiv);
+        document.body.appendChild(resolutionOverlay);
+
+        modalDiv.querySelector('#res-cancel').addEventListener('click', () => {
+            document.body.removeChild(resolutionOverlay);
+        });
+        modalDiv.querySelector('#res-add').addEventListener('click', () => {
+            document.body.removeChild(resolutionOverlay);
+            performUpload('add');
+        });
+        modalDiv.querySelector('#res-overwrite').addEventListener('click', () => {
+            document.body.removeChild(resolutionOverlay);
+            performUpload('overwrite');
+        });
+    }
   }
 
   // ─── Heti árak fül ────────────────────────────────────────────────────────────
@@ -1705,26 +1780,6 @@ function doExcelExport(lines, orderNo, dateStr) {
   // ─── Heti árak feltöltő modal ─────────────────────────────────────────────────
 
   function openHetiArakUploadModal() {
-    const currentYear = new Date().getFullYear();
-    let yearOptions = '';
-    for (let y = 2018; y <= currentYear; y++) {
-      yearOptions += `<option value="${y}" ${y === state.hetiArakYear ? 'selected' : ''}>${y}</option>`;
-    }
-
-    // Csak a ténylegesen feltöltött hetek + "Új hét" opció
-    const existingWeekOpts = state.hetiArakWeeks
-      .filter(w => w.year === state.hetiArakYear)
-      .sort((a, b) => (a.week_number || 0) - (b.week_number || 0))
-      .map(w => `<option value="existing:${w.week_code}">${w.week_code} – frissítés</option>`)
-      .join('');
-
-    // Következő KW javasolt szám (eggyel a legnagyobb meglévő fölé)
-    const existingForYear = state.hetiArakWeeks.filter(w => w.year === state.hetiArakYear);
-    const maxKw = existingForYear.length > 0
-      ? Math.max(...existingForYear.map(w => w.week_number || 0))
-      : Math.min(53, Math.max(1, Math.ceil((Date.now() - new Date(`${state.hetiArakYear}-01-01`)) / (7 * 24 * 3600 * 1000))));
-    const nextKwSuggestion = Math.min(53, maxKw + (existingForYear.length > 0 ? 1 : 0));
-
     const modalOverlay = document.createElement('div');
     modalOverlay.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.4); z-index:9999; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);';
 
@@ -1739,33 +1794,6 @@ function doExcelExport(lines, orderNo, dateStr) {
 
         <!-- Modal Body -->
         <div style="padding:18px 22px; display:flex; flex-direction:column; gap:14px;">
-
-          <!-- Év és Hét választó -->
-          <div style="display:flex; gap:12px; align-items:flex-end;">
-            <div style="display:flex; flex-direction:column; gap:4px; flex:1;">
-              <label style="font-size:11px; font-weight:700; color:#334155; text-transform:uppercase; letter-spacing:0.4px;">Év</label>
-              <select id="aldi-arak-modal-year" style="height:36px; font-size:13px; border:1px solid #cbd5e1; border-radius:8px; padding:4px 10px; background:#fff; color:#1e293b;">
-                ${yearOptions}
-              </select>
-            </div>
-
-            <!-- Hét: csak a már feltöltöttek + Új hét -->
-            <div style="display:flex; flex-direction:column; gap:4px; flex:2;">
-              <label style="font-size:11px; font-weight:700; color:#334155; text-transform:uppercase; letter-spacing:0.4px;">Hét</label>
-              <select id="aldi-arak-modal-week" style="height:36px; font-size:13px; border:1px solid #cbd5e1; border-radius:8px; padding:4px 10px; background:#fff; color:#1e293b;">
-                <option value="new">➕ Új hét</option>
-                ${existingWeekOpts}
-              </select>
-            </div>
-          </div>
-
-          <!-- Új hét KW szám beviteli mező (csak "Új hét" esetén látható) -->
-          <div id="aldi-arak-new-kw-wrap" style="display:flex; align-items:center; gap:10px; background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:10px 14px;">
-            <span style="font-size:12px; color:#0369a1; font-weight:600;">KW száma (1–53):</span>
-            <input type="number" id="aldi-arak-new-kw-input" min="1" max="53" value="${nextKwSuggestion}"
-              style="height:32px; width:80px; font-size:14px; font-weight:700; border:1px solid #7dd3fc; border-radius:6px; padding:4px 8px; background:#ffffff; color:#0284c7; text-align:center;">
-            <span id="aldi-arak-new-kw-preview" style="font-size:13px; font-weight:700; color:#0284c7;">→ KW${String(nextKwSuggestion).padStart(2, '0')}</span>
-          </div>
 
           <!-- Drag & Drop zone -->
           <div id="aldi-arak-dropzone" style="border:2px dashed #7dd3fc; background:#f0f9ff; border-radius:10px; padding:28px 16px; text-align:center; cursor:pointer; transition:all 0.2s;">
@@ -1799,39 +1827,7 @@ function doExcelExport(lines, orderNo, dateStr) {
     const fileInput = modalOverlay.querySelector('#aldi-arak-file-input');
     const dropzone = modalOverlay.querySelector('#aldi-arak-dropzone');
     const dropzoneText = modalOverlay.querySelector('#aldi-arak-dropzone-text');
-    const weekSelect = modalOverlay.querySelector('#aldi-arak-modal-week');
-    const yearSelect = modalOverlay.querySelector('#aldi-arak-modal-year');
     const statusDiv = modalOverlay.querySelector('#aldi-arak-upload-status');
-    const newKwWrap = modalOverlay.querySelector('#aldi-arak-new-kw-wrap');
-    const newKwInput = modalOverlay.querySelector('#aldi-arak-new-kw-input');
-    const newKwPreview = modalOverlay.querySelector('#aldi-arak-new-kw-preview');
-
-    // KW preview frissítése gépelés közben
-    newKwInput.addEventListener('input', () => {
-      const v = parseInt(newKwInput.value, 10);
-      newKwPreview.textContent = (v >= 1 && v <= 53) ? `→ KW${String(v).padStart(2, '0')}` : '→ ?';
-    });
-
-    // Hét választó változásakor: mutjuk/rejtjük a KW beviteli mezőt
-    function updateNewKwVisibility() {
-      newKwWrap.style.display = weekSelect.value === 'new' ? 'flex' : 'none';
-    }
-    updateNewKwVisibility();
-    weekSelect.addEventListener('change', updateNewKwVisibility);
-
-    // Év változásakor frissítjük a hét legördülőt (csak az adott évhez tartozó hetek)
-    yearSelect.addEventListener('change', () => {
-      const selectedYear = parseInt(yearSelect.value, 10);
-      const weeksForYear = state.hetiArakWeeks
-        .filter(w => w.year === selectedYear)
-        .sort((a, b) => (a.week_number || 0) - (b.week_number || 0));
-      let opts = '<option value="new">➕ Új hét</option>';
-      weeksForYear.forEach(w => {
-        opts += `<option value="existing:${w.week_code}">${w.week_code} – frissítés</option>`;
-      });
-      weekSelect.innerHTML = opts;
-      updateNewKwVisibility();
-    });
 
     // Fájl kezelés
     dropzone.addEventListener('click', () => fileInput.click());
@@ -1869,73 +1865,45 @@ function doExcelExport(lines, orderNo, dateStr) {
         return;
       }
 
-      const yearVal = parseInt(modalOverlay.querySelector('#aldi-arak-modal-year').value, 10);
-      const weekVal = weekSelect.value;
-      let weekNumber, weekCode;
-
-      if (weekVal === 'new') {
-        weekNumber = parseInt(newKwInput.value, 10);
-        if (!weekNumber || weekNumber < 1 || weekNumber > 53) {
-          statusDiv.style.display = 'block';
-          statusDiv.style.background = '#fef2f2';
-          statusDiv.style.color = '#dc2626';
-          statusDiv.textContent = '❌ Érvényes KW számot adj meg (1–53)!';
-          return;
-        }
-        weekCode = `KW${String(weekNumber).padStart(2, '0')}`;
-        // Ellenőrizzük, hogy ez a KW már nem létezik-e ebben az évben
-        const alreadyExists = state.hetiArakWeeks.some(w => w.year === yearVal && w.week_code === weekCode);
-        if (alreadyExists) {
-          statusDiv.style.display = 'block';
-          statusDiv.style.background = '#fef9c3';
-          statusDiv.style.color = '#854d0e';
-          statusDiv.textContent = `⚠️ ${weekCode} (${yearVal}) már létezik! Válaszd ki a legördülőből a frissítéshez.`;
-          return;
-        }
-      } else if (weekVal.startsWith('existing:')) {
-        weekCode = weekVal.replace('existing:', '');
-        const existingWeek = state.hetiArakWeeks.find(w => w.week_code === weekCode && w.year === yearVal);
-        weekNumber = existingWeek ? existingWeek.week_number : parseInt(weekCode.replace('KW', ''), 10);
-      }
-
-      // Upload
       const uploadBtn = modalOverlay.querySelector('#aldi-arak-modal-upload-btn');
-      uploadBtn.disabled = true;
-      uploadBtn.textContent = '⏳ Feltöltés...';
-      statusDiv.style.display = 'block';
-      statusDiv.style.background = '#eff6ff';
-      statusDiv.style.color = '#1d4ed8';
-      statusDiv.textContent = '⏳ XLSX feldolgozása folyamatban...';
+      
+      const performUpload = async (mergeAction = null) => {
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = '⏳ Feltöltés...';
+        statusDiv.style.display = 'block';
+        statusDiv.style.background = '#eff6ff';
+        statusDiv.style.color = '#1d4ed8';
+        statusDiv.textContent = '⏳ XLSX feldolgozása folyamatban...';
 
-      try {
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-        formData.append('year', yearVal);
-        formData.append('weekCode', weekCode);
-        formData.append('weekNumber', weekNumber);
-
-        const res = await fetch('/api/v1/aldi-weekly-prices/upload', {
-          method: 'POST',
-          body: formData
-        });
-
-        const result = await res.json();
-
-        if (res.ok && result.success) {
-          // Frissítjük a state-et
-          state.hetiArakYear = yearVal;
-          await fetchHetiArakWeeks();
-          // Aktív hétnek az újonnan feltöltöttet állítjuk be
-          if (result.weekRecord) {
-            state.hetiArakSelectedWeekId = result.weekRecord.id;
-            state.hetiArakLines = result.lines || [];
+        try {
+          const formData = new FormData();
+          formData.append('file', selectedFile);
+          if (mergeAction) {
+            formData.append('merge_action', mergeAction);
           }
 
-          statusDiv.style.background = '#f0fdf4';
-          statusDiv.style.color = '#16a34a';
-          statusDiv.textContent = `✅ ${result.message}${result.fileWriteError ? ' (⚠️ Hálózati mentés sikertelen: ' + result.fileWriteError + ')' : ''}`;
+          const res = await fetch('/api/v1/aldi-weekly-prices/upload', {
+            method: 'POST',
+            body: formData
+          });
 
-          if (result.warnings && result.warnings.length > 0) {
+          const result = await res.json();
+
+          if (res.ok && (result.success || result.weekRecord)) {
+            // Frissítjük a state-et
+            state.hetiArakYear = result.weekRecord ? result.weekRecord.year : new Date().getFullYear();
+            await fetchHetiArakWeeks();
+            // Aktív hétnek az újonnan feltöltöttet állítjuk be
+            if (result.weekRecord) {
+              state.hetiArakSelectedWeekId = result.weekRecord.id;
+              state.hetiArakLines = result.lines || [];
+            }
+
+            statusDiv.style.background = '#f0fdf4';
+            statusDiv.style.color = '#16a34a';
+            statusDiv.textContent = `✅ ${result.message || 'Sikeres feltöltés.'}${result.fileWriteError ? ' (⚠️ Hálózati mentés sikertelen: ' + result.fileWriteError + ')' : ''}`;
+            
+            if (result.warnings && result.warnings.length > 0) {
               const warnOverlay = document.createElement('div');
               warnOverlay.style.position = 'fixed';
               warnOverlay.style.top = '0';
@@ -2082,8 +2050,8 @@ function doExcelExport(lines, orderNo, dateStr) {
       return periods.map((p, idx) => {
         const isEditing = editingPeriodIndex === idx;
         const borderStyle = isEditing ? 'border:1.5px solid #0284c7; background:#eff6ff;' : 'border:1px solid #e2e8f0; background:#ffffff;';
-        const crateClean = stripIncoterm(p.crate_cost);
-        const unitClean = stripIncoterm(p.unit_cost);
+        const crateClean = formatCurrencyDisplay(p.crate_cost, p.currency_code);
+        const unitClean = formatCurrencyDisplay(p.unit_cost, p.currency_code);
 
         return `
           <div class="cp-period-item" data-index="${idx}"
@@ -2159,11 +2127,11 @@ function doExcelExport(lines, orderNo, dateStr) {
             <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;">
               <div style="display:flex; flex-direction:column; gap:3px; flex:1; min-width:140px;">
                 <label style="font-size:10px; font-weight:600; color:#64748b;">Rekeszköltség</label>
-                <input type="text" id="cp-new-crate-cost" placeholder="pl. € 14,50 vagy 5200 Ft" value="${stripIncoterm(line.crate_cost || '')}" style="height:32px; font-size:12px; font-weight:600; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; background:#fff;">
+                <input type="text" id="cp-new-crate-cost" placeholder="pl. € 14,50 vagy 5200 Ft" value="${formatCurrencyDisplay(line.crate_cost || '', isLineEur ? 'EUR' : 'HUF')}" style="height:32px; font-size:12px; font-weight:600; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; background:#fff;">
               </div>
               <div style="display:flex; flex-direction:column; gap:3px; flex:1; min-width:140px;">
                 <label style="font-size:10px; font-weight:600; color:#64748b;">Egységköltség</label>
-                <input type="text" id="cp-new-unit-cost" placeholder="pl. € 1,45 vagy 520 Ft" value="${stripIncoterm(line.unit_cost || '')}" style="height:32px; font-size:12px; font-weight:600; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; background:#fff;">
+                <input type="text" id="cp-new-unit-cost" placeholder="pl. € 1,45 vagy 520 Ft" value="${formatCurrencyDisplay(line.unit_cost || '', isLineEur ? 'EUR' : 'HUF')}" style="height:32px; font-size:12px; font-weight:600; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; background:#fff;">
               </div>
             </div>
 
@@ -2254,8 +2222,8 @@ function doExcelExport(lines, orderNo, dateStr) {
         modalOverlay.querySelector('#cp-new-currency').value = p.currency_code || 'EUR';
         modalOverlay.querySelector('#cp-new-start').value = p.period_start ? p.period_start.split('T')[0] : '';
         modalOverlay.querySelector('#cp-new-end').value = p.period_end ? p.period_end.split('T')[0] : '';
-        modalOverlay.querySelector('#cp-new-crate-cost').value = stripIncoterm(p.crate_cost || '');
-        modalOverlay.querySelector('#cp-new-unit-cost').value = stripIncoterm(p.unit_cost || '');
+        modalOverlay.querySelector('#cp-new-crate-cost').value = formatCurrencyDisplay(p.crate_cost || '', p.currency_code || 'EUR');
+        modalOverlay.querySelector('#cp-new-unit-cost').value = formatCurrencyDisplay(p.unit_cost || '', p.currency_code || 'EUR');
         modalOverlay.querySelector('#cp-new-note').value = p.note || '';
       }
       updateFormMode();
@@ -2267,8 +2235,8 @@ function doExcelExport(lines, orderNo, dateStr) {
       modalOverlay.querySelector('#cp-new-currency').value = isLineEur ? 'EUR' : 'HUF';
       modalOverlay.querySelector('#cp-new-start').value = '';
       modalOverlay.querySelector('#cp-new-end').value = '';
-      modalOverlay.querySelector('#cp-new-crate-cost').value = stripIncoterm(line.crate_cost || '');
-      modalOverlay.querySelector('#cp-new-unit-cost').value = stripIncoterm(line.unit_cost || '');
+      modalOverlay.querySelector('#cp-new-crate-cost').value = formatCurrencyDisplay(line.crate_cost || '', isLineEur ? 'EUR' : 'HUF');
+      modalOverlay.querySelector('#cp-new-unit-cost').value = formatCurrencyDisplay(line.unit_cost || '', isLineEur ? 'EUR' : 'HUF');
       modalOverlay.querySelector('#cp-new-note').value = '';
       updateFormMode();
       refreshPeriodsList();
@@ -2516,8 +2484,8 @@ function doExcelExport(lines, orderNo, dateStr) {
                 <strong style="color:#1e293b;">${p.period_start}</strong>
                 <span style="color:#94a3b8;">→</span>
                 <strong style="color:#1e293b;">${p.period_end}</strong>
-                <span style="font-size:11px; font-family:monospace; color:#0f172a; background:#f1f5f9; padding:1px 5px; border-radius:3px;">📦 ${stripIncoterm(p.crate_cost) || '-'}</span>
-                <span style="font-size:11px; font-family:monospace; color:#0f172a; background:#f1f5f9; padding:1px 5px; border-radius:3px;">🏷️ ${stripIncoterm(p.unit_cost) || '-'}</span>
+                <span style="font-size:11px; font-family:monospace; color:#0f172a; background:#f1f5f9; padding:1px 5px; border-radius:3px;">📦 ${formatCurrencyDisplay(p.crate_cost, p.currency_code) || '-'}</span>
+                <span style="font-size:11px; font-family:monospace; color:#0f172a; background:#f1f5f9; padding:1px 5px; border-radius:3px;">🏷️ ${formatCurrencyDisplay(p.unit_cost, p.currency_code) || '-'}</span>
               </div>
               <span style="font-size:10px; font-weight:600; color:${isNew ? '#16a34a' : '#64748b'};">${tagText}</span>
             </div>

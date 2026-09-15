@@ -114,7 +114,43 @@ function validateAldiPeriod(startStr, endStr, year, weekNumber) {
     };
 }
 
+function getISOWeekInfo(date) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    return { year: d.getUTCFullYear(), week: weekNo };
+}
+
+function getAldiWeekFromDate(dateStr) {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return null;
+    // Shift back 2 days so Wednesday becomes Monday, etc.
+    // This perfectly aligns ALDI week (Wed-Tue) with standard ISO week (Mon-Sun).
+    d.setUTCDate(d.getUTCDate() - 2);
+    const { year, week } = getISOWeekInfo(d);
+    return { year, weekNumber: week };
+}
+
+function findFirstWednesday(startStr, endStr) {
+    let current = new Date(startStr);
+    let end = endStr ? new Date(endStr) : new Date(startStr);
+    if (isNaN(current.getTime()) || isNaN(end.getTime())) return startStr;
+    
+    // Find the first Wednesday in the range
+    while (current <= end) {
+        if (current.getUTCDay() === 3) {
+            return current.toISOString().split('T')[0];
+        }
+        current.setUTCDate(current.getUTCDate() + 1);
+    }
+    return startStr; // fallback
+}
+
 module.exports = {
     getAldiWeekBoundaries,
-    validateAldiPeriod
+    validateAldiPeriod,
+    getAldiWeekFromDate,
+    findFirstWednesday
 };
