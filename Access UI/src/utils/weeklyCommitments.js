@@ -18,28 +18,28 @@ const ACTION_EXCEL_TO_UI = { thu: 'wed', fri: 'thu', sat: 'fri', sun: 'sat', mon
  * A kulcs az akciós napok neve (UI kulcsok, szerdával kezdve).
  * A visszaadott százalékok a MARADÉK napokra vonatkoznak.
  */
-function getNormalRatesForContext(actionUiDays) {
+function getNormalRatesForContext(actionUiDays, config) {
   const actionSet = new Set(actionUiDays);
 
   // Ha az akció szerda-csüt-péntek-szombat napokat fed le
   const isSzeCSuPeSzo = ['wed','thu','fri','sat'].every(d => actionSet.has(d));
   if (isSzeCSuPeSzo) {
     // Maradék: vasárnap, hétfő, kedd
-    return { sun: 0.20, mon: 0.30, tue: 0.50 };
+    return profileFractions(config, 'off_three', { sun: 20, mon: 30, tue: 50 });
   }
 
   // Ha az akció vasárnap-hétfő-kedd napokat fed le
   const isVasHetKed = ['sun','mon','tue'].every(d => actionSet.has(d));
   if (isVasHetKed) {
     // Maradék: szerda, csütörtök, péntek, szombat
-    return { wed: 0.25, thu: 0.25, fri: 0.25, sat: 0.25 };
+    return profileFractions(config, 'off_four', { wed: 25, thu: 25, fri: 25, sat: 25 });
   }
 
   // Ha az akció péntek-szombat napokat fed le
   const isPeSzo = actionSet.has('fri') && actionSet.has('sat') && actionSet.size === 2;
   if (isPeSzo) {
     // Maradék: szerda, csütörtök, vasárnap, hétfő, kedd
-    return { wed: 0.25, thu: 0.25, sun: 0.15, mon: 0.15, tue: 0.20 };
+    return profileFractions(config, 'off_five', { wed: 25, thu: 25, sun: 15, mon: 15, tue: 20 });
   }
 
   // Alapértelmezett: egyenlő elosztás a nem akciós napokra
@@ -59,16 +59,17 @@ function getNormalRatesForContext(actionUiDays) {
  *   Kulcsok: thu, fri, sat, sun, mon, tue, wed (Excel F→L)
  *   Ha null: normál típus, nincs nap-eltolás
  */
-export function estimatedDistribution(totalAction, totalNormal, period, dates, dailyValues = null) {
+export function estimatedDistribution(totalAction, totalNormal, period, dates, dailyValues = null, rateConfig = null) {
   // --- Normál típus (Keresleti Excel): változatlan logika ---
   if (!dailyValues) {
-    const normalRates = [.17, .17, .17, .13, .14, .11, .11];
+    const normal = profileFractions(rateConfig, 'normal', { wed: 17, thu: 17, fri: 17, sat: 13, sun: 14, mon: 11, tue: 11 });
+    const normalRates = dayKeys.map(key => normal[key]);
     const result = Object.fromEntries(dayKeys.map((key, i) => [key, Math.round(Number(totalNormal || 0) * normalRates[i])]));
     const actionDays = [];
     if (!period) return { result, actionDays };
     const match = period.match(/(\d{2})\.(\d{2})\.\s*[-–]\s*(\d{2})\.(\d{2})\./);
     if (!match) return { result, actionDays, warning: 'Ismeretlen akciós időszak.' };
-    const rates = { 2: [.7, .3], 3: [.4, .4, .2], 4: [.3, .3, .22, .18] };
+    const rates = actionRateArrays(rateConfig);
     const year = Number(dates[0]?.slice(0, 4));
     for (const y of [year - 1, year, year + 1]) {
       const start = `${y}-${match[2]}-${match[1]}`;
@@ -97,7 +98,8 @@ export function estimatedDistribution(totalAction, totalNormal, period, dates, d
 
   if (!period) {
     // Nincs akciós időszak megadva: normál arányok a totalNormal-ból
-    const normalRates = [.17, .17, .17, .13, .14, .11, .11];
+    const normal = profileFractions(rateConfig, 'normal', { wed: 17, thu: 17, fri: 17, sat: 13, sun: 14, mon: 11, tue: 11 });
+    const normalRates = dayKeys.map(key => normal[key]);
     dayKeys.forEach((k, i) => { result[k] = Math.round(Number(totalNormal || 0) * normalRates[i]); });
     return { result, actionDays };
   }
@@ -160,7 +162,7 @@ export function estimatedDistribution(totalAction, totalNormal, period, dates, d
   const normalSum = nonActionExcelKeys.reduce((s, k) => s + (Number(dailyValues[k]) || 0), 0);
 
   // Akciós UI napok értékei: az akciós összeg × időszak-százalékok
-  const actionRates = { 2: [0.70, 0.30], 3: [0.40, 0.40, 0.20], 4: [0.30, 0.30, 0.22, 0.18] };
+  const actionRates = actionRateArrays(rateConfig);
   const duration = uiActionDays.length;
   const rates = actionRates[duration];
   if (rates && actionSum > 0) {
@@ -168,7 +170,7 @@ export function estimatedDistribution(totalAction, totalNormal, period, dates, d
   }
 
   // Nem-akciós UI napok értékei: a nem-akciós összeg × kontextus-alapú százalékok
-  const nonActionRates = getNormalRatesForContext(uiActionDays);
+  const nonActionRates = getNormalRatesForContext(uiActionDays, rateConfig);
   for (const [uiKey, rate] of Object.entries(nonActionRates)) {
     if (!uiActionDays.includes(uiKey)) {
       result[uiKey] = Math.round(normalSum * rate);
@@ -193,4 +195,16 @@ export function stockAtDate(initialStock, dates, closingStocks) {
     if (closingStocks[index] != null) stock = Math.round(Number(closingStocks[index]));
   });
   return stock;
+}
+
+// Persisted percentages are converted to fractions only at calculation time.
+function profileFractions(config, id, defaults) {
+  return Object.fromEntries(Object.keys(defaults).map(key => [key, Number(config?.[id]?.[key] ?? defaults[key]) / 100]));
+}
+function actionRateArrays(config) {
+  return {
+    2: Object.values(profileFractions(config, 'action_two', { fri: 70, sat: 30 })),
+    3: Object.values(profileFractions(config, 'action_three', { sun: 40, mon: 40, tue: 20 })),
+    4: Object.values(profileFractions(config, 'action_four', { wed: 30, thu: 30, fri: 22, sat: 18 }))
+  };
 }

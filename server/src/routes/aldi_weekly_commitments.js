@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const xlsx = require('xlsx');
 const db = require('../db/db');
+const { RATE_PROFILES, defaultRates, validateRates } = require('../utils/commitmentRates');
 const { getAldiWeekBoundaries } = require('../utils/aldiWeeklyDates');
 
 // Konfiguráció
@@ -330,6 +331,30 @@ router.get('/weeks/:year', async (req, res) => {
   }
 });
 
+router.put('/:year/:week_number/rates', async (req, res) => {
+    const year = Number(req.params.year), week = Number(req.params.week_number);
+    if (!Number.isInteger(year) || !Number.isInteger(week) || !getAldiWeekBoundaries(year, week)) {
+        return res.status(400).json({ error: 'Érvénytelen év vagy hét.' });
+    }
+    const { rates, errors } = validateRates(req.body.rates);
+    if (errors.length) return res.status(400).json({ error: errors.join('\n'), errors });
+    if (!Number.isInteger(req.body.version) || req.body.version < 0) return res.status(400).json({ error: 'Hiányzó verzió. Nyisd meg újra a százalékokat.' });
+    try {
+        const result = await db.transaction(async trx => {
+            const row = await trx('aldi_weekly_commitments').where({ year, week_number: week }).forUpdate().first();
+            if (!row) return { status: 404, error: 'Ehhez a héthez még nincs feltöltött lekötés.' };
+            if (Number(row.rates_version) !== req.body.version) return { status: 409, error: 'A százalékokat közben más módosította. Nyisd meg újra a táblázatot.' };
+            const version = Number(row.rates_version) + 1;
+            await trx('aldi_weekly_commitments').where({ id: row.id }).update({ distribution_rates: JSON.stringify(rates), rates_version: version, updated_at: trx.fn.now() });
+            return { status: 200, rates, version };
+        });
+        return res.status(result.status).json(result);
+    } catch (error) {
+        console.error('Heti százalékok mentése:', error);
+        return res.status(500).json({ error: 'Nem sikerült menteni a százalékokat.' });
+    }
+});
+
 router.get('/:year/:week_number', async (req, res) => {
     try {
         const { year, week_number } = req.params;
@@ -384,6 +409,9 @@ router.get('/:year/:week_number', async (req, res) => {
 
         res.json({
             commitment: commitment || { year, week_number, week_str: `KW${week_number}` },
+            rate_profiles: RATE_PROFILES,
+            rates: commitment?.distribution_rates || defaultRates(),
+            rates_version: Number(commitment?.rates_version || 0),
             items,
             stocks,
             daily_orders: Object.values(ordersByDateAndItem),
@@ -566,4 +594,3 @@ router.post('/reprocess', async (req, res) => {
 });
 
 module.exports = router;
-

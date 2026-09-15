@@ -47,20 +47,20 @@ test('filename parser accepts HLK/HLA, permits undated plans and maps sample to 
   assert.equal(parse('Keresleti 03.09.2026-09.09.2026.xlsx').week_number,36);
 });
 
-test('invalid workbook rolls back without overwriting an archived file', async () => {
+test('invalid workbook is rejected before database writes or overwriting an archived file', async () => {
   const backend = fs.readFileSync(path.join(__dirname,'../src/routes/aldi_weekly_commitments.js'),'utf8');
   const routes = {};
-  let writes = 0, rolledBack = false, status;
+  let writes = 0, started = false, status;
   const trx = () => ({ where() { return this; }, first() { return this; },
     forUpdate: async () => ({ id: 1, year: 2026, week_number: 36 }) });
   trx.raw = async () => {};
-  trx.rollback = async () => { rolledBack = true; };
+  trx.rollback = async () => {};
   const multer = () => ({ single: () => (req,res,next) => next() });
   multer.memoryStorage = () => ({});
   const mocks = {
-    express: { Router: () => ({ post: (url,...handlers) => { routes[url] = handlers.at(-1); }, get() {} }) },
+    express: { Router: () => ({ post: (url,...handlers) => { routes[url] = handlers.at(-1); }, get() {}, put() {} }) },
     multer, fs: { existsSync: () => true, writeFileSync: () => { writes++; } },
-    '../db/db': { transaction: async () => trx }
+    '../db/db': { transaction: async () => { started = true; return trx; } }
   };
   vm.runInNewContext(backend, { require: name => mocks[name] || require(name.startsWith('../') ? path.join(__dirname,'../src/routes',name) : name), process, module: {}, console: { error() {} } });
   const xlsx = require('xlsx');
@@ -69,5 +69,5 @@ test('invalid workbook rolls back without overwriting an archived file', async (
   await routes['/upload']({ file: { originalname: 'KW36 HLK.xlsx', buffer: xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' }) }, body: {} }, { status(code) { status=code; return this; }, json() {} });
   assert.equal(status,400);
   assert.equal(writes,0);
-  assert.equal(rolledBack,true);
+  assert.equal(started,false);
 });

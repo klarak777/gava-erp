@@ -1,4 +1,5 @@
-import { budapestToday, estimatedDistribution, dailyBalance, stockAtDate } from '../utils/weeklyCommitments.js';
+import { budapestToday, estimatedDistribution, dailyBalance, stockAtDate } from '../utils/weeklyCommitments.js?v=rates-20260915';
+import { openCommitmentRatesEditor } from './commitmentRatesEditor.js?v=20260915-settings';
 /**
  * GAVA ERP – ALDI Rendelések modul
  * v1.4.0 – Heti árak fül hozzáadva: XLSX feltöltés, GTIN alapú termékazonosítás,
@@ -570,7 +571,7 @@ export function renderAldiRendelesek(container, windowManager) {
     });
 
     // Helper: calculate distribution percentage
-    function getEstimatedDistribution(a, n, p, dailyValues) { return estimatedDistribution(a, n, p, weekDates, dailyValues || null); }
+    function getEstimatedDistribution(a, n, p, dailyValues) { return estimatedDistribution(a, n, p, weekDates, dailyValues || null, state.hetiLekotesData.rates); }
 
     let lekotesRows = '';
     let keszletRows = '';
@@ -698,6 +699,7 @@ export function renderAldiRendelesek(container, windowManager) {
             </div>
           </div>
           <div style="display:flex; gap:12px;">
+             <button id="aldi-lekotes-rates-btn" ${!state.hetiLekotesSelectedWeek ? 'disabled' : ''} style="height:34px;padding:0 16px;border-radius:20px;border:1px solid #0284c7;background:white;color:#0369a1;font-weight:600;cursor:pointer;">⚙ Beállítás</button>
              <button id="aldi-lekotes-upload-btn" style="height:34px; padding:0 18px; border-radius:20px; font-size:13px; font-weight:600; background:#0284c7; color:#fff; border:none; display:inline-flex; align-items:center; gap:8px; cursor:pointer; box-shadow:0 2px 6px rgba(2,132,199,0.25); transition:background 0.2s;">
             📤 Lekötés feltöltése
           </button>
@@ -2833,6 +2835,23 @@ function doExcelExport(lines, orderNo, dateStr) {
       });
     }
 
+    wrapper.querySelector('#aldi-lekotes-rates-btn')?.addEventListener('click', () => {
+      openCommitmentRatesEditor({
+        year: state.hetiLekotesYear,
+        week: state.hetiLekotesSelectedWeek,
+        onSaved: ({ year, week, rates, version }) => {
+          if (state.hetiLekotesYear !== year || state.hetiLekotesSelectedWeek !== week) return;
+          state.hetiLekotesData.rates = rates;
+          state.hetiLekotesData.rates_version = version;
+          if (state.hetiLekotesData.commitment) {
+            state.hetiLekotesData.commitment.distribution_rates = rates;
+            state.hetiLekotesData.commitment.rates_version = version;
+          }
+          renderModule();
+          fetchHetiLekotesData(true);
+        }
+      });
+    });
     wrapper.querySelector('#aldi-lekotes-upload-btn')?.addEventListener('click', openHetiLekotesUploadModal);
 
     wrapper.querySelector('#aldi-lekotes-reprocess-btn')?.addEventListener('click', async (e) => {
@@ -3072,7 +3091,7 @@ function doExcelExport(lines, orderNo, dateStr) {
   let previousDay = budapestToday();
   const refreshTimer = setInterval(async () => {
     if (!wrapper.isConnected) { clearInterval(refreshTimer); return; }
-    if (state.activeTab !== 'heti' || document.hidden || refreshingCommitments || pendingStockSaves) return;
+    if (state.activeTab !== 'heti' || document.hidden || refreshingCommitments || pendingStockSaves || document.querySelector('#commitment-rates-editor')) return;
     const today = budapestToday();
     if (today !== previousDay) { previousDay = today; renderModule(); }
     if (wrapper.contains(document.activeElement) && document.activeElement.matches('input,select')) return;
