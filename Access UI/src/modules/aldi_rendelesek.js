@@ -1191,11 +1191,11 @@ export function renderAldiRendelesek(container, windowManager) {
           }
 
           const tooltipText = line.currency_periods && line.currency_periods.length > 0
-            ? `Aktív (${activeCurrency}): ${displayedCrateCost} / ${displayedUnitCost}\n\nÖsszes időszak:\n` + line.currency_periods.map(cp => {
+            ? `Aktív (${activeCurrency}): ${stripIncoterm(displayedCrateCost, activeCurrency)} / ${stripIncoterm(displayedUnitCost, activeCurrency)}\n\nÖsszes időszak:\n` + line.currency_periods.map(cp => {
               const s = cp.period_start ? cp.period_start.split('T')[0] : '';
               const e = cp.period_end ? cp.period_end.split('T')[0] : '';
               const isCurActive = (cp === activePeriod);
-              return `${isCurActive ? '▶ (Aktív) ' : '  '}${s} → ${e} [${cp.currency_code}] Rekesz: ${cp.crate_cost || '-'}, Egység: ${cp.unit_cost || '-'}`;
+              return `${isCurActive ? '▶ (Aktív) ' : '  '}${s} → ${e} [${cp.currency_code}] Rekesz: ${stripIncoterm(cp.crate_cost, cp.currency_code) || '-'}, Egység: ${stripIncoterm(cp.unit_cost, cp.currency_code) || '-'}`;
             }).join('\n')
             : 'Deviza időszak szerkesztése';
 
@@ -1210,8 +1210,8 @@ export function renderAldiRendelesek(container, windowManager) {
                       <td style="padding:8px 8px; text-align:center; color:#334155; font-weight:600;">${line.carton_content || ''}</td>
                       <td style="padding:8px 8px; color:#475569; font-size:11px;">${(line.origin || '').replace(/, /g, '<br>')}</td>
                       <td style="padding:8px 8px; color:#475569; font-size:11px; line-height:1.3;">${line.packaging || ''}</td>
-                      <td style="padding:8px 8px; text-align:right; font-weight:700; color:#0f172a; font-family:monospace; font-size:12px;">${stripIncoterm(displayedCrateCost) || ''}</td>
-                      <td style="padding:8px 8px; text-align:right; font-weight:700; color:#0f172a; font-family:monospace; font-size:12px;">${stripIncoterm(displayedUnitCost) || ''}</td>
+                      <td style="padding:8px 8px; text-align:right; font-weight:700; color:#0f172a; font-family:monospace; font-size:12px;">${stripIncoterm(displayedCrateCost, activeCurrency) || ''}</td>
+                      <td style="padding:8px 8px; text-align:right; font-weight:700; color:#0f172a; font-family:monospace; font-size:12px;">${stripIncoterm(displayedUnitCost, activeCurrency) || ''}</td>
                       <td style="padding:8px 8px; text-align:center; color:#475569; font-size:11px; cursor:pointer;" class="aldi-arak-delivery-period" data-line-id="${line.id}" title="${(line.original_period_start || line.original_period_end) ? `Eredeti (Excelből): ${line.original_period_start || ''} - ${line.original_period_end || ''}\nKattints a módosításhoz` : 'Kattints a szállítási időszak módosításához'}">
                         ${line.delivery_period_start ? `<div>${line.delivery_period_start}</div>` : ''}
                         ${line.delivery_period_end ? `<div style="color:#94a3b8;">→ ${line.delivery_period_end}</div>` : ''}
@@ -2019,12 +2019,16 @@ function doExcelExport(lines, orderNo, dateStr) {
   }
 
   // ─── Incoterm / Kereskedelmi kód eltávolító segédfüggvény (csak a modalhoz) ───
-  function stripIncoterm(str) {
+  function stripIncoterm(str, currencyCode) {
     if (!str) return '';
-    return String(str)
+    let cleaned = String(str)
       .replace(/\b(DDP|DPT|EXW|FCA|CPT|CIP|DAP|DPU|FAS|FOB|CFR|CIF)\b/gi, '')
       .replace(/\s+/g, ' ')
       .trim();
+    if (currencyCode === 'HUF' || /Ft|HUF/i.test(cleaned)) {
+      cleaned = cleaned.replace(/[,.]\d+/g, '');
+    }
+    return cleaned;
   }
 
   function formatCurrencyDisplay(valStr, currencyCode) {

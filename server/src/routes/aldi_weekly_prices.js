@@ -107,10 +107,14 @@ function buildNetworkFolderPath(year, weekCode) {
  */
 function stripIncoterm(str) {
   if (!str) return '';
-  return String(str)
+  let cleaned = String(str)
     .replace(/\b(DDP|DPT|EXW|FCA|CPT|CIP|DAP|DPU|FAS|FOB|CFR|CIF)\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
+  if (/Ft|HUF/i.test(cleaned)) {
+    cleaned = cleaned.replace(/[,.]\d+/g, '');
+  }
+  return cleaned;
 }
 
 // ─── GET /api/v1/aldi-weekly-prices?year=2026 ────────────────────────────────
