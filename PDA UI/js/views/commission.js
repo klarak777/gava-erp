@@ -255,8 +255,8 @@ export async function renderCommission(container, params = {}) {
       <div class="pda-form-title" id="form-title">Termék név</div>
       <div class="pda-form-body">
         <div class="pda-form-group">
-          <label id="form-karton-label">Kartonszám</label>
-          <input type="number" id="form-karton" min="1" />
+          <label id="form-karton-label">Kartonszám <span style="color:red;">*</span></label>
+          <input type="number" id="form-karton" min="1" required />
           <div class="pda-form-error-msg" id="form-karton-error">⛔ A megadott mennyiség több mint a rendelt kartonszám!</div>
         </div>
         <div class="pda-form-group">
@@ -264,24 +264,24 @@ export async function renderCommission(container, params = {}) {
           <input type="number" step="0.01" id="form-brutto" required />
         </div>
         <div class="pda-form-group">
-          <label>Göngyöleg típus</label>
-          <select id="form-gongyoleg"></select>
+          <label>Göngyöleg típus <span style="color:red;">*</span></label>
+          <select id="form-gongyoleg" required></select>
         </div>
         <div class="pda-form-group">
-          <label>Göngyöleg tára (/un)</label>
-          <input type="number" step="0.001" id="form-tara" readonly />
+          <label>Göngyöleg tára (/un) <span style="color:red;">*</span></label>
+          <input type="number" step="0.001" id="form-tara" readonly required />
         </div>
         <div class="pda-form-group">
-          <label>Származási ország</label>
-          <select id="form-orszag"></select>
+          <label>Származási ország <span style="color:red;">*</span></label>
+          <select id="form-orszag" required></select>
         </div>
         <div class="pda-form-group">
-          <label>Lot szám</label>
-          <input type="text" id="form-lot" />
+          <label>Lot szám <span style="color:red;">*</span></label>
+          <input type="text" id="form-lot" required />
         </div>
         <div class="pda-form-group">
-          <label>Raklap típus</label>
-          <select id="form-raklap"></select>
+          <label>Raklap típus <span style="color:red;">*</span></label>
+          <select id="form-raklap" required></select>
         </div>
       </div>
       <div class="pda-form-footer">
@@ -531,7 +531,7 @@ export async function renderCommission(container, params = {}) {
 
     container.querySelector('#form-title').innerText = row.termek || 'Termék';
     container.querySelector('#dest-title').innerText = currentDestination;
-    kartonLabel.textContent = (row.plt != null && row.plt !== '') ? `Kartonszám (${row.plt} db/plt)` : `Kartonszám (max. ${currentRemaining} db)`;
+    kartonLabel.innerHTML = ((row.plt != null && row.plt !== '') ? `Kartonszám (${row.plt} db/plt)` : `Kartonszám (max. ${currentRemaining} db)`) + ' <span style="color:red;">*</span>';
     kartonInput.value = ''; // A kartonszámot mindig a felhasználó adja meg, nincs előtöltés
     kartonInput.placeholder = currentRemaining > 0 ? `pl. ${currentRemaining}` : '0';
     kartonInput.max = currentRemaining;
@@ -561,10 +561,11 @@ export async function renderCommission(container, params = {}) {
   submitBtn.addEventListener('click', async () => {
     if (!currentLineId) return;
 
+    // 1. Kartonszám ellenőrzése
     const qty = parseInt(kartonInput.value);
-
-    if (!Number.isInteger(qty) || qty <= 0) {
-      alert('Add meg a komissiózott kartonszámot (pozitív egész szám)!');
+    if (!kartonInput.value || !Number.isInteger(qty) || qty <= 0) {
+      alert('Kérlek add meg a komissiózott kartonszámot (pozitív egész szám)!');
+      kartonInput.focus();
       return;
     }
     // Hard block: qty > remaining
@@ -574,33 +575,78 @@ export async function renderCommission(container, params = {}) {
       kartonError.textContent = `⛔ A rendelt karton mennyisége (${currentRemaining} db) kevesebb, mint a megadott mennyiség (${qty} db). Csökkentsd a mennyiséget!`;
       submitBtn.disabled = true;
       submitBtn.style.opacity = '0.5';
-      return;
-    }
-    if (taraManual && !taraInput.value) {
-      alert('A göngyöleg típushoz nincs tára súly megadva – add meg kézzel a tára súlyt!');
+      kartonInput.focus();
       return;
     }
 
-    if (!container.querySelector('#form-raklap').value) {
-      alert('Válassz raklaptípust!');
+    // 2. Bruttó kg ellenőrzése
+    const bruttoInput = container.querySelector('#form-brutto');
+    const grossValue = Number(bruttoInput.value);
+    if (!bruttoInput.value || !Number.isFinite(grossValue) || grossValue <= 0) {
+      alert('Kérlek add meg a bruttó súlyt (pozitív szám)!');
+      bruttoInput.focus();
       return;
     }
-    const grossValue = Number(container.querySelector('#form-brutto').value);
-    if (!Number.isFinite(grossValue) || grossValue <= 0 || taraInput.value === '' || !Number.isFinite(Number(taraInput.value)) || Number(taraInput.value) < 0) {
-      alert('Adj meg pozitív bruttó súlyt és nem negatív göngyölegtárát!');
+
+    // 3. Göngyöleg típus ellenőrzése
+    if (!gongyolegSel.value) {
+      alert('Kérlek válaszd ki a göngyöleg típust!');
+      gongyolegSel.focus();
       return;
     }
+
+    // 4. Göngyöleg tára ellenőrzése
+    if (taraInput.value === '' || !Number.isFinite(Number(taraInput.value)) || Number(taraInput.value) < 0) {
+      alert('Kérlek add meg a göngyöleg tára súlyát (nem negatív szám)!');
+      taraInput.focus();
+      return;
+    }
+
+    // 5. Származási ország ellenőrzése
+    const orszagSel = container.querySelector('#form-orszag');
+    if (!orszagSel.value) {
+      alert('Kérlek válaszd ki a származási országot!');
+      orszagSel.focus();
+      return;
+    }
+
+    // 6. Lot szám ellenőrzése
+    const lotInput = container.querySelector('#form-lot');
+    if (!lotInput.value || !lotInput.value.trim()) {
+      alert('Kérlek add meg a Lot számot!');
+      lotInput.focus();
+      return;
+    }
+
+    // 7. Raklap típus ellenőrzése
+    const raklapSel = container.querySelector('#form-raklap');
+    if (!raklapSel.value) {
+      alert('Kérlek válaszd ki a raklaptípust!');
+      raklapSel.focus();
+      return;
+    }
+
+    // Súly ellenőrzés (bruttó >= tára összeg)
+    const selectedPallet = palletTypes.find(p => String(p.id) === String(raklapSel.value));
+    const palletTare = selectedPallet ? (parseFloat(selectedPallet.tare_weight_kg) || 0) : 0;
+    const totalTare = (Number(taraInput.value) * qty) + palletTare;
+    if (grossValue < totalTare) {
+      alert(`A bruttó súly (${grossValue} kg) kisebb, mint a göngyöleg és a raklap tára összege (${totalTare.toFixed(2)} kg)!`);
+      bruttoInput.focus();
+      return;
+    }
+
     // Tároljuk a form adatait – az API hívás csak a "Kész" gombra történik,
     // hogy a komissiózás és a lokáció-hozzárendelés ATOMIAN, egy tranzakcióban menjen.
     lastPickedQuantity = qty;
     lastPickPayload = {
       picked_cartons: qty,
-      gross_weight: parseFloat(container.querySelector('#form-brutto').value) || null,
-      packaging_type: gongyolegSel.value || null,
-      tare_weight: taraInput.value === '' ? null : Number(taraInput.value),
-      origin_country: container.querySelector('#form-orszag').value || null,
-      lot_number: container.querySelector('#form-lot').value || null,
-      pallet_type: container.querySelector('#form-raklap').value || null
+      gross_weight: grossValue,
+      packaging_type: gongyolegSel.value,
+      tare_weight: Number(taraInput.value),
+      origin_country: orszagSel.value,
+      lot_number: lotInput.value.trim(),
+      pallet_type: raklapSel.value
     };
 
     // Átlépünk a lokáció képernyőre (API hívás NÉLKÜL)

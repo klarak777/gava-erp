@@ -1266,7 +1266,7 @@ export function renderAldiRendelesek(container, windowManager) {
               <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; text-align:right;">RENDELT KARTONSZÁM</th>
               <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; text-align:right;">BRUTTÓ KG</th>
               <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; text-align:right;">NETTÓ KG</th>
-              <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; text-align:center;">ÖSSZEKÉSZÍTÉS ÁLLAPOTA</th>
+              <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; text-align:center; min-width:140px;">ÖSSZEKÉSZÍTÉS ÁLLAPOTA</th>
               <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; text-align:right;">KOMISSIÓZOTT KARTONSZÁM</th>
               <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; text-align:right;">MÉG HÁTRA VAN</th>
               <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; text-align:center;">KOMISSIÓ MEGTEKINTÉSE</th>
@@ -1278,6 +1278,7 @@ export function renderAldiRendelesek(container, windowManager) {
                 const dt = new Date(t.delivery_date);
                 const formattedDate = !isNaN(dt) ? dt.toISOString().split('T')[0] : t.delivery_date;
                 const statusColor = t.status_percent === 100 ? '#10b981' : (t.status_percent > 0 ? '#f59e0b' : '#64748b');
+                const statusPct = Math.min(100, Math.max(0, t.status_percent || 0));
                 
                 return `
                 <tr style="border-bottom:1px solid #f1f5f9; ${idx % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;'}">
@@ -1287,7 +1288,14 @@ export function renderAldiRendelesek(container, windowManager) {
                   <td style="padding:10px; text-align:right;">${t.ordered_cartons || 0}</td>
                   <td style="padding:10px; text-align:right;">${t.gross_weight || 0}</td>
                   <td style="padding:10px; text-align:right;">${t.net_weight || 0}</td>
-                  <td style="padding:10px; text-align:center; font-weight:700; color:${statusColor};">${t.status_percent}%</td>
+                  <td style="padding:10px; text-align:center;">
+                    <div style="display:inline-flex; align-items:center; justify-content:center; gap:8px; width:100%; max-width:140px;">
+                      <div style="flex:1; background:#e2e8f0; border-radius:8px; height:9px; position:relative; overflow:hidden; border:1px solid #cbd5e1;">
+                        <div style="background:#22c55e; height:100%; width:${statusPct}%;"></div>
+                      </div>
+                      <span style="font-size:12px; font-weight:700; color:${statusColor}; min-width:34px; text-align:right;">${t.status_percent}%</span>
+                    </div>
+                  </td>
                   <td style="padding:10px; text-align:right;">${t.commissioned_cartons || 0}</td>
                   <td style="padding:10px; text-align:right;">${t.remaining_cartons || 0}</td>
                   <td style="padding:10px; text-align:center;">

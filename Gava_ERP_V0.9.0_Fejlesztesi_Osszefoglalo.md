@@ -67,3 +67,23 @@ A Heti lekötés fül fejlécében egy új **⚙ Beállítás** gomb került elh
 - `Access UI/src/main.js`: Modulhivatkozások és cache-buster verzió `v=0.9.0`-ra léptetve.
 - `server/package.json`: Verziószám `0.9.0`-ra állítva.
 - Automatikus böngésző cache-megkerülés: a módosított fájlok frissítése azonnal érvénybe lép.
+
+---
+
+## 6. Komissiózás és PDA továbbfejlesztések
+
+1. **PDA Komissió Adatok – Szigorú kötelező mező kitöltés:**
+   - A PDA komissiózási űrlapján (`Komissió Adatok`) mind a 7 mező kötelezővé vált, piros csillaggal (`*`) megjelölve a felhasználó számára:
+     - **Kartonszám:** Pozitív egész szám, amely nem haladhatja meg a még hátralévő rendelt mennyiséget.
+     - **Bruttó kg:** Pozitív szám, amely nem lehet kevesebb, mint a göngyöleg és a raklap tára összege.
+     - **Göngyöleg típus:** Kötelezően kiválasztandó legördülő menüből.
+     - **Göngyöleg tára (/un):** Nem negatív szám (törzsadatból automatikusan betöltve vagy kézzel megadva).
+     - **Származási ország:** Kötelezően kiválasztandó legördülő menüből.
+     - **Lot szám:** Kötelezően kitöltendő szöveges mező.
+     - **Raklap típus:** Kötelezően kiválasztandó legördülő menüből.
+   - Bármely mező kitöltetlensége vagy érvénytelen értéke esetén a felület egyértelmű magyar figyelmeztető ablakot jelenít meg, és a kurzort közvetlenül a hibás mezőre helyezi (`focus`).
+
+2. **Komissió utasítás – Állapotsáv az ÖSSZEKÉSZÍTÉS ÁLLAPOTA oszlopban:**
+   - A Komissió utasítás fül összefoglaló táblázatában az `ÖSSZEKÉSZÍTÉS ÁLLAPOTA` oszlopban a százalékos numerikus érték mellé beépítésre került a folyamatjelző állapotsáv.
+   - A sáv megjelenése és stílusa pontosan megegyezik az **ALDI-Rakodás** felület "Állapot" oszlopának dizájnjával (lekerekített szürke keret, zöld folyamatjelző kitöltés, százalékos érték dinamikus színkódolással mellette elhelyezve).
+
