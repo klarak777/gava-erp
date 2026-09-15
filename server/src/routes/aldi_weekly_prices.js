@@ -108,7 +108,7 @@ function buildNetworkFolderPath(year, weekCode) {
 function stripIncoterm(str) {
   if (!str) return '';
   return String(str)
-    .replace(/\b(DDP|EXW|FCA|CPT|CIP|DAP|DPU|FAS|FOB|CFR|CIF)\b/gi, '')
+    .replace(/\b(DDP|DPT|EXW|FCA|CPT|CIP|DAP|DPU|FAS|FOB|CFR|CIF)\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
 }

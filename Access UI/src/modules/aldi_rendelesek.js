@@ -1210,8 +1210,8 @@ export function renderAldiRendelesek(container, windowManager) {
                       <td style="padding:8px 8px; text-align:center; color:#334155; font-weight:600;">${line.carton_content || ''}</td>
                       <td style="padding:8px 8px; color:#475569; font-size:11px;">${(line.origin || '').replace(/, /g, '<br>')}</td>
                       <td style="padding:8px 8px; color:#475569; font-size:11px; line-height:1.3;">${line.packaging || ''}</td>
-                      <td style="padding:8px 8px; text-align:right; font-weight:700; color:#0f172a; font-family:monospace; font-size:12px;">${displayedCrateCost || ''}</td>
-                      <td style="padding:8px 8px; text-align:right; font-weight:700; color:#0f172a; font-family:monospace; font-size:12px;">${displayedUnitCost || ''}</td>
+                      <td style="padding:8px 8px; text-align:right; font-weight:700; color:#0f172a; font-family:monospace; font-size:12px;">${stripIncoterm(displayedCrateCost) || ''}</td>
+                      <td style="padding:8px 8px; text-align:right; font-weight:700; color:#0f172a; font-family:monospace; font-size:12px;">${stripIncoterm(displayedUnitCost) || ''}</td>
                       <td style="padding:8px 8px; text-align:center; color:#475569; font-size:11px; cursor:pointer;" class="aldi-arak-delivery-period" data-line-id="${line.id}" title="${(line.original_period_start || line.original_period_end) ? `Eredeti (Excelből): ${line.original_period_start || ''} - ${line.original_period_end || ''}\nKattints a módosításhoz` : 'Kattints a szállítási időszak módosításához'}">
                         ${line.delivery_period_start ? `<div>${line.delivery_period_start}</div>` : ''}
                         ${line.delivery_period_end ? `<div style="color:#94a3b8;">→ ${line.delivery_period_end}</div>` : ''}
@@ -2022,7 +2022,7 @@ function doExcelExport(lines, orderNo, dateStr) {
   function stripIncoterm(str) {
     if (!str) return '';
     return String(str)
-      .replace(/\b(DDP|EXW|FCA|CPT|CIP|DAP|DPU|FAS|FOB|CFR|CIF)\b/gi, '')
+      .replace(/\b(DDP|DPT|EXW|FCA|CPT|CIP|DAP|DPU|FAS|FOB|CFR|CIF)\b/gi, '')
       .replace(/\s+/g, ' ')
       .trim();
   }
