@@ -1989,6 +1989,26 @@ function doExcelExport(lines, orderNo, dateStr) {
       .trim();
   }
 
+  function formatCurrencyDisplay(valStr, currencyCode) {
+    if (!valStr) return '';
+    let cleaned = stripIncoterm(valStr);
+    let numStr = cleaned.replace(/[^\d,\.-]/g, '').trim();
+    if (!numStr) return cleaned;
+    numStr = numStr.replace(',', '.');
+    let parts = numStr.split('.');
+    if (parts.length > 2) {
+      numStr = parts.slice(0, -1).join('') + '.' + parts[parts.length - 1];
+    }
+    let num = parseFloat(numStr);
+    if (isNaN(num)) return cleaned;
+    if (currencyCode === 'EUR') {
+      return num.toFixed(2).replace('.', ',');
+    } else if (currencyCode === 'HUF') {
+      return Math.round(num).toString();
+    }
+    return cleaned;
+  }
+
   // ─── Deviza időszak modal ─────────────────────────────────────────────────────
 
   async function openCurrencyPeriodModal(lineId) {
