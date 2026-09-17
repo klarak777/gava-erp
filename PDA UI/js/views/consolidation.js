@@ -65,8 +65,8 @@ export async function renderConsolidation(container, params = {}) {
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" style="width: 24px; height: 24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"></path></svg>
           <span style="font-size: 10px; font-weight: 600; margin-top: 2px;">Vissza</span>
         </div>
-        <button id="btn-cons-finish" style="cursor: pointer; border: none; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #4f46e5; color: white; border-radius: 50%; width: 56px; height: 56px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);">
-           <span style="font-size: 9px; font-weight: 800; text-align: center; line-height: 1.1;">Összeemelés<br>befejezése</span>
+        <button id="btn-cons-finish" style="cursor: pointer; border: none; display: flex; align-items: center; justify-content: center; background: #4f46e5; color: white; border-radius: 8px; padding: 0 16px; height: 44px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);">
+           <span style="font-size: 12px; font-weight: 700; text-align: center;">Összeemelés befejezése</span>
         </button>
       </div>
     </div>
@@ -164,12 +164,10 @@ export async function renderConsolidation(container, params = {}) {
       consList.innerHTML = '';
       consList.appendChild(consEmpty);
       btnFinish.style.opacity = '0.5';
-      btnFinish.style.pointerEvents = 'none';
       return;
     }
 
     btnFinish.style.opacity = '1';
-    btnFinish.style.pointerEvents = 'auto';
 
     consEmpty.style.display = 'none';
     consList.innerHTML = '';
@@ -232,7 +230,10 @@ export async function renderConsolidation(container, params = {}) {
   });
 
   btnFinish.addEventListener('click', async () => {
-    if (scannedPallets.length === 0) return;
+    if (scannedPallets.length === 0) {
+      alert('Nincs beolvasott raklap az összeemeléshez!');
+      return;
+    }
     
     const originalText = btnFinish.innerHTML;
     btnFinish.innerHTML = '<span style="font-size:12px;">...</span>';
