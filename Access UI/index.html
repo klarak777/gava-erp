@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GAVA ERP - V0.9.0</title>
+    <title>GAVA ERP - V0.9.1.5</title>
     <link rel="icon" type="image/x-icon" href="logo.ico">
     <link rel="stylesheet" href="src/style.css">
     <link rel="stylesheet" href="src/access-ui.css">
@@ -13,6 +13,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 </head>
 
 <body>
@@ -23,7 +24,7 @@
                 <img src="logo.ico" alt="Gava Logo" class="logo-img"
                     style="width: 64px; height: 64px; margin-bottom: 16px;">
                 <h2 style="margin-bottom: 8px;">GAVA <span class="logo-accent">ERP</span> <span
-                        style="font-size:13px; font-weight:400; color:var(--text-muted); vertical-align:middle; margin-left:6px;">V0.9.0</span>
+                        style="font-size:13px; font-weight:400; color:var(--text-muted); vertical-align:middle; margin-left:6px;">V0.9.1.5</span>
                 </h2>
                 <p style="color: var(--text-muted); margin-bottom: 24px;">Bejelentkezés a rendszerbe</p>
             </div>
@@ -52,7 +53,7 @@
             <div class="logo-container">
                 <img src="logo.ico" alt="Gava Logo" class="logo-img" style="width: 32px; height: 32px;">
                 <span class="logo-text">GAVA <span class="logo-accent">ERP</span> <span
-                        style="font-size:10px; font-weight:500; color:var(--text-muted); margin-left:4px; opacity:0.8;">V0.9.0</span></span>
+                        style="font-size:10px; font-weight:500; color:var(--text-muted); margin-left:4px; opacity:0.8;">V0.9.1.5</span></span>
             </div>
             <nav id="main-nav">
                 <a href="#" data-module="dashboard" class="nav-item active">
@@ -83,7 +84,7 @@
             </section>
         </main>
     </div>
-    <script type="module" src="src/main.js?v=0.9.0"></script>
+    <script type="module" src="src/main.js?v=0.9.1.5"></script>
     <script>
         // Inline fallback login handler - runs independently of ES modules
         // This ensures login works even if main.js module loading fails

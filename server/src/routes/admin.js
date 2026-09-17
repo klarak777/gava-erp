@@ -19,8 +19,20 @@ router.get('/export-identifiers', async (req, res) => {
     }
 });
 
+// GET /api/v1/admin/pallet-labels
+router.get('/pallet-labels', async (req, res) => {
+  try {
+    const labels = await db('sscc_labels')
+      .orderBy('id', 'desc');
+    res.json(labels);
+  } catch (err) {
+    console.error('Hiba a raklapcímkék lekérésekor:', err);
+    res.status(500).json({ error: 'Hiba a raklapcímkék lekérdezésekor.' });
+  }
+});
+
 // Engedélyezett táblák a generic végpontokhoz biztonsági okokból
-const ALLOWED_TABLES = ['products', 'partners', 'transporters', 'finance_truck_types', 'finance_tax_rates', 'currencies', 'ref_packaging_types', 'ref_origin_countries', 'ref_pallet_types'];
+const ALLOWED_TABLES = ['products', 'partners', 'transporters', 'finance_truck_types', 'finance_tax_rates', 'currencies', 'ref_packaging_types', 'ref_origin_countries', 'ref_pallet_types', 'printers'];
 
 // GET /api/v1/admin/:table
 router.get('/:table', async (req, res) => {

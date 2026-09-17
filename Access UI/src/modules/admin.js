@@ -46,7 +46,15 @@ export function renderAdmin(container, wm, subModuleId = null) {
         ]),
         'admin-ref-pallet': () => openAdminTable(wm, 'Raklap Típusok', 'ref_pallet_types', [
             { field: 'name', label: 'Név' }
-        ])
+        ]),
+        'admin-printers': () => openAdminTable(wm, 'Nyomtatók', 'printers', [
+            { field: 'name', label: 'Név' },
+            { field: 'ip_address', label: 'IP cím' },
+            { field: 'port', label: 'Port', type: 'number' },
+            { field: 'barcode', label: 'Vonalkód (PDA beolvasáshoz)' },
+            { field: 'is_active', label: 'Aktív', type: 'boolean' }
+        ]),
+        'admin-pallet-labels': () => openPalletLabelsTable(wm)
     };
 
     const launcherContent = `
@@ -136,7 +144,6 @@ export function openAdminTable(wm, title, tableName, columns, extraPayload = {},
                 <div style="margin-bottom:12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                     ${extraPayload.isReadonly ? '' : `
                         <button class="primary-btn" id="btn-add">Új hozzáadása</button>
-                        <button class="secondary-btn" id="btn-refresh">Frissítés</button>
                     `}
                     <div style="margin-left:auto; display:flex; align-items:center; gap:6px;">
                         <label style="font-size:12px; font-weight:600; color:var(--text-muted);">Keresés:</label>
@@ -206,7 +213,8 @@ export function openAdminTable(wm, title, tableName, columns, extraPayload = {},
                     url += `?type=${extraPayload.type}`;
                 }
                 const res = await fetch(url);
-                items = await res.json();
+                const data = await res.json();
+                items = Array.isArray(data) ? data : [];
                 
                 // ABC sorrendbe rendezés: ha extraPayload.sortBy meg van adva, az alapján, egyébként az első oszlop mezője alapján
                 if (items && items.length > 0) {
@@ -378,7 +386,6 @@ export function openAdminTable(wm, title, tableName, columns, extraPayload = {},
 
         if (!extraPayload.isReadonly) {
             winContainer.querySelector('#btn-add').addEventListener('click', () => openDialog(null));
-            winContainer.querySelector('#btn-refresh').addEventListener('click', loadData);
         }
         winContainer.querySelector('#btn-cancel').addEventListener('click', () => dialog.close());
 
@@ -699,3 +706,300 @@ export function openArchivedPartnersTable(wm) {
         loadData();
     });
 }
+
+export function openPalletLabelsTable(wm) {
+    wm.open('admin-pallet-labels', 'Raklapcímkék (SSCC)', (winContainer) => {
+        let labels = [];
+
+        winContainer.innerHTML = `
+            <style>
+                .pl-container { padding: 16px; display: flex; flex-direction: column; height: 100%; box-sizing: border-box; }
+                .pl-table-wrap { flex: 1; overflow: auto; border: 1px solid var(--border-color, #cbd5e1); margin-top: 10px; background: white; border-radius: 4px; }
+                .pl-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+                .pl-table th, .pl-table td { padding: 6px 10px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+                .pl-table th { background: #f8fafc; font-weight: 700; color: #475569; position: sticky; top: 0; z-index: 1; border-bottom: 2px solid #cbd5e1; }
+                .pl-table tr:hover { background: #f1f5f9; }
+                .pl-sscc-badge { font-family: monospace; font-weight: 800; font-size: 12px; color: #0284c7; background: #e0f2fe; padding: 2px 6px; border-radius: 4px; display: inline-block; }
+                .pl-btn { padding: 4px 8px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid #cbd5e1; border-radius: 4px; background: white; display: inline-flex; align-items: center; gap: 4px; }
+                .pl-btn:hover { background: #f8fafc; border-color: #94a3b8; }
+                .pl-btn-print { border-color: #0284c7; color: #0284c7; background: #f0f9ff; }
+                .pl-btn-print:hover { background: #e0f2fe; }
+
+                /* Modal styling */
+                .pl-modal-overlay {
+                    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                    background: rgba(15, 23, 42, 0.6); z-index: 9999;
+                    display: none; align-items: center; justify-content: center;
+                }
+                .pl-modal-box {
+                    background: white; border-radius: 8px; max-width: 480px; width: 90%;
+                    padding: 20px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);
+                    display: flex; flex-direction: column; gap: 14px; max-height: 90vh; overflow-y: auto;
+                }
+            </style>
+            <div class="pl-container">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <h2 style="margin:0; font-size:16px; font-weight:700; color:#0f172a;">🏷️ Raklapcímkék</h2>
+                        <span id="pl-count" style="background:#f1f5f9; color:#475569; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:700;">0 db</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <label style="font-size:12px; font-weight:600; color:var(--text-muted);">Keresés:</label>
+                            <input type="text" id="pl-search" placeholder="SSCC, kamion, termék, partner..." class="access-control-input" style="width:240px; padding:4px 8px; font-size:12px; height:30px;">
+                        </div>
+                        <button id="pl-refresh" class="secondary-btn" style="height:30px; display:inline-flex; align-items:center; gap:4px;">🔄 Frissítés</button>
+                    </div>
+                </div>
+                <div class="pl-table-wrap">
+                    <table class="pl-table">
+                        <thead>
+                            <tr>
+                                <th style="width:50px;">ID</th>
+                                <th>Létrehozva</th>
+                                <th>SSCC vonalkód</th>
+                                <th>Kamionszám</th>
+                                <th>Termék</th>
+                                <th style="text-align:center;">Karton</th>
+                                <th>Beszállító</th>
+                                <th>Ügyfél</th>
+                                <th>Származás</th>
+                                <th style="text-align:center; width:130px;">Művelet</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pl-tbody">
+                            <tr><td colspan="10" style="text-align:center; padding:20px; color:#64748b;">Betöltés...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Preview Modal -->
+            <div id="pl-modal" class="pl-modal-overlay">
+                <div class="pl-modal-box">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3 style="margin:0; font-size:16px;">Raklapcímke megtekintése</h3>
+                        <button id="pl-modal-close" style="background:none; border:none; font-size:18px; cursor:pointer; color:#64748b;">✕</button>
+                    </div>
+                    <div id="pl-modal-label-content" style="border: 2px solid #000; padding: 14px; background: #fff; font-family: Arial, sans-serif;">
+                        <!-- Dinamikus tartalom -->
+                    </div>
+                    <div style="display:flex; justify-content:flex-end; gap:8px;">
+                        <button id="pl-modal-print-btn" class="primary-btn" style="display:flex; align-items:center; gap:6px;">
+                            📄 Nyomtatás / PDF mentés
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const tbody = winContainer.querySelector('#pl-tbody');
+        const countBadge = winContainer.querySelector('#pl-count');
+        const searchInput = winContainer.querySelector('#pl-search');
+        const refreshBtn = winContainer.querySelector('#pl-refresh');
+        const modal = winContainer.querySelector('#pl-modal');
+        const modalClose = winContainer.querySelector('#pl-modal-close');
+        const modalContent = winContainer.querySelector('#pl-modal-label-content');
+        const modalPrintBtn = winContainer.querySelector('#pl-modal-print-btn');
+
+        let selectedLabel = null;
+
+        async function loadData() {
+            tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:20px; color:#64748b;">Betöltés...</td></tr>`;
+            try {
+                const res = await fetch('/api/v1/admin/pallet-labels');
+                const data = await res.json();
+                labels = Array.isArray(data) ? data : [];
+                countBadge.textContent = `${labels.length} db`;
+                renderTable();
+            } catch (err) {
+                console.error(err);
+                tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:20px; color:#ef4444;">Hiba a betöltéskor</td></tr>`;
+            }
+        }
+
+        function formatDate(dStr) {
+            if (!dStr) return '-';
+            try {
+                const d = new Date(dStr);
+                if (isNaN(d.getTime())) return dStr;
+                return d.toLocaleString('hu-HU', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+            } catch {
+                return dStr;
+            }
+        }
+
+        function renderTable() {
+            const query = (searchInput?.value || '').toLowerCase().trim();
+            const filtered = query ? labels.filter(l => {
+                return String(l.sscc || '').toLowerCase().includes(query) ||
+                       String(l.truck_number || '').toLowerCase().includes(query) ||
+                       String(l.product_name || '').toLowerCase().includes(query) ||
+                       String(l.supplier || '').toLowerCase().includes(query) ||
+                       String(l.destination || '').toLowerCase().includes(query) ||
+                       String(l.origin_country || '').toLowerCase().includes(query) ||
+                       String(l.id || '').includes(query);
+            }) : labels;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:24px; color:#94a3b8;">Nincs találat.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(l => `
+                <tr>
+                    <td style="color:#64748b; font-weight:600;">#${l.id}</td>
+                    <td style="white-space:nowrap; color:#475569;">${formatDate(l.created_at)}</td>
+                    <td><span class="pl-sscc-badge">${l.sscc || '-'}</span></td>
+                    <td style="font-weight:700; color:#0f172a;">${l.truck_number || '-'}</td>
+                    <td style="font-weight:600;">${l.product_name || '-'}</td>
+                    <td style="text-align:center; font-weight:800; color:#0284c7;">${l.picked_cartons != null ? l.picked_cartons : '-'}</td>
+                    <td>${l.supplier || '-'}</td>
+                    <td><strong>${l.destination || '-'}</strong></td>
+                    <td>${l.origin_country || '-'}</td>
+                    <td style="text-align:center;">
+                        <button class="pl-btn pl-btn-print btn-view-label" data-id="${l.id}" title="Címke megtekintése és nyomtatása">
+                            👁️ Megtekintés
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+
+            tbody.querySelectorAll('.btn-view-label').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = Number(btn.dataset.id);
+                    const found = labels.find(item => item.id === id);
+                    if (found) showLabelModal(found);
+                });
+            });
+        }
+
+        function showLabelModal(label) {
+            selectedLabel = label;
+            modalContent.innerHTML = `
+                <div style="font-size: 24px; font-weight: 900; line-height: 1.1; color:#000;">${label.truck_number || '-'}</div>
+                <div style="font-size: 11px; font-weight: bold; color: #555; text-transform: uppercase;">Kamionszám</div>
+                <div style="border-top: 2px solid #000; margin: 8px 0;"></div>
+                
+                <div style="font-size: 18px; font-weight: 800; line-height: 1.2; color:#000;">${label.product_name || '-'}</div>
+                <div style="font-size: 11px; font-weight: bold; color: #555; text-transform: uppercase;">Termék megnevezése</div>
+                <div style="border-top: 2px solid #000; margin: 8px 0;"></div>
+                
+                <div style="display:flex; flex-direction:column; gap:4px; font-size:13.5px; color:#111; font-weight:600;">
+                    <div>Érkezés dátuma: <strong style="font-weight:800;">${label.delivery_date || '-'}</strong></div>
+                    <div>Karton szám: <strong style="font-weight:800;">${label.picked_cartons != null ? label.picked_cartons : '-'}</strong></div>
+                    <div>Beszállító: <strong style="font-weight:800;">${label.supplier || '-'}</strong></div>
+                    <div>Ügyfél: <strong style="font-weight:800;">${label.destination || '-'}</strong></div>
+                    <div>Származási ország: <strong style="font-weight:800;">${label.origin_country || '-'}</strong></div>
+                </div>
+                <div style="border-top: 2px solid #000; margin: 8px 0;"></div>
+
+                <div style="text-align: center; margin-top: 6px;">
+                    <svg id="pl-modal-barcode-svg" style="max-width: 100%; height: auto; display:block; margin:0 auto;"></svg>
+                    <div style="font-size: 12px; font-weight: 900; margin-top: 2px;">SSCC</div>
+                </div>
+            `;
+
+            if (window.JsBarcode && label.sscc) {
+                try {
+                    window.JsBarcode(modalContent.querySelector('#pl-modal-barcode-svg'), label.sscc, {
+                        format: "CODE128",
+                        displayValue: true,
+                        fontSize: 14,
+                        height: 55,
+                        margin: 2
+                    });
+                } catch (e) {
+                    console.warn(e);
+                }
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        modalClose.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.style.display = 'none';
+        });
+
+        modalPrintBtn.addEventListener('click', () => {
+            if (!selectedLabel) return;
+            printLabelDirect(selectedLabel);
+        });
+
+        function printLabelDirect(label) {
+            const printWindow = window.open('', '_blank', 'width=650,height=800');
+            if (!printWindow) {
+                alert('A felugró ablak letiltásra került. Engedélyezd a felugró ablakokat a nyomtatáshoz!');
+                return;
+            }
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Raklap címke - ${label.sscc || ''}</title>
+                    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+                    <style>
+                        @page { size: 100mm 150mm; margin: 0; }
+                        * { box-sizing: border-box; }
+                        body { margin: 0; padding: 12px; font-family: Arial, sans-serif; background: #fff; color: #000; display: flex; justify-content: center; }
+                        .pallet-label { width: 100%; max-width: 420px; border: 3px solid #000; padding: 14px; background: #fff; }
+                        .label-truck { font-size: 32px; font-weight: 900; line-height: 1.1; }
+                        .label-sub { font-size: 13px; font-weight: bold; color: #333; margin-bottom: 6px; text-transform: uppercase; }
+                        .label-divider { border-top: 3px solid #000; margin: 10px 0; }
+                        .label-product { font-size: 24px; font-weight: 800; line-height: 1.15; }
+                        .label-data-row { font-size: 16px; font-weight: 600; line-height: 1.5; display: flex; gap: 6px; }
+                        .label-data-row span.val { font-weight: 800; }
+                        .barcode-container { text-align: center; margin-top: 10px; }
+                        .barcode-type { font-size: 14px; font-weight: 900; text-align: center; margin-top: 2px; }
+                        @media print { body { padding: 0; } .pallet-label { border: none; width: 100%; max-width: none; } }
+                    </style>
+                </head>
+                <body>
+                    <div class="pallet-label">
+                        <div class="label-truck">${label.truck_number || '-'}</div>
+                        <div class="label-sub">Kamionszám</div>
+                        <div class="label-divider"></div>
+                        <div class="label-product">${label.product_name || '-'}</div>
+                        <div class="label-sub">Termék megnevezése</div>
+                        <div class="label-divider"></div>
+                        <div class="label-data-row">Érkezés dátuma: <span class="val">${label.delivery_date || '-'}</span></div>
+                        <div class="label-data-row">Karton szám: <span class="val">${label.picked_cartons != null ? label.picked_cartons : ''}</span></div>
+                        <div class="label-data-row">Beszállító: <span class="val">${label.supplier || '-'}</span></div>
+                        <div class="label-data-row">Ügyfél: <span class="val">${label.destination || '-'}</span></div>
+                        <div class="label-data-row">Származási ország: <span class="val">${label.origin_country || '-'}</span></div>
+                        <div class="label-divider"></div>
+                        <div class="barcode-container">
+                            <svg id="print-barcode"></svg>
+                            <div class="barcode-type">SSCC</div>
+                        </div>
+                    </div>
+                    <script>
+                        window.onload = function() {
+                            if (typeof JsBarcode !== 'undefined') {
+                                JsBarcode("#print-barcode", "${label.sscc || ''}", {
+                                    format: "CODE128",
+                                    displayValue: true,
+                                    fontSize: 16,
+                                    height: 70,
+                                    margin: 4
+                                });
+                            }
+                            setTimeout(() => { window.print(); }, 300);
+                        };
+                    </script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+
+        searchInput.addEventListener('input', () => renderTable());
+        refreshBtn.addEventListener('click', loadData);
+        loadData();
+    });
+}
+

@@ -44,6 +44,8 @@ export const NAV_CATEGORIES = [
                     { id: 'admin-ref-packaging', label: 'Göngyöleg Típusok', icon: '📦', desc: 'Csomagolási és göngyöleg típusok' },
                     { id: 'admin-ref-origin', label: 'Származási Országok', icon: '🌍', desc: 'Származási helyek' },
                     { id: 'admin-ref-pallet', label: 'Raklap Típusok', icon: '🪚', desc: 'Raklap típusok' },
+                    { id: 'admin-printers', label: 'Nyomtatók', icon: '🖨️', desc: 'Nyomtatók beállítása' },
+                    { id: 'admin-pallet-labels', label: 'Raklapcímkék', icon: '🏷️', desc: 'Legenerált raklapcímkék és SSCC azonosítók' },
                 ],
             }
         ],

@@ -317,7 +317,79 @@ async function processPick(trx, id, reqData, locationId = null) {
       lot_number: lot_number || null
     });
 
-  return { orderedCartons, newPicked, newRemaining, isFullyPicked };
+  // SSCC címke generálása és mentése
+  const label = await createSsccLabel(trx, id, qty, origin_country);
+
+  return { orderedCartons, newPicked, newRemaining, isFullyPicked, label };
+}
+
+// ── SSCC és ZPL segédfüggvények ─────────────────────────────
+async function createSsccLabel(dbClient, lineId, pickedCartons, originCountryOverride) {
+  const line = await dbClient('aldi_truck_lines').where('id', lineId).first();
+  if (!line) throw new Error('A komissiózott tétel nem található.');
+
+  const truck = await dbClient('aldi_trucks').where('id', line.aldi_truck_id).first();
+  const licensePlate = truck ? (truck.truck_number || truck.license_plate_1 || 'GHU 070/1') : 'GHU 070/1';
+  const productName = line.product_name || 'Paradicsom I M';
+  const printCartons = pickedCartons || line.cartons_per_pallet || 0;
+  const deliveryDate = (line.delivery_date || truck?.delivery_date) ? new Date(line.delivery_date || truck.delivery_date).toISOString().split('T')[0] : '';
+  const originCountry = originCountryOverride || line.origin_country || '';
+  const supplier = line.partner || '';
+  const destination = line.destination || '';
+
+  // SSCC generálása
+  const seqRes = await dbClient.raw("SELECT nextval('sscc_labels_id_seq') as next_id");
+  const nextId = seqRes.rows[0].next_id;
+
+  const extDigit = '3';
+  const companyPrefix = process.env.GS1_COMPANY_PREFIX || '5990001';
+  const serialNum = String(nextId).padStart(17 - companyPrefix.length - extDigit.length, '0');
+  const baseSSCC = extDigit + companyPrefix + serialNum;
+  
+  let sum = 0;
+  for (let i = baseSSCC.length - 1; i >= 0; i--) {
+    const digit = parseInt(baseSSCC[i], 10);
+    const posFromRight = baseSSCC.length - 1 - i;
+    const multiplier = posFromRight % 2 === 0 ? 3 : 1;
+    sum += digit * multiplier;
+  }
+  const checkDigit = (10 - (sum % 10)) % 10;
+  const finalSSCC = baseSSCC + checkDigit;
+
+  const [createdLabel] = await dbClient('sscc_labels').insert({
+    id: nextId,
+    sscc: finalSSCC,
+    commission_line_id: lineId,
+    picked_cartons: printCartons,
+    truck_number: licensePlate,
+    product_name: productName,
+    delivery_date: deliveryDate,
+    supplier: supplier,
+    destination: destination,
+    origin_country: originCountry
+  }).returning('*');
+
+  return createdLabel;
+}
+
+function generateZpl(label) {
+  return `^XA
+^CI28
+^FO50,50^A0N,100,100^FD${label.truck_number || ''}^FS
+^FO50,160^A0N,40,40^FDKamionszám^FS
+^FO50,220^GB1100,3,3^FS
+^FO50,260^A0N,80,80^FD${label.product_name || ''}^FS
+^FO50,350^A0N,40,40^FDTermék megnevezése^FS
+^FO50,410^GB1100,3,3^FS
+^FO50,450^A0N,50,50^FDÉrkezés dátuma: ${label.delivery_date || ''}^FS
+^FO50,530^A0N,50,50^FDKarton szám: ${label.picked_cartons || ''}^FS
+^FO50,610^A0N,50,50^FDBeszállító: ${label.supplier || ''}^FS
+^FO50,690^A0N,50,50^FDÜgyfél: ${label.destination || ''}^FS
+^FO50,770^A0N,50,50^FDSzármazási ország: ${label.origin_country || ''}^FS
+^FO50,850^GB1100,3,3^FS
+^FO150,920^BCN,200,Y,N,N^FD${label.sscc}^FS
+^FO550,1150^A0N,50,50^FDSSCC^FS
+^XZ`;
 }
 
 // ── PUT /commission-lines/:id/pick ─────────────
@@ -333,7 +405,8 @@ router.put('/commission-lines/:id/pick', verifyToken, async (req, res) => {
       ordered_cartons: result.orderedCartons,
       picked_cartons: result.newPicked,
       remaining: result.newRemaining,
-      is_picked: result.isFullyPicked
+      is_picked: result.isFullyPicked,
+      label: result.label
     });
   } catch (err) {
     if (err.code === 'BAD_REQUEST') return res.status(400).json({ error: err.message });
@@ -369,6 +442,7 @@ router.put('/commission-lines/:id/pick-and-assign', verifyToken, async (req, res
       picked_cartons: result.newPicked,
       remaining: result.newRemaining,
       is_picked: result.isFullyPicked,
+      label: result.label,
       message: result.isFullyPicked
         ? 'Tétel teljesen komissiózva.'
         : `Részleges komissió rögzítve. Maradék: ${result.newRemaining} karton.`
@@ -381,6 +455,154 @@ router.put('/commission-lines/:id/pick-and-assign', verifyToken, async (req, res
     if (err.code === 'INVALID_WEIGHT') return res.status(400).json({ error: err.message });
     console.error('[PDA] /commission-lines/:id/pick-and-assign hiba:', err);
     res.status(500).json({ error: 'Hiba a mentéskor.' });
+  }
+});
+
+// ── POST /print-pallet-label ──────────────────────────────
+router.post('/print-pallet-label', verifyToken, async (req, res) => {
+  try {
+    const { labelId, commissionLineId, printerBarcode, pickedCartons } = req.body;
+    if (!printerBarcode) {
+      return res.status(400).json({ error: 'Nyomtató vonalkód megadása kötelező.' });
+    }
+
+    // 1. Nyomtató megkeresése az adatbázisban
+    const printer = await knex('printers').where('barcode', printerBarcode).andWhere('is_active', true).first();
+    if (!printer) {
+      return res.status(404).json({ error: 'A megadott vonalkódhoz nem tartozik aktív nyomtató.' });
+    }
+
+    // 2. Címke előkeresése vagy generálása
+    let label = null;
+    if (labelId) {
+      label = await knex('sscc_labels').where('id', labelId).first();
+    }
+    if (!label && commissionLineId) {
+      label = await knex('sscc_labels').where('commission_line_id', commissionLineId).orderBy('id', 'desc').first();
+      if (!label) {
+        label = await createSsccLabel(knex, commissionLineId, pickedCartons);
+      }
+    }
+
+    if (!label) {
+      return res.status(404).json({ error: 'A nyomtatandó raklapcímke nem található.' });
+    }
+
+    console.log(`[PDA] Nyomtatás kérése a(z) ${printer.name} nyomtatóra. SSCC: ${label.sscc}, tétel: ${label.product_name}, kamion: ${label.truck_number}, karton: ${label.picked_cartons}`);
+
+    const zpl = generateZpl(label);
+
+    // Hálózati TCP kapcsolat a nyomtatóhoz
+    const net = require('net');
+    const client = new net.Socket();
+    
+    client.on('error', (e) => {
+      console.error('[PDA] TCP hiba a nyomtatóhoz kapcsolódáskor:', e.message);
+    });
+
+    client.connect(printer.port, printer.ip_address, function() {
+      client.write(zpl);
+      client.destroy();
+    });
+
+    res.json({ success: true, message: 'Nyomtatási feladat sikeresen elküldve a címkenyomtatóra.', label });
+  } catch (err) {
+    console.error('[PDA] /print-pallet-label hiba:', err);
+    res.status(500).json({ error: 'Hiba a nyomtatás elindításakor.' });
+  }
+});
+
+// ── GET /pallet-label/:sscc ──────────────────────────────
+router.get('/pallet-label/:sscc', verifyToken, async (req, res) => {
+  try {
+    const { sscc } = req.params;
+    const label = await knex('sscc_labels').where('sscc', sscc).first();
+    if (!label) {
+      return res.status(404).json({ error: 'A megadott vonalkód nem található a rendszerben.' });
+    }
+    res.json(label);
+  } catch (err) {
+    console.error('[PDA] /pallet-label/:sscc hiba:', err);
+    res.status(500).json({ error: 'Hiba a raklapcímke betöltésekor.' });
+  }
+});
+
+// ── POST /consolidation ──────────────────────────────
+router.post('/consolidation', verifyToken, async (req, res) => {
+  try {
+    const { pallets } = req.body;
+    if (!pallets || !Array.isArray(pallets) || pallets.length === 0) {
+      return res.status(400).json({ error: 'Nincsenek megadva raklapok az összeemeléshez.' });
+    }
+
+    let newLabel = null;
+    await knex.transaction(async (trx) => {
+      const labels = await trx('sscc_labels').whereIn('sscc', pallets);
+      if (labels.length !== pallets.length) {
+        throw new Error('Egy vagy több vonalkód érvénytelen vagy nem található.');
+      }
+
+      let totalCartons = 0;
+      let totalGrossWeight = 0;
+      let productNames = new Set();
+      let suppliers = new Set();
+      let destinations = new Set();
+      let origins = new Set();
+      let truckNumbers = new Set();
+
+      for (const lbl of labels) {
+        totalCartons += parseInt(lbl.picked_cartons) || 0;
+        // Ha lenne bruttó súly a táblában (most nincs) hozzáadnánk.
+        if (lbl.product_name) productNames.add(lbl.product_name);
+        if (lbl.supplier) suppliers.add(lbl.supplier);
+        if (lbl.destination) destinations.add(lbl.destination);
+        if (lbl.origin_country) origins.add(lbl.origin_country);
+        if (lbl.truck_number) truckNumbers.add(lbl.truck_number);
+      }
+
+      const seqRes = await trx.raw("SELECT nextval('sscc_labels_id_seq') as next_id");
+      const nextId = seqRes.rows[0].next_id;
+
+      const extDigit = '3';
+      const companyPrefix = process.env.GS1_COMPANY_PREFIX || '5990001';
+      const serialNum = String(nextId).padStart(17 - companyPrefix.length - extDigit.length, '0');
+      const baseSSCC = extDigit + companyPrefix + serialNum;
+      
+      let sum = 0;
+      for (let i = baseSSCC.length - 1; i >= 0; i--) {
+        const digit = parseInt(baseSSCC[i], 10);
+        const posFromRight = baseSSCC.length - 1 - i;
+        const multiplier = posFromRight % 2 === 0 ? 3 : 1;
+        sum += digit * multiplier;
+      }
+      const checkDigit = (10 - (sum % 10)) % 10;
+      const finalSSCC = baseSSCC + checkDigit;
+
+      const productName = productNames.size > 1 ? 'Vegyes raklap' : (Array.from(productNames)[0] || 'Vegyes');
+      const supplier = Array.from(suppliers).join(', ').substring(0, 255);
+      const destination = Array.from(destinations).join(', ').substring(0, 255);
+      const originCountry = Array.from(origins).join(', ').substring(0, 255);
+      const truckNumber = Array.from(truckNumbers).join(', ').substring(0, 255);
+      const deliveryDate = new Date().toISOString().split('T')[0]; // Mai dátum
+
+      [newLabel] = await trx('sscc_labels').insert({
+        id: nextId,
+        sscc: finalSSCC,
+        commission_line_id: null,
+        picked_cartons: totalCartons,
+        truck_number: truckNumber,
+        product_name: productName,
+        delivery_date: deliveryDate,
+        supplier: supplier,
+        destination: destination,
+        origin_country: originCountry
+      }).returning('*');
+    });
+
+    res.json({ success: true, label: newLabel });
+  } catch (err) {
+    console.error('[PDA] /consolidation hiba:', err);
+    res.status(400).json({ error: err.message || 'Hiba történt az összeemelés során.' });
   }
 });
 

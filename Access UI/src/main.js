@@ -37,7 +37,7 @@ import { renderAdmin } from './modules/admin.js';
 import { renderPennyStock } from './modules/penny_stock.js';
 import { renderPennyBelfoldiFuvarok } from './modules/penny_belfoldi_fuvarok.js';
 import { renderPennyKomissiosUtasitas } from './modules/penny_komissios_utasitas.js';
-import { renderAldiRendelesek } from './modules/aldi_rendelesek.js?v=0.9.0';
+import { renderAldiRendelesek } from './modules/aldi_rendelesek.js?v=0.9.0-weekly-price-merge-20260917';
 import { renderAldiStock } from './modules/aldi_stock.js';
 import { renderAldiQuality } from './modules/aldi_quality.js';
 import { renderAldiRakodas } from './modules/aldi_rakodas.js';

@@ -17,23 +17,30 @@ export function renderLogin(container) {
         <div class="pda-login__logo-fallback" style="display:none;">G</div>
       </div>
 
-      <div class="pda-login__company">Gava Hungria Kft.</div>
-      <div class="pda-login__welcome">Üdvözlünk!</div>
-      <div class="pda-login__sub">Kérjük, jelentkezz be a folytatáshoz.</div>
+      <div class="pda-login__company" style="font-size: 24px; font-weight: 800; color: #0f172a; margin-top: 10px;">Gava Hungria Kft.</div>
+      <div class="pda-login__welcome-container" style="width: 100%; text-align: left; margin-top: 30px; padding: 0 10px;">
+        <div class="pda-login__welcome" style="color: #0f172a; font-size: 24px; font-weight: 700; margin-bottom: 4px;">Üdvözlünk!</div>
+        <div class="pda-login__sub" style="text-align: left; color: #64748b; font-size: 14px;">Kérjük, jelentkezz be a folytatáshoz.</div>
+      </div>
 
-      <form class="pda-login__form" id="pda-login-form" autocomplete="off">
+      <form class="pda-login__form" id="pda-login-form" autocomplete="off" style="margin-top: 30px; padding: 0 10px;">
         <div class="pda-form-group">
-          <label class="pda-form-label" for="pda-username">
-            <span>👤</span> Dolgozói azonosító
+          <label class="pda-form-label" for="pda-username" style="font-size: 14px; display: flex; align-items: center; gap: 8px; color: #0f172a; margin-bottom: 8px;">
+            <svg style="width: 20px; height: 20px; color: #6366f1;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+            Dolgozói vonalkód
           </label>
-          <input
-            class="pda-form-input"
-            id="pda-username"
-            type="text"
-            placeholder="Kérjük, add meg az azonosítód"
-            autofocus
-            autocomplete="off"
-          >
+          <div style="position: relative; display: flex; align-items: center;">
+            <svg style="position: absolute; left: 16px; width: 22px; height: 22px; color: #94a3b8;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V6a2 2 0 0 1 2-2h2M4 16v2a2 2 0 0 0 2 2h2M16 4h2a2 2 0 0 1 2 2v2M16 20h2a2 2 0 0 0 2 2v-2M4 12h16"></path></svg>
+            <input
+              class="pda-form-input"
+              id="pda-username"
+              type="text"
+              placeholder="Kérjük, olvasd be a dolgozói vonalkódot"
+              autofocus
+              autocomplete="off"
+              style="padding-left: 48px; border-radius: 12px; height: 56px; border: 1px solid #cbd5e1; font-size: 15px;"
+            >
+          </div>
         </div>
 
         <div id="pda-login-error" style="
@@ -44,15 +51,17 @@ export function renderLogin(container) {
           padding:10px 14px;
           font-size:13px;
           font-weight:600;
+          margin-top: 12px;
         "></div>
 
-        <button class="pda-btn pda-btn--primary" type="submit">
-          <span>🔑</span> Bejelentkezés
+        <button class="pda-btn pda-btn--primary" type="submit" style="border-radius: 12px; font-weight: 600; margin-top: 24px; background: linear-gradient(to right, #8b5cf6, #6366f1); height: 56px;">
+          <svg style="width: 22px; height: 22px; margin-right: 4px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V6a2 2 0 0 1 2-2h2M4 16v2a2 2 0 0 0 2 2h2M16 4h2a2 2 0 0 1 2 2v2M16 20h2a2 2 0 0 0 2 2v-2M4 12h16"></path></svg>
+          Bejelentkezés
         </button>
       </form>
 
       <div class="pda-login__footer">
-        GAVA WMS PDA &nbsp;|&nbsp; Verzió 1.0.0
+        GAVA WMS PDA<br>Verzió 1.0.0
       </div>
     </div>
   `;

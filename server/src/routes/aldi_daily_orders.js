@@ -6,6 +6,8 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const db = require('../db/db');
+const { parseLineItems, buildOrderContentHash } = require('../utils/aldiOrderPdf');
+const { removeDeletedItemFromOperations } = require('../services/aldiOrderDeletion');
 
 // Raktar base path for daily orders
 const RAKTAR_BASE = process.platform === 'win32'
@@ -57,40 +59,20 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             palletCount = Math.ceil(parseFloat(palletMatch[1].replace(',', '.')));
         }
 
-        // 3. Extract Delivery Date from Line Item rows
-        // Format: "00010 4061462848544 27 20260815 DDP ..." or with comma "00010 4061462848544 4,371 20260815 DDP ..."
-        // The delivery date is the date AFTER the quantity in the line item row
-        const lineItemPattern = /^\d{5}\s+(\d{13,14})\s+([\d,]+)\s+(20\d{2}[01]\d[0-3]\d)/;
-
-        let deliveryDateStr = null;
-        const itemTotals = new Map();
-
-        const textLines = text.split('\n');
-        for (let line of textLines) {
-            const m = line.match(lineItemPattern);
-            if (m) {
-                const gtin = m[1];
-                const quantity = parseFloat(m[2].replace(/,/g, '.'));
-                const rawDate = m[3]; // e.g. 20260815
-
-                // Use the first found delivery date
-                if (!deliveryDateStr) {
-                    deliveryDateStr = `${rawDate.slice(0, 4)}-${rawDate.slice(4, 6)}-${rawDate.slice(6, 8)}`;
-                }
-
-                if (quantity > 0) {
-                    itemTotals.set(gtin, (itemTotals.get(gtin) || 0) + quantity);
-                }
-            }
-        }
+        // 3. Extract line items. A 2-Deleted Action Code is an explicit zero quantity,
+        // so the row remains visible in the order history while operational quantities are removed.
+        const lineItems = parseLineItems(text);
+        const deliveryDateStr = lineItems[0]?.deliveryDate || null;
 
         if (!deliveryDateStr) {
             return res.status(400).json({ error: 'Nem található a Szállítási dátum (Delivery Date) a tételsorok között.' });
         }
 
-        const lineItems = [...itemTotals.entries()].map(([gtin, quantity]) => ({ gtin, quantity }));
         if (lineItems.length === 0) {
             return res.status(400).json({ error: 'Nem találhatók tételsorok (GTIN és Quantity) a PDF-ben.' });
+        }
+        if (lineItems.some(item => item.deliveryDate !== deliveryDateStr)) {
+            return res.status(400).json({ error: 'A PDF több különböző szállítási dátumot tartalmaz; ezeket külön rendelésben kell feltölteni.' });
         }
 
         // 5. Create folder and save file
@@ -121,7 +103,40 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         }
 
         const pdfHash = crypto.createHash('sha256').update(dataBuffer).digest('hex');
+        const contentHash = buildOrderContentHash(deliveryDateStr, lineItems);
         const result = await db.transaction(async trx => {
+            // The content lock and unique content_hash prevent simultaneous duplicate uploads.
+            await trx.raw('SELECT pg_advisory_xact_lock(hashtext(?))', [`aldi-order-content:${contentHash}`]);
+            const duplicateByHash = await trx('aldi_daily_orders').where({ content_hash: contentHash }).first();
+            if (duplicateByHash) {
+                const error = new Error('DUPLICATE_ORDER_CONTENT');
+                error.duplicateOrder = duplicateByHash;
+                throw error;
+            }
+
+            // Orders created before content_hash was introduced are compared by their
+            // delivery date and normalized GTIN/quantity rows as well.
+            const legacyOrders = await trx('aldi_daily_orders')
+                .where({ delivery_date: deliveryDateStr })
+                .whereNull('content_hash')
+                .select('id', 'order_number', 'delivery_date');
+            if (legacyOrders.length) {
+                const legacyIds = legacyOrders.map(order => order.id);
+                const legacyLines = await trx('aldi_daily_order_lines')
+                    .whereIn('daily_order_id', legacyIds)
+                    .select('daily_order_id', 'gtin', 'ordered_cartons');
+                for (const order of legacyOrders) {
+                    const items = legacyLines
+                        .filter(line => Number(line.daily_order_id) === Number(order.id))
+                        .map(line => ({ gtin: line.gtin, quantity: Number(line.ordered_cartons) || 0 }));
+                    if (buildOrderContentHash(deliveryDateStr, items) === contentHash) {
+                        const error = new Error('DUPLICATE_ORDER_CONTENT');
+                        error.duplicateOrder = order;
+                        throw error;
+                    }
+                }
+            }
+
             await trx.raw('SELECT pg_advisory_xact_lock(hashtext(?))', [`aldi-order:${orderNumberBase}`]);
             let family = await trx('aldi_order_families').where({ base_order_number: orderNumberBase }).first();
             if (!family) {
@@ -146,20 +161,26 @@ router.post('/upload', upload.single('file'), async (req, res) => {
                 order_family_id: family.id,
                 version_number: versionNumber,
                 version_status: 'current',
-                pdf_hash: pdfHash
+                pdf_hash: pdfHash,
+                content_hash: contentHash
             }).returning('*');
 
             const incomingMap = new Map(lineItems.map(item => [item.gtin, item.quantity]));
+            const actionMap = new Map(lineItems.map(item => [item.gtin, item.actionCode]));
             const allGtins = new Set([...previousMap.keys(), ...incomingMap.keys()]);
             const autoReconcileWarnings = [];
+            const deletedItems = [];
 
             for (const gtin of allGtins) {
                 let state = await trx('aldi_order_item_states').where({ order_family_id: family.id, gtin }).first().forUpdate();
                 if (!state) [state] = await trx('aldi_order_item_states').insert({ order_family_id: family.id, gtin }).returning('*');
                 const previousQty = previousMap.get(gtin) || 0;
                 const currentQty = incomingMap.get(gtin) || 0;
+                const explicitlyDeleted = actionMap.get(gtin) === '2-Deleted';
                 const delta = previousOrder ? currentQty - previousQty : 0;
-                const changeType = !previousOrder
+                const changeType = explicitlyDeleted
+                    ? 'removed'
+                    : !previousOrder
                     ? 'unchanged'
                     : !previousMap.has(gtin)
                         ? 'added'
@@ -178,7 +199,16 @@ router.post('/upload', upload.single('file'), async (req, res) => {
                 const totalLoaded = truckLines.reduce((s, r) => s + (Number(r.ordered_cartons) || 0), 0);
                 let currentSent = Number(state.sent_cartons) || 0;
 
-                if (currentQty < currentSent || currentQty < totalLoaded) {
+                if (currentQty === 0 && (explicitlyDeleted || previousMap.has(gtin))) {
+                    const removed = await removeDeletedItemFromOperations(trx, state, truckLines);
+                    if (explicitlyDeleted) {
+                        deletedItems.push({ gtin, ...removed });
+                    }
+                    if (removed.removedFromDemand > 0 || removed.removedFromTrucks > 0 || removed.removedCommissionLines > 0) {
+                        autoReconcileWarnings.push(`❌ Törölt tétel: ${gtin}. Áruigényből ${removed.removedFromDemand}, kamionról ${removed.removedFromTrucks} karton eltávolítva; törölt komissiós sorok: ${removed.removedCommissionLines}.`);
+                    }
+                    currentSent = 0;
+                } else if (currentQty < currentSent || currentQty < totalLoaded) {
                     // Need to trim
                     const targetMax = currentQty;
                     let warning = `⚠️ Automatikus egyeztetés: ${gtin} - Az új rendelt mennyiség ${currentQty} karton.`;
@@ -233,13 +263,20 @@ router.post('/upload', upload.single('file'), async (req, res) => {
                     previous_ordered_cartons: previousQty,
                     quantity_delta: delta,
                     change_type: changeType,
-                    is_virtual_removed: !incomingMap.has(gtin)
+                    is_virtual_removed: !incomingMap.has(gtin) || explicitlyDeleted,
+                    action_code: actionMap.get(gtin) || null
                 });
             }
 
+            const anySent = await trx('aldi_daily_order_lines as l')
+                .join('aldi_order_item_states as s', 's.id', 'l.order_item_state_id')
+                .where('l.daily_order_id', newOrder.id)
+                .where('s.sent_cartons', '>', 0)
+                .first();
+            await trx('aldi_daily_orders').where({ id: newOrder.id }).update({ sent_to_rakodas: !!anySent });
             if (previousOrder) await trx('aldi_daily_orders').where({ id: previousOrder.id }).update({ version_status: 'superseded', superseded_by_order_id: newOrder.id, superseded_at: trx.fn.now() });
             await trx('aldi_order_families').where({ id: family.id }).update({ current_order_id: newOrder.id, updated_at: trx.fn.now() });
-            return { newOrder, versionNumber, orderNumber, autoReconcileWarnings };
+            return { newOrder, versionNumber, orderNumber, autoReconcileWarnings, deletedItems };
         });
 
         res.json({
@@ -250,13 +287,19 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             palletCount,
             deliveryDate: deliveryDateStr,
             lineItemsCount: lineItems.length,
-            autoReconcileWarnings: result.autoReconcileWarnings || []
+            autoReconcileWarnings: result.autoReconcileWarnings || [],
+            deletedItems: result.deletedItems || []
         });
     } catch (err) {
         if (writtenPath && fs.existsSync(writtenPath)) {
             try { fs.unlinkSync(writtenPath); } catch (_) { /* naplózott DB hiba az elsődleges */ }
         }
-        if (err.message === 'DUPLICATE_PDF') return res.status(409).json({ error: 'Ez a PDF-verzió már fel lett töltve.' });
+        if (err.message === 'DUPLICATE_ORDER_CONTENT' || (err.code === '23505' && err.constraint?.includes('content_hash'))) {
+            const duplicate = err.duplicateOrder;
+            const details = duplicate ? ` (${duplicate.order_number}, ${String(duplicate.delivery_date).slice(0, 10)})` : '';
+            return res.status(409).json({ code: 'DUPLICATE_ORDER_CONTENT', error: `Azonos rendelési tartalom már fel lett töltve${details}. A PDF nem került újra rögzítésre.` });
+        }
+        if (err.message === 'DUPLICATE_PDF') return res.status(409).json({ code: 'DUPLICATE_PDF', error: 'Ez a PDF-verzió már fel lett töltve.' });
         console.error('Hiba a PDF feldolgozása közben:', err);
         res.status(500).json({ error: 'Szerverhiba a PDF feldolgozása közben.' });
     }

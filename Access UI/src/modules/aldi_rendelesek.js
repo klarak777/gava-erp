@@ -1542,8 +1542,8 @@ export function renderAldiRendelesek(container, windowManager) {
                     : ['added', 'increased'].includes(l.change_type) ? '#dcfce7'
                     : l.change_type === 'decreased' ? '#fef3c7'
                     : 'transparent';
-                  const changeText = !hasVersionComparison ? ''
-                    : isRemoved ? '❌ Törölt'
+                  const changeText = isRemoved ? `❌ ${l.action_code || 'Törölt'}`
+                    : !hasVersionComparison ? ''
                     : ['added', 'increased'].includes(l.change_type) ? `+${delta}`
                     : l.change_type === 'decreased' ? String(delta)
                     : '';
@@ -1551,13 +1551,13 @@ export function renderAldiRendelesek(container, windowManager) {
                     ? 'padding:8px 12px; color:#b91c1c; text-decoration:line-through; font-style:italic;'
                     : 'padding:8px 12px; color:#1e293b;';
                   return `
-                  <tr style="${rowBg} border-bottom:1px solid #f1f5f9;">
-                    <td style="padding:8px 12px; color:${isRemoved ? '#b91c1c' : '#475569'}; font-weight:600;">${cikk}</td>
+                  <tr style="${rowBg} border-bottom:1px solid #f1f5f9;${isRemoved ? 'color:#b91c1c;text-decoration:line-through;' : ''}">
+                    <td style="padding:8px 12px; color:${isRemoved ? '#b91c1c' : '#475569'}; font-weight:600;text-decoration:${isRemoved ? 'line-through' : 'none'};">${cikk}</td>
                     <td style="${nameStyle}">${l.product_name}</td>
-                    <td style="padding:8px 12px; color:${isRemoved ? '#b91c1c' : '#64748b'}; font-family:monospace;">${l.gtin || ''}</td>
-                    <td style="padding:8px 12px;text-align:center;background:${changeBg};font-weight:700;color:${isRemoved ? '#b91c1c' : 'inherit'}">${changeText}</td>
+                    <td style="padding:8px 12px; color:${isRemoved ? '#b91c1c' : '#64748b'}; font-family:monospace;text-decoration:${isRemoved ? 'line-through' : 'none'};">${l.gtin || ''}</td>
+                    <td style="padding:8px 12px;text-align:center;background:${changeBg};font-weight:700;color:${isRemoved ? '#b91c1c' : 'inherit'};text-decoration:${isRemoved ? 'line-through' : 'none'}">${changeText}</td>
                     <td style="padding:8px 12px; text-align:right; font-weight:700; color:${isRemoved ? '#b91c1c' : '#2563eb'}; text-decoration:${isRemoved ? 'line-through' : 'none'}">${isRemoved ? '0' : ordered} karton</td>
-                    <td style="padding:8px 12px; text-align:right; font-weight:600; color:#334155;">${isRemoved ? '0' : sent} / ${ordered} karton</td>
+                    <td style="padding:8px 12px; text-align:right; font-weight:600; color:${isRemoved ? '#b91c1c' : '#334155'};text-decoration:${isRemoved ? 'line-through' : 'none'};">${isRemoved ? '0 / 0' : `${sent} / ${ordered}`} karton</td>
                   </tr>
                   `;
                 }).join('')}
@@ -1764,12 +1764,15 @@ function doExcelExport(lines, orderNo, dateStr) {
           modalOverlay.remove();
           fetchNapiRendelesek(); // Frissítjük a táblázatot
 
-          if (result.autoReconcileWarnings && result.autoReconcileWarnings.length > 0) {
+          if ((result.autoReconcileWarnings && result.autoReconcileWarnings.length > 0) || (result.deletedItems && result.deletedItems.length > 0)) {
+            const deletedSummary = result.deletedItems?.length
+              ? `\nA PDF ${result.deletedItems.length} darab „2-Deleted” tételt tartalmazott. Ezek mennyisége 0 lett, és a kapcsolódó Áruigény/kamion/komissió adatok törlődtek.\n`
+              : '';
             alert(
               '✅ Sikeres feltöltés!\n\n' +
-              '⚠️ AUTOMATIKUS EGYEZTETÉS TÖRTÉNT:\n' +
-              'A korábbi verzióhoz képest csökkent mennyiségek miatt a rendszer visszavett mennyiségeket:\n\n' +
-              result.autoReconcileWarnings.join('\n')
+              deletedSummary +
+              (result.autoReconcileWarnings?.length ? '⚠️ AUTOMATIKUS EGYEZTETÉS TÖRTÉNT:\nA rendszer a csökkentett vagy törölt mennyiségeket visszavette:\n\n' : '') +
+              (result.autoReconcileWarnings || []).join('\n')
             );
           } else {
             alert('✅ Sikeres feltöltés!');
@@ -1967,18 +1970,20 @@ function doExcelExport(lines, orderNo, dateStr) {
               statusDiv.textContent = `❌ ${result.error}`;
               uploadBtn.disabled = false;
               uploadBtn.textContent = '📤 Újrapróbálkozás';
-            } else if (result.action === 'confirm_overwrite') {
+            } else if (result.action === 'confirm_overwrite' || result.action === 'confirm_merge') {
               statusDiv.style.display = 'none';
-              
+              const canAppendNew = result.action === 'confirm_merge';
               const confirmModal = document.createElement('div');
               confirmModal.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:10000; display:flex; align-items:center; justify-content:center;';
               confirmModal.innerHTML = `
                 <div style="background:#fff; width:450px; border-radius:12px; padding:24px; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
                   <h3 style="margin-top:0; color:#b45309; border-bottom:1px solid #fef08a; padding-bottom:10px;">⚠️ Ütközés észlelve</h3>
-                  <p style="font-size:14px; color:#475569; margin-bottom:20px;">${result.error}</p>
-                  <div style="display:flex; justify-content:flex-end; gap:12px;">
-                    <button id="conflict-cancel" style="padding:8px 16px; border-radius:6px; border:1px solid #cbd5e1; background:#fff; cursor:pointer;">Mégsem</button>
-                    <button id="conflict-overwrite" style="padding:8px 16px; border-radius:6px; border:none; background:#ea580c; color:#fff; cursor:pointer;">Felülírás</button>
+                   <p style="font-size:14px; color:#475569; margin-bottom:20px;">${result.error}</p>
+                  ${canAppendNew ? `<p style="font-size:12px;color:#64748b;">A „Csak az új tételek hozzáadása” megőrzi a hét meglévő sorait és a kézzel szerkesztett deviza-időszakokat. A megváltozott meglévő sorokat kihagyja.</p>` : ''}
+                   <div style="display:flex; justify-content:flex-end; gap:12px;">
+                     <button id="conflict-cancel" style="padding:8px 16px; border-radius:6px; border:1px solid #cbd5e1; background:#fff; cursor:pointer;">Mégsem</button>
+                    ${canAppendNew ? `<button id="conflict-append" style="padding:8px 16px; border-radius:6px; border:none; background:#0284c7; color:#fff; cursor:pointer;font-weight:600;">Csak az új tételek hozzáadása</button>` : ''}
+                     <button id="conflict-overwrite" style="padding:8px 16px; border-radius:6px; border:none; background:#ea580c; color:#fff; cursor:pointer;">Felülírás</button>
                   </div>
                 </div>
               `;
@@ -1993,6 +1998,10 @@ function doExcelExport(lines, orderNo, dateStr) {
               confirmModal.querySelector('#conflict-overwrite').addEventListener('click', () => {
                 confirmModal.remove();
                 performUpload('overwrite');
+              });
+              confirmModal.querySelector('#conflict-append')?.addEventListener('click', () => {
+                confirmModal.remove();
+                performUpload('append_new');
               });
             }
           } else {

@@ -18,6 +18,7 @@ const fs = require('fs');
 const xlsx = require('xlsx');
 const db = require('../db/db');
 const { validateAldiPeriod, getAldiWeekFromDate, findFirstWednesday } = require('../utils/aldiWeeklyDates');
+const { classifyWeeklyPriceUpload } = require('../utils/weeklyPriceMerge');
 
 // ─── Konfiguráció ─────────────────────────────────────────────────────────────
 const IS_WINDOWS = process.platform === 'win32';
@@ -283,49 +284,67 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     const parsedWeekNum = foundWeek.weekNumber;
     const weekCode = toWeekCode(parsedWeekNum);
 
-    // Konfliktus ellenőrzése
+    const comparableRows = dataRows.map(row => {
+      const deliveryStr = colMap['Szállítási időszak'] !== undefined ? String(row[colMap['Szállítási időszak']]) : '';
+      const { start, end } = parseDeliveryPeriod(deliveryStr);
+      return {
+        gtin: colMap['Rendelési GTIN'] !== undefined ? String(row[colMap['Rendelési GTIN']]).trim() : '',
+        xlsx_product_name: colMap['Termék leírása'] !== undefined ? String(row[colMap['Termék leírása']]).trim() : '',
+        carton_content: colMap['Kartontartalom'] !== undefined ? parseInt(row[colMap['Kartontartalom']], 10) || null : null,
+        origin: colMap['Származás'] !== undefined ? String(row[colMap['Származás']]).trim() : '',
+        packaging: colMap['Szállítási csomagolás'] !== undefined ? String(row[colMap['Szállítási csomagolás']]).trim() : '',
+        crate_cost: colMap['Rekeszköltség'] !== undefined ? stripIncoterm(row[colMap['Rekeszköltség']]) : '',
+        unit_cost: colMap['Egységköltség'] !== undefined ? stripIncoterm(row[colMap['Egységköltség']]) : '',
+        original_period_start: start,
+        original_period_end: end
+      };
+    });
+
+    // Konfliktus ellenőrzése és az ugyanazon héthez tartozó új sorok kiválasztása.
     let existingWeekRecord = await db('aldi_weekly_prices')
       .where({ year: parsedYear, week_code: weekCode })
       .first();
+    let effectiveMergeAction = existingWeekRecord ? merge_action : 'create';
+    let mergeAnalysis = classifyWeeklyPriceUpload([], comparableRows);
+    let selectedIndexes = mergeAnalysis.newIndexes;
 
-    if (existingWeekRecord && merge_action !== 'overwrite') {
+    if (!existingWeekRecord && mergeAnalysis.changedIndexes.length) {
+      return res.status(400).json({ error:'Az XLSX ugyanahhoz a GTIN-hez és szállítási időszakhoz több, egymástól eltérő sort tartalmaz.' });
+    }
+
+    if (existingWeekRecord) {
       const oldLines = await db('aldi_weekly_price_lines').where('weekly_price_id', existingWeekRecord.id).orderBy('row_order', 'asc');
-      
-      let isIdentical = false;
-      if (oldLines.length === dataRows.length) {
-        isIdentical = true;
-        for (let i = 0; i < dataRows.length; i++) {
-          const oldLine = oldLines[i];
-          const row = dataRows[i];
-          
-          const gtin = colMap['Rendelési GTIN'] !== undefined ? String(row[colMap['Rendelési GTIN']]).trim() : '';
-          const carton = colMap['Kartontartalom'] !== undefined ? parseInt(row[colMap['Kartontartalom']], 10) || null : null;
-          const unitCost = colMap['Egységköltség'] !== undefined ? stripIncoterm(row[colMap['Egységköltség']]) : '';
-          
-          if (
-            oldLine.gtin !== (gtin || null) || 
-            oldLine.carton_content !== carton ||
-            oldLine.unit_cost !== unitCost
-          ) {
-            isIdentical = false;
-            break;
-          }
+      mergeAnalysis = classifyWeeklyPriceUpload(oldLines, comparableRows);
+
+      if (merge_action === 'overwrite') {
+        effectiveMergeAction = 'overwrite';
+      } else if (merge_action === 'append_new') {
+        if (!mergeAnalysis.newIndexes.length) {
+          return res.status(409).json({ success:false, action:'identical', error:'A feltöltött fájl nem tartalmaz hozzáadható új tételt.' });
         }
-      }
-      
-      if (isIdentical) {
+        effectiveMergeAction = 'append_new';
+        selectedIndexes = mergeAnalysis.newIndexes;
+      } else if (!mergeAnalysis.newIndexes.length && !mergeAnalysis.changedIndexes.length) {
         return res.status(409).json({
           success: false,
           action: 'identical',
-          error: 'Azonos hétre azonos tartalommal már került fájl feltöltésre.'
+          error: 'A feltöltött fájl minden tétele már szerepel ennek a hétnek a táblájában.'
         });
-      } else {
+      } else if (mergeAnalysis.changedIndexes.length) {
+        const hasNew = mergeAnalysis.newIndexes.length > 0;
         return res.status(409).json({
           success: false,
-          action: 'confirm_overwrite',
-          error: 'Erre a hétre már létezik eltérő tartalmú heti ár. Szeretné felülírni a teljes heti adatot az új fájllal?',
+          action: hasNew ? 'confirm_merge' : 'confirm_overwrite',
+          error: hasNew
+            ? `A fájl ${mergeAnalysis.newIndexes.length} új és ${mergeAnalysis.changedIndexes.length} megváltozott tételt tartalmaz. Hozzáadhatók csak az új tételek, vagy felülírható a teljes heti adat.`
+            : `A fájl ${mergeAnalysis.changedIndexes.length} már létező, de megváltozott tételt tartalmaz. Szeretné felülírni a teljes heti adatot az új fájllal?`,
+          newItemsCount: mergeAnalysis.newIndexes.length,
+          changedItemsCount: mergeAnalysis.changedIndexes.length,
           weekRecord: existingWeekRecord
         });
+      } else {
+        effectiveMergeAction = 'append_new';
+        selectedIndexes = mergeAnalysis.newIndexes;
       }
     }
 
@@ -393,22 +412,30 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         weekRecord = inserted;
       }
 
-      // Korábbi sorok és azokhoz kapcsolódó deviza időszakok törlése
-      const oldLines = await trx('aldi_weekly_price_lines')
-        .where('weekly_price_id', weekRecord.id)
-        .select('id');
-      const oldLineIds = oldLines.map(l => l.id);
-      if (oldLineIds.length > 0) {
-        await trx('aldi_price_currency_periods').whereIn('price_line_id', oldLineIds).delete();
+      let rowOrderOffset = 0;
+      if (effectiveMergeAction === 'overwrite') {
+        // Teljes felülírás csak a felhasználó kifejezett jóváhagyásával történik.
+        const oldLines = await trx('aldi_weekly_price_lines')
+          .where('weekly_price_id', weekRecord.id)
+          .select('id');
+        const oldLineIds = oldLines.map(l => l.id);
+        if (oldLineIds.length > 0) {
+          await trx('aldi_price_currency_periods').whereIn('price_line_id', oldLineIds).delete();
+        }
+        await trx('aldi_weekly_price_lines').where('weekly_price_id', weekRecord.id).delete();
+      } else if (effectiveMergeAction === 'append_new') {
+        const maxOrder = await trx('aldi_weekly_price_lines')
+          .where('weekly_price_id', weekRecord.id)
+          .max('row_order as max')
+          .first();
+        rowOrderOffset = maxOrder?.max == null ? 0 : Number(maxOrder.max) + 1;
       }
-      await trx('aldi_weekly_price_lines')
-        .where('weekly_price_id', weekRecord.id)
-        .delete();
 
       // Sorok beszúrása
       const lineInserts = [];
       const warnings = [];
-      dataRows.forEach((row, idx) => {
+      const selectedRows = selectedIndexes.map(sourceIndex => ({ row:dataRows[sourceIndex], sourceIndex }));
+      selectedRows.forEach(({ row, sourceIndex }, idx) => {
         const gtin = colMap['Rendelési GTIN'] !== undefined ? String(row[colMap['Rendelési GTIN']]).trim() : '';
         const xlsxName = colMap['Termék leírása'] !== undefined ? String(row[colMap['Termék leírása']]).trim() : '';
         const origin = colMap['Származás'] !== undefined ? String(row[colMap['Származás']]).trim() : '';
@@ -427,18 +454,18 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             if (val.status === 'clamped') {
                 finalStart = val.start;
                 finalEnd = val.end;
-                warnings.push({ row: idx + 1, item: xlsxName, msg: `Időszak csonkolva a heti határokra: ${val.start} - ${val.end}` });
+                warnings.push({ row: sourceIndex + 1, item: xlsxName, msg: `Időszak csonkolva a heti határokra: ${val.start} - ${val.end}` });
             } else if (val.status !== 'valid') {
                 finalStart = null;
                 finalEnd = null;
                 const boundsMsg = val.boundaries ? `Heti határ: ${val.boundaries.start} - ${val.boundaries.end}` : '';
-                warnings.push({ row: idx + 1, item: xlsxName, msg: `Érvénytelen időszak (${val.status}). Dátumok törölve. ${boundsMsg}` });
+                warnings.push({ row: sourceIndex + 1, item: xlsxName, msg: `Érvénytelen időszak (${val.status}). Dátumok törölve. ${boundsMsg}` });
             }
         } else if (rawStart || rawEnd) {
              pStatus = 'invalid_format';
              finalStart = null;
              finalEnd = null;
-             warnings.push({ row: idx + 1, item: xlsxName, msg: `Hiányos dátumformátum.` });
+             warnings.push({ row: sourceIndex + 1, item: xlsxName, msg: `Hiányos dátumformátum.` });
         }
 
         lineInserts.push({
@@ -458,7 +485,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
           period_status: pStatus,
           delivery_period_raw: deliveryStr,
           is_gtin_matched: !!matched,
-          row_order: idx,
+          row_order: rowOrderOffset + idx,
         });
       });
 
@@ -520,7 +547,13 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       fileWriteSuccess,
       fileWriteError,
       warnings: result.warnings,
-      message: `${lines.length} sor feldolgozva, ${lines.filter(l => l.is_gtin_matched).length} GTIN azonosítva.`
+      mergeAction: effectiveMergeAction,
+      addedCount: effectiveMergeAction === 'append_new' ? selectedIndexes.length : lines.length,
+      skippedExistingCount: effectiveMergeAction === 'append_new' ? mergeAnalysis.duplicateIndexes.length : 0,
+      skippedChangedCount: effectiveMergeAction === 'append_new' ? mergeAnalysis.changedIndexes.length : 0,
+      message: effectiveMergeAction === 'append_new'
+        ? `${selectedIndexes.length} új tétel hozzáadva. A hét táblája most ${lines.length} sort tartalmaz.${mergeAnalysis.changedIndexes.length ? ` ${mergeAnalysis.changedIndexes.length} megváltozott meglévő tétel kihagyva.` : ''}`
+        : `${lines.length} sor feldolgozva, ${lines.filter(l => l.is_gtin_matched).length} GTIN azonosítva.`
     });
 
   } catch (err) {

@@ -5,6 +5,8 @@
 import { renderLogin } from './views/login.js?v=2';
 import { renderDashboard } from './views/dashboard.js?v=2';
 import { renderCommission } from './views/commission.js?v=11';
+import { renderConsolidation } from './views/consolidation.js?v=1';
+import { renderScanPallet } from './views/scanPallet.js?v=1';
 
 const root = document.getElementById('pda-app-root');
 
@@ -29,6 +31,12 @@ export function showView(viewName, params = {}) {
       break;
     case 'commission':
       renderCommission(root, params);
+      break;
+    case 'consolidation':
+      renderConsolidation(root, params);
+      break;
+    case 'scan-pallet':
+      renderScanPallet(root, params);
       break;
     default:
       renderDashboard(root, params);
