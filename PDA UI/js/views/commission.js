@@ -496,9 +496,12 @@ export async function renderCommission(container, params = {}) {
           </div>
         </div>
 
-        <button class="pda-btn pda-btn-primary" id="print-btn" style="width: 100%; height: 42px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-          🖨️ Nyomtatás címkenyomtatóra
-        </button>
+        <div style="text-align: center; margin: 20px 0;">
+          <button class="pda-btn pda-btn-primary" id="print-btn" style="width: 80%; max-width: 300px; height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; font-weight: 700; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            Nyomtatás indítása
+          </button>
+        </div>
 
         <div style="text-align: center; margin-top: 8px;">
           <button type="button" id="print-finish-btn" style="background: none; border: none; color: #64748b; font-size: 12px; font-weight: 600; text-decoration: underline; cursor: pointer; padding: 4px;">
