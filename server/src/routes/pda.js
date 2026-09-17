@@ -431,8 +431,8 @@ function generateZpl(label) {
 ^FO40,930^A0N,60,60^FDBeszállító: ${label.supplier || ''}^FS
 ^FO40,1030^A0N,60,60^FDÜgyfél: ${label.destination || ''}^FS
 ^FO40,1130^A0N,60,60^FDSzármazási ország: ${label.origin_country || ''}^FS
-^FO40,1230^GB1100,5,5^FS
-^FO150,1880^BY6
+^FO40,1800^GB1100,5,5^FS
+^FO100,1880^BY6
 ^BCN,350,Y,N,N
 ^FD${label.sscc}^FS
 ^FO0,2300^A0N,60,60^FB1180,1,0,C^FDSSCC^FS
