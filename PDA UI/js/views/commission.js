@@ -631,19 +631,29 @@ export async function renderCommission(container, params = {}) {
   }
 
   // Navigation events
-  const goDashboard = () => { lastPickPayload = null; showView('dashboard'); };
-  const goList = () => { lastPickPayload = null; showPane(paneList); };
+  const deleteProvisionalLabel = async () => {
+    if (currentLabel && currentLabel.id) {
+      try {
+        await apiFetch(`/api/v1/pda/provisional-label/${currentLabel.id}`, { method: 'DELETE' });
+      } catch (e) { console.warn('Hiba az ideiglenes címke törlésekor', e); }
+      currentLabel = null;
+    }
+  };
+
+  const goDashboard = async () => { await deleteProvisionalLabel(); lastPickPayload = null; showView('dashboard'); };
+  const goList = async () => { await deleteProvisionalLabel(); lastPickPayload = null; showPane(paneList); };
 
   container.querySelector('#pda-btn-osszeemeles')?.addEventListener('click', () => {
     showView('consolidation');
   });
 
-  const hwBackHandler = () => {
+  const hwBackHandler = async () => {
     if (paneForm.classList.contains('active')) {
-      goList();
+      await goList();
     } else if (paneList.classList.contains('active')) {
-      goDashboard();
+      await goDashboard();
     } else if (panePrint.classList.contains('active')) {
+      await deleteProvisionalLabel();
       showPane(paneForm);
     } else if (paneDest.classList.contains('active')) {
       showPane(panePrint);

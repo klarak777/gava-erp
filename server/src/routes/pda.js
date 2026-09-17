@@ -346,6 +346,14 @@ async function processPick(trx, id, reqData, locationId = null) {
   // SSCC címke frissítése vagy generálása
   let label = null;
   if (reqData.labelId) {
+    const labelRecord = await trx('sscc_labels').where('id', reqData.labelId).first();
+    if (!labelRecord) {
+      const err = new Error('A megadott címke nem található.'); err.code = 'BAD_REQUEST'; throw err;
+    }
+    if (!labelRecord.is_provisional && labelRecord.commission_line_id !== commissionId) {
+      const err = new Error('Ez a címke már véglegesítve lett egy másik komissióhoz.'); err.code = 'BAD_REQUEST'; throw err;
+    }
+
     const [updated] = await trx('sscc_labels')
       .where('id', reqData.labelId)
       .update({ commission_line_id: commissionId, is_provisional: false })
@@ -578,6 +586,24 @@ router.post('/print-pallet-label', verifyToken, async (req, res) => {
   } catch (err) {
     console.error('[PDA] /print-pallet-label hiba:', err);
     res.status(500).json({ error: 'Hiba a nyomtatás elindításakor.' });
+  }
+});
+
+// ── DELETE /provisional-label/:id ────────────────────────────
+router.delete('/provisional-label/:id', verifyToken, async (req, res) => {
+  try {
+    const deleted = await knex('sscc_labels')
+      .where('id', req.params.id)
+      .andWhere('is_provisional', true)
+      .del();
+    if (deleted) {
+      res.json({ success: true, message: 'Ideiglenes címke törölve.' });
+    } else {
+      res.status(404).json({ error: 'Címke nem található vagy már végleges.' });
+    }
+  } catch (err) {
+    console.error('[PDA] /provisional-label törlés hiba:', err);
+    res.status(500).json({ error: 'Hiba a törlés során.' });
   }
 });
 
