@@ -35,7 +35,7 @@ router.post('/login', (req, res) => {
 function verifyToken(req, res, next) {
   const auth = req.headers.authorization || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
-  
+
   // Teszt mód / emulátor / hiányzó vagy mock token esetén automatikus engedélyezés
   if (!token || token.startsWith('pda-mock-token') || token === 'null' || token === 'undefined') {
     req.user = { name: 'Teszt Felhasználó', role: 'pda_user' };
@@ -177,11 +177,11 @@ async function processPick(trx, id, reqData, locationId = null) {
       const err = new Error('Ez a munkamenet egy másik tételhez tartozik.'); err.code = 'BAD_REQUEST'; throw err;
     }
     const existingLabel = await trx('sscc_labels').where('commission_line_id', existingPick.id).orderBy('id', 'desc').first();
-    return { 
-      isAlreadyProcessed: true, 
-      orderedCartons: line.ordered_cartons, 
-      newPicked: line.picked_cartons, 
-      newRemaining: Math.max(0, line.ordered_cartons - line.picked_cartons), 
+    return {
+      isAlreadyProcessed: true,
+      orderedCartons: line.ordered_cartons,
+      newPicked: line.picked_cartons,
+      newRemaining: Math.max(0, line.ordered_cartons - line.picked_cartons),
       isFullyPicked: line.picked_cartons >= line.ordered_cartons,
       label: existingLabel
     };
@@ -266,7 +266,7 @@ async function processPick(trx, id, reqData, locationId = null) {
   if (alreadyPicked > 0 && (line.gross_weight == null || line.net_weight == null)) {
     const err = new Error('A korábbi komissió súlyadatai hiányosak. Folytatás előtt rendezni kell a korábbi bruttó és nettó súlyt.'); err.code = 'INVALID_WEIGHT'; throw err;
   }
-  
+
   if (!isNaN(reqGross) && reqGross > 0) {
     const totalTare = (reqTare * qty) + (newPallets * palletTareKg);
     if (reqGross < totalTare) {
@@ -302,7 +302,7 @@ async function processPick(trx, id, reqData, locationId = null) {
     origin_country: origin_country || null,
     pick_session_id: pickSessionId
   }).returning('id');
-  
+
   const commissionId = createdCommLine.id || createdCommLine;
 
   // 5. Lokáció mentése
@@ -356,13 +356,13 @@ async function processPick(trx, id, reqData, locationId = null) {
     label = await createSsccLabel(trx, id, commissionId, qty, origin_country);
   }
 
-  return { 
-    orderedCartons, 
-    newPicked, 
-    newRemaining, 
-    isFullyPicked, 
+  return {
+    orderedCartons,
+    newPicked,
+    newRemaining,
+    isFullyPicked,
     label,
-    commissionLineId: commissionId 
+    commissionLineId: commissionId
   };
 }
 
@@ -388,7 +388,7 @@ async function createSsccLabel(dbClient, lineId, commissionLineId, pickedCartons
   const companyPrefix = process.env.GS1_COMPANY_PREFIX || '5990001';
   const serialNum = String(nextId).padStart(17 - companyPrefix.length - extDigit.length, '0');
   const baseSSCC = extDigit + companyPrefix + serialNum;
-  
+
   let sum = 0;
   for (let i = baseSSCC.length - 1; i >= 0; i--) {
     const digit = parseInt(baseSSCC[i], 10);
@@ -422,17 +422,17 @@ function generateZpl(label) {
 ^CI28
 ^FO0,80^A0N,200,200^FB1180,1,0,C^FD${label.truck_number || ''}^FS
 ^FO0,300^A0N,55,55^FB1180,1,0,C^FDKamionszám^FS
-^FO40,380^GB1100,5,5^FS
+^FO40,380^GB1130,5,5^FS
 ^FO0,440^A0N,130,130^FB1180,1,0,C^FD${label.product_name || ''}^FS
 ^FO0,600^A0N,50,50^FB1180,1,0,C^FDTermék megnevezése^FS
-^FO40,680^GB1100,5,5^FS
+^FO40,680^GB1130,5,5^FS
 ^FO40,750^A0N,60,60^FDÉrkezés dátuma: ${label.delivery_date || ''}^FS
 ^FO40,850^A0N,60,60^FDKarton szám: ${label.picked_cartons || ''} db^FS
 ^FO40,950^A0N,60,60^FDBeszállító: ${label.supplier || ''}^FS
 ^FO40,1050^A0N,60,60^FDÜgyfél: ${label.destination || ''}^FS
 ^FO40,1150^A0N,60,60^FDSzármazási ország: ${label.origin_country || ''}^FS
-^FO40,1800^GB1100,5,5^FS
-^FO90,1880^BY6
+^FO40,1800^GB1130,5,5^FS
+^FO85,1880^BY6
 ^BCN,350,N,N,N
 ^FD${label.sscc}^FS
 ^FO0,2260^A0N,65,65^FB1180,1,0,C^FD${label.sscc}^FS
@@ -468,8 +468,8 @@ router.put('/commission-lines/:id/pick-and-assign', verifyToken, async (req, res
       message: result.isAlreadyProcessed
         ? 'A művelet már korábban rögzítve lett (ismétlésvédett).'
         : (result.isFullyPicked
-            ? 'Tétel teljesen komissiózva.'
-            : `Részleges komissió rögzítve. Maradék: ${result.newRemaining} karton.`)
+          ? 'Tétel teljesen komissiózva.'
+          : `Részleges komissió rögzítve. Maradék: ${result.newRemaining} karton.`)
     });
   } catch (err) {
     if (err.code === 'BAD_REQUEST') return res.status(400).json({ error: err.message });
@@ -487,7 +487,7 @@ router.post('/generate-pallet-label', verifyToken, async (req, res) => {
   try {
     const { lineId, pickedCartons, originCountry } = req.body;
     if (!lineId) return res.status(400).json({ error: 'A tételsor azonosítója kötelező.' });
-    
+
     const label = await createSsccLabel(knex, lineId, null, pickedCartons, originCountry);
     res.json({ success: true, label });
   } catch (err) {
@@ -538,12 +538,12 @@ router.post('/print-pallet-label', verifyToken, async (req, res) => {
     // Hálózati TCP kapcsolat a nyomtatóhoz
     const net = require('net');
     const client = new net.Socket();
-    
+
     client.on('error', (e) => {
       console.error('[PDA] TCP hiba a nyomtatóhoz kapcsolódáskor:', e.message);
     });
 
-    client.connect(printer.port, printer.ip_address, function() {
+    client.connect(printer.port, printer.ip_address, function () {
       client.write(zpl);
       client.destroy();
     });
@@ -610,7 +610,7 @@ router.post('/consolidation', verifyToken, async (req, res) => {
       const companyPrefix = process.env.GS1_COMPANY_PREFIX || '5990001';
       const serialNum = String(nextId).padStart(17 - companyPrefix.length - extDigit.length, '0');
       const baseSSCC = extDigit + companyPrefix + serialNum;
-      
+
       let sum = 0;
       for (let i = baseSSCC.length - 1; i >= 0; i--) {
         const digit = parseInt(baseSSCC[i], 10);
