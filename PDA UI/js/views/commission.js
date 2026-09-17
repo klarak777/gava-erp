@@ -1161,7 +1161,7 @@ export async function renderCommission(container, params = {}) {
         ssccSaveBtn.disabled = true;
         ssccSaveBtn.style.opacity = '0.5';
       }
-      const payload = { ...lastPickPayload, barcode: currentDestBarcode };
+      const payload = { ...lastPickPayload, barcode: currentDestBarcode, scannedSscc };
 
       const res = await apiFetch(`/api/v1/pda/commission-lines/${currentLineId}/pick-and-assign`, {
         method: 'PUT',

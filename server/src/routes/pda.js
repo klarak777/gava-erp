@@ -452,12 +452,13 @@ router.put('/commission-lines/:id/pick-and-assign', verifyToken, async (req, res
     if (!req.body.scannedSscc) {
       return res.status(400).json({ error: 'SSCC vonalkód megadása kötelező a lezáráshoz.' });
     }
+    if (!req.body.labelId) {
+      return res.status(400).json({ error: 'Címke azonosító (labelId) hiányzik a kérésből.' });
+    }
 
-    if (req.body.labelId) {
-      const label = await knex('sscc_labels').where('id', req.body.labelId).first();
-      if (!label || label.sscc !== req.body.scannedSscc) {
-        return res.status(400).json({ error: 'A beszkennelt SSCC nem egyezik a rendszerben lévő címkével!' });
-      }
+    const label = await knex('sscc_labels').where('id', req.body.labelId).first();
+    if (!label || label.sscc !== req.body.scannedSscc) {
+      return res.status(400).json({ error: 'A beszkennelt SSCC nem egyezik a rendszerben lévő címkével!' });
     }
 
     const location = await knex('aldi_locations').where('barcode', req.body.barcode).first();
@@ -503,6 +504,15 @@ router.post('/generate-pallet-label', verifyToken, async (req, res) => {
   try {
     const { lineId, pickedCartons, originCountry } = req.body;
     if (!lineId) return res.status(400).json({ error: 'A tételsor azonosítója kötelező.' });
+
+    try {
+      await knex('sscc_labels')
+        .where('is_provisional', true)
+        .andWhere('created_at', '<', knex.raw("NOW() - INTERVAL '2 hours'"))
+        .del();
+    } catch (e) {
+      console.error('[PDA] Ideiglenes címkék törlése sikertelen:', e);
+    }
 
     const label = await createSsccLabel(knex, lineId, null, pickedCartons, originCountry);
     res.json({ success: true, label });
