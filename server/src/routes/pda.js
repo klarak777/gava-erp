@@ -348,7 +348,7 @@ async function processPick(trx, id, reqData, locationId = null) {
   if (reqData.labelId) {
     const [updated] = await trx('sscc_labels')
       .where('id', reqData.labelId)
-      .update({ commission_line_id: commissionId })
+      .update({ commission_line_id: commissionId, is_provisional: false })
       .returning('*');
     label = updated;
   }
@@ -399,6 +399,8 @@ async function createSsccLabel(dbClient, lineId, commissionLineId, pickedCartons
   const checkDigit = (10 - (sum % 10)) % 10;
   const finalSSCC = baseSSCC + checkDigit;
 
+  const isProvisional = commissionLineId ? false : true;
+
   const [createdLabel] = await dbClient('sscc_labels').insert({
     id: nextId,
     sscc: finalSSCC,
@@ -409,7 +411,8 @@ async function createSsccLabel(dbClient, lineId, commissionLineId, pickedCartons
     delivery_date: deliveryDate,
     supplier: supplier,
     destination: destination,
-    origin_country: originCountry
+    origin_country: originCountry,
+    is_provisional: isProvisional
   }).returning('*');
 
   return createdLabel;

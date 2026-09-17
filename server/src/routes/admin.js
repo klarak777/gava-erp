@@ -23,6 +23,7 @@ router.get('/export-identifiers', async (req, res) => {
 router.get('/pallet-labels', async (req, res) => {
   try {
     const labels = await db('sscc_labels')
+      .where('is_provisional', false)
       .orderBy('id', 'desc');
     res.json(labels);
   } catch (err) {

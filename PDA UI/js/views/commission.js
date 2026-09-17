@@ -598,11 +598,9 @@ export async function renderCommission(container, params = {}) {
     } else if (paneList.classList.contains('active')) {
       goDashboard();
     } else if (panePrint.classList.contains('active')) {
-      goList();
-      loadData(); // frissítjük az adatokat visszalépéskor
+      showPane(paneForm);
     } else if (paneDest.classList.contains('active')) {
-      goList();
-      loadData(); // frissítjük az adatokat visszalépéskor
+      showPane(panePrint);
     }
   };
 
