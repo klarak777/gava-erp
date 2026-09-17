@@ -620,7 +620,7 @@ export async function renderCommission(container, params = {}) {
   const goList = () => showPane(paneList);
 
   container.querySelector('#pda-btn-osszeemeles')?.addEventListener('click', () => {
-    console.log('Összeemelés gomb megnyomva');
+    showView('consolidation');
   });
 
   const hwBackHandler = () => {

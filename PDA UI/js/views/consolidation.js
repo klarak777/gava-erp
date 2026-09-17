@@ -57,13 +57,13 @@ export async function renderConsolidation(container, params = {}) {
 
       <!-- Alsó navigáció egyedi "Összeemelés befejezése" gombbal -->
       <div class="pda-bottom-nav" style="display: flex; padding: 12px 16px; background: #fff; border-top: 1px solid #e2e8f0; align-items: center; justify-content: space-between;">
-        <div class="pda-bottom-nav__item pda-nav-home-btn" style="cursor: pointer; display: flex; flex-direction: column; align-items: center; color: #6366f1;">
+        <div class="pda-bottom-nav__item pda-nav-home-btn" style="cursor: pointer; display: flex; flex-direction: column; align-items: center; color: #64748b;">
           <svg fill="currentColor" viewBox="0 0 24 24" style="width: 24px; height: 24px;"><path d="M3 13h1v7c0 1.103.897 2 2 2h12c1.103 0 2-.897 2-2v-7h1a1 1 0 00.707-1.707l-9-9a.999.999 0 00-1.414 0l-9 9A1 1 0 003 13zm7 7v-5h4v5h-4z"></path></svg>
-          <span style="font-size: 10px; font-weight: 700; margin-top: 2px;">Főoldal</span>
+          <span style="font-size: 10px; font-weight: 600; margin-top: 2px;">Főoldal</span>
         </div>
-        <div class="pda-bottom-nav__item pda-nav-back-btn" style="cursor: pointer; display: flex; flex-direction: column; align-items: center; color: #6366f1;">
+        <div class="pda-bottom-nav__item pda-nav-back-btn" style="cursor: pointer; display: flex; flex-direction: column; align-items: center; color: #64748b;">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" style="width: 24px; height: 24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"></path></svg>
-          <span style="font-size: 10px; font-weight: 700; margin-top: 2px;">Vissza</span>
+          <span style="font-size: 10px; font-weight: 600; margin-top: 2px;">Vissza</span>
         </div>
         <button id="btn-cons-finish" style="cursor: pointer; border: none; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #4f46e5; color: white; border-radius: 50%; width: 56px; height: 56px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);">
            <span style="font-size: 9px; font-weight: 800; text-align: center; line-height: 1.1;">Összeemelés<br>befejezése</span>
