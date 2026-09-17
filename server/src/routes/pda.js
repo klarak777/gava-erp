@@ -417,28 +417,25 @@ async function createSsccLabel(dbClient, lineId, commissionLineId, pickedCartons
 
 function generateZpl(label) {
   return `^XA
-^PW800
-^LL1680
+^PW1180
+^LL2480
 ^CI28
-^FO50,50^A0N,80,80^FD${label.truck_number || ''}^FS
-^FO50,140^A0N,40,40^FDKamionszám^FS
-^FO50,200^GB700,4,4^FS
-
-^FO50,240^A0N,80,80^FD${label.product_name || ''}^FS
-^FO50,330^A0N,40,40^FDTermék megnevezése^FS
-^FO50,390^GB700,4,4^FS
-
-^FO50,430^A0N,50,50^FDÉrkezés: ${label.delivery_date || ''}^FS
-^FO50,510^A0N,50,50^FDKartonok: ${label.picked_cartons || ''} db^FS
-^FO50,590^A0N,50,50^FDBeszállító: ${label.supplier || ''}^FS
-^FO50,670^A0N,50,50^FDÜgyfél: ${label.destination || ''}^FS
-^FO50,750^A0N,50,50^FDSzármazási ország: ${label.origin_country || ''}^FS
-^FO50,830^GB700,4,4^FS
-
-^FO100,1050^BY3
-^BCN,300,Y,N,N
+^FO0,100^A0N,150,150^FB1180,1,0,C^FD${label.truck_number || ''}^FS
+^FO0,280^A0N,50,50^FB1180,1,0,C^FDKamionszám^FS
+^FO40,360^GB1100,5,5^FS
+^FO0,420^A0N,130,130^FB1180,1,0,C^FD${label.product_name || ''}^FS
+^FO0,580^A0N,50,50^FB1180,1,0,C^FDTermék megnevezése^FS
+^FO40,660^GB1100,5,5^FS
+^FO40,730^A0N,60,60^FDÉrkezés dátuma: ${label.delivery_date || ''}^FS
+^FO40,830^A0N,60,60^FDKarton szám: ${label.picked_cartons || ''} db^FS
+^FO40,930^A0N,60,60^FDBeszállító: ${label.supplier || ''}^FS
+^FO40,1030^A0N,60,60^FDÜgyfél: ${label.destination || ''}^FS
+^FO40,1130^A0N,60,60^FDSzármazási ország: ${label.origin_country || ''}^FS
+^FO40,1230^GB1100,5,5^FS
+^FO220,1350^BY5
+^BCN,400,Y,N,N
 ^FD${label.sscc}^FS
-^FO350,1400^A0N,50,50^FDSSCC^FS
+^FO0,1820^A0N,60,60^FB1180,1,0,C^FDSSCC^FS
 ^XZ`;
 }
 
