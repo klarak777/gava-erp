@@ -420,17 +420,17 @@ function generateZpl(label) {
 ^PW1180
 ^LL2480
 ^CI28
-^FO0,100^A0N,150,150^FB1180,1,0,C^FD${label.truck_number || ''}^FS
-^FO0,280^A0N,50,50^FB1180,1,0,C^FDKamionszám^FS
-^FO40,360^GB1100,5,5^FS
-^FO0,420^A0N,130,130^FB1180,1,0,C^FD${label.product_name || ''}^FS
-^FO0,580^A0N,50,50^FB1180,1,0,C^FDTermék megnevezése^FS
-^FO40,660^GB1100,5,5^FS
-^FO40,730^A0N,60,60^FDÉrkezés dátuma: ${label.delivery_date || ''}^FS
-^FO40,830^A0N,60,60^FDKarton szám: ${label.picked_cartons || ''} db^FS
-^FO40,930^A0N,60,60^FDBeszállító: ${label.supplier || ''}^FS
-^FO40,1030^A0N,60,60^FDÜgyfél: ${label.destination || ''}^FS
-^FO40,1130^A0N,60,60^FDSzármazási ország: ${label.origin_country || ''}^FS
+^FO0,80^A0N,200,200^FB1180,1,0,C^FD${label.truck_number || ''}^FS
+^FO0,300^A0N,55,55^FB1180,1,0,C^FDKamionszám^FS
+^FO40,380^GB1100,5,5^FS
+^FO0,440^A0N,130,130^FB1180,1,0,C^FD${label.product_name || ''}^FS
+^FO0,600^A0N,50,50^FB1180,1,0,C^FDTermék megnevezése^FS
+^FO40,680^GB1100,5,5^FS
+^FO40,750^A0N,60,60^FDÉrkezés dátuma: ${label.delivery_date || ''}^FS
+^FO40,850^A0N,60,60^FDKarton szám: ${label.picked_cartons || ''} db^FS
+^FO40,950^A0N,60,60^FDBeszállító: ${label.supplier || ''}^FS
+^FO40,1050^A0N,60,60^FDÜgyfél: ${label.destination || ''}^FS
+^FO40,1150^A0N,60,60^FDSzármazási ország: ${label.origin_country || ''}^FS
 ^FO40,1800^GB1100,5,5^FS
 ^FO100,1880^BY6
 ^BCN,350,Y,N,N
