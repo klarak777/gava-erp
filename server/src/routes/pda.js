@@ -432,7 +432,7 @@ function generateZpl(label) {
 ^FO40,1050^A0N,60,60^FDÜgyfél: ${label.destination || ''}^FS
 ^FO40,1150^A0N,60,60^FDSzármazási ország: ${label.origin_country || ''}^FS
 ^FO40,1800^GB1150,5,5^FS
-^FO75,1880^BY6
+^FO150,1880^BY4
 ^BCN,350,N,N,N
 ^FD${label.sscc}^FS
 ^FO0,2260^A0N,65,65^FB1180,1,0,C^FD${label.sscc}^FS
