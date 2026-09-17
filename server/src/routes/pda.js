@@ -168,23 +168,23 @@ async function processPick(trx, id, reqData, locationId = null) {
   }
 
   // Idempotencia ellenőrzés
-  if (pickSessionId) {
-    const existingPick = await trx('aldi_commission_lines').where('pick_session_id', pickSessionId).first();
-    if (existingPick) {
-      // Ha már van ilyen mentés, akkor azonnal sikerként térünk vissza anélkül, hogy újra levonnánk.
-      // Ezt jelezzük egy speciális hibakóddal vagy egy visszatérési értékkel. 
-      // Mivel a processPick visszatérési értékeket ad, dobhatunk egy speciális hibát, amit elkapunk, vagy adunk vissza egy flaget.
-      // De mivel ez async function, visszatérhetünk a létező adattal.
-      const existingLabel = await trx('sscc_labels').where('commission_line_id', id).orderBy('id', 'desc').first();
-      return { 
-        isAlreadyProcessed: true, 
-        orderedCartons: line.ordered_cartons, 
-        newPicked: line.picked_cartons, 
-        newRemaining: Math.max(0, line.ordered_cartons - line.picked_cartons), 
-        isFullyPicked: line.picked_cartons >= line.ordered_cartons,
-        label: existingLabel
-      };
+  if (!pickSessionId) {
+    const err = new Error('Hiányzó munkamenet-azonosító (pickSessionId). Kérjük, frissítsd a PDA alkalmazást.'); err.code = 'BAD_REQUEST'; throw err;
+  }
+  const existingPick = await trx('aldi_commission_lines').where('pick_session_id', pickSessionId).first();
+  if (existingPick) {
+    if (existingPick.aldi_truck_line_id !== parseInt(id)) {
+      const err = new Error('Ez a munkamenet egy másik tételhez tartozik.'); err.code = 'BAD_REQUEST'; throw err;
     }
+    const existingLabel = await trx('sscc_labels').where('commission_line_id', existingPick.id).orderBy('id', 'desc').first();
+    return { 
+      isAlreadyProcessed: true, 
+      orderedCartons: line.ordered_cartons, 
+      newPicked: line.picked_cartons, 
+      newRemaining: Math.max(0, line.ordered_cartons - line.picked_cartons), 
+      isFullyPicked: line.picked_cartons >= line.ordered_cartons,
+      label: existingLabel
+    };
   }
 
   const orderedCartons = parseInt(line.ordered_cartons) || 0;
@@ -229,11 +229,8 @@ async function processPick(trx, id, reqData, locationId = null) {
   }
 
   // 3. Súly és raklap kalkuláció
-  const cartonsPerPallet = parseInt(line.cartons_per_pallet) || 0;
-  let newPallets = 1;
-  if (cartonsPerPallet > 0) {
-    newPallets = Math.ceil((alreadyPicked + qty) / cartonsPerPallet) - Math.ceil(alreadyPicked / cartonsPerPallet);
-  }
+  let newPallets = 1; // Minden PDA megadás pontosan 1 raklapot jelent
+
 
   let palletTareKg = 0;
   let palletTypeName = null;
@@ -289,19 +286,8 @@ async function processPick(trx, id, reqData, locationId = null) {
     }
   }
 
-  // 4. Lokáció mentése és részlet naplózása (Auditálhatóság)
-  if (locationId && qty > 0) {
-    await trx('aldi_stock_locations').insert({
-      location_id: locationId,
-      order_line_id: line.aldi_daily_order_line_id || null,
-      truck_line_id: line.id,
-      quantity_cartons: qty,
-      gross_weight: !isNaN(reqGross) && reqGross > 0 ? reqGross : null,
-      net_weight: currentPickNet !== null ? currentPickNet : null
-    });
-  }
-
-  await trx('aldi_commission_lines').insert({
+  // 4. Komissiózás rögzítése
+  const [createdCommLine] = await trx('aldi_commission_lines').insert({
     aldi_truck_id: line.aldi_truck_id,
     aldi_truck_line_id: id,
     product_name: line.product_name,
@@ -314,8 +300,23 @@ async function processPick(trx, id, reqData, locationId = null) {
     carton_type: packaging_type || null,
     lot_number: lot_number || null,
     origin_country: origin_country || null,
-    pick_session_id: pickSessionId || null
-  });
+    pick_session_id: pickSessionId
+  }).returning('id');
+  
+  const commissionId = createdCommLine.id || createdCommLine;
+
+  // 5. Lokáció mentése
+  if (locationId && qty > 0) {
+    await trx('aldi_stock_locations').insert({
+      location_id: locationId,
+      order_line_id: line.aldi_daily_order_line_id || null,
+      truck_line_id: line.id,
+      commission_line_id: commissionId,
+      quantity_cartons: qty,
+      gross_weight: !isNaN(reqGross) && reqGross > 0 ? reqGross : null,
+      net_weight: currentPickNet !== null ? currentPickNet : null
+    });
+  }
 
   // 5. Kumulatív frissítés
   const newPicked = alreadyPicked + qty;
@@ -345,7 +346,14 @@ async function processPick(trx, id, reqData, locationId = null) {
   // SSCC címke generálása és mentése
   const label = await createSsccLabel(trx, id, qty, origin_country);
 
-  return { orderedCartons, newPicked, newRemaining, isFullyPicked, label };
+  return { 
+    orderedCartons, 
+    newPicked, 
+    newRemaining, 
+    isFullyPicked, 
+    label,
+    commissionLineId: commissionId 
+  };
 }
 
 // ── SSCC és ZPL segédfüggvények ─────────────────────────────

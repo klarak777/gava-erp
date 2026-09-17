@@ -174,21 +174,27 @@ router.delete('/stock/:stock_id/revert', async (req, res) => {
           });
         }
         
-        // Töröljük a legutóbbi megfelelő commission_line-t (hozzávetőleges párosítás)
+        // Töröljük a megfelelő commission_line-t
         let commLine = null;
-        if (stock.gross_weight) {
+        if (stock.commission_line_id) {
           commLine = await trx('aldi_commission_lines')
-            .where('aldi_truck_line_id', targetTruckLineId)
-            .andWhere('gross_weight', stock.gross_weight)
-            .orderBy('id', 'desc')
+            .where('id', stock.commission_line_id)
             .first();
-        }
-        if (!commLine) {
-          commLine = await trx('aldi_commission_lines')
-            .where('aldi_truck_line_id', targetTruckLineId)
-            .andWhere('cartons', stock.quantity_cartons)
-            .orderBy('id', 'desc')
-            .first();
+        } else {
+          if (stock.gross_weight) {
+            commLine = await trx('aldi_commission_lines')
+              .where('aldi_truck_line_id', targetTruckLineId)
+              .andWhere('gross_weight', stock.gross_weight)
+              .orderBy('id', 'desc')
+              .first();
+          }
+          if (!commLine) {
+            commLine = await trx('aldi_commission_lines')
+              .where('aldi_truck_line_id', targetTruckLineId)
+              .andWhere('cartons', stock.quantity_cartons)
+              .orderBy('id', 'desc')
+              .first();
+          }
         }
           
         if (commLine) {

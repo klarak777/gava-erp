@@ -1,0 +1,30 @@
+# PDA Javítások Második Fázis - Terv
+
+Nagyon jó, hogy tisztáztuk: **a PDA-n minden mentés (komissiózás) pontosan egyetlen fizikai raklapot jelent, és ezeket nem is szabad összevonni (még ha ugyanaz a termék is).** Ebből kifolyólag a tegnapi raklap számítás (`newPallets` okosítása) téves irány volt, hiszen a valóságban a raklapok sosem vonódnak össze fizikailag a PDA folyamat során.
+
+Ennek megfelelően az alábbi technikai lépéseket fogom elvégezni.
+
+## Proposed Changes
+
+### 1. Szerver: Raklapszámítás (newPallets) Visszaállítása
+- Visszaállítom a `processPick` függvényben a `let newPallets = 1;` fix értéket.
+- Mivel 1 PDA művelet = 1 fizikai raklap, így a kapacitásellenőrzésnél és a súlyszámításnál is helyesen mindig 1 raklapnyi (`incomingPallets = 1`) tára súllyal és helyfoglalással fogunk számolni, ami egyezik a valósággal.
+- Ezzel megoldódik a kapacitás-kihasználtság adminisztrációs hibája is, mert így a raktári lokációban minden beolvasott raklap önálló egységként foglalja a helyet (pont úgy, ahogy fizikailag lerakták).
+
+### 2. Ismétlésvédelem Megerősítése (Unique Index)
+- Új adatbázis-migrációt hozok létre (vagy kibővítem a tegnapit, ha még nem éles), amivel a `pick_session_id` mezőt `UNIQUE` index-szel látom el az `aldi_commission_lines` táblában.
+- A végponton megerősítem az ellenőrzést, hogy ha beérkezik a Session ID, akkor biztosak legyünk benne, hogy az pontosan erre a tételsorra és termékre érvényes, mielőtt "Már feldolgozva" üzenettel térnénk vissza. Ezen kívül a `UNIQUE` index adatbázis szinten is garantálja, hogy véletlenül se keletkezhessen dupla rekord.
+
+### 3. Tesztek (pdaWeights.test.js) Hozzáigazítása a Valósághoz
+- A tegnap hibázó tesztesetet ("8 then 7 cartons uses two then one pallets") átírom, hogy tükrözze a valós üzleti logikát: minden pick = 1 raklap.
+- Vagyis az `assert.deepEqual(..., [2, 1])` helyett `[1, 1]`-et fogok elvárni, mert a 8 karton egy raklapra került, és a 7 karton is egy másik, teljesen külön raklapra került (PDA alapú logikával).
+- A bruttó súlyokat a tesztben hozzáigazítom az 1-1 raklapos tára súly levonáshoz.
+
+## Verification Plan
+
+### Tesztek
+- Futtatom a módosított `npm test -- server/tests/pdaWeights.test.js` parancsot.
+
+### Kézi Ellenőrzés
+- Lefuttatom a migrációt.
+- Megbizonyosodom róla, hogy a duplikált session ID megkísérlése megfelelő idempotens választ (vagy adatbázis hibát és 409-et) ad.
