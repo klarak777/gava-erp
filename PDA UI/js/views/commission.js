@@ -532,8 +532,8 @@ export async function renderCommission(container, params = {}) {
         </button>
 
         <div style="text-align: center; margin-top: 8px;">
-          <button type="button" id="print-skip-to-dest-btn" style="background: none; border: none; color: #64748b; font-size: 12px; font-weight: 600; text-decoration: underline; cursor: pointer; padding: 4px;">
-            Tovább a cél lokációhoz ➔
+          <button type="button" id="print-finish-btn" style="background: none; border: none; color: #64748b; font-size: 12px; font-weight: 600; text-decoration: underline; cursor: pointer; padding: 4px;">
+            Befejezés / Vissza a listához ➔
           </button>
         </div>
 
@@ -998,7 +998,7 @@ export async function renderCommission(container, params = {}) {
       return;
     }
 
-    // Tároljuk a form adatait – az API hívás csak a "Kész" gombra történik,
+    // Tároljuk a form adatait – az API hívás csak a Cél lokáció mentésekor történik (3. lépés),
     // hogy a komissiózás és a lokáció-hozzárendelés ATOMIAN, egy tranzakcióban menjen.
     lastPickedQuantity = qty;
     lastPickPayload = {
@@ -1011,37 +1011,11 @@ export async function renderCommission(container, params = {}) {
       pallet_type: raklapSel.value
     };
 
-    // Mentés API hívás (Kizárólag komissiózás, lokáció nélkül)
-    try {
-      submitBtn.disabled = true;
-      submitBtn.style.opacity = '0.5';
-      
-      const res = await apiFetch(`/api/v1/pda/commission-lines/${currentLineId}/pick`, {
-        method: 'PUT',
-        body: JSON.stringify(lastPickPayload)
-      });
-      
-      if (res.ok) {
-        const resData = await res.json().catch(() => ({}));
-        currentLabel = resData.label || null;
-        if (currentLabel) {
-          renderLabelPreview(currentLabel);
-        }
-
-        // Átlépünk a nyomtatás képernyőre
-        container.querySelector('#print-printer-barcode').value = '';
-        showPane(panePrint);
-        setTimeout(() => container.querySelector('#print-printer-barcode').focus(), 100);
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        alert(errData.error || 'Hiba a komissiózás mentésekor!');
-      }
-    } catch (e) {
-      alert('Hálózati hiba a mentéskor!');
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.style.opacity = '1';
-    }
+    // Átlépünk a Cél lokációra (Mentés nélkül)
+    container.querySelector('#dest-title').textContent = currentDestination || 'Ismeretlen';
+    container.querySelector('#dest-vonalkod').value = '';
+    showPane(paneDest);
+    setTimeout(() => container.querySelector('#dest-vonalkod').focus(), 100);
   });
 
   function renderLabelPreview(label) {
@@ -1214,11 +1188,10 @@ export async function renderCommission(container, params = {}) {
     openPalletLabelPrintWindow(currentLabel);
   });
 
-  // Ugrás cél lokációhoz gomb (ha nem Zebra nyomtatást használnak)
-  container.querySelector('#print-skip-to-dest-btn')?.addEventListener('click', () => {
-    container.querySelector('#dest-title').textContent = currentDestination || 'Ismeretlen';
-    showPane(paneDest);
-    setTimeout(() => container.querySelector('#dest-vonalkod').focus(), 100);
+  // Befejezés / Vissza a listához gomb (ha nem Zebra nyomtatást használnak)
+  container.querySelector('#print-finish-btn')?.addEventListener('click', () => {
+    showPane(paneList);
+    loadData();
   });
 
   // Zebra nyomtatás gomb / eseménykezelő
@@ -1253,10 +1226,9 @@ export async function renderCommission(container, params = {}) {
         alert('Címke nyomtatása sikeresen elküldve!');
         barcodeInput.value = '';
         
-        // Nyomtatás után átlépünk a Cél lokáció nézetbe
-        container.querySelector('#dest-title').textContent = currentDestination || 'Ismeretlen';
-        showPane(paneDest);
-        setTimeout(() => container.querySelector('#dest-vonalkod').focus(), 100);
+        // Nyomtatás után visszatérünk a listához
+        showPane(paneList);
+        loadData();
       } else {
         const errData = await res.json().catch(() => ({}));
         alert(errData.error || 'Hiba a nyomtatás során!');
@@ -1290,17 +1262,23 @@ export async function renderCommission(container, params = {}) {
       }
       const payload = { ...lastPickPayload, barcode };
 
-      const res = await apiFetch(`/api/v1/pda/commission-lines/${currentLineId}/assign-location`, {
+      const res = await apiFetch(`/api/v1/pda/commission-lines/${currentLineId}/pick-and-assign`, {
         method: 'PUT',
         body: JSON.stringify(payload)
       });
       const data = await res.json();
 
       if (res.ok) {
-        alert(data.message || 'Lokáció mentve!');
+        currentLabel = data.label || null;
+        if (currentLabel) {
+          renderLabelPreview(currentLabel);
+        }
+        alert(data.message || 'Lokáció és komissió mentve!');
         destInput.value = '';
-        showPane(paneList);
-        loadData();
+        // Átlépünk a nyomtatás képernyőre
+        container.querySelector('#print-printer-barcode').value = '';
+        showPane(panePrint);
+        setTimeout(() => container.querySelector('#print-printer-barcode').focus(), 100);
       } else {
         alert(data.error || 'Hiba a lokáció mentésekor.');
         destInput.value = '';
