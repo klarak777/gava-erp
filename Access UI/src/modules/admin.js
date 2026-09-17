@@ -877,12 +877,12 @@ export function openPalletLabelsTable(wm) {
         function showLabelModal(label) {
             selectedLabel = label;
             modalContent.innerHTML = `
-                <div style="font-size: 24px; font-weight: 900; line-height: 1.1; color:#000;">${label.truck_number || '-'}</div>
-                <div style="font-size: 11px; font-weight: bold; color: #555; text-transform: uppercase;">Kamionszám</div>
+                <div style="font-size: 26px; font-weight: 900; line-height: 1.1; color:#000; text-align: center;">${label.truck_number || '-'}</div>
+                <div style="font-size: 11px; font-weight: bold; color: #555; text-transform: uppercase; text-align: center; margin-bottom: 6px;">Kamionszám</div>
                 <div style="border-top: 2px solid #000; margin: 8px 0;"></div>
                 
-                <div style="font-size: 18px; font-weight: 800; line-height: 1.2; color:#000;">${label.product_name || '-'}</div>
-                <div style="font-size: 11px; font-weight: bold; color: #555; text-transform: uppercase;">Termék megnevezése</div>
+                <div style="font-size: 20px; font-weight: 800; line-height: 1.2; color:#000; text-align: center;">${label.product_name || '-'}</div>
+                <div style="font-size: 11px; font-weight: bold; color: #555; text-transform: uppercase; text-align: center; margin-bottom: 6px;">Termék megnevezése</div>
                 <div style="border-top: 2px solid #000; margin: 8px 0;"></div>
                 
                 <div style="display:flex; flex-direction:column; gap:4px; font-size:13.5px; color:#111; font-weight:600;">
@@ -892,7 +892,7 @@ export function openPalletLabelsTable(wm) {
                     <div>Ügyfél: <strong style="font-weight:800;">${label.destination || '-'}</strong></div>
                     <div>Származási ország: <strong style="font-weight:800;">${label.origin_country || '-'}</strong></div>
                 </div>
-                <div style="border-top: 2px solid #000; margin: 8px 0;"></div>
+                <div style="margin-top: 24px; border-top: 2px solid #000; margin-bottom: 8px;"></div>
 
                 <div style="text-align: center; margin-top: 6px;">
                     <svg id="pl-modal-barcode-svg" style="max-width: 100%; height: auto; display:block; margin:0 auto;"></svg>
@@ -943,19 +943,20 @@ export function openPalletLabelsTable(wm) {
                     <title>Raklap címke - ${label.sscc || ''}</title>
                     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
                     <style>
-                        @page { size: 100mm 150mm; margin: 0; }
+                        @page { size: 100mm 210mm; margin: 0; }
                         * { box-sizing: border-box; }
-                        body { margin: 0; padding: 12px; font-family: Arial, sans-serif; background: #fff; color: #000; display: flex; justify-content: center; }
-                        .pallet-label { width: 100%; max-width: 420px; border: 3px solid #000; padding: 14px; background: #fff; }
-                        .label-truck { font-size: 32px; font-weight: 900; line-height: 1.1; }
-                        .label-sub { font-size: 13px; font-weight: bold; color: #333; margin-bottom: 6px; text-transform: uppercase; }
+                        body { margin: 0; padding: 14px; font-family: Arial, sans-serif; background: #fff; color: #000; display: flex; justify-content: center; }
+                        .pallet-label { width: 100%; max-width: 380px; border: 3px solid #000; padding: 16px 12px; background: #fff; display: flex; flex-direction: column; min-height: 720px; }
+                        .label-truck { font-size: 34px; font-weight: 900; line-height: 1.1; text-align: center; }
+                        .label-sub { font-size: 13px; font-weight: bold; color: #333; margin-bottom: 6px; text-transform: uppercase; text-align: center; }
                         .label-divider { border-top: 3px solid #000; margin: 10px 0; }
-                        .label-product { font-size: 24px; font-weight: 800; line-height: 1.15; }
+                        .label-product { font-size: 26px; font-weight: 800; line-height: 1.15; text-align: center; }
                         .label-data-row { font-size: 16px; font-weight: 600; line-height: 1.5; display: flex; gap: 6px; }
                         .label-data-row span.val { font-weight: 800; }
+                        .label-spacer { flex: 1; min-height: 60px; }
                         .barcode-container { text-align: center; margin-top: 10px; }
                         .barcode-type { font-size: 14px; font-weight: 900; text-align: center; margin-top: 2px; }
-                        @media print { body { padding: 0; } .pallet-label { border: none; width: 100%; max-width: none; } }
+                        @media print { body { padding: 0; } .pallet-label { border: none; width: 100%; max-width: none; min-height: 100vh; } }
                     </style>
                 </head>
                 <body>
@@ -971,6 +972,7 @@ export function openPalletLabelsTable(wm) {
                         <div class="label-data-row">Beszállító: <span class="val">${label.supplier || '-'}</span></div>
                         <div class="label-data-row">Ügyfél: <span class="val">${label.destination || '-'}</span></div>
                         <div class="label-data-row">Származási ország: <span class="val">${label.origin_country || '-'}</span></div>
+                        <div class="label-spacer"></div>
                         <div class="label-divider"></div>
                         <div class="barcode-container">
                             <svg id="print-barcode"></svg>
