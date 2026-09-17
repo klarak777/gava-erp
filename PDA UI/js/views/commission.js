@@ -487,7 +487,7 @@ export async function renderCommission(container, params = {}) {
         
         <!-- Zebra Címkenyomtató Beolvasó Doboz -->
         <div class="pda-print-box" style="padding: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px;">
-          <div style="font-size: 11.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">Címkenyomtató vonalkód (Zebra ZPL)</div>
+          <div style="font-size: 11.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">Címkenyomtató vonalkód</div>
           <div style="position: relative; display: flex; align-items: center;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 10px;">
               <path d="M4 7V4h16v3M9 20h6M12 14v6M4 17v3h16v-3M9 7h6v5H9z"></path>
@@ -503,11 +503,7 @@ export async function renderCommission(container, params = {}) {
           </button>
         </div>
 
-        <div style="text-align: center; margin-top: 8px;">
-          <button type="button" id="print-finish-btn" style="background: none; border: none; color: #64748b; font-size: 12px; font-weight: 600; text-decoration: underline; cursor: pointer; padding: 4px;">
-            Tovább a lokáció megadásához ➔
-          </button>
-        </div>
+
 
       </div>
 
@@ -1022,13 +1018,7 @@ export async function renderCommission(container, params = {}) {
 
 
 
-  // Tovább a lokáció megadásához gomb (ha nem Zebra nyomtatást használnak)
-  container.querySelector('#print-finish-btn')?.addEventListener('click', () => {
-    container.querySelector('#dest-title').textContent = currentDestination || 'Ismeretlen';
-    container.querySelector('#dest-vonalkod').value = '';
-    showPane(paneDest);
-    setTimeout(() => container.querySelector('#dest-vonalkod').focus(), 100);
-  });
+
 
   // Zebra nyomtatás gomb / eseménykezelő
   container.querySelector('#print-btn').addEventListener('click', async (e) => {
