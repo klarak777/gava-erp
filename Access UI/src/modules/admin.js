@@ -764,11 +764,12 @@ export function openPalletLabelsTable(wm) {
                                 <th>Beszállító</th>
                                 <th>Ügyfél</th>
                                 <th>Származás</th>
+                                <th>Lokáció</th>
                                 <th style="text-align:center; width:130px;">Művelet</th>
                             </tr>
                         </thead>
                         <tbody id="pl-tbody">
-                            <tr><td colspan="10" style="text-align:center; padding:20px; color:#64748b;">Betöltés...</td></tr>
+                            <tr><td colspan="11" style="text-align:center; padding:20px; color:#64748b;">Betöltés...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -805,7 +806,7 @@ export function openPalletLabelsTable(wm) {
         let selectedLabel = null;
 
         async function loadData() {
-            tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:20px; color:#64748b;">Betöltés...</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:20px; color:#64748b;">Betöltés...</td></tr>`;
             try {
                 const res = await fetch('/api/v1/admin/pallet-labels');
                 const data = await res.json();
@@ -814,7 +815,7 @@ export function openPalletLabelsTable(wm) {
                 renderTable();
             } catch (err) {
                 console.error(err);
-                tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:20px; color:#ef4444;">Hiba a betöltéskor</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:20px; color:#ef4444;">Hiba a betöltéskor</td></tr>`;
             }
         }
 
@@ -842,7 +843,7 @@ export function openPalletLabelsTable(wm) {
             }) : labels;
 
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:24px; color:#94a3b8;">Nincs találat.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:24px; color:#94a3b8;">Nincs találat.</td></tr>`;
                 return;
             }
 
@@ -857,6 +858,7 @@ export function openPalletLabelsTable(wm) {
                     <td>${l.supplier || '-'}</td>
                     <td><strong>${l.destination || '-'}</strong></td>
                     <td>${l.origin_country || '-'}</td>
+                    <td style="font-weight:700; color:#10b981;">${l.location_name || '-'}</td>
                     <td style="text-align:center;">
                         <button class="pl-btn pl-btn-print btn-view-label" data-id="${l.id}" title="Címke megtekintése és nyomtatása">
                             👁️ Megtekintés
