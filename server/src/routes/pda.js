@@ -343,8 +343,18 @@ async function processPick(trx, id, reqData, locationId = null) {
       lot_number: lot_number || null
     });
 
-  // SSCC címke generálása és mentése
-  const label = await createSsccLabel(trx, id, commissionId, qty, origin_country);
+  // SSCC címke frissítése vagy generálása
+  let label = null;
+  if (reqData.labelId) {
+    const [updated] = await trx('sscc_labels')
+      .where('id', reqData.labelId)
+      .update({ commission_line_id: commissionId })
+      .returning('*');
+    label = updated;
+  }
+  if (!label) {
+    label = await createSsccLabel(trx, id, commissionId, qty, origin_country);
+  }
 
   return { 
     orderedCartons, 
@@ -471,6 +481,20 @@ router.put('/commission-lines/:id/pick-and-assign', verifyToken, async (req, res
     if (err.code === 'INVALID_WEIGHT') return res.status(400).json({ error: err.message });
     console.error('[PDA] /commission-lines/:id/pick-and-assign hiba:', err);
     res.status(500).json({ error: 'Hiba a mentéskor.' });
+  }
+});
+
+// ── POST /generate-pallet-label ──────────────────────────────
+router.post('/generate-pallet-label', verifyToken, async (req, res) => {
+  try {
+    const { lineId, pickedCartons, originCountry } = req.body;
+    if (!lineId) return res.status(400).json({ error: 'A tételsor azonosítója kötelező.' });
+    
+    const label = await createSsccLabel(knex, lineId, null, pickedCartons, originCountry);
+    res.json({ success: true, label });
+  } catch (err) {
+    console.error('[PDA] /generate-pallet-label hiba:', err);
+    res.status(500).json({ error: 'Hiba a címke generálásakor.' });
   }
 });
 

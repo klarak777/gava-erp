@@ -533,7 +533,7 @@ export async function renderCommission(container, params = {}) {
 
         <div style="text-align: center; margin-top: 8px;">
           <button type="button" id="print-finish-btn" style="background: none; border: none; color: #64748b; font-size: 12px; font-weight: 600; text-decoration: underline; cursor: pointer; padding: 4px;">
-            Befejezés / Vissza a listához ➔
+            Tovább a lokáció megadásához ➔
           </button>
         </div>
 
@@ -1012,11 +1012,35 @@ export async function renderCommission(container, params = {}) {
       pickSessionId: Date.now().toString(36) + Math.random().toString(36).substr(2, 5) // Idempotencia token
     };
 
-    // Átlépünk a Cél lokációra (Mentés nélkül)
-    container.querySelector('#dest-title').textContent = currentDestination || 'Ismeretlen';
-    container.querySelector('#dest-vonalkod').value = '';
-    showPane(paneDest);
-    setTimeout(() => container.querySelector('#dest-vonalkod').focus(), 100);
+    try {
+      submitBtn.disabled = true;
+      submitBtn.style.opacity = '0.5';
+      const res = await apiFetch('/api/v1/pda/generate-pallet-label', {
+        method: 'POST',
+        body: JSON.stringify({
+          lineId: currentLineId,
+          pickedCartons: qty,
+          originCountry: orszagSel.value
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.label) {
+        currentLabel = data.label;
+        lastPickPayload.labelId = currentLabel.id; // Később átadjuk a pick-and-assign végpontnak
+        renderLabelPreview(currentLabel);
+        
+        container.querySelector('#print-printer-barcode').value = '';
+        showPane(panePrint);
+        setTimeout(() => container.querySelector('#print-printer-barcode').focus(), 100);
+      } else {
+        alert(data.error || 'Hiba a címke generálásakor.');
+      }
+    } catch(err) {
+      alert('Hálózati hiba a címke generálásakor.');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.style.opacity = '1';
+    }
   });
 
   function renderLabelPreview(label) {
@@ -1189,11 +1213,12 @@ export async function renderCommission(container, params = {}) {
     openPalletLabelPrintWindow(currentLabel);
   });
 
-  // Befejezés / Vissza a listához gomb (ha nem Zebra nyomtatást használnak)
+  // Tovább a lokáció megadásához gomb (ha nem Zebra nyomtatást használnak)
   container.querySelector('#print-finish-btn')?.addEventListener('click', () => {
-    showPane(paneList);
-    loadData();
-    lastPickPayload = null; // Állapot törlése
+    container.querySelector('#dest-title').textContent = currentDestination || 'Ismeretlen';
+    container.querySelector('#dest-vonalkod').value = '';
+    showPane(paneDest);
+    setTimeout(() => container.querySelector('#dest-vonalkod').focus(), 100);
   });
 
   // Zebra nyomtatás gomb / eseménykezelő
@@ -1228,10 +1253,11 @@ export async function renderCommission(container, params = {}) {
         alert('Címke nyomtatása sikeresen elküldve!');
         barcodeInput.value = '';
         
-        // Nyomtatás után visszatérünk a listához
-        showPane(paneList);
-        loadData();
-        lastPickPayload = null;
+        // Nyomtatás után átlépünk a Cél lokációra
+        container.querySelector('#dest-title').textContent = currentDestination || 'Ismeretlen';
+        container.querySelector('#dest-vonalkod').value = '';
+        showPane(paneDest);
+        setTimeout(() => container.querySelector('#dest-vonalkod').focus(), 100);
       } else {
         const errData = await res.json().catch(() => ({}));
         alert(errData.error || 'Hiba a nyomtatás során!');
@@ -1278,12 +1304,10 @@ export async function renderCommission(container, params = {}) {
         }
         alert(data.message || 'Lokáció és komissió mentve!');
         destInput.value = '';
-        // Átlépünk a nyomtatás képernyőre
-        container.querySelector('#print-printer-barcode').value = '';
-        showPane(panePrint);
-        setTimeout(() => container.querySelector('#print-printer-barcode').focus(), 100);
-        // lastPickPayload-ot csak a legvégén, a nyomtatás után töröljük, 
-        // hogy a nyomtatás/befejezés lépésnél már biztonságos legyen a visszalépés.
+        // Befejeztük a folyamatot, visszatérés a listához
+        showPane(paneList);
+        loadData();
+        lastPickPayload = null;
       } else {
         alert(data.error || 'Hiba a lokáció mentésekor.');
         destInput.value = '';
