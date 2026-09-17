@@ -422,17 +422,17 @@ function generateZpl(label) {
 ^CI28
 ^FO0,80^A0N,200,200^FB1180,1,0,C^FD${label.truck_number || ''}^FS
 ^FO0,300^A0N,55,55^FB1180,1,0,C^FDKamionszám^FS
-^FO40,380^GB1130,5,5^FS
+^FO40,380^GB1140,5,5^FS
 ^FO0,440^A0N,130,130^FB1180,1,0,C^FD${label.product_name || ''}^FS
 ^FO0,600^A0N,50,50^FB1180,1,0,C^FDTermék megnevezése^FS
-^FO40,680^GB1130,5,5^FS
+^FO40,680^GB1140,5,5^FS
 ^FO40,750^A0N,60,60^FDÉrkezés dátuma: ${label.delivery_date || ''}^FS
 ^FO40,850^A0N,60,60^FDKarton szám: ${label.picked_cartons || ''} db^FS
 ^FO40,950^A0N,60,60^FDBeszállító: ${label.supplier || ''}^FS
 ^FO40,1050^A0N,60,60^FDÜgyfél: ${label.destination || ''}^FS
 ^FO40,1150^A0N,60,60^FDSzármazási ország: ${label.origin_country || ''}^FS
-^FO40,1800^GB1130,5,5^FS
-^FO85,1880^BY6
+^FO40,1800^GB1140,5,5^FS
+^FO80,1880^BY6
 ^BCN,350,N,N,N
 ^FD${label.sscc}^FS
 ^FO0,2260^A0N,65,65^FB1180,1,0,C^FD${label.sscc}^FS
