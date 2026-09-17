@@ -344,7 +344,7 @@ async function processPick(trx, id, reqData, locationId = null) {
     });
 
   // SSCC címke generálása és mentése
-  const label = await createSsccLabel(trx, id, qty, origin_country);
+  const label = await createSsccLabel(trx, id, commissionId, qty, origin_country);
 
   return { 
     orderedCartons, 
@@ -357,7 +357,7 @@ async function processPick(trx, id, reqData, locationId = null) {
 }
 
 // ── SSCC és ZPL segédfüggvények ─────────────────────────────
-async function createSsccLabel(dbClient, lineId, pickedCartons, originCountryOverride) {
+async function createSsccLabel(dbClient, lineId, commissionLineId, pickedCartons, originCountryOverride) {
   const line = await dbClient('aldi_truck_lines').where('id', lineId).first();
   if (!line) throw new Error('A komissiózott tétel nem található.');
 
@@ -392,7 +392,7 @@ async function createSsccLabel(dbClient, lineId, pickedCartons, originCountryOve
   const [createdLabel] = await dbClient('sscc_labels').insert({
     id: nextId,
     sscc: finalSSCC,
-    commission_line_id: lineId,
+    commission_line_id: commissionLineId,
     picked_cartons: printCartons,
     truck_number: licensePlate,
     product_name: productName,
@@ -489,7 +489,12 @@ router.post('/print-pallet-label', verifyToken, async (req, res) => {
     if (!label && commissionLineId) {
       label = await knex('sscc_labels').where('commission_line_id', commissionLineId).orderBy('id', 'desc').first();
       if (!label) {
-        label = await createSsccLabel(knex, commissionLineId, pickedCartons);
+        const commLine = await knex('aldi_commission_lines').where('id', commissionLineId).first();
+        if (commLine) {
+          label = await createSsccLabel(knex, commLine.aldi_truck_line_id, commissionLineId, pickedCartons);
+        } else {
+          return res.status(404).json({ error: 'A komissió sor nem található a címkegeneráláshoz.' });
+        }
       }
     }
 
