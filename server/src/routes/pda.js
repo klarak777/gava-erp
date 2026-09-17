@@ -449,6 +449,16 @@ router.put('/commission-lines/:id/pick-and-assign', verifyToken, async (req, res
     if (!req.body.barcode) {
       return res.status(400).json({ error: 'Vonalkód megadása kötelező.' });
     }
+    if (!req.body.scannedSscc) {
+      return res.status(400).json({ error: 'SSCC vonalkód megadása kötelező a lezáráshoz.' });
+    }
+
+    if (req.body.labelId) {
+      const label = await knex('sscc_labels').where('id', req.body.labelId).first();
+      if (!label || label.sscc !== req.body.scannedSscc) {
+        return res.status(400).json({ error: 'A beszkennelt SSCC nem egyezik a rendszerben lévő címkével!' });
+      }
+    }
 
     const location = await knex('aldi_locations').where('barcode', req.body.barcode).first();
     if (!location) {
@@ -458,7 +468,7 @@ router.put('/commission-lines/:id/pick-and-assign', verifyToken, async (req, res
     let result = {};
     await knex.transaction(async (trx) => {
       result = await processPick(trx, req.params.id, req.body, location.id);
-      if (result.label) {
+      if (result.label && !result.isAlreadyProcessed) {
         await trx('sscc_labels').where('id', result.label.id).update({ location_name: location.name });
       }
     });

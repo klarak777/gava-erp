@@ -594,6 +594,7 @@ export async function renderCommission(container, params = {}) {
             </svg>
             <input type="text" id="sscc-vonalkod" placeholder="SSCC vonalkód" style="width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #f8fafc; color: #0f172a;">
           </div>
+          <div id="test-sscc-hint" style="font-size: 11px; color: #64748b; margin-bottom: 16px; text-align: center; user-select: text;"></div>
           <button class="pda-btn" id="btn-sscc-save" style="width: 100%; height: 44px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 15px;">Befejezés</button>
         </div>
       </div>
@@ -1123,6 +1124,12 @@ export async function renderCommission(container, params = {}) {
     if (!barcode) return;
     
     currentDestBarcode = barcode;
+    
+    const hintDiv = container.querySelector('#test-sscc-hint');
+    if (hintDiv) {
+      hintDiv.innerHTML = `<em>(Teszteléshez generált SSCC: <strong>${currentLabel?.sscc || ''}</strong>)</em>`;
+    }
+
     showPane(paneSscc);
     setTimeout(() => {
       const ssccInput = container.querySelector('#sscc-vonalkod');
