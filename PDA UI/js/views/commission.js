@@ -1268,6 +1268,49 @@ export async function renderCommission(container, params = {}) {
     }
   });
 
+  // Cél lokáció vonalkód beolvasása (3. Lépés)
+  const destInput = container.querySelector('#dest-vonalkod');
+  if (destInput) {
+    destInput.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const barcode = destInput.value.trim();
+        if (!barcode) return;
+
+        if (!currentLineId || !lastPickPayload) {
+          alert('Hiba: Nincs aktív komissiózás.');
+          return;
+        }
+
+        try {
+          destInput.disabled = true;
+          const payload = { ...lastPickPayload, barcode };
+
+          const res = await apiFetch(`/api/v1/pda/commission-lines/${currentLineId}/assign-location`, {
+            method: 'PUT',
+            body: JSON.stringify(payload)
+          });
+          const data = await res.json();
+
+          if (res.ok) {
+            alert(data.message || 'Lokáció mentve!');
+            destInput.value = '';
+            showPane(paneList);
+            loadData();
+          } else {
+            alert(data.error || 'Hiba a lokáció mentésekor.');
+            destInput.value = '';
+            destInput.focus();
+          }
+        } catch (err) {
+          alert('Hálózati hiba a lokáció mentésekor.');
+        } finally {
+          destInput.disabled = false;
+        }
+      }
+    });
+  }
+
   select.addEventListener('change', loadData);
 
   await loadDictionaries();
