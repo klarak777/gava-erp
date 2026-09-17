@@ -155,7 +155,7 @@ router.get('/pallet-types', verifyToken, async (req, res) => {
 //   - Ha qty > remaining: 409 hiba
 // Közös segédfüggvény a komissiózás feldolgozásához
 async function processPick(trx, id, reqData, locationId = null) {
-  const { picked_cartons, gross_weight, packaging_type, tare_weight, origin_country, lot_number, pallet_type } = reqData;
+  const { picked_cartons, gross_weight, packaging_type, tare_weight, origin_country, lot_number, pallet_type, pickSessionId } = reqData;
   const qty = parseInt(picked_cartons);
   if (!Number.isInteger(qty) || qty <= 0) {
     const err = new Error('A komissiózott kartonszám megadása kötelező (pozitív egész szám).'); err.code = 'BAD_REQUEST'; throw err;
@@ -165,6 +165,26 @@ async function processPick(trx, id, reqData, locationId = null) {
   const line = await trx('aldi_truck_lines').where('id', id).forUpdate().first();
   if (!line) {
     const err = new Error('not_found'); err.code = 'NOT_FOUND'; throw err;
+  }
+
+  // Idempotencia ellenőrzés
+  if (pickSessionId) {
+    const existingPick = await trx('aldi_commission_lines').where('pick_session_id', pickSessionId).first();
+    if (existingPick) {
+      // Ha már van ilyen mentés, akkor azonnal sikerként térünk vissza anélkül, hogy újra levonnánk.
+      // Ezt jelezzük egy speciális hibakóddal vagy egy visszatérési értékkel. 
+      // Mivel a processPick visszatérési értékeket ad, dobhatunk egy speciális hibát, amit elkapunk, vagy adunk vissza egy flaget.
+      // De mivel ez async function, visszatérhetünk a létező adattal.
+      const existingLabel = await trx('sscc_labels').where('commission_line_id', id).orderBy('id', 'desc').first();
+      return { 
+        isAlreadyProcessed: true, 
+        orderedCartons: line.ordered_cartons, 
+        newPicked: line.picked_cartons, 
+        newRemaining: Math.max(0, line.ordered_cartons - line.picked_cartons), 
+        isFullyPicked: line.picked_cartons >= line.ordered_cartons,
+        label: existingLabel
+      };
+    }
   }
 
   const orderedCartons = parseInt(line.ordered_cartons) || 0;
@@ -210,7 +230,11 @@ async function processPick(trx, id, reqData, locationId = null) {
 
   // 3. Súly és raklap kalkuláció
   const cartonsPerPallet = parseInt(line.cartons_per_pallet) || 0;
-  let newPallets = 1; // Minden PDA megadás pontosan 1 raklapot jelent
+  let newPallets = 1;
+  if (cartonsPerPallet > 0) {
+    newPallets = Math.ceil((alreadyPicked + qty) / cartonsPerPallet) - Math.ceil(alreadyPicked / cartonsPerPallet);
+  }
+
   let palletTareKg = 0;
   let palletTypeName = null;
 
@@ -289,7 +313,8 @@ async function processPick(trx, id, reqData, locationId = null) {
     tare_weight: reqTare || null,
     carton_type: packaging_type || null,
     lot_number: lot_number || null,
-    origin_country: origin_country || null
+    origin_country: origin_country || null,
+    pick_session_id: pickSessionId || null
   });
 
   // 5. Kumulatív frissítés
@@ -392,91 +417,6 @@ function generateZpl(label) {
 ^XZ`;
 }
 
-// ── PUT /commission-lines/:id/pick ─────────────
-router.put('/commission-lines/:id/pick', verifyToken, async (req, res) => {
-  try {
-    let result = {};
-    await knex.transaction(async (trx) => {
-      result = await processPick(trx, req.params.id, req.body, null);
-    });
-    res.json({
-      success: true,
-      message: result.isFullyPicked ? 'Tétel teljesen komissiózva, eltűnik a listából.' : `Részleges komissió rögzítve. Maradék: ${result.newRemaining} karton.`,
-      ordered_cartons: result.orderedCartons,
-      picked_cartons: result.newPicked,
-      remaining: result.newRemaining,
-      is_picked: result.isFullyPicked,
-      label: result.label
-    });
-  } catch (err) {
-    if (err.code === 'BAD_REQUEST') return res.status(400).json({ error: err.message });
-    if (err.code === 'NOT_FOUND') return res.status(404).json({ error: 'A tétel nem található.' });
-    if (err.code === 'OVER_QTY') return res.status(409).json({ error: err.message });
-    if (err.code === 'INVALID_WEIGHT') return res.status(400).json({ error: err.message });
-    console.error('[PDA] /commission-lines/:id/pick hiba:', err);
-    res.status(500).json({ error: 'Hiba a tétel mentésekor.' });
-  }
-});
-
-// ── PUT /commission-lines/:id/assign-location ──────────────────────────────
-router.put('/commission-lines/:id/assign-location', verifyToken, async (req, res) => {
-  try {
-    const { barcode, picked_cartons, gross_weight, tare_weight, pallet_type } = req.body;
-    const qty = parseInt(picked_cartons);
-
-    if (!barcode) return res.status(400).json({ error: 'Nincs lokáció vonalkód megadva.' });
-    if (isNaN(qty) || qty <= 0) return res.status(400).json({ error: 'Érvénytelen kartonszám.' });
-
-    const location = await knex('aldi_locations').where('barcode', barcode).first();
-    if (!location) return res.status(404).json({ error: 'A megadott lokáció nem található.' });
-
-    let message = '';
-    await knex.transaction(async (trx) => {
-      const line = await trx('aldi_truck_lines').where('id', req.params.id).first();
-      if (!line) throw new Error('A tétel nem található.');
-
-      const capacity = parseInt(location.capacity) || 0;
-      if (capacity > 0) {
-        const currentLocStock = await trx('aldi_stock_locations').where('location_id', location.id).count('id as occupied_pallets').first();
-        const existingPallets = parseInt(currentLocStock?.occupied_pallets) || 0;
-        if (existingPallets + 1 > capacity) {
-          const err = new Error('A lokáció megtelt!'); err.code = 'CAPACITY_EXCEEDED'; throw err;
-        }
-      }
-
-      let currentPickNet = null;
-      let reqGross = Number(gross_weight);
-      let reqTare = Number(tare_weight);
-      if (!isNaN(reqGross) && reqGross > 0) {
-        let palletTareKg = 0;
-        if (pallet_type) {
-          const palInfo = await trx('ref_packaging_types').where('id', pallet_type).first();
-          if (palInfo) palletTareKg = parseFloat(palInfo.tare_weight_kg) || 0;
-        }
-        currentPickNet = reqGross - (reqTare * qty) - palletTareKg;
-        if (currentPickNet < 0) currentPickNet = 0;
-      }
-
-      await trx('aldi_stock_locations').insert({
-        location_id: location.id,
-        order_line_id: line.aldi_daily_order_line_id || null,
-        truck_line_id: line.id,
-        quantity_cartons: qty,
-        gross_weight: !isNaN(reqGross) && reqGross > 0 ? reqGross : null,
-        net_weight: currentPickNet !== null ? currentPickNet : null
-      });
-
-      message = `Sikeresen rögzítve a lokációra: ${location.name}`;
-    });
-
-    res.json({ success: true, message });
-  } catch (err) {
-    if (err.code === 'CAPACITY_EXCEEDED') return res.status(409).json({ error: err.message });
-    console.error('[PDA] /commission-lines/:id/assign-location hiba:', err);
-    res.status(500).json({ error: err.message || 'Hiba a lokáció mentésekor.' });
-  }
-});
-
 // ── PUT /commission-lines/:id/pick-and-assign ──────────────────────────────
 router.put('/commission-lines/:id/pick-and-assign', verifyToken, async (req, res) => {
   try {
@@ -502,9 +442,11 @@ router.put('/commission-lines/:id/pick-and-assign', verifyToken, async (req, res
       remaining: result.newRemaining,
       is_picked: result.isFullyPicked,
       label: result.label,
-      message: result.isFullyPicked
-        ? 'Tétel teljesen komissiózva.'
-        : `Részleges komissió rögzítve. Maradék: ${result.newRemaining} karton.`
+      message: result.isAlreadyProcessed
+        ? 'A művelet már korábban rögzítve lett (ismétlésvédett).'
+        : (result.isFullyPicked
+            ? 'Tétel teljesen komissiózva.'
+            : `Részleges komissió rögzítve. Maradék: ${result.newRemaining} karton.`)
     });
   } catch (err) {
     if (err.code === 'BAD_REQUEST') return res.status(400).json({ error: err.message });

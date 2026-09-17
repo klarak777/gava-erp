@@ -617,8 +617,8 @@ export async function renderCommission(container, params = {}) {
   }
 
   // Navigation events
-  const goDashboard = () => showView('dashboard');
-  const goList = () => showPane(paneList);
+  const goDashboard = () => { lastPickPayload = null; showView('dashboard'); };
+  const goList = () => { lastPickPayload = null; showPane(paneList); };
 
   container.querySelector('#pda-btn-osszeemeles')?.addEventListener('click', () => {
     showView('consolidation');
@@ -1008,7 +1008,8 @@ export async function renderCommission(container, params = {}) {
       tare_weight: Number(taraInput.value),
       origin_country: orszagSel.value,
       lot_number: lotInput.value.trim(),
-      pallet_type: raklapSel.value
+      pallet_type: raklapSel.value,
+      pickSessionId: Date.now().toString(36) + Math.random().toString(36).substr(2, 5) // Idempotencia token
     };
 
     // Átlépünk a Cél lokációra (Mentés nélkül)
@@ -1192,6 +1193,7 @@ export async function renderCommission(container, params = {}) {
   container.querySelector('#print-finish-btn')?.addEventListener('click', () => {
     showPane(paneList);
     loadData();
+    lastPickPayload = null; // Állapot törlése
   });
 
   // Zebra nyomtatás gomb / eseménykezelő
@@ -1229,6 +1231,7 @@ export async function renderCommission(container, params = {}) {
         // Nyomtatás után visszatérünk a listához
         showPane(paneList);
         loadData();
+        lastPickPayload = null;
       } else {
         const errData = await res.json().catch(() => ({}));
         alert(errData.error || 'Hiba a nyomtatás során!');
@@ -1279,6 +1282,8 @@ export async function renderCommission(container, params = {}) {
         container.querySelector('#print-printer-barcode').value = '';
         showPane(panePrint);
         setTimeout(() => container.querySelector('#print-printer-barcode').focus(), 100);
+        // lastPickPayload-ot csak a legvégén, a nyomtatás után töröljük, 
+        // hogy a nyomtatás/befejezés lépésnél már biztonságos legyen a visszalépés.
       } else {
         alert(data.error || 'Hiba a lokáció mentésekor.');
         destInput.value = '';
