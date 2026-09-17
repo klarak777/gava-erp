@@ -578,12 +578,13 @@ export async function renderCommission(container, params = {}) {
       <div class="pda-form-body" style="padding: 0; background: #fff;">
         <div class="pda-print-box">
           <div style="font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 8px;">Cél tárhely vonalkód</div>
-          <div style="position: relative; display: flex; align-items: center;">
+          <div style="position: relative; display: flex; align-items: center; margin-bottom: 12px;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px;">
               <path d="M4 7V4h16v3M9 20h6M12 14v6M4 17v3h16v-3M9 7h6v5H9z"></path>
             </svg>
             <input type="text" id="dest-vonalkod" placeholder="Kérjük, olvasd be a vonalkódot" style="width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #f8fafc; color: #0f172a;">
           </div>
+          <button class="pda-btn" id="btn-dest-save" style="width: 100%; height: 44px; background: #0ea5e9; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 15px;">Lokáció mentése</button>
         </div>
       </div>
 
@@ -1270,44 +1271,64 @@ export async function renderCommission(container, params = {}) {
 
   // Cél lokáció vonalkód beolvasása (3. Lépés)
   const destInput = container.querySelector('#dest-vonalkod');
+  const destSaveBtn = container.querySelector('#btn-dest-save');
+
+  const saveDestination = async () => {
+    const barcode = destInput.value.trim();
+    if (!barcode) return;
+
+    if (!currentLineId || !lastPickPayload) {
+      alert('Hiba: Nincs aktív komissiózás.');
+      return;
+    }
+
+    try {
+      destInput.disabled = true;
+      if (destSaveBtn) {
+        destSaveBtn.disabled = true;
+        destSaveBtn.style.opacity = '0.5';
+      }
+      const payload = { ...lastPickPayload, barcode };
+
+      const res = await apiFetch(`/api/v1/pda/commission-lines/${currentLineId}/assign-location`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        alert(data.message || 'Lokáció mentve!');
+        destInput.value = '';
+        showPane(paneList);
+        loadData();
+      } else {
+        alert(data.error || 'Hiba a lokáció mentésekor.');
+        destInput.value = '';
+        destInput.focus();
+      }
+    } catch (err) {
+      alert('Hálózati hiba a lokáció mentésekor.');
+    } finally {
+      destInput.disabled = false;
+      if (destSaveBtn) {
+        destSaveBtn.disabled = false;
+        destSaveBtn.style.opacity = '1';
+      }
+    }
+  };
+
   if (destInput) {
     destInput.addEventListener('keydown', async (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        const barcode = destInput.value.trim();
-        if (!barcode) return;
-
-        if (!currentLineId || !lastPickPayload) {
-          alert('Hiba: Nincs aktív komissiózás.');
-          return;
-        }
-
-        try {
-          destInput.disabled = true;
-          const payload = { ...lastPickPayload, barcode };
-
-          const res = await apiFetch(`/api/v1/pda/commission-lines/${currentLineId}/assign-location`, {
-            method: 'PUT',
-            body: JSON.stringify(payload)
-          });
-          const data = await res.json();
-
-          if (res.ok) {
-            alert(data.message || 'Lokáció mentve!');
-            destInput.value = '';
-            showPane(paneList);
-            loadData();
-          } else {
-            alert(data.error || 'Hiba a lokáció mentésekor.');
-            destInput.value = '';
-            destInput.focus();
-          }
-        } catch (err) {
-          alert('Hálózati hiba a lokáció mentésekor.');
-        } finally {
-          destInput.disabled = false;
-        }
+        await saveDestination();
       }
+    });
+  }
+
+  if (destSaveBtn) {
+    destSaveBtn.addEventListener('click', async () => {
+      await saveDestination();
     });
   }
 
