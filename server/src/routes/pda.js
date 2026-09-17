@@ -458,6 +458,9 @@ router.put('/commission-lines/:id/pick-and-assign', verifyToken, async (req, res
     let result = {};
     await knex.transaction(async (trx) => {
       result = await processPick(trx, req.params.id, req.body, location.id);
+      if (result.label) {
+        await trx('sscc_labels').where('id', result.label.id).update({ location_name: location.name });
+      }
     });
 
     res.json({

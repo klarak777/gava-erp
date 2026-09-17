@@ -568,19 +568,64 @@ export async function renderCommission(container, params = {}) {
         </div>
       </div>
     </div>
+
+    <!-- RAKLAPCÍMKE VISSZASZKENNELÉS (4. Lépés) -->
+    <div class="pda-pane" id="pane-sscc">
+      <div class="pda-dashboard__header" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 14px 8px 10px; background: #f8f9fc; border-bottom: none; gap: 4px;">
+        <div class="pda-dashboard__header-left" style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+          <img src="/logo.ico" alt="Gava Logo" class="pda-dashboard__logo" onerror="this.style.display='none'" style="width: 32px; height: 32px; border: none; padding: 0; flex-shrink: 0;">
+          <div class="pda-dashboard__user-info" style="display: flex; flex-direction: column; justify-content: center; gap: 0px;">
+            <div class="pda-dashboard__company" style="font-size: 13.5px; font-weight: 800; color: #0f172a; white-space: nowrap; line-height: 1.15; letter-spacing: -0.2px;">Komissiózás</div>
+            <div class="pda-dashboard__role" style="font-size: 7.5px; color: #64748b; font-weight: 700; text-transform: uppercase; margin-top: 1px; line-height: 1;">FELHASZNÁLÓ</div>
+            <div class="pda-dashboard__name" style="font-size: 11px; font-weight: 700; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 95px; margin-top: 1px; line-height: 1.15;">${escHtml(userName)}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pda-form-title" style="padding: 24px 16px 8px; font-size: 18px; color: #0f172a; text-align: center;">Raklapcímke ellenőrzése</div>
+      <div class="pda-form-title" style="font-size: 14px; color: #64748b; text-align: center; padding-top: 0; font-weight: 500;">Szkennelje be az SSCC vonalkódot a befejezéshez!</div>
+      
+      <div class="pda-form-body" style="padding: 0; background: #fff;">
+        <div class="pda-print-box">
+          <div style="font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 8px;">SSCC Vonalkód</div>
+          <div style="position: relative; display: flex; align-items: center; margin-bottom: 12px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px;">
+              <path d="M4 7V4h16v3M9 20h6M12 14v6M4 17v3h16v-3M9 7h6v5H9z"></path>
+            </svg>
+            <input type="text" id="sscc-vonalkod" placeholder="SSCC vonalkód" style="width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #f8fafc; color: #0f172a;">
+          </div>
+          <button class="pda-btn" id="btn-sscc-save" style="width: 100%; height: 44px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 15px;">Befejezés</button>
+        </div>
+      </div>
+
+      <div class="pda-bottom-nav">
+        <div class="pda-bottom-nav__item pda-nav-home-btn" style="cursor: pointer; flex: 1;">
+          <svg class="pda-bottom-nav__icon" fill="currentColor" viewBox="0 0 24 24"><path d="M3 13h1v7c0 1.103.897 2 2 2h12c1.103 0 2-.897 2-2v-7h1a1 1 0 00.707-1.707l-9-9a.999.999 0 00-1.414 0l-9 9A1 1 0 003 13zm7 7v-5h4v5h-4z"></path></svg>
+          <span class="pda-bottom-nav__label">Főoldal</span>
+        </div>
+        <div class="pda-bottom-nav__item pda-nav-back-btn" style="cursor: pointer; flex: 1;">
+          <svg class="pda-bottom-nav__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"></path></svg>
+          <span class="pda-bottom-nav__label">Vissza</span>
+        </div>
+      </div>
+    </div>
   `;
+
+  let currentDestBarcode = null;
 
   // Panes
   const paneList = container.querySelector('#pane-list');
   const paneForm = container.querySelector('#pane-form');
   const panePrint = container.querySelector('#pane-print');
   const paneDest = container.querySelector('#pane-dest');
+  const paneSscc = container.querySelector('#pane-sscc');
 
   function showPane(paneEl) {
     paneList.classList.remove('active');
     paneForm.classList.remove('active');
     panePrint.classList.remove('active');
     paneDest.classList.remove('active');
+    paneSscc.classList.remove('active');
     paneEl.classList.add('active');
   }
 
@@ -601,6 +646,8 @@ export async function renderCommission(container, params = {}) {
       showPane(paneForm);
     } else if (paneDest.classList.contains('active')) {
       showPane(panePrint);
+    } else if (paneSscc.classList.contains('active')) {
+      showPane(paneDest);
     }
   };
 
@@ -1074,6 +1121,27 @@ export async function renderCommission(container, params = {}) {
   const saveDestination = async () => {
     const barcode = destInput.value.trim();
     if (!barcode) return;
+    
+    currentDestBarcode = barcode;
+    showPane(paneSscc);
+    setTimeout(() => {
+      const ssccInput = container.querySelector('#sscc-vonalkod');
+      if (ssccInput) ssccInput.focus();
+    }, 100);
+  };
+
+  const saveCommissionFinal = async () => {
+    const ssccInput = container.querySelector('#sscc-vonalkod');
+    const ssccSaveBtn = container.querySelector('#btn-sscc-save');
+    const scannedSscc = ssccInput.value.trim();
+    if (!scannedSscc) return;
+
+    if (scannedSscc !== currentLabel?.sscc) {
+      alert('Hiba: A beszkennelt SSCC nem egyezik a generált címkével!');
+      ssccInput.value = '';
+      ssccInput.focus();
+      return;
+    }
 
     if (!currentLineId || !lastPickPayload) {
       alert('Hiba: Nincs aktív komissiózás.');
@@ -1081,12 +1149,12 @@ export async function renderCommission(container, params = {}) {
     }
 
     try {
-      destInput.disabled = true;
-      if (destSaveBtn) {
-        destSaveBtn.disabled = true;
-        destSaveBtn.style.opacity = '0.5';
+      ssccInput.disabled = true;
+      if (ssccSaveBtn) {
+        ssccSaveBtn.disabled = true;
+        ssccSaveBtn.style.opacity = '0.5';
       }
-      const payload = { ...lastPickPayload, barcode };
+      const payload = { ...lastPickPayload, barcode: currentDestBarcode };
 
       const res = await apiFetch(`/api/v1/pda/commission-lines/${currentLineId}/pick-and-assign`, {
         method: 'PUT',
@@ -1096,27 +1164,25 @@ export async function renderCommission(container, params = {}) {
 
       if (res.ok) {
         currentLabel = data.label || null;
-        if (currentLabel) {
-          renderLabelPreview(currentLabel);
-        }
         alert(data.message || 'Lokáció és komissió mentve!');
         destInput.value = '';
-        // Befejeztük a folyamatot, visszatérés a listához
+        ssccInput.value = '';
         showPane(paneList);
         loadData();
         lastPickPayload = null;
+        currentDestBarcode = null;
       } else {
-        alert(data.error || 'Hiba a lokáció mentésekor.');
-        destInput.value = '';
-        destInput.focus();
+        alert(data.error || 'Hiba a mentéskor.');
+        ssccInput.value = '';
+        ssccInput.focus();
       }
     } catch (err) {
-      alert('Hálózati hiba a lokáció mentésekor.');
+      alert('Hálózati hiba a mentéskor.');
     } finally {
-      destInput.disabled = false;
-      if (destSaveBtn) {
-        destSaveBtn.disabled = false;
-        destSaveBtn.style.opacity = '1';
+      ssccInput.disabled = false;
+      if (ssccSaveBtn) {
+        ssccSaveBtn.disabled = false;
+        ssccSaveBtn.style.opacity = '1';
       }
     }
   };
@@ -1133,6 +1199,24 @@ export async function renderCommission(container, params = {}) {
   if (destSaveBtn) {
     destSaveBtn.addEventListener('click', async () => {
       await saveDestination();
+    });
+  }
+
+  const ssccInput = container.querySelector('#sscc-vonalkod');
+  const ssccSaveBtn = container.querySelector('#btn-sscc-save');
+  
+  if (ssccInput) {
+    ssccInput.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        await saveCommissionFinal();
+      }
+    });
+  }
+  
+  if (ssccSaveBtn) {
+    ssccSaveBtn.addEventListener('click', async () => {
+      await saveCommissionFinal();
     });
   }
 
