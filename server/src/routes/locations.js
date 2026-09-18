@@ -42,9 +42,10 @@ router.get('/', async (req, res) => {
 
     for (const loc of locations) {
       if (parentMap[loc.id]) {
-        loc.capacity = parentMap[loc.id].capacity;
-        loc.current_cartons = parentMap[loc.id].current_cartons;
-        loc.occupied_pallets = parentMap[loc.id].occupied_pallets;
+        // A szülő saját készletéhez és kapacitásához adjuk hozzá a gyerekekét (ne írjuk felül teljesen)
+        loc.capacity = (parseInt(loc.capacity) || 0) + parentMap[loc.id].capacity;
+        loc.current_cartons = (parseInt(loc.current_cartons) || 0) + parentMap[loc.id].current_cartons;
+        loc.occupied_pallets = (parseInt(loc.occupied_pallets) || 0) + parentMap[loc.id].occupied_pallets;
       }
     }
 
@@ -68,8 +69,7 @@ router.get('/:id/stock', async (req, res) => {
       const children = await knex('aldi_locations').where('parent_id', req.params.id).select('id');
       if (children.length > 0) {
         locationIds = children.map(c => c.id);
-      } else {
-        locationIds = [-1]; // Ha nincs gyermek, ne adjon vissza semmit
+        locationIds.push(req.params.id); // A szülő saját magára rakott tételei is kellenek
       }
     }
 

@@ -566,7 +566,7 @@ export async function renderCommission(container, params = {}) {
             <input type="text" id="dest-vonalkod" placeholder="Vonalkód (pl. S01010000) vagy sornév (pl. 1. sor)" style="width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #f8fafc; color: #0f172a;">
           </div>
           <div style="font-size: 11.5px; color: #64748b; margin-bottom: 14px; line-height: 1.4;">
-            💡 <em>Vonalkódolvasóval beolvashatod, vagy kattints a fenti kék sorjelölőre a gyors beillesztéshez.</em>
+            💡 <em>Vonalkódolvasóval beolvashatod vagy kézzel megadhatod.</em>
           </div>
           <button class="pda-btn" id="btn-dest-save" style="width: 100%; height: 44px; background: #0ea5e9; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 15px;">Lokáció mentése</button>
         </div>
@@ -893,6 +893,13 @@ export async function renderCommission(container, params = {}) {
               const commissioned = row.komissziozott_kartonszam != null ? parseInt(row.komissziozott_kartonszam) : 0;
               const remaining = Math.max(0, ordered - commissioned);
 
+              let targetStr = '-';
+              if (row.target_locations && Array.isArray(row.target_locations) && row.target_locations.length > 0) {
+                targetStr = row.target_locations.map(t => (t && typeof t === 'object') ? (t.name || '') : String(t)).filter(Boolean).join(', ');
+              } else if (row.celraktar) {
+                targetStr = row.celraktar;
+              }
+
               tr.innerHTML = `
                 <td style="padding-top: 10px; padding-left: 2px; padding-right: 1px;">
                   ${getBadgeHtml(row.tipus)}
@@ -903,7 +910,7 @@ export async function renderCommission(container, params = {}) {
                 </td>
                 <td style="text-align: center; padding-top: 10px; padding-left: 2px; padding-right: 2px;">
                   <div style="font-size: 11px; font-weight: 600; color: #334155; margin-bottom: 2px; white-space: normal; word-break: break-word;">${row.partner || '-'}</div>
-                  <div style="font-size: 11px; font-weight: 800; color: #0f172a;">${row.celraktar || '-'}</div>
+                  <div style="font-size: 11px; font-weight: 800; color: #0f172a;">${targetStr}</div>
                 </td>
               `;
 
@@ -982,22 +989,8 @@ export async function renderCommission(container, params = {}) {
       label.textContent = truckNum ? `${truckNum} – engedélyezett célsorok:` : 'Engedélyezett cél sorok:';
       list.innerHTML = currentTargetLocations.map(r => {
         const name = (r && typeof r === 'object') ? (r.name || '') : String(r);
-        const barcode = (r && typeof r === 'object' && r.barcode) ? r.barcode : '';
-        const fillValue = barcode || name;
-        const bcLabel = barcode ? `<small style="font-size:10.5px;opacity:0.85;margin-left:4px;">(${barcode})</small>` : '';
-        return `<span class="pda-allowed-row-badge" data-val="${escHtml(fillValue)}" style="background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;user-select:none;transition:background 0.15s;" title="Kattints a beillesztéshez!">${escHtml(name)}${bcLabel}</span>`;
+        return `<span style="background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;display:inline-flex;align-items:center;">${escHtml(name)}</span>`;
       }).join('');
-
-      list.querySelectorAll('.pda-allowed-row-badge').forEach(badge => {
-        badge.addEventListener('click', () => {
-          const val = badge.getAttribute('data-val');
-          const destInput = container.querySelector('#dest-vonalkod');
-          if (destInput && val) {
-            destInput.value = val;
-            destInput.focus();
-          }
-        });
-      });
     } else {
       box.style.display = 'block';
       label.textContent = 'Nincs engedélyezett célsor beállítva';
@@ -1171,9 +1164,10 @@ export async function renderCommission(container, params = {}) {
         
         // Nyomtatás után átlépünk a Cél lokációra
         container.querySelector('#dest-title').textContent = currentDestination || 'Ismeretlen';
-        container.querySelector('#dest-vonalkod').value = '';
+        const destInputEl = container.querySelector('#dest-vonalkod');
+        if (destInputEl) destInputEl.value = '';
         showPane(paneDest);
-        setTimeout(() => container.querySelector('#dest-vonalkod').focus(), 100);
+        setTimeout(() => { if (destInputEl) destInputEl.focus(); }, 100);
       } else {
         const errData = await res.json().catch(() => ({}));
         alert(errData.error || 'Hiba a nyomtatás során!');
@@ -1191,10 +1185,10 @@ export async function renderCommission(container, params = {}) {
   const destSaveBtn = container.querySelector('#btn-dest-save');
 
   const saveDestination = async () => {
-    const barcode = destInput.value.trim();
+    const barcode = destInput ? destInput.value.trim() : '';
     if (!barcode) {
       alert('Kérjük, add meg vagy olvasd be a cél tárhely vonalkódját!');
-      destInput.focus();
+      if (destInput) destInput.focus();
       return;
     }
     
@@ -1204,8 +1198,10 @@ export async function renderCommission(container, params = {}) {
     }
 
     try {
-      destSaveBtn.disabled = true;
-      destSaveBtn.style.opacity = '0.5';
+      if (destSaveBtn) {
+        destSaveBtn.disabled = true;
+        destSaveBtn.style.opacity = '0.5';
+      }
 
       const res = await apiFetch(`/api/v1/pda/commission-lines/${currentLineId}/validate-location`, {
         method: 'POST',
@@ -1215,8 +1211,10 @@ export async function renderCommission(container, params = {}) {
 
       if (!res.ok) {
         alert(data.error || 'Érvénytelen lokáció vagy megtelt tárhely.');
-        destInput.value = '';
-        destInput.focus();
+        if (destInput) {
+          destInput.value = '';
+          destInput.focus();
+        }
         return;
       }
 
@@ -1225,8 +1223,10 @@ export async function renderCommission(container, params = {}) {
       alert('Hálózati hiba a lokáció ellenőrzésekor: ' + (err.message || err));
       return;
     } finally {
-      destSaveBtn.disabled = false;
-      destSaveBtn.style.opacity = '1';
+      if (destSaveBtn) {
+        destSaveBtn.disabled = false;
+        destSaveBtn.style.opacity = '1';
+      }
     }
 
     const hintDiv = container.querySelector('#test-sscc-hint');
@@ -1240,6 +1240,21 @@ export async function renderCommission(container, params = {}) {
       if (ssccInput) ssccInput.focus();
     }, 100);
   };
+
+  if (destInput) {
+    destInput.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        await saveDestination();
+      }
+    });
+  }
+
+  if (destSaveBtn) {
+    destSaveBtn.addEventListener('click', async () => {
+      await saveDestination();
+    });
+  }
 
   const saveCommissionFinal = async () => {
     const ssccInput = container.querySelector('#sscc-vonalkod');
@@ -1300,20 +1315,7 @@ export async function renderCommission(container, params = {}) {
     }
   };
 
-  if (destInput) {
-    destInput.addEventListener('keydown', async (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        await saveDestination();
-      }
-    });
-  }
 
-  if (destSaveBtn) {
-    destSaveBtn.addEventListener('click', async () => {
-      await saveDestination();
-    });
-  }
 
   const ssccInput = container.querySelector('#sscc-vonalkod');
   const ssccSaveBtn = container.querySelector('#btn-sscc-save');
