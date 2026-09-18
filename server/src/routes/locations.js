@@ -69,7 +69,8 @@ router.get('/:id/stock', async (req, res) => {
       const children = await knex('aldi_locations').where('parent_id', req.params.id).select('id');
       if (children.length > 0) {
         locationIds = children.map(c => c.id);
-        locationIds.push(req.params.id); // A szülő saját magára rakott tételei is kellenek
+      } else {
+        locationIds = [-1]; // Ha nincs gyermek, ne adjon vissza semmit
       }
     }
 

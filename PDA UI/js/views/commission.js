@@ -550,7 +550,7 @@ export async function renderCommission(container, params = {}) {
       </div>
 
       <div class="pda-form-title" style="padding: 24px 16px 8px; font-size: 18px; color: #0f172a; text-align: center;">Cél lokáció</div>
-      <div class="pda-form-title" id="dest-title" style="font-size: 20px; color: #0ea5e9; text-align: center; padding-top: 0;">XXXX</div>
+      <div class="pda-form-title" id="dest-title" style="display:none; font-size: 20px; color: #0ea5e9; text-align: center; padding-top: 0;">XXXX</div>
       
       <div class="pda-form-body" style="padding: 0; background: #fff;">
         <div class="pda-print-box">

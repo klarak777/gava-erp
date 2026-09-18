@@ -554,7 +554,11 @@ router.post('/commission-lines/:id/validate-location', verifyToken, async (req, 
 
     const location = await findAldiLocation(req.body.barcode);
     if (!location) {
-      return res.status(404).json({ error: 'Érvénytelen vonalkód: a lokáció nem található.' });
+      return res.status(404).json({ error: 'Érvénytelen vonalkód: ez a lokáció nem található a rendszerben, vagy nem engedélyezett ehhez a tételhez.' });
+    }
+
+    if (location.location_type === 'Szülő') {
+      return res.status(400).json({ error: `A kiválasztott lokáció (${location.name}) egy SOR (szülő), ami önmagában nem tárhely. Kérlek, olvass le egy konkrét pozíciót ezen a soron belül!` });
     }
 
     // Validate location belongs to an allowed row
@@ -631,7 +635,11 @@ router.put('/commission-lines/:id/pick-and-assign', verifyToken, async (req, res
 
     const location = await findAldiLocation(req.body.barcode);
     if (!location) {
-      return res.status(404).json({ error: 'Érvénytelen vonalkód: a lokáció nem található.' });
+      return res.status(404).json({ error: 'Érvénytelen vonalkód: ez a lokáció nem található a rendszerben, vagy nem engedélyezett ehhez a tételhez.' });
+    }
+
+    if (location.location_type === 'Szülő') {
+      return res.status(400).json({ error: `A kiválasztott lokáció (${location.name}) egy SOR (szülő), ami önmagában nem tárhely. Kérlek, olvass le egy konkrét pozíciót ezen a soron belül!` });
     }
 
     // Validate location belongs to an allowed row in this truck's target_locations.
