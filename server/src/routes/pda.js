@@ -495,7 +495,8 @@ router.put('/commission-lines/:id/pick-and-assign', verifyToken, async (req, res
       return res.status(400).json({ error: 'A beszkennelt SSCC nem egyezik a rendszerben lévő címkével!' });
     }
 
-    const location = await knex('aldi_locations').where('barcode', req.body.barcode).first();
+    const reqBarcode = String(req.body.barcode || '').trim().toUpperCase();
+    const location = await knex('aldi_locations').whereRaw('UPPER(barcode) = ?', [reqBarcode]).first();
     if (!location) {
       return res.status(404).json({ error: 'Érvénytelen vonalkód: a lokáció nem található.' });
     }
