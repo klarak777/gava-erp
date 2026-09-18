@@ -783,35 +783,35 @@ export function renderAldiRakodas(container, windowManager) {
       <div style="padding:16px 20px; display:flex; flex-direction:column; gap:14px; height:100%; box-sizing:border-box;">
         
         <!-- FELSŐ VEZÉRLŐSÁV / FEJLÉC ADATOK -->
-        <div style="padding:10px 14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+        <div style="padding:10px 14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; display:flex; gap:10px; flex-wrap:wrap; align-items:flex-start;">
           <div style="flex:0 0 90px;">
-            <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Kamionszám: <span style="color:red;">*</span></label>
-            <input type="text" id="m-truck-num" class="access-control-input" style="font-size:12px; padding:4px 6px; height:30px; width:100%; text-transform:uppercase;" placeholder="Pl. AL01" value="${escHtml(existing?.truck_number || defaultTruckNum)}">
+            <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px; white-space:nowrap; height:16px; line-height:16px;">Kamionszám: <span style="color:red;">*</span></label>
+            <input type="text" id="m-truck-num" class="access-control-input" style="font-size:12px; padding:4px 6px; height:30px; width:100%; box-sizing:border-box; text-transform:uppercase;" placeholder="Pl. AL01" value="${escHtml(existing?.truck_number || defaultTruckNum)}">
           </div>
           <div style="flex:0 0 180px;">
-            <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Rendszám (Vontató + Pótkocsi):</label>
-            <input type="text" id="m-truck-plate1" class="access-control-input" style="font-size:12px; padding:4px 6px; height:30px; width:100%; text-transform:uppercase;" placeholder="Pl. ABC-123 / XYZ-789" value="${escHtml(existing?.license_plate_1 || '')}">
+            <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px; white-space:nowrap; height:16px; line-height:16px;">Rendszám (Vontató + Pótkocsi):</label>
+            <input type="text" id="m-truck-plate1" class="access-control-input" style="font-size:12px; padding:4px 6px; height:30px; width:100%; box-sizing:border-box; text-transform:uppercase;" placeholder="Pl. ABC-123 / XYZ-789" value="${escHtml(existing?.license_plate_1 || '')}">
           </div>
           <div style="flex:0 0 125px;">
-            <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Szállítási nap: <span style="color:red;">*</span></label>
-            <input type="date" id="m-truck-date" class="access-control-input" style="font-size:12px; padding:4px 6px; height:30px; width:100%;" value="${dateVal}">
+            <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px; white-space:nowrap; height:16px; line-height:16px;">Szállítási nap: <span style="color:red;">*</span></label>
+            <input type="date" id="m-truck-date" class="access-control-input" style="font-size:12px; padding:4px 6px; height:30px; width:100%; box-sizing:border-box;" value="${dateVal}">
           </div>
           <div style="flex:0 0 130px;">
-            <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Fuvarozó:</label>
-            <input type="text" id="m-truck-transporter" class="access-control-input" style="font-size:12px; padding:4px 6px; height:30px; width:100%;" placeholder="Fuvarozó neve" value="${escHtml(existing?.transporter || '')}">
+            <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px; white-space:nowrap; height:16px; line-height:16px;">Fuvarozó:</label>
+            <input type="text" id="m-truck-transporter" class="access-control-input" style="font-size:12px; padding:4px 6px; height:30px; width:100%; box-sizing:border-box;" placeholder="Fuvarozó neve" value="${escHtml(existing?.transporter || '')}">
           </div>
           <div style="flex:1; min-width:260px;">
-            <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Cél lokáció sorok:</label>
-            <div style="display:flex; gap:6px; align-items:center;">
-              <select id="m-truck-row-sel" class="access-control-input" style="font-size:12px; padding:2px 4px; height:30px; flex:1;">
+            <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px; white-space:nowrap; height:16px; line-height:16px;">Cél lokáció sorok:</label>
+            <div style="display:flex; gap:6px; align-items:center; height:30px;">
+              <select id="m-truck-row-sel" class="access-control-input" style="font-size:12px; padding:2px 4px; height:30px; box-sizing:border-box; flex:1;">
                 <option value="">-- Válassz sort --</option>
               </select>
-              <button id="btn-add-row-loc" class="secondary-btn" style="height:30px; padding:0 10px; font-size:12px; white-space:nowrap;">+ Hozzáadás</button>
+              <button id="btn-add-row-loc" class="secondary-btn" style="height:30px; padding:0 10px; font-size:12px; white-space:nowrap; box-sizing:border-box;">+ Hozzáadás</button>
             </div>
-            <div id="m-truck-rows-list" style="display:flex; flex-wrap:wrap; gap:5px; margin-top:6px;"></div>
+            <div id="m-truck-rows-list" style="display:none; flex-wrap:wrap; gap:5px; margin-top:6px;"></div>
           </div>
-          <div style="flex:none;">
-            <button class="primary-btn btn-truck-save" style="height:30px; padding:0 16px; background:#2563eb; border-color:#1d4ed8;">Mentés</button>
+          <div style="flex:none; align-self:flex-end;">
+            <button class="primary-btn btn-truck-save" style="height:30px; padding:0 16px; background:#2563eb; border-color:#1d4ed8; box-sizing:border-box;">Mentés</button>
           </div>
         </div>
 
@@ -876,8 +876,19 @@ export function renderAldiRakodas(container, windowManager) {
 
     // --- Cél lokáció sorok kezelése ---
     let selectedRows = []; // [{ id, name }]
+    if (existing?.target_locations) {
+      let tl = existing.target_locations;
+      if (typeof tl === 'string') { try { tl = JSON.parse(tl); } catch { tl = []; } }
+      selectedRows = Array.isArray(tl) ? tl.filter(t => t && t.id) : [];
+    }
 
     function renderRowTags() {
+      if (!selectedRows || selectedRows.length === 0) {
+        rowsList.style.display = 'none';
+        rowsList.innerHTML = '';
+        return;
+      }
+      rowsList.style.display = 'flex';
       rowsList.innerHTML = selectedRows.map(r =>
         `<span data-id="${r.id}" style="display:inline-flex;align-items:center;gap:4px;background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:600;">
            ${escHtml(r.name)}
@@ -893,6 +904,8 @@ export function renderAldiRakodas(container, windowManager) {
       });
     }
 
+    renderRowTags();
+
     // Betöltjük a 41 sort a selectbe
     (async () => {
       try {
@@ -901,7 +914,7 @@ export function renderAldiRakodas(container, windowManager) {
           const rows = await rowRes.json();
           rowSel.innerHTML = '<option value="">-- Válassz sort --</option>' +
             rows.map(r => `<option value="${r.id}" data-name="${escHtml(r.name)}">${escHtml(r.name)}</option>`).join('');
-          // Meglévő target_locations visszatöltése
+          // Meglévő target_locations szinkronizálása a friss nevekkel
           if (existing?.target_locations) {
             let tl = existing.target_locations;
             if (typeof tl === 'string') { try { tl = JSON.parse(tl); } catch { tl = []; } }
