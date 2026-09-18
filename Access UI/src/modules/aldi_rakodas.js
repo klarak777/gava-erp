@@ -908,8 +908,14 @@ export function renderAldiRakodas(container, windowManager) {
             selectedRows = Array.isArray(tl) ? tl.filter(t => t && t.id) : [];
             renderRowTags();
           }
+        } else {
+          console.error('Sorok betöltési hiba, HTTP státusz:', rowRes.status);
+          rowSel.innerHTML = '<option value="">⚠ Sorok betöltési hiba – frissítsd az oldalt</option>';
         }
-      } catch (e) { console.error('Sorok betöltési hiba:', e); }
+      } catch (e) {
+        console.error('Sorok betöltési hiba:', e);
+        rowSel.innerHTML = '<option value="">⚠ Hálózati hiba a sorok betöltésekor</option>';
+      }
     })();
 
     addRowBtn.addEventListener('click', () => {
