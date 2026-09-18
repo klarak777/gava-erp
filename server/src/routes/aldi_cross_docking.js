@@ -37,13 +37,14 @@ router.get('/trucks', async (req, res) => {
 // Create a truck
 router.post('/trucks', async (req, res) => {
   try {
-    const { truck_number, delivery_date, transporter, license_plate_1, license_plate_2 } = req.body;
+    const { truck_number, delivery_date, transporter, license_plate_1, license_plate_2, target_locations } = req.body;
     const [id] = await knex('aldi_trucks').insert({
       truck_number,
       delivery_date,
       transporter,
       license_plate_1,
       license_plate_2,
+      target_locations: target_locations ? JSON.stringify(target_locations) : JSON.stringify([]),
       sent_to_pda: false,
       preparation_status: 0,
       is_loaded: false
@@ -60,9 +61,9 @@ router.post('/trucks', async (req, res) => {
 router.put('/trucks/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { truck_number, delivery_date, transporter, license_plate_1, license_plate_2, sent_to_pda, preparation_status, is_loaded } = req.body;
+    const { truck_number, delivery_date, transporter, license_plate_1, license_plate_2, sent_to_pda, preparation_status, is_loaded, target_locations } = req.body;
     
-    await knex('aldi_trucks').where('id', id).update({
+    const updateData = {
       truck_number,
       delivery_date,
       transporter,
@@ -72,12 +73,32 @@ router.put('/trucks/:id', async (req, res) => {
       preparation_status,
       is_loaded,
       updated_at: knex.fn.now()
-    });
+    };
+    if (target_locations !== undefined) {
+      updateData.target_locations = JSON.stringify(target_locations);
+    }
+    
+    await knex('aldi_trucks').where('id', id).update(updateData);
     
     const updatedTruck = await knex('aldi_trucks').where('id', id).first();
     res.json(updatedTruck);
   } catch (err) {
     console.error('Error updating aldi truck:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /locations/rows – a 41 sor cél lokáció listája
+router.get('/locations/rows', async (req, res) => {
+  try {
+    const rows = await knex('aldi_locations')
+      .where('location_type', 'Szülő')
+      .andWhere('name', 'like', '%sor%')
+      .select('id', 'name', 'barcode')
+      .orderByRaw('row_num ASC');
+    res.json(rows);
+  } catch (err) {
+    console.error('Error fetching location rows:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

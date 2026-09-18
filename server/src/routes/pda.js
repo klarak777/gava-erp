@@ -90,6 +90,7 @@ router.get('/commission-lines', verifyToken, async (req, res) => {
         'aldi_truck_lines.id',
         'aldi_truck_lines.aldi_truck_id',
         'aldi_trucks.truck_number as kamionszam',
+        'aldi_trucks.target_locations',
         'aldi_truck_lines.product_name as termek',
         'aldi_truck_lines.ordered_cartons as kartonszam',
         knex.raw('COALESCE(aldi_truck_lines.picked_cartons, 0) as komissziozott_kartonszam'),
@@ -474,11 +475,34 @@ router.put('/commission-lines/:id/pick-and-assign', verifyToken, async (req, res
       return res.status(404).json({ error: 'Érvénytelen vonalkód: a lokáció nem található.' });
     }
 
+    // Validate location belongs to an allowed row in this truck's target_locations
+    const commLine = await knex('aldi_truck_lines').where('id', req.params.id).first();
+    if (commLine) {
+      const truck = await knex('aldi_trucks').where('id', commLine.aldi_truck_id).first();
+      if (truck) {
+        let targetLocations = truck.target_locations;
+        if (typeof targetLocations === 'string') {
+          try { targetLocations = JSON.parse(targetLocations); } catch { targetLocations = []; }
+        }
+        if (Array.isArray(targetLocations) && targetLocations.length > 0) {
+          const allowedIds = targetLocations.map(t => Number(t.id || t));
+          // Accept if the location itself is a row OR its parent is a row
+          const locationRowId = location.parent_id ? Number(location.parent_id) : Number(location.id);
+          if (!allowedIds.includes(locationRowId) && !allowedIds.includes(Number(location.id))) {
+            const allowedNames = targetLocations.map(t => t.name || t).join(', ');
+            return res.status(400).json({ error: `Ez a lokáció nem engedélyezett ennél a kamionfejléc. Engedélyezett sorok: ${allowedNames}` });
+          }
+        }
+      }
+    }
+
     let result = {};
     await knex.transaction(async (trx) => {
       result = await processPick(trx, req.params.id, req.body, location.id);
       if (result.label && !result.isAlreadyProcessed) {
         await trx('sscc_labels').where('id', result.label.id).update({ location_name: location.name });
+        // Also update the line's destination field with the actual location name
+        await trx('aldi_truck_lines').where('id', req.params.id).update({ destination: location.name });
       }
     });
 

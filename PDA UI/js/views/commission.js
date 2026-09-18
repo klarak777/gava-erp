@@ -545,6 +545,10 @@ export async function renderCommission(container, params = {}) {
       
       <div class="pda-form-body" style="padding: 0; background: #fff;">
         <div class="pda-print-box">
+          <div id="allowed-rows-box" style="display:none; background:#eff6ff; border:1px solid #93c5fd; border-radius:8px; padding:10px 12px; margin-bottom:14px;">
+            <div style="font-size:11px; font-weight:700; color:#1d4ed8; margin-bottom:5px; text-transform:uppercase; letter-spacing:0.3px;" id="allowed-rows-truck-label"></div>
+            <div id="allowed-rows-list" style="display:flex; flex-wrap:wrap; gap:5px;"></div>
+          </div>
           <div style="font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 8px;">Cél tárhely vonalkód</div>
           <div style="position: relative; display: flex; align-items: center; margin-bottom: 12px;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px;">
@@ -689,7 +693,9 @@ export async function renderCommission(container, params = {}) {
   let currentRowEl = null;
   let lastPickedQuantity = 0;
   let lastPickPayload = {}; // A "Megadás" képernyőn megadott adatok ideiglenes tárolása
-  let currentLabel = null; // A generált raklapcímke adatai
+  let currentLabel = null; // A generált raklapcimke adatai
+  let currentTargetLocations = []; // A kamion fejlécén megadott engedélyezett sorok
+  let lines = []; // Az aktuális komissió sorok (a kamionszám kiirásához)
 
   // Dictionaries
   let packagingTypes = [];
@@ -832,7 +838,7 @@ export async function renderCommission(container, params = {}) {
       }
       const res = await apiFetch(url);
       if (res.ok) {
-        const lines = await res.json();
+        lines = await res.json();
         if (!lines || lines.length === 0) {
           tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 24px; color: #94a3b8;">Nincs PDA-ra küldött aktív tétel.</td></tr>';
           container.querySelector('#hdr-total-items').textContent = '0';
@@ -909,6 +915,11 @@ export async function renderCommission(container, params = {}) {
     currentRemaining = Math.max(0, (row.kartonszam || 0) - (row.komissziozott_kartonszam || 0));
     currentRowEl = rowEl || null;
 
+    // Store target locations from truck header for this line
+    let tl = row.target_locations;
+    if (typeof tl === 'string') { try { tl = JSON.parse(tl); } catch { tl = []; } }
+    currentTargetLocations = Array.isArray(tl) ? tl : [];
+
     const formCartonsEl = container.querySelector('#form-hdr-total-cartons');
     const hdrCartonsEl = container.querySelector('#hdr-total-cartons');
     if (formCartonsEl && hdrCartonsEl) {
@@ -942,6 +953,24 @@ export async function renderCommission(container, params = {}) {
     currentLabel = null;
 
     showPane(paneForm);
+  }
+
+  function renderAllowedRowsBox() {
+    const box = container.querySelector('#allowed-rows-box');
+    const label = container.querySelector('#allowed-rows-truck-label');
+    const list = container.querySelector('#allowed-rows-list');
+    if (!box || !label || !list) return;
+    if (currentTargetLocations && currentTargetLocations.length > 0) {
+      box.style.display = 'block';
+      const truck = lines && lines[0] ? (lines.find(l => l.id === currentLineId) || {}) : {};
+      const truckNum = truck.kamionszam || '';
+      label.textContent = truckNum ? `${truckNum} – engedélyezett sorok:` : 'Engedélyezett cél sorok:';
+      list.innerHTML = currentTargetLocations.map(r =>
+        `<span style="background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;border-radius:10px;padding:2px 10px;font-size:11px;font-weight:600;">${r.name || r}</span>`
+      ).join('');
+    } else {
+      box.style.display = 'none';
+    }
   }
 
   submitBtn.addEventListener('click', async () => {
@@ -1140,6 +1169,7 @@ export async function renderCommission(container, params = {}) {
       hintDiv.innerHTML = `<em>(Teszteléshez generált SSCC: <strong>${currentLabel?.sscc || ''}</strong>)</em>`;
     }
 
+    renderAllowedRowsBox();
     showPane(paneSscc);
     setTimeout(() => {
       const ssccInput = container.querySelector('#sscc-vonalkod');

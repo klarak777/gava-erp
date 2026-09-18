@@ -800,6 +800,16 @@ export function renderAldiRakodas(container, windowManager) {
             <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Fuvarozó:</label>
             <input type="text" id="m-truck-transporter" class="access-control-input" style="font-size:12px; padding:4px 6px; height:30px; width:100%;" placeholder="Fuvarozó neve" value="${escHtml(existing?.transporter || '')}">
           </div>
+          <div style="flex:1; min-width:260px;">
+            <label style="font-size:11px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Cél lokáció sorok:</label>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <select id="m-truck-row-sel" class="access-control-input" style="font-size:12px; padding:2px 4px; height:30px; flex:1;">
+                <option value="">-- Válassz sort --</option>
+              </select>
+              <button id="btn-add-row-loc" class="secondary-btn" style="height:30px; padding:0 10px; font-size:12px; white-space:nowrap;">+ Hozzáadás</button>
+            </div>
+            <div id="m-truck-rows-list" style="display:flex; flex-wrap:wrap; gap:5px; margin-top:6px;"></div>
+          </div>
           <div style="flex:none;">
             <button class="primary-btn btn-truck-save" style="height:30px; padding:0 16px; background:#2563eb; border-color:#1d4ed8;">Mentés</button>
           </div>
@@ -821,7 +831,6 @@ export function renderAldiRakodas(container, windowManager) {
                   <th style="padding:6px 8px; text-align:center;">PARTNER</th>
                   <th style="padding:6px 8px; text-align:center;">RENDELÉSI SZÁM</th>
                   <th style="padding:6px 8px; text-align:center;">RENDELÉS TÍPUSA</th>
-                  <th style="padding:6px 8px; text-align:center;">CÉL LOKÁCIÓ</th>
                   <th style="padding:6px 8px; text-align:center; width:65px;">BRUTTÓ KG</th>
                   <th style="padding:6px 8px; text-align:center; width:65px;">NETTÓ KG</th>
                   <th style="padding:6px 8px; text-align:center; width:55px;">MŰVELET</th>
@@ -861,6 +870,59 @@ export function renderAldiRakodas(container, windowManager) {
     const inpDate = modalEl.querySelector('#m-truck-date');
     const inpTrans = modalEl.querySelector('#m-truck-transporter');
     const linesTbody = modalEl.querySelector('#m-truck-lines-tbody');
+    const rowSel = modalEl.querySelector('#m-truck-row-sel');
+    const rowsList = modalEl.querySelector('#m-truck-rows-list');
+    const addRowBtn = modalEl.querySelector('#btn-add-row-loc');
+
+    // --- Cél lokáció sorok kezelése ---
+    let selectedRows = []; // [{ id, name }]
+
+    function renderRowTags() {
+      rowsList.innerHTML = selectedRows.map(r =>
+        `<span data-id="${r.id}" style="display:inline-flex;align-items:center;gap:4px;background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:600;">
+           ${escHtml(r.name)}
+           <button class="btn-rm-row" data-id="${r.id}" style="background:none;border:none;color:#1d4ed8;cursor:pointer;font-size:13px;line-height:1;padding:0;margin-left:2px;">×</button>
+         </span>`
+      ).join('');
+      rowsList.querySelectorAll('.btn-rm-row').forEach(b => {
+        b.addEventListener('click', e => {
+          const id = Number(e.currentTarget.getAttribute('data-id'));
+          selectedRows = selectedRows.filter(r => r.id !== id);
+          renderRowTags();
+        });
+      });
+    }
+
+    // Betöltjük a 41 sort a selectbe
+    (async () => {
+      try {
+        const rowRes = await fetch('/api/v1/aldi-cross-docking/locations/rows');
+        if (rowRes.ok) {
+          const rows = await rowRes.json();
+          rowSel.innerHTML = '<option value="">-- Válassz sort --</option>' +
+            rows.map(r => `<option value="${r.id}" data-name="${escHtml(r.name)}">${escHtml(r.name)}</option>`).join('');
+          // Meglévő target_locations visszatöltése
+          if (existing?.target_locations) {
+            let tl = existing.target_locations;
+            if (typeof tl === 'string') { try { tl = JSON.parse(tl); } catch { tl = []; } }
+            selectedRows = Array.isArray(tl) ? tl.filter(t => t && t.id) : [];
+            renderRowTags();
+          }
+        }
+      } catch (e) { console.error('Sorok betöltési hiba:', e); }
+    })();
+
+    addRowBtn.addEventListener('click', () => {
+      const opt = rowSel.options[rowSel.selectedIndex];
+      if (!opt || !opt.value) return;
+      const id = Number(opt.value);
+      const name = opt.getAttribute('data-name') || opt.text;
+      if (!selectedRows.find(r => r.id === id)) {
+        selectedRows.push({ id, name });
+        renderRowTags();
+      }
+      rowSel.value = '';
+    });
 
     // Ha meglévő kamion, betöltjük a tételeit
     async function loadTruckLines() {
@@ -1039,7 +1101,8 @@ export function renderAldiRakodas(container, windowManager) {
         truck_number: num,
         delivery_date: date,
         transporter: inpTrans.value.trim(),
-        license_plate_1: inpP1.value.trim()
+        license_plate_1: inpP1.value.trim(),
+        target_locations: selectedRows
       };
 
       try {
