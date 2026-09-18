@@ -1173,6 +1173,29 @@ export async function renderCommission(container, params = {}) {
     const barcode = destInput.value.trim();
     if (!barcode) return;
     
+    if (!currentLineId) {
+      alert('Hiba: Nincs aktív komissiózás.');
+      return;
+    }
+
+    try {
+      const res = await apiFetch(`/api/v1/pda/commission-lines/${currentLineId}/validate-location`, {
+        method: 'POST',
+        body: JSON.stringify({ barcode })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || 'Érvénytelen lokáció vagy megtelt tárhely.');
+        destInput.value = '';
+        destInput.focus();
+        return;
+      }
+    } catch (err) {
+      alert('Hálózati hiba a lokáció ellenőrzésekor.');
+      return;
+    }
+
     currentDestBarcode = barcode;
     
     const hintDiv = container.querySelector('#test-sscc-hint');

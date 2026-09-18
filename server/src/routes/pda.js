@@ -476,6 +476,68 @@ function generateZpl(label) {
 ^XZ`;
 }
 
+// ── POST /commission-lines/:id/validate-location ──────────────────────────────
+router.post('/commission-lines/:id/validate-location', verifyToken, async (req, res) => {
+  try {
+    if (!req.body.barcode) {
+      return res.status(400).json({ error: 'Vonalkód megadása kötelező.' });
+    }
+
+    const reqBarcode = String(req.body.barcode || '').trim().toUpperCase();
+    const location = await knex('aldi_locations').whereRaw('UPPER(barcode) = ?', [reqBarcode]).first();
+    if (!location) {
+      return res.status(404).json({ error: 'Érvénytelen vonalkód: a lokáció nem található.' });
+    }
+
+    // Validate location belongs to an allowed row
+    const commLine = await knex('aldi_truck_lines').where('id', req.params.id).first();
+    if (commLine) {
+      const truck = await knex('aldi_trucks').where('id', commLine.aldi_truck_id).first();
+      if (!truck) {
+        return res.status(400).json({ error: 'A komissiós tételhez tartozó kamion nem található.' });
+      }
+      const allowedIds = targetLocationIds(truck.target_locations);
+      const locationRowId = location.parent_id ? Number(location.parent_id) : Number(location.id);
+      if (allowedIds.length === 0 || (!allowedIds.includes(locationRowId) && !allowedIds.includes(Number(location.id)))) {
+        let targetLocations = truck.target_locations;
+        if (typeof targetLocations === 'string') {
+          try { targetLocations = JSON.parse(targetLocations); } catch { targetLocations = []; }
+        }
+        const allowedNames = Array.isArray(targetLocations)
+          ? targetLocations.map(t => t && typeof t === 'object' ? t.name : t).filter(Boolean).join(', ')
+          : '';
+        return res.status(400).json({
+          error: allowedNames
+            ? `Ez a lokáció nem engedélyezett ennél a kamionfejléccel. Engedélyezett sorok: ${allowedNames}`
+            : 'Ehhez a kamionhoz nincs engedélyezett célsor beállítva. A PDA-komissiózás nem folytatható.'
+        });
+      }
+    }
+
+    // Check capacity
+    const capacity = parseInt(location.capacity) || 0;
+    if (capacity > 0) {
+      const currentLocStock = await knex('aldi_stock_locations')
+        .where('location_id', location.id)
+        .sum('pallets as totalPallets')
+        .first();
+      const existingPallets = currentLocStock && currentLocStock.totalPallets ? parseFloat(currentLocStock.totalPallets) : 0;
+      
+      const incomingPallets = 1; // Minden PDA megadás 1 raklap
+      if (existingPallets + incomingPallets > capacity) {
+        return res.status(400).json({
+          error: `A lokáció megtelt! Kapacitás: ${capacity} raklap.\nFoglalt: ${existingPallets} raklap\nMár nincs szabad hely ezen a tárhelyen!\n\nVálassz másik lokációt!`
+        });
+      }
+    }
+
+    return res.json({ success: true, location_name: location.name });
+  } catch (err) {
+    console.error('[PDA] /commission-lines/:id/validate-location hiba:', err);
+    return res.status(500).json({ error: 'Belső szerverhiba a lokáció ellenőrzésekor.' });
+  }
+});
+
 // ── PUT /commission-lines/:id/pick-and-assign ──────────────────────────────
 router.put('/commission-lines/:id/pick-and-assign', verifyToken, async (req, res) => {
   try {
