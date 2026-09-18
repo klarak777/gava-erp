@@ -36,6 +36,44 @@ function targetLocationIds(value) {
     .filter(Number.isInteger))];
 }
 
+/**
+ * findAldiLocation: Megkeresi a lokációt vonalkód, név vagy sorszám alapján.
+ * Támogatja a vonalkódos beolvasást (pl. S01010000), a manuálisan beírt sornév-változatokat
+ * (pl. '1. sor', '1.sor', '1sor', '2sor 1 tárhely') és a puszta sorszámot is (pl. '1').
+ */
+async function findAldiLocation(input, trx = knex) {
+  const raw = String(input || '').trim();
+  if (!raw) return null;
+  const upper = raw.toUpperCase();
+
+  // 1. Pontos egyezés vonalkódra (kis/nagybetű független)
+  let loc = await trx('aldi_locations').whereRaw('UPPER(TRIM(barcode)) = ?', [upper]).first();
+  if (loc) return loc;
+
+  // 2. Pontos egyezés névre (kis/nagybetű független)
+  loc = await trx('aldi_locations').whereRaw('UPPER(TRIM(name)) = ?', [upper]).first();
+  if (loc) return loc;
+
+  // 3. Normalizált sornév egyezés (pontok és szóközök nélkül: '1.sor' -> '1. sor')
+  const cleanInput = upper.replace(/[\.\s]/g, '');
+  loc = await trx('aldi_locations')
+    .whereRaw("REPLACE(REPLACE(UPPER(name), '.', ''), ' ', '') = ?", [cleanInput])
+    .first();
+  if (loc) return loc;
+
+  // 4. Puszta sorszám bevitele: pl. '1' -> 1. sor szülő tárhely
+  if (/^\d+$/.test(raw)) {
+    const num = parseInt(raw, 10);
+    loc = await trx('aldi_locations')
+      .where('row_num', num)
+      .whereNull('parent_id')
+      .first();
+    if (loc) return loc;
+  }
+
+  return null;
+}
+
 // ── POST /login ────────────────────────────────
 // Egyelőre bármilyen azonosítóval be lehet lépni (fejlesztési fázis).
 // Visszaad egy JWT tokent és a felhasználó nevét.
@@ -135,6 +173,37 @@ router.get('/commission-lines', verifyToken, async (req, res) => {
     }
 
     const lines = await query;
+
+    // Engedélyezett célsorok vonalkódjainak hozzácsatolása (PDA tesztelés és megjelenítés megkönnyítésére)
+    try {
+      const parentRows = await knex('aldi_locations')
+        .where('location_type', 'Szülő')
+        .select('id', 'name', 'barcode');
+      const barcodeMap = new Map();
+      parentRows.forEach(r => {
+        barcodeMap.set(Number(r.id), r.barcode);
+        barcodeMap.set(String(r.name).toUpperCase(), r.barcode);
+      });
+
+      lines.forEach(line => {
+        let tl = line.target_locations;
+        if (typeof tl === 'string') {
+          try { tl = JSON.parse(tl); } catch { tl = []; }
+        }
+        if (Array.isArray(tl)) {
+          line.target_locations = tl.map(item => {
+            if (item && typeof item === 'object') {
+              const barcode = barcodeMap.get(Number(item.id)) || barcodeMap.get(String(item.name || '').toUpperCase()) || item.barcode || '';
+              return { ...item, barcode };
+            }
+            return item;
+          });
+        }
+      });
+    } catch (enrichErr) {
+      console.warn('[PDA] Nem sikerült a target_locations vonalkódok dúsítása:', enrichErr.message);
+    }
+
     res.json(lines);
   } catch (err) {
     console.error('[PDA] /commission-lines hiba:', err);
@@ -480,11 +549,10 @@ function generateZpl(label) {
 router.post('/commission-lines/:id/validate-location', verifyToken, async (req, res) => {
   try {
     if (!req.body.barcode) {
-      return res.status(400).json({ error: 'Vonalkód megadása kötelező.' });
+      return res.status(400).json({ error: 'Vonalkód vagy lokáció megadása kötelező.' });
     }
 
-    const reqBarcode = String(req.body.barcode || '').trim().toUpperCase();
-    const location = await knex('aldi_locations').whereRaw('UPPER(barcode) = ?', [reqBarcode]).first();
+    const location = await findAldiLocation(req.body.barcode);
     if (!location) {
       return res.status(404).json({ error: 'Érvénytelen vonalkód: a lokáció nem található.' });
     }
@@ -508,7 +576,7 @@ router.post('/commission-lines/:id/validate-location', verifyToken, async (req, 
           : '';
         return res.status(400).json({
           error: allowedNames
-            ? `Ez a lokáció nem engedélyezett ennél a kamionfejléccel. Engedélyezett sorok: ${allowedNames}`
+            ? `Ez a lokáció (${location.name}) nem engedélyezett ennél a kamionfejlécnél!\n\nEngedélyezett cél sorok: ${allowedNames}`
             : 'Ehhez a kamionhoz nincs engedélyezett célsor beállítva. A PDA-komissiózás nem folytatható.'
         });
       }
@@ -519,9 +587,9 @@ router.post('/commission-lines/:id/validate-location', verifyToken, async (req, 
     if (capacity > 0) {
       const currentLocStock = await knex('aldi_stock_locations')
         .where('location_id', location.id)
-        .sum('pallets as totalPallets')
+        .count('id as occupied_pallets')
         .first();
-      const existingPallets = currentLocStock && currentLocStock.totalPallets ? parseFloat(currentLocStock.totalPallets) : 0;
+      const existingPallets = parseInt(currentLocStock?.occupied_pallets) || 0;
       
       const incomingPallets = 1; // Minden PDA megadás 1 raklap
       if (existingPallets + incomingPallets > capacity) {
@@ -531,7 +599,11 @@ router.post('/commission-lines/:id/validate-location', verifyToken, async (req, 
       }
     }
 
-    return res.json({ success: true, location_name: location.name });
+    return res.json({
+      success: true,
+      location_name: location.name,
+      resolved_barcode: location.barcode
+    });
   } catch (err) {
     console.error('[PDA] /commission-lines/:id/validate-location hiba:', err);
     return res.status(500).json({ error: 'Belső szerverhiba a lokáció ellenőrzésekor.' });
@@ -557,8 +629,7 @@ router.put('/commission-lines/:id/pick-and-assign', verifyToken, async (req, res
       return res.status(400).json({ error: 'A beszkennelt SSCC nem egyezik a rendszerben lévő címkével!' });
     }
 
-    const reqBarcode = String(req.body.barcode || '').trim().toUpperCase();
-    const location = await knex('aldi_locations').whereRaw('UPPER(barcode) = ?', [reqBarcode]).first();
+    const location = await findAldiLocation(req.body.barcode);
     if (!location) {
       return res.status(404).json({ error: 'Érvénytelen vonalkód: a lokáció nem található.' });
     }
@@ -585,7 +656,7 @@ router.put('/commission-lines/:id/pick-and-assign', verifyToken, async (req, res
           : '';
         return res.status(400).json({
           error: allowedNames
-            ? `Ez a lokáció nem engedélyezett ennél a kamionfejléccel. Engedélyezett sorok: ${allowedNames}`
+            ? `Ez a lokáció (${location.name}) nem engedélyezett ennél a kamionfejlécnél!\n\nEngedélyezett cél sorok: ${allowedNames}`
             : 'Ehhez a kamionhoz nincs engedélyezett célsor beállítva. A PDA-komissiózás nem folytatható.'
         });
       }
