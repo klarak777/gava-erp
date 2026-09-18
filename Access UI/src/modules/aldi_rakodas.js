@@ -1115,6 +1115,11 @@ export function renderAldiRakodas(container, windowManager) {
         alert('Kamionszám és szállítási nap megadása kötelező!');
         return;
       }
+      if (!selectedRows.length) {
+        alert('Legalább egy engedélyezett cél lokációs sort válassz ki a PDA-komissiózáshoz.');
+        rowSel.focus();
+        return;
+      }
 
       const payload = {
         truck_number: num,

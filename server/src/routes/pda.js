@@ -12,6 +12,30 @@ const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_for_gava';
 
+// Az SSCC numerikus azonosító. A kézi bevitel és a vonalkódolvasó azonban
+// gyakran szóközt, sortörést vagy GS1-előtagot is küld, ezért összehasonlítás
+// előtt csak a számjegyeket tartjuk meg.
+function normalizeSscc(value) {
+  let raw = String(value ?? '').trim().replace(/^\]C1/i, '').replace(/^\(00\)/, '');
+  const digits = raw.replace(/\D/g, '');
+  // GS1-128 olvasóknál az alkalmazási/szimbólumazonosító számként is
+  // érkezhet. Az SSCC mindig a 18 számjegyes azonosító a bemenet végén.
+  return digits.length > 18 ? digits.slice(-18) : digits;
+}
+
+function targetLocationIds(value) {
+  let parsed = value;
+  if (typeof parsed === 'string') {
+    try { parsed = JSON.parse(parsed); } catch { parsed = []; }
+  }
+  if (!Array.isArray(parsed)) return [];
+
+  return [...new Set(parsed
+    .map(item => (item && typeof item === 'object' ? item.id : item))
+    .map(Number)
+    .filter(Number.isInteger))];
+}
+
 // ── POST /login ────────────────────────────────
 // Egyelőre bármilyen azonosítóval be lehet lépni (fejlesztési fázis).
 // Visszaad egy JWT tokent és a felhasználó nevét.
@@ -466,7 +490,8 @@ router.put('/commission-lines/:id/pick-and-assign', verifyToken, async (req, res
     }
 
     const label = await knex('sscc_labels').where('id', req.body.labelId).first();
-    if (!label || label.sscc !== req.body.scannedSscc) {
+    const scannedSscc = normalizeSscc(req.body.scannedSscc);
+    if (!label || !scannedSscc || normalizeSscc(label.sscc) !== scannedSscc) {
       return res.status(400).json({ error: 'A beszkennelt SSCC nem egyezik a rendszerben lévő címkével!' });
     }
 
@@ -475,30 +500,37 @@ router.put('/commission-lines/:id/pick-and-assign', verifyToken, async (req, res
       return res.status(404).json({ error: 'Érvénytelen vonalkód: a lokáció nem található.' });
     }
 
-    // Validate location belongs to an allowed row in this truck's target_locations
+    // Validate location belongs to an allowed row in this truck's target_locations.
+    // A PDA-ra küldött kamionnak mindig kell engedélyezett célsor; üres lista
+    // esetén biztonsági okból egyetlen lokáció sem fogadható el.
     const commLine = await knex('aldi_truck_lines').where('id', req.params.id).first();
     if (commLine) {
       const truck = await knex('aldi_trucks').where('id', commLine.aldi_truck_id).first();
-      if (truck) {
+      if (!truck) {
+        return res.status(400).json({ error: 'A komissiós tételhez tartozó kamion nem található.' });
+      }
+      const allowedIds = targetLocationIds(truck.target_locations);
+      // Accept if the location itself is a row OR its parent is a row.
+      const locationRowId = location.parent_id ? Number(location.parent_id) : Number(location.id);
+      if (allowedIds.length === 0 || (!allowedIds.includes(locationRowId) && !allowedIds.includes(Number(location.id)))) {
         let targetLocations = truck.target_locations;
         if (typeof targetLocations === 'string') {
           try { targetLocations = JSON.parse(targetLocations); } catch { targetLocations = []; }
         }
-        if (Array.isArray(targetLocations) && targetLocations.length > 0) {
-          const allowedIds = targetLocations.map(t => Number(t.id || t));
-          // Accept if the location itself is a row OR its parent is a row
-          const locationRowId = location.parent_id ? Number(location.parent_id) : Number(location.id);
-          if (!allowedIds.includes(locationRowId) && !allowedIds.includes(Number(location.id))) {
-            const allowedNames = targetLocations.map(t => t.name || t).join(', ');
-            return res.status(400).json({ error: `Ez a lokáció nem engedélyezett ennél a kamionfejléc. Engedélyezett sorok: ${allowedNames}` });
-          }
-        }
+        const allowedNames = Array.isArray(targetLocations)
+          ? targetLocations.map(t => t && typeof t === 'object' ? t.name : t).filter(Boolean).join(', ')
+          : '';
+        return res.status(400).json({
+          error: allowedNames
+            ? `Ez a lokáció nem engedélyezett ennél a kamionfejléccel. Engedélyezett sorok: ${allowedNames}`
+            : 'Ehhez a kamionhoz nincs engedélyezett célsor beállítva. A PDA-komissiózás nem folytatható.'
+        });
       }
     }
 
     let result = {};
     await knex.transaction(async (trx) => {
-      result = await processPick(trx, req.params.id, req.body, location.id);
+      result = await processPick(trx, req.params.id, { ...req.body, scannedSscc }, location.id);
       if (result.label && !result.isAlreadyProcessed) {
         await trx('sscc_labels').where('id', result.label.id).update({ location_name: location.name });
         // Also update the line's destination field with the actual location name

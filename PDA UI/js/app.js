@@ -4,7 +4,7 @@
 
 import { renderLogin } from './views/login.js?v=2';
 import { renderDashboard } from './views/dashboard.js?v=2';
-import { renderCommission } from './views/commission.js?v=11';
+import { renderCommission } from './views/commission.js?v=12';
 import { renderConsolidation } from './views/consolidation.js?v=1';
 import { renderScanPallet } from './views/scanPallet.js?v=1';
 

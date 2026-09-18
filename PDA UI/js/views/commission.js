@@ -13,6 +13,15 @@ export async function renderCommission(container, params = {}) {
     });
   };
 
+  // SSCC esetén a vonalkódolvasó adhat GS1-előtagot, szóközt vagy sortörést.
+  // Az SSCC maga numerikus, ezért a kliens és a szerver ugyanazt a normalizált
+  // értéket hasonlítja össze.
+  const normalizeSscc = (value) => {
+    const raw = String(value ?? '').trim().replace(/^\]C1/i, '').replace(/^\(00\)/, '');
+    const digits = raw.replace(/\D/g, '');
+    return digits.length > 18 ? digits.slice(-18) : digits;
+  };
+
   container.innerHTML = `
     <style>
       .pda-comm-badge {
@@ -969,7 +978,9 @@ export async function renderCommission(container, params = {}) {
         `<span style="background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;border-radius:10px;padding:2px 10px;font-size:11px;font-weight:600;">${r.name || r}</span>`
       ).join('');
     } else {
-      box.style.display = 'none';
+      box.style.display = 'block';
+      label.textContent = 'Nincs engedélyezett célsor beállítva';
+      list.innerHTML = '<span style="color:#b91c1c;font-size:11px;font-weight:700;">A kamion mentett célsor-konfigurációja hiányzik; a mentés le lesz tiltva.</span>';
     }
   }
 
@@ -1183,7 +1194,9 @@ export async function renderCommission(container, params = {}) {
     const scannedSscc = ssccInput.value.trim();
     if (!scannedSscc) return;
 
-    if (scannedSscc !== currentLabel?.sscc) {
+    const normalizedScannedSscc = normalizeSscc(scannedSscc);
+    const normalizedExpectedSscc = normalizeSscc(currentLabel?.sscc);
+    if (!normalizedScannedSscc || normalizedScannedSscc !== normalizedExpectedSscc) {
       alert('Hiba: A beszkennelt SSCC nem egyezik a generált címkével!');
       ssccInput.value = '';
       ssccInput.focus();
@@ -1201,7 +1214,7 @@ export async function renderCommission(container, params = {}) {
         ssccSaveBtn.disabled = true;
         ssccSaveBtn.style.opacity = '0.5';
       }
-      const payload = { ...lastPickPayload, barcode: currentDestBarcode, scannedSscc };
+      const payload = { ...lastPickPayload, barcode: currentDestBarcode, scannedSscc: normalizedScannedSscc };
 
       const res = await apiFetch(`/api/v1/pda/commission-lines/${currentLineId}/pick-and-assign`, {
         method: 'PUT',
