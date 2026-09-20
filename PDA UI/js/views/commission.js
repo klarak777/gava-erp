@@ -1066,8 +1066,15 @@ export async function renderCommission(container, params = {}) {
       return;
     }
 
-    // Súly ellenőrzés (bruttó >= tára összeg)
     const selectedPallet = palletTypes.find(p => String(p.id) === String(raklapSel.value));
+    
+    // Ha a kiválasztott raklapnak nincs megadva a tára súlya a törzsadatokban
+    if (selectedPallet && (!selectedPallet.tare_weight_kg || parseFloat(selectedPallet.tare_weight_kg) <= 0)) {
+      alert(`Hiba! A kiválasztott raklaptípusnak (${selectedPallet.name}) nincs megadva a tára súlya a rendszerben (Göngyöleg Típusok modul). Kérlek válassz egy másik raklapot, vagy állítsátok be a súlyát az ADMIN felületen!`);
+      raklapSel.focus();
+      return;
+    }
+
     const palletTare = selectedPallet ? (parseFloat(selectedPallet.tare_weight_kg) || 0) : 0;
     const totalTare = (Number(taraInput.value) * qty) + palletTare;
     if (grossValue < totalTare) {
