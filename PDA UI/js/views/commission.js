@@ -974,7 +974,7 @@ export async function renderCommission(container, params = {}) {
     container.querySelector('#form-title').innerText = row.termek || 'Termék';
     kartonLabel.innerHTML = ((row.plt != null && row.plt !== '') ? `Kartonszám (${row.plt} db/plt)` : `Kartonszám`) + ' <span style="color:red;">*</span>';
     kartonInput.value = ''; // A kartonszámot mindig a felhasználó adja meg, nincs előtöltés
-    kartonInput.placeholder = 'Kérem adja meg...';
+    kartonInput.placeholder = '';
     kartonInput.max = currentRemaining;
     kartonInput.classList.remove('pda-input-error');
     kartonError.classList.remove('visible');
