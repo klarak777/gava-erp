@@ -30,11 +30,17 @@ router.get('/pallet-labels', async (req, res) => {
         's.id', 's.created_at', 's.sscc', 's.truck_number', 's.product_name',
         's.picked_cartons', 's.supplier', 's.destination', 's.origin_country',
         's.pallets_json', 's.location_name',
+        's.consolidated_sscc', 's.is_consolidated_master',
         'c.pallets_json as commission_pallets_json',
         'p.name as legacy_pallet_name', 'p.category as legacy_pallet_category',
         'p.tare_weight_kg as legacy_pallet_tare_weight_kg'
       )
-      .orderBy('s.id', 'desc');
+      // Összeemelés csoportok egymás mellé: mester és tagok együtt, azon belül id DESC
+      .orderByRaw(`
+        COALESCE(s.consolidated_sscc, s.sscc) DESC,
+        s.is_consolidated_master DESC,
+        s.id DESC
+      `);
     res.json(labels);
   } catch (err) {
     console.error('Hiba a raklapcímkék lekérésekor:', err);

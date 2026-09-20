@@ -847,38 +847,79 @@ export function openPalletLabelsTable(wm) {
                 return;
             }
 
+            const esc = (s) => String(s || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+
             tbody.innerHTML = filtered.map(l => {
-                // Raklap típus meghatározása: címke JSON > komissió JSON > régi mező.
+                const isMaster = l.is_consolidated_master === true || l.is_consolidated_master === 1;
+                const isTag = !isMaster && !!l.consolidated_sscc;
+                const isConsolidated = isMaster || isTag;
+                const rowStyle = isConsolidated
+                    ? 'background:#fef9c3; border-left:3px solid #eab308;'
+                    : '';
+
+                // ── Raklap típus cella ──
                 let palletCellHtml = '-';
-                const palletsJson = l.pallets_json || l.commission_pallets_json;
-                if (palletsJson) {
-                    try {
-                        const pallets = JSON.parse(palletsJson);
-                        if (Array.isArray(pallets) && pallets.length > 0) {
-                            palletCellHtml = pallets.map(p => {
-                                const name = String(p.name || '-');
-                                const category = String(p.category || 'Raklap');
-                                const displayName = /raklap/i.test(name) ? name : `${name} ${category}`;
-                                const safeName = displayName.replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-                                return `<div style="white-space:nowrap; font-size:11px; font-weight:600; color:#0f172a;">${safeName} <span style="color:#64748b; font-weight:400;">(${Number(p.tare_weight_kg).toFixed(3)} kg)</span></div>`;
-                            }).join('');
-                        }
-                    } catch (e) {
-                        palletCellHtml = l.pallet_type || '-';
+
+                if (isMaster) {
+                    // Mester rekord: a pallets_json itt a tag-SSCC-k tömbje
+                    if (l.pallets_json) {
+                        try {
+                            const memberSsccs = JSON.parse(l.pallets_json);
+                            if (Array.isArray(memberSsccs) && memberSsccs.length > 0) {
+                                const links = memberSsccs.map(sscc => {
+                                    const found = labels.find(lb => lb.sscc === sscc);
+                                    const foundId = found ? found.id : null;
+                                    if (foundId) {
+                                        return `<span class="pl-cons-sscc-link" data-id="${foundId}" style="display:inline-block; font-size:10px; font-family:monospace; background:#fde68a; border:1px solid #d97706; border-radius:4px; padding:1px 5px; margin:1px; cursor:pointer; color:#78350f; font-weight:700;" title="Kattints a raklapcímke megtekintéséhez">${esc(sscc)}</span>`;
+                                    }
+                                    return `<span style="display:inline-block; font-size:10px; font-family:monospace; color:#78350f; font-weight:600;">${esc(sscc)}</span>`;
+                                }).join(' ');
+                                palletCellHtml = `<div style="font-size:10px; font-weight:700; color:#78350f; margin-bottom:3px;">📦 Összeemelt:</div>${links}`;
+                            }
+                        } catch (e) { palletCellHtml = '📦 Összeemelt'; }
+                    } else {
+                        palletCellHtml = '📦 Összeemelt';
                     }
-                } else if (l.legacy_pallet_name) {
-                    const name = String(l.legacy_pallet_name);
-                    const category = String(l.legacy_pallet_category || 'Raklap');
-                    const displayName = /raklap/i.test(name) ? name : `${name} ${category}`;
-                    const safeName = displayName.replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-                    const tare = Number(l.legacy_pallet_tare_weight_kg);
-                    palletCellHtml = `<div style="font-size:11px; font-weight:600; color:#0f172a;">${safeName} <span style="color:#64748b; font-weight:400;">(${Number.isFinite(tare) ? tare.toFixed(3) : '-'} kg)</span></div>`;
+                } else if (isTag) {
+                    // Tag rekord: mutatja a mester SSCC-t
+                    const masterLabel = labels.find(lb => lb.sscc === l.consolidated_sscc);
+                    const masterId = masterLabel ? masterLabel.id : null;
+                    if (masterId) {
+                        palletCellHtml = `<span class="pl-cons-sscc-link" data-id="${masterId}" style="display:inline-block; font-size:10px; font-family:monospace; background:#fde68a; border:1px solid #d97706; border-radius:4px; padding:1px 5px; cursor:pointer; color:#78350f; font-weight:700;" title="Mester összeemelő rekord megtekintése">🔗 Mester: ${esc(l.consolidated_sscc)}</span>`;
+                    } else {
+                        palletCellHtml = `<span style="font-size:10px; color:#78350f; font-weight:600;">🔗 Mester: ${esc(l.consolidated_sscc)}</span>`;
+                    }
+                } else {
+                    // Normál raklap – meglévő pallets_json logika
+                    const palletsJson = l.pallets_json || l.commission_pallets_json;
+                    if (palletsJson) {
+                        try {
+                            const pallets = JSON.parse(palletsJson);
+                            if (Array.isArray(pallets) && pallets.length > 0) {
+                                palletCellHtml = pallets.map(p => {
+                                    const name = String(p.name || '-');
+                                    const category = String(p.category || 'Raklap');
+                                    const displayName = /raklap/i.test(name) ? name : `${name} ${category}`;
+                                    const safeName = esc(displayName);
+                                    return `<div style="white-space:nowrap; font-size:11px; font-weight:600; color:#0f172a;">${safeName} <span style="color:#64748b; font-weight:400;">(${Number(p.tare_weight_kg).toFixed(3)} kg)</span></div>`;
+                                }).join('');
+                            }
+                        } catch (e) {
+                            palletCellHtml = l.pallet_type || '-';
+                        }
+                    } else if (l.legacy_pallet_name) {
+                        const name = String(l.legacy_pallet_name);
+                        const category = String(l.legacy_pallet_category || 'Raklap');
+                        const displayName = /raklap/i.test(name) ? name : `${name} ${category}`;
+                        const tare = Number(l.legacy_pallet_tare_weight_kg);
+                        palletCellHtml = `<div style="font-size:11px; font-weight:600; color:#0f172a;">${esc(displayName)} <span style="color:#64748b; font-weight:400;">(${Number.isFinite(tare) ? tare.toFixed(3) : '-'} kg)</span></div>`;
+                    }
                 }
 
                 return `
-                <tr>
+                <tr style="${rowStyle}">
                     <td style="white-space:nowrap; color:#475569;">${formatDate(l.created_at)}</td>
-                    <td><span class="pl-sscc-badge">${l.sscc || '-'}</span></td>
+                    <td><span class="pl-sscc-badge">${l.sscc || '-'}</span>${isMaster ? ' <span style="font-size:9px; background:#eab308; color:#fff; border-radius:3px; padding:1px 4px; font-weight:700; vertical-align:middle;">MESTER</span>' : ''}</td>
                     <td style="font-weight:700; color:#0f172a;">${l.truck_number || '-'}</td>
                     <td style="font-weight:600;">${l.product_name || '-'}</td>
                     <td style="text-align:center; font-weight:800; color:#0284c7;">${l.picked_cartons != null ? l.picked_cartons : '-'}</td>
@@ -896,6 +937,7 @@ export function openPalletLabelsTable(wm) {
             `;
             }).join('');
 
+            // Megtekintés gombok
             tbody.querySelectorAll('.btn-view-label').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const id = Number(btn.dataset.id);
@@ -903,7 +945,17 @@ export function openPalletLabelsTable(wm) {
                     if (found) showLabelModal(found);
                 });
             });
+
+            // Összeemelés SSCC linkek (kattintható összeemelett vonalkódok)
+            tbody.querySelectorAll('.pl-cons-sscc-link').forEach(link => {
+                link.addEventListener('click', () => {
+                    const id = Number(link.dataset.id);
+                    const found = labels.find(item => item.id === id);
+                    if (found) showLabelModal(found);
+                });
+            });
         }
+
 
         function showLabelModal(label) {
             selectedLabel = label;
