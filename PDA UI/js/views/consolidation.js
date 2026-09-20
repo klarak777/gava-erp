@@ -231,10 +231,17 @@ export async function renderConsolidation(container, params = {}) {
   // ── PANE 1: Kamion betöltés ───────────────────────────────────────
   try {
     const res = await apiFetch('/api/v1/pda/trucks-for-consolidation');
-    const trucks = await res.json();
+    let trucks = null;
+    try { trucks = await res.json(); } catch (_) {}
     truckLoading.style.display = 'none';
     if (!res.ok || !Array.isArray(trucks) || trucks.length === 0) {
-      truckError.textContent = trucks.error || 'Nincs rakodásra váró kamion.';
+      if (trucks && trucks.error) {
+        truckError.textContent = trucks.error;
+      } else if (Array.isArray(trucks) && trucks.length === 0) {
+        truckError.textContent = 'Nincs rakodásra váró kamion.';
+      } else {
+        truckError.textContent = `Hiba a kamionok betöltésekor (HTTP ${res.status}).`;
+      }
       truckError.style.display = 'block';
     } else {
       trucks.forEach(t => {
@@ -282,9 +289,11 @@ export async function renderConsolidation(container, params = {}) {
 
     try {
       const res = await apiFetch(`/api/v1/pda/labels-for-truck/${selectedTruck.id}`);
-      availableLabels = await res.json();
+      let data = null;
+      try { data = await res.json(); } catch (_) {}
+      availableLabels = data;
       if (!res.ok || !Array.isArray(availableLabels)) {
-        labelsList.innerHTML = `<div style="color:#dc2626; font-size:13px; text-align:center; padding:16px;">${escHtml(availableLabels.error || 'Hiba a betöltéskor.')}</div>`;
+        labelsList.innerHTML = `<div style="color:#dc2626; font-size:13px; text-align:center; padding:16px;">${escHtml((data && data.error) || `Hiba a betöltéskor (HTTP ${res.status}).`)}</div>`;
         labelsCountInfo.textContent = '';
         return;
       }
@@ -403,14 +412,15 @@ export async function renderConsolidation(container, params = {}) {
           locationName
         })
       });
-      const data = await res.json();
+      let data = null;
+      try { data = await res.json(); } catch (_) {}
 
-      if (res.ok && data.success) {
+      if (res.ok && data && data.success) {
         consolidatedLabel = data.label;
         renderPrintPane();
         showPane(panePrint);
       } else {
-        locError.textContent = data.error || 'Hiba az összeemelés során.';
+        locError.textContent = (data && data.error) ? data.error : `Hiba az összeemelés során (HTTP ${res.status}).`;
         locError.style.display = 'block';
         btnLocNext.innerHTML = originalHtml;
         btnLocNext.disabled = false;
@@ -480,12 +490,13 @@ export async function renderConsolidation(container, params = {}) {
           printerBarcode: pBarcode
         })
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      let data = null;
+      try { data = await res.json(); } catch (_) {}
+      if (res.ok && data && data.success) {
         alert('Nyomtatás sikeresen elküldve! Az összeemelés véglegesítve.');
         showView('dashboard');
       } else {
-        alert('Hiba a nyomtatás során: ' + (data.error || 'Ismeretlen hiba'));
+        alert('Hiba a nyomtatás során: ' + ((data && data.error) || `HTTP ${res.status}`));
       }
     } catch (e) {
       alert('Hálózati hiba a nyomtatás során.');
