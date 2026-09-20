@@ -968,7 +968,7 @@ export async function renderCommission(container, params = {}) {
 
     const formCartonsEl = container.querySelector('#form-hdr-total-cartons');
     if (formCartonsEl) {
-      formCartonsEl.textContent = row.kartonszam || '0';
+      formCartonsEl.textContent = currentRemaining;
     }
 
     container.querySelector('#form-title').innerText = row.termek || 'Termék';
