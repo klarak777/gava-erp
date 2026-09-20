@@ -448,7 +448,7 @@ export async function renderCommission(container, params = {}) {
         </div>
       </div>
       <div class="pda-form-footer">
-        <button class="pda-btn pda-btn-primary" id="form-submit">Tovább</button>
+        <button class="pda-btn pda-btn-primary" id="form-submit">Megadás</button>
       </div>
 
       <!-- Alsó navigáció -->
