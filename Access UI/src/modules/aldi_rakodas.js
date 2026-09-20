@@ -838,7 +838,7 @@ export function renderAldiRakodas(container, windowManager) {
               </thead>
               <tbody id="m-truck-lines-tbody">
                 <tr>
-                  <td colspan="11" style="padding:24px; text-align:center; color:#94a3b8; font-size:11px;">
+                  <td colspan="10" style="padding:24px; text-align:center; color:#94a3b8; font-size:11px;">
                     ${isNew ? 'Az új kamion mentése után tudsz rá árut küldeni a jobb oldali Áru igény táblából.' : 'Betöltés...'}
                   </td>
                 </tr>
@@ -951,7 +951,7 @@ export function renderAldiRakodas(container, windowManager) {
         if (res.ok) {
           const lines = await res.json();
           if (lines.length === 0) {
-            linesTbody.innerHTML = '<tr><td colspan="11" style="padding:20px; text-align:center; color:#94a3b8;">A kamion jelenleg üres. Küldj rá tételt az Áru igény táblázatból!</td></tr>';
+            linesTbody.innerHTML = '<tr><td colspan="10" style="padding:20px; text-align:center; color:#94a3b8;">A kamion jelenleg üres. Küldj rá tételt az Áru igény táblázatból!</td></tr>';
           } else {
             linesTbody.innerHTML = lines.map(l => {
               const picked = parseInt(l.picked_cartons) || 0;
@@ -984,9 +984,6 @@ export function renderAldiRakodas(container, windowManager) {
                 </td>
                 <td style="padding:6px 8px; color:#64748b;">${escHtml(l.order_number || '-')}</td>
                 <td style="padding:6px 8px; color:#64748b;">${escHtml(l.order_type || '-')}</td>
-                <td style="padding:6px 8px;">
-                  <input type="text" class="inp-line-dest" data-id="${l.id}" value="${escHtml(l.destination || '')}" style="width:80px; padding:2px; font-size:11px;">
-                </td>
                 <td style="padding:6px 8px; width:80px;">
                   ${weightCell(l.gross_weight, 'gross')}
                 </td>
