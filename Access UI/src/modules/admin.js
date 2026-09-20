@@ -763,7 +763,7 @@ export function openPalletLabelsTable(wm) {
                                 <th>Beszállitó</th>
                                 <th>Ügyfél</th>
                                 <th>Származás</th>
-                                <th>Raklap típus</th>
+                                <th style="min-width: 160px;">Raklap típus</th>
                                 <th>Lokáció</th>
                                 <th style="text-align:center; width:130px;">Művelet</th>
                             </tr>
