@@ -443,7 +443,12 @@ export async function renderCommission(container, params = {}) {
         </div>
         <div class="pda-form-group">
           <label>Raklap típus <span style="color:red;">*</span></label>
-          <select id="form-raklap" required></select>
+          <!-- Már hozzáadott raklapok listája -->
+          <div id="form-raklap-list" style="display:none; margin-bottom:8px;"></div>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <select id="form-raklap" required style="flex:1;"></select>
+            <button type="button" id="form-raklap-add-btn" style="flex-shrink:0; padding:8px 10px; background:#0ea5e9; color:#fff; border:none; border-radius:6px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap;">+ Raklap</button>
+          </div>
           <div id="form-raklap-error" style="display:none; color:#ef4444; font-size:11.5px; font-weight:700; margin-top:5px; line-height:1.3;"></div>
         </div>
       </div>
@@ -796,6 +801,33 @@ export async function renderCommission(container, params = {}) {
   // → ilyenkor a rendszer nem számol automatikusan, a felhasználó adja meg kézzel.
   let taraManual = false;
 
+  // Már hozzáadott raklapok tömbje: [{id, name, tare_weight_kg}, ...]
+  let addedPallets = [];
+
+  function renderAddedPalletsList() {
+    const listDiv = container.querySelector('#form-raklap-list');
+    if (!listDiv) return;
+    if (addedPallets.length === 0) {
+      listDiv.style.display = 'none';
+      listDiv.innerHTML = '';
+      return;
+    }
+    listDiv.style.display = 'block';
+    listDiv.innerHTML = addedPallets.map((p, idx) => `
+      <div style="display:flex; align-items:center; justify-content:space-between; background:#f0f9ff; border:1px solid #bae6fd; border-radius:6px; padding:5px 8px; margin-bottom:4px; font-size:12px;">
+        <span style="font-weight:700; color:#0369a1;">🪵 ${escHtml(p.name)} <span style="color:#64748b; font-weight:500;">(tára: ${p.tare_weight_kg.toFixed(3)} kg)</span></span>
+        <button type="button" data-idx="${idx}" class="raklap-remove-btn" style="background:none; border:none; cursor:pointer; color:#ef4444; font-size:14px; font-weight:700; padding:0 4px; line-height:1;">✕</button>
+      </div>
+    `).join('');
+    listDiv.querySelectorAll('.raklap-remove-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.idx);
+        addedPallets.splice(idx, 1);
+        renderAddedPalletsList();
+      });
+    });
+  }
+
   function validateCartonInput() {
     const val = parseInt(kartonInput.value);
     if (currentRemaining > 0 && Number.isInteger(val) && val > currentRemaining) {
@@ -860,6 +892,35 @@ export async function renderCommission(container, params = {}) {
   }
 
   raklapSel.addEventListener('change', validatePalletSelection);
+
+  // + Raklap gomb: hozzáadja az aktuálisan kiválasztott raklapot a listához és üríti a select-et
+  const raklapAddBtn = container.querySelector('#form-raklap-add-btn');
+  if (raklapAddBtn) {
+    raklapAddBtn.addEventListener('click', () => {
+      if (!raklapSel.value) {
+        if (raklapError) {
+          raklapError.style.display = 'block';
+          raklapError.textContent = '⚠️ Előbb válassz raklaptípust a hozzáadáshoz!';
+        }
+        return;
+      }
+      const selected = palletTypes.find(p => String(p.id) === String(raklapSel.value));
+      if (!selected) return;
+      if (!selected.tare_weight_kg || parseFloat(selected.tare_weight_kg) <= 0) {
+        if (raklapError) {
+          raklapError.style.display = 'block';
+          raklapError.textContent = `⚠️ A(z) "${selected.name}" raklaptípusnak nincs tára súlya. Pótold az Adminban, vagy válassz másikat!`;
+        }
+        return;
+      }
+      // Hozzáadjuk a listához
+      addedPallets.push({ id: selected.id, name: selected.name, tare_weight_kg: parseFloat(selected.tare_weight_kg) });
+      renderAddedPalletsList();
+      // Selectet ürítjük
+      raklapSel.value = '';
+      if (raklapError) { raklapError.style.display = 'none'; raklapError.textContent = ''; }
+    });
+  }
 
   async function loadData() {
     const area = select.value;
@@ -987,12 +1048,9 @@ export async function renderCommission(container, params = {}) {
     taraInput.value = '';
     container.querySelector('#form-orszag').value = '';
     container.querySelector('#form-lot').value = '';
-    let selectedPalletId = '';
-    if (row.tipus && typeof palletTypes !== 'undefined') {
-      const p = palletTypes.find(pt => pt.name === row.tipus);
-      if (p) selectedPalletId = p.id;
-    }
-    container.querySelector('#form-raklap').value = selectedPalletId;
+    container.querySelector('#form-raklap').value = '';
+    addedPallets = [];
+    renderAddedPalletsList();
     validatePalletSelection();
     container.querySelector('#print-printer-barcode').value = '';
     lastPickedQuantity = 0;
@@ -1082,34 +1140,51 @@ export async function renderCommission(container, params = {}) {
       return;
     }
 
-    // 7. Raklap típus ellenőrzése
-    const raklapSel = container.querySelector('#form-raklap');
-    if (!raklapSel.value) {
-      alert('Kérlek válaszd ki a raklaptípust!');
-      raklapSel.focus();
+    // 7. Raklap ellenőrzés: a listában lévő + az aktuális select összes raklapát ellenőrizzük
+    // Gyűjtsük össze az összes raklap-ID-ta
+    const allPalletIds = [...addedPallets.map(p => p.id)];
+    const currentRaklapSel = container.querySelector('#form-raklap');
+    if (currentRaklapSel.value) {
+      // Az aktuálisan a selectben lévő raklap is számít
+      allPalletIds.push(Number(currentRaklapSel.value));
+    }
+
+    if (allPalletIds.length === 0) {
+      alert('Kérlek válassz legalább egy raklaptípust!');
+      currentRaklapSel.focus();
       return;
     }
 
-    const selectedPallet = palletTypes.find(p => String(p.id) === String(raklapSel.value));
-    
-    // Ha a kiválasztott raklapnak nincs megadva a tára súlya a törzsadatokban
-    if (selectedPallet && (!selectedPallet.tare_weight_kg || parseFloat(selectedPallet.tare_weight_kg) <= 0)) {
+    // Minden raklap tárasúlyát ellenőrizzük
+    const currentSelectPallet = currentRaklapSel.value
+      ? palletTypes.find(p => String(p.id) === String(currentRaklapSel.value))
+      : null;
+    if (currentSelectPallet && (!currentSelectPallet.tare_weight_kg || parseFloat(currentSelectPallet.tare_weight_kg) <= 0)) {
       validatePalletSelection();
-      alert(`Hiba! A kiválasztott raklaptípusnak (${selectedPallet.name}) nincs megadva a tára súlya a rendszerben (Göngyöleg Típusok modul). Kérlek válassz egy másik raklapot, vagy állítsátok be a súlyát az ADMIN felületen!`);
-      raklapSel.focus();
+      alert(`Hiba! A kiválasztott raklaptípusnak (${currentSelectPallet.name}) nincs megadva a tára súlya a rendszerben. Kérlek válassz másikat, vagy állítsátok be az ADMIN felületen!`);
+      currentRaklapSel.focus();
       return;
     }
 
-    const palletTare = selectedPallet ? (parseFloat(selectedPallet.tare_weight_kg) || 0) : 0;
-    const totalTare = (Number(taraInput.value) * qty) + palletTare;
+    // Összes raklap tára súlyának összeszedése
+    let totalPalletTareForCheck = 0;
+    for (const pid of allPalletIds) {
+      const p = palletTypes.find(pt => String(pt.id) === String(pid));
+      if (p) totalPalletTareForCheck += parseFloat(p.tare_weight_kg) || 0;
+    }
+
+    const totalTare = (Number(taraInput.value) * qty) + totalPalletTareForCheck;
     if (grossValue < totalTare) {
-      alert(`A bruttó súly (${grossValue} kg) kisebb, mint a göngyöleg és a raklap tára összege (${totalTare.toFixed(2)} kg)!`);
+      const palletNames = allPalletIds.map(pid => {
+        const p = palletTypes.find(pt => String(pt.id) === String(pid));
+        return p ? `${p.name} (${(parseFloat(p.tare_weight_kg)||0).toFixed(3)} kg)` : String(pid);
+      }).join(', ');
+      alert(`A bruttó súly (${grossValue} kg) kisebb, mint a göngyöleg és a raklap(ok) tára összege!\nRaklapok: ${palletNames}`);
       bruttoInput.focus();
       return;
     }
 
-    // Tároljuk a form adatait – az API hívás csak a Cél lokáció mentésekor történik (3. lépés),
-    // hogy a komissiózás és a lokáció-hozzárendelés ATOMIAN, egy tranzakcióban menjen.
+    // Tároljuk a form adatait
     lastPickedQuantity = qty;
     lastPickPayload = {
       picked_cartons: qty,
@@ -1118,8 +1193,8 @@ export async function renderCommission(container, params = {}) {
       tare_weight: Number(taraInput.value),
       origin_country: orszagSel.value,
       lot_number: lotInput.value.trim(),
-      pallet_type: raklapSel.value,
-      pickSessionId: Date.now().toString(36) + Math.random().toString(36).substr(2, 5) // Idempotencia token
+      pallet_types: allPalletIds,           // Tömb: összes raklap ID-ja
+      pickSessionId: Date.now().toString(36) + Math.random().toString(36).substr(2, 5)
     };
 
     try {

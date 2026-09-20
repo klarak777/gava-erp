@@ -24,6 +24,11 @@ router.get('/pallet-labels', async (req, res) => {
   try {
     const labels = await db('sscc_labels')
       .where('is_provisional', false)
+      .select(
+        'id', 'created_at', 'sscc', 'truck_number', 'product_name',
+        'picked_cartons', 'supplier', 'destination', 'origin_country',
+        'pallet_type', 'pallets_json', 'location_name'
+      )
       .orderBy('id', 'desc');
     res.json(labels);
   } catch (err) {
@@ -31,6 +36,7 @@ router.get('/pallet-labels', async (req, res) => {
     res.status(500).json({ error: 'Hiba a raklapcímkék lekérdezésekor.' });
   }
 });
+
 
 // Engedélyezett táblák a generic végpontokhoz biztonsági okokból
 const ALLOWED_TABLES = ['products', 'partners', 'transporters', 'finance_truck_types', 'finance_tax_rates', 'currencies', 'ref_packaging_types', 'ref_origin_countries', 'ref_pallet_types', 'printers'];

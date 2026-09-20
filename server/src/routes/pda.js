@@ -249,7 +249,7 @@ router.get('/pallet-types', verifyToken, async (req, res) => {
 //   - Ha qty > remaining: 409 hiba
 // Közös segédfüggvény a komissiózás feldolgozásához
 async function processPick(trx, id, reqData, locationId = null) {
-  const { picked_cartons, gross_weight, packaging_type, tare_weight, origin_country, lot_number, pallet_type, pickSessionId } = reqData;
+  const { picked_cartons, gross_weight, packaging_type, tare_weight, origin_country, lot_number, pallet_type, pallet_types, pickSessionId } = reqData;
   const qty = parseInt(picked_cartons);
   if (!Number.isInteger(qty) || qty <= 0) {
     const err = new Error('A komissiózott kartonszám megadása kötelező (pozitív egész szám).'); err.code = 'BAD_REQUEST'; throw err;
@@ -322,35 +322,33 @@ async function processPick(trx, id, reqData, locationId = null) {
     }
   }
 
-  // 3. Súly és raklap kalkuláció
-  let newPallets = 1; // Minden PDA megadás pontosan 1 raklapot jelent
+  // 3. Súly és raklap kalkuláció – több raklap támogatással
+  // A frontend pallet_types tömbben küldi az összes raklap ID-ját.
+  // Ha csak régi pallet_type érkezik (backward compat), azt tömbként kezeljük.
+  const palletIds = Array.isArray(pallet_types) && pallet_types.length > 0
+    ? pallet_types
+    : (pallet_type ? [pallet_type] : []);
 
-
-  let palletTareKg = 0;
-  let palletTypeName = null;
-
-  if (pallet_type) {
-    // pallet_type a ref_packaging_types ID-ja a frontend módosítás óta
-    const palInfo = await trx('ref_packaging_types').where('id', pallet_type).first();
-    if (!palInfo || !palInfo.is_active || ![palInfo.name, palInfo.category].some(value => String(value || '').toLowerCase().includes('raklap'))) {
-      const err = new Error('Válassz érvényes, aktív raklaptípust.'); err.code = 'BAD_REQUEST'; throw err;
-    }
-    if (palInfo.tare_weight_kg == null || !Number.isFinite(Number(palInfo.tare_weight_kg)) || Number(palInfo.tare_weight_kg) <= 0) {
-      const err = new Error('A nettó számításához érvényes raklaptára szükséges.'); err.code = 'INVALID_WEIGHT'; throw err;
-    }
-    if (alreadyPicked > 0 && line.pallet_type && line.pallet_type !== palInfo.name) {
-      const err = new Error('A megkezdett tételt ugyanazzal a raklaptípussal folytasd.'); err.code = 'BAD_REQUEST'; throw err;
-    }
-    if (palInfo) {
-      palletTypeName = palInfo.name;
-      if (newPallets > 0) {
-        palletTareKg = parseFloat(palInfo.tare_weight_kg) || 0;
-      }
-    }
+  if (palletIds.length === 0) {
+    const err = new Error('Válassz legalább egy raklaptípust a nettó súly számításához.'); err.code = 'BAD_REQUEST'; throw err;
   }
 
-  if (!pallet_type) {
-    const err = new Error('Válassz raklaptípust a nettó súly számításához.'); err.code = 'BAD_REQUEST'; throw err;
+  let totalPalletTareKg = 0;
+  let primaryPalletTypeName = null;
+  const palletsJsonData = [];
+
+  for (const pid of palletIds) {
+    const palInfo = await trx('ref_packaging_types').where('id', pid).first();
+    if (!palInfo || !palInfo.is_active || ![palInfo.name, palInfo.category].some(v => String(v || '').toLowerCase().includes('raklap'))) {
+      const err = new Error('Érvénytelen vagy inaktív raklaptípus a listában. Kérlek válassz érvényes raklapot.'); err.code = 'BAD_REQUEST'; throw err;
+    }
+    if (palInfo.tare_weight_kg == null || !Number.isFinite(Number(palInfo.tare_weight_kg)) || Number(palInfo.tare_weight_kg) <= 0) {
+      const err = new Error(`A(z) "${palInfo.name}" raklaptípushoz nincs érvényes tára súly megadva a törzsadatban. Kérlek pótold az Admin felületen!`); err.code = 'INVALID_WEIGHT'; throw err;
+    }
+    const tare = parseFloat(palInfo.tare_weight_kg);
+    totalPalletTareKg += tare;
+    palletsJsonData.push({ id: palInfo.id, name: palInfo.name, tare_weight_kg: tare });
+    if (!primaryPalletTypeName) primaryPalletTypeName = palInfo.name;
   }
   const reqGross = Number(gross_weight);
   const reqTare = Number(tare_weight);
@@ -362,9 +360,10 @@ async function processPick(trx, id, reqData, locationId = null) {
   }
 
   if (!isNaN(reqGross) && reqGross > 0) {
-    const totalTare = (reqTare * qty) + (newPallets * palletTareKg);
+    const totalTare = (reqTare * qty) + totalPalletTareKg;
     if (reqGross < totalTare) {
-      const err = new Error(`A bruttó súly (${reqGross} kg) kisebb, mint a göngyöleg (${reqTare} kg x ${qty} db) és az új raklapok (${newPallets} db x ${palletTareKg} kg) tára összege!`);
+      const palletTareStr = palletsJsonData.map(p => `${p.name} (${p.tare_weight_kg} kg)`).join(' + ');
+      const err = new Error(`A bruttó súly (${reqGross} kg) kisebb, mint a göngyöleg (${reqTare} kg x ${qty} db) és a raklapok (${palletTareStr}) tára összege!`);
       err.code = 'INVALID_WEIGHT'; throw err;
     }
   } else if (gross_weight !== undefined && gross_weight !== null && gross_weight !== '') {
@@ -374,7 +373,7 @@ async function processPick(trx, id, reqData, locationId = null) {
 
   let currentPickNet = null;
   if (!isNaN(reqGross) && reqGross > 0) {
-    currentPickNet = reqGross - (reqTare * qty) - (newPallets * palletTareKg);
+    currentPickNet = reqGross - (reqTare * qty) - totalPalletTareKg;
     if (currentPickNet < 0) {
       const err = new Error('Számítási hiba: a nettó súly negatív!'); err.code = 'INVALID_WEIGHT'; throw err;
     }
@@ -386,10 +385,11 @@ async function processPick(trx, id, reqData, locationId = null) {
     aldi_truck_line_id: id,
     product_name: line.product_name,
     cartons: qty,
-    pallets: newPallets,
+    pallets: palletsJsonData.length,
     gross_weight: !isNaN(reqGross) ? reqGross : null,
     net_weight: currentPickNet,
-    pallet_type: palletTypeName,
+    pallet_type: primaryPalletTypeName,
+    pallets_json: JSON.stringify(palletsJsonData),
     tare_weight: reqTare || null,
     carton_type: packaging_type || null,
     lot_number: lot_number || null,
@@ -431,7 +431,7 @@ async function processPick(trx, id, reqData, locationId = null) {
       gross_weight: newGross,
       net_weight: newNet,
       packaging_type: packaging_type || null,
-      pallet_type: palletTypeName || null,
+      pallet_type: primaryPalletTypeName || null,
       tare_weight: reqTare || null,
       origin_country: origin_country || null,
       lot_number: lot_number || null
@@ -450,12 +450,16 @@ async function processPick(trx, id, reqData, locationId = null) {
 
     const [updated] = await trx('sscc_labels')
       .where('id', reqData.labelId)
-      .update({ commission_line_id: commissionId, is_provisional: false })
+      .update({
+        commission_line_id: commissionId,
+        is_provisional: false,
+        pallets_json: JSON.stringify(palletsJsonData)
+      })
       .returning('*');
     label = updated;
   }
   if (!label) {
-    label = await createSsccLabel(trx, id, commissionId, qty, origin_country);
+    label = await createSsccLabel(trx, id, commissionId, qty, origin_country, palletsJsonData);
   }
 
   return {
@@ -469,7 +473,7 @@ async function processPick(trx, id, reqData, locationId = null) {
 }
 
 // ── SSCC és ZPL segédfüggvények ─────────────────────────────
-async function createSsccLabel(dbClient, lineId, commissionLineId, pickedCartons, originCountryOverride) {
+async function createSsccLabel(dbClient, lineId, commissionLineId, pickedCartons, originCountryOverride, palletsJsonData = null) {
   const line = await dbClient('aldi_truck_lines').where('id', lineId).first();
   if (!line) throw new Error('A komissiózott tétel nem található.');
 
@@ -514,7 +518,8 @@ async function createSsccLabel(dbClient, lineId, commissionLineId, pickedCartons
     supplier: supplier,
     destination: destination,
     origin_country: originCountry,
-    is_provisional: isProvisional
+    is_provisional: isProvisional,
+    pallets_json: palletsJsonData ? JSON.stringify(palletsJsonData) : null
   }).returning('*');
 
   return createdLabel;

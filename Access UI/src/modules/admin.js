@@ -755,15 +755,15 @@ export function openPalletLabelsTable(wm) {
                     <table class="pl-table">
                         <thead>
                             <tr>
-                                <th style="width:50px;">ID</th>
                                 <th>Létrehozva</th>
                                 <th>SSCC vonalkód</th>
                                 <th>Kamionszám</th>
                                 <th>Termék</th>
                                 <th style="text-align:center;">Karton</th>
-                                <th>Beszállító</th>
+                                <th>Beszállitó</th>
                                 <th>Ügyfél</th>
                                 <th>Származás</th>
+                                <th>Raklap típus</th>
                                 <th>Lokáció</th>
                                 <th style="text-align:center; width:130px;">Művelet</th>
                             </tr>
@@ -847,9 +847,26 @@ export function openPalletLabelsTable(wm) {
                 return;
             }
 
-            tbody.innerHTML = filtered.map(l => `
+            tbody.innerHTML = filtered.map(l => {
+                // Raklap típus meghatározása: pallets_json > pallet_type fallback
+                let palletCellHtml = '-';
+                if (l.pallets_json) {
+                    try {
+                        const pallets = JSON.parse(l.pallets_json);
+                        if (Array.isArray(pallets) && pallets.length > 0) {
+                            palletCellHtml = pallets.map(p =>
+                                `<div style="white-space:nowrap; font-size:11px; font-weight:600; color:#0f172a;">${p.name} <span style="color:#64748b; font-weight:400;">(${Number(p.tare_weight_kg).toFixed(3)} kg)</span></div>`
+                            ).join('');
+                        }
+                    } catch (e) {
+                        palletCellHtml = l.pallet_type || '-';
+                    }
+                } else if (l.pallet_type) {
+                    palletCellHtml = `<div style="font-size:11px; font-weight:600; color:#0f172a;">${l.pallet_type}</div>`;
+                }
+
+                return `
                 <tr>
-                    <td style="color:#64748b; font-weight:600;">#${l.id}</td>
                     <td style="white-space:nowrap; color:#475569;">${formatDate(l.created_at)}</td>
                     <td><span class="pl-sscc-badge">${l.sscc || '-'}</span></td>
                     <td style="font-weight:700; color:#0f172a;">${l.truck_number || '-'}</td>
@@ -858,6 +875,7 @@ export function openPalletLabelsTable(wm) {
                     <td>${l.supplier || '-'}</td>
                     <td><strong>${l.destination || '-'}</strong></td>
                     <td>${l.origin_country || '-'}</td>
+                    <td>${palletCellHtml}</td>
                     <td style="font-weight:700; color:#10b981;">${l.location_name || '-'}</td>
                     <td style="text-align:center;">
                         <button class="pl-btn pl-btn-print btn-view-label" data-id="${l.id}" title="Címke megtekintése és nyomtatása">
@@ -865,7 +883,8 @@ export function openPalletLabelsTable(wm) {
                         </button>
                     </td>
                 </tr>
-            `).join('');
+            `;
+            }).join('');
 
             tbody.querySelectorAll('.btn-view-label').forEach(btn => {
                 btn.addEventListener('click', () => {
