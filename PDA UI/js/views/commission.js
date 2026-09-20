@@ -967,15 +967,14 @@ export async function renderCommission(container, params = {}) {
     currentTargetLocations = Array.isArray(tl) ? tl : [];
 
     const formCartonsEl = container.querySelector('#form-hdr-total-cartons');
-    const hdrCartonsEl = container.querySelector('#hdr-total-cartons');
-    if (formCartonsEl && hdrCartonsEl) {
-      formCartonsEl.textContent = hdrCartonsEl.textContent;
+    if (formCartonsEl) {
+      formCartonsEl.textContent = row.kartonszam || '0';
     }
 
     container.querySelector('#form-title').innerText = row.termek || 'Termék';
-    kartonLabel.innerHTML = ((row.plt != null && row.plt !== '') ? `Kartonszám (${row.plt} db/plt)` : `Kartonszám (max. ${currentRemaining} db)`) + ' <span style="color:red;">*</span>';
+    kartonLabel.innerHTML = ((row.plt != null && row.plt !== '') ? `Kartonszám (${row.plt} db/plt)` : `Kartonszám`) + ' <span style="color:red;">*</span>';
     kartonInput.value = ''; // A kartonszámot mindig a felhasználó adja meg, nincs előtöltés
-    kartonInput.placeholder = currentRemaining > 0 ? `összes: ${currentRemaining}` : '0';
+    kartonInput.placeholder = 'Kérem adja meg...';
     kartonInput.max = currentRemaining;
     kartonInput.classList.remove('pda-input-error');
     kartonError.classList.remove('visible');
