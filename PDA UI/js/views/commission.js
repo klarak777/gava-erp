@@ -444,10 +444,11 @@ export async function renderCommission(container, params = {}) {
         <div class="pda-form-group">
           <label>Raklap típus <span style="color:red;">*</span></label>
           <select id="form-raklap" required></select>
+          <div id="form-raklap-error" style="display:none; color:#ef4444; font-size:11.5px; font-weight:700; margin-top:5px; line-height:1.3;"></div>
         </div>
       </div>
       <div class="pda-form-footer">
-        <button class="pda-btn pda-btn-primary" id="form-submit">Megadás</button>
+        <button class="pda-btn pda-btn-primary" id="form-submit">Tovább</button>
       </div>
 
       <!-- Alsó navigáció -->
@@ -837,6 +838,29 @@ export async function renderCommission(container, params = {}) {
     validateCartonInput();
   });
 
+  const raklapSel = container.querySelector('#form-raklap');
+  const raklapError = container.querySelector('#form-raklap-error');
+
+  function validatePalletSelection() {
+    if (!raklapSel.value) {
+      if (raklapError) { raklapError.style.display = 'none'; raklapError.textContent = ''; }
+      return true;
+    }
+    const selected = palletTypes.find(p => String(p.id) === String(raklapSel.value));
+    if (selected && (!selected.tare_weight_kg || parseFloat(selected.tare_weight_kg) <= 0)) {
+      if (raklapError) {
+        raklapError.style.display = 'block';
+        raklapError.textContent = `⚠️ Ennek a raklaptípusnak (${selected.name}) nincs megadva a tára súlya a törzsadatokban! Válassz másikat vagy pótold az Adminban.`;
+      }
+      return false;
+    } else {
+      if (raklapError) { raklapError.style.display = 'none'; raklapError.textContent = ''; }
+      return true;
+    }
+  }
+
+  raklapSel.addEventListener('change', validatePalletSelection);
+
   async function loadData() {
     const area = select.value;
     if (area !== 'aldi' && area !== 'crossdocking') {
@@ -970,6 +994,7 @@ export async function renderCommission(container, params = {}) {
       if (p) selectedPalletId = p.id;
     }
     container.querySelector('#form-raklap').value = selectedPalletId;
+    validatePalletSelection();
     container.querySelector('#print-printer-barcode').value = '';
     lastPickedQuantity = 0;
     currentLabel = null;
@@ -1070,6 +1095,7 @@ export async function renderCommission(container, params = {}) {
     
     // Ha a kiválasztott raklapnak nincs megadva a tára súlya a törzsadatokban
     if (selectedPallet && (!selectedPallet.tare_weight_kg || parseFloat(selectedPallet.tare_weight_kg) <= 0)) {
+      validatePalletSelection();
       alert(`Hiba! A kiválasztott raklaptípusnak (${selectedPallet.name}) nincs megadva a tára súlya a rendszerben (Göngyöleg Típusok modul). Kérlek válassz egy másik raklapot, vagy állítsátok be a súlyát az ADMIN felületen!`);
       raklapSel.focus();
       return;
