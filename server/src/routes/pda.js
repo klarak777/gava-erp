@@ -347,7 +347,12 @@ async function processPick(trx, id, reqData, locationId = null) {
     }
     const tare = parseFloat(palInfo.tare_weight_kg);
     totalPalletTareKg += tare;
-    palletsJsonData.push({ id: palInfo.id, name: palInfo.name, tare_weight_kg: tare });
+    palletsJsonData.push({
+      id: palInfo.id,
+      name: palInfo.name,
+      category: palInfo.category,
+      tare_weight_kg: tare
+    });
     if (!primaryPalletTypeName) primaryPalletTypeName = palInfo.name;
   }
   const reqGross = Number(gross_weight);

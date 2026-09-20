@@ -848,21 +848,31 @@ export function openPalletLabelsTable(wm) {
             }
 
             tbody.innerHTML = filtered.map(l => {
-                // Raklap típus meghatározása: pallets_json > pallet_type fallback
+                // Raklap típus meghatározása: címke JSON > komissió JSON > régi mező.
                 let palletCellHtml = '-';
-                if (l.pallets_json) {
+                const palletsJson = l.pallets_json || l.commission_pallets_json;
+                if (palletsJson) {
                     try {
-                        const pallets = JSON.parse(l.pallets_json);
+                        const pallets = JSON.parse(palletsJson);
                         if (Array.isArray(pallets) && pallets.length > 0) {
-                            palletCellHtml = pallets.map(p =>
-                                `<div style="white-space:nowrap; font-size:11px; font-weight:600; color:#0f172a;">${p.name} <span style="color:#64748b; font-weight:400;">(${Number(p.tare_weight_kg).toFixed(3)} kg)</span></div>`
-                            ).join('');
+                            palletCellHtml = pallets.map(p => {
+                                const name = String(p.name || '-');
+                                const category = String(p.category || 'Raklap');
+                                const displayName = /raklap/i.test(name) ? name : `${name} ${category}`;
+                                const safeName = displayName.replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+                                return `<div style="white-space:nowrap; font-size:11px; font-weight:600; color:#0f172a;">${safeName} <span style="color:#64748b; font-weight:400;">(${Number(p.tare_weight_kg).toFixed(3)} kg)</span></div>`;
+                            }).join('');
                         }
                     } catch (e) {
                         palletCellHtml = l.pallet_type || '-';
                     }
-                } else if (l.pallet_type) {
-                    palletCellHtml = `<div style="font-size:11px; font-weight:600; color:#0f172a;">${l.pallet_type}</div>`;
+                } else if (l.legacy_pallet_name) {
+                    const name = String(l.legacy_pallet_name);
+                    const category = String(l.legacy_pallet_category || 'Raklap');
+                    const displayName = /raklap/i.test(name) ? name : `${name} ${category}`;
+                    const safeName = displayName.replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+                    const tare = Number(l.legacy_pallet_tare_weight_kg);
+                    palletCellHtml = `<div style="font-size:11px; font-weight:600; color:#0f172a;">${safeName} <span style="color:#64748b; font-weight:400;">(${Number.isFinite(tare) ? tare.toFixed(3) : '-'} kg)</span></div>`;
                 }
 
                 return `
@@ -1025,4 +1035,3 @@ export function openPalletLabelsTable(wm) {
         loadData();
     });
 }
-

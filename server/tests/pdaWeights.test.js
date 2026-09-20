@@ -6,21 +6,25 @@ const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname, '../src/routes/pda.js'), 'utf8');
 const start = source.indexOf('async function processPick(');
-const end = source.indexOf("router.put('/commission-lines/:id/pick-and-assign'", start);
+// The location-validation route sits between processPick and the final pick
+// endpoint. Stop before the ZPL helper so the extracted unit remains stable
+// when additional routes are added.
+const end = source.indexOf('function generateZpl', start);
 const processPick = vm.runInNewContext(source.slice(start, end) + '\nprocessPick', { process });
 
 function fixture() {
   const line = { id: 1, aldi_truck_id: 1, product_name: 'Nektarin', ordered_cartons: 50, picked_cartons: 0, cartons_per_pallet: 5 };
   const logs = [];
   const pallet = { id: 25, name: 'EU', category: 'Raklap', is_active: true, tare_weight_kg: 22 };
+  const secondPallet = { id: 26, name: 'Festett EU', category: 'Raklap', is_active: true, tare_weight_kg: 24 };
   const trx = table => ({
-    where() { return this; }, 
+    where(...args) { this._whereArgs = args; return this; },
     forUpdate() { return this; },
     orderBy() { return this; },
     count() { return this; },
     async first() { 
       if (table === 'aldi_truck_lines') return { ...line };
-      if (table === 'ref_packaging_types') return pallet;
+      if (table === 'ref_packaging_types') return this._whereArgs?.[1] === 26 ? secondPallet : pallet;
       if (table === 'aldi_locations') return { id: 5, capacity: 10 };
       return null;
     },
@@ -33,7 +37,7 @@ function fixture() {
     async update(row) { Object.assign(line, row); }
   });
   trx.raw = async () => ({ rows: [{ next_id: 999 }] });
-  return { trx, line, logs, pallet };
+  return { trx, line, logs, pallet, secondPallet };
 }
 const data = (qty, gross, tare, sid) => ({ picked_cartons: qty, gross_weight: gross, tare_weight: tare, pallet_type: 25, pickSessionId: sid || Math.random().toString() });
 
@@ -74,6 +78,21 @@ test('zero net is saved and a different item starts its own pallets', async () =
   await processPick(b.trx, 2, data(7, 200, 7, 'session-b'));
   assert.equal(a.line.net_weight, 0); // 86 - 86 = 0
   assert.equal(b.logs.filter(r => r._table === 'aldi_commission_lines')[0].pallets, 1);
+});
+
+test('multiple selected pallet types are summed and persisted', async () => {
+  const f = fixture();
+  await processPick(f.trx, 1, {
+    ...data(8, 200, 8, 'multi-pallet'),
+    pallet_type: undefined,
+    pallet_types: [25, 26]
+  }, 5);
+
+  assert.equal(f.line.net_weight, 90); // 200 - (8 x 8) - (22 + 24)
+  const commission = f.logs.find(r => r._table === 'aldi_commission_lines');
+  assert.equal(commission.pallets, 2);
+  assert.deepEqual(JSON.parse(commission.pallets_json).map(p => p.name), ['EU', 'Festett EU']);
+  assert.deepEqual(JSON.parse(commission.pallets_json).map(p => p.tare_weight_kg), [22, 24]);
 });
 
 test('weight cell puts kg in bar and percent below; missing and zero differ', () => {

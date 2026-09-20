@@ -1,7 +1,7 @@
 ﻿/**
  * Migration: Add pallets_json to sscc_labels and aldi_commission_lines
  * Supports multiple pallet types per commission pick.
- * pallets_json stores a JSON array of {id, name, tare_weight_kg} objects.
+ * pallets_json stores a JSON array of {id, name, category, tare_weight_kg} objects.
  */
 exports.up = async function(knex) {
   const hasColSscc = await knex.schema.hasColumn('sscc_labels', 'pallets_json');

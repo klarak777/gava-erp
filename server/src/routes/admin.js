@@ -22,14 +22,19 @@ router.get('/export-identifiers', async (req, res) => {
 // GET /api/v1/admin/pallet-labels
 router.get('/pallet-labels', async (req, res) => {
   try {
-    const labels = await db('sscc_labels')
-      .where('is_provisional', false)
+    const labels = await db('sscc_labels as s')
+      .leftJoin('aldi_commission_lines as c', 'c.id', 's.commission_line_id')
+      .leftJoin('ref_packaging_types as p', 'p.name', 'c.pallet_type')
+      .where('s.is_provisional', false)
       .select(
-        'id', 'created_at', 'sscc', 'truck_number', 'product_name',
-        'picked_cartons', 'supplier', 'destination', 'origin_country',
-        'pallet_type', 'pallets_json', 'location_name'
+        's.id', 's.created_at', 's.sscc', 's.truck_number', 's.product_name',
+        's.picked_cartons', 's.supplier', 's.destination', 's.origin_country',
+        's.pallets_json', 's.location_name',
+        'c.pallets_json as commission_pallets_json',
+        'p.name as legacy_pallet_name', 'p.category as legacy_pallet_category',
+        'p.tare_weight_kg as legacy_pallet_tare_weight_kg'
       )
-      .orderBy('id', 'desc');
+      .orderBy('s.id', 'desc');
     res.json(labels);
   } catch (err) {
     console.error('Hiba a raklapcímkék lekérésekor:', err);
