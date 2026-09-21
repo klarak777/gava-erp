@@ -965,10 +965,13 @@ export function openPalletLabelsTable(wm) {
                 <div style="border-top: 2px solid #000; margin: 8px 0;"></div>
                 
                 <div style="display:flex; flex-direction:column; gap:4px; font-size:13.5px; color:#111; font-weight:600;">
-                    <div>Érkezés dátuma: <strong style="font-weight:800;">${label.delivery_date || '-'}</strong></div>
-                    <div>Karton szám: <strong style="font-weight:800;">${label.picked_cartons != null ? label.picked_cartons : '-'}</strong></div>
-                    <div>Beszállító: <strong style="font-weight:800;">${label.supplier || '-'}</strong></div>
-                    <div>Ügyfél: <strong style="font-weight:800;">${label.destination || '-'}</strong></div>
+                    <div>Szállítási dátum: <strong style="font-weight:800;">${label.delivery_date || '-'}</strong></div>
+                    <div>Szállítási hely: <strong style="font-weight:800;">${label.destination || '-'}</strong></div>
+                    <div>Kartonszám: <strong style="font-weight:800;">${label.picked_cartons != null ? label.picked_cartons + ' db' : '-'}</strong></div>
+                    <div>Bruttó kg: <strong style="font-weight:800;">${label.gross_weight ? Number(label.gross_weight).toFixed(2) + ' kg' : '-'}</strong></div>
+                    <div>Nettó kg: <strong style="font-weight:800;">${label.net_weight ? Number(label.net_weight).toFixed(2) + ' kg' : '-'}</strong></div>
+                    <div>Átlag súly (nettó): <strong style="font-weight:800;">${(label.picked_cartons && label.net_weight) ? (Number(label.net_weight) / Number(label.picked_cartons)).toFixed(2) + ' kg/db' : '-'}</strong></div>
+                    <div>Lotszám: <strong style="font-weight:800;">${label.lot_number || '-'}</strong></div>
                     <div>Származási ország: <strong style="font-weight:800;">${label.origin_country || '-'}</strong></div>
                 </div>
                 <div style="margin-top: 24px; border-top: 2px solid #000; margin-bottom: 8px;"></div>

@@ -509,6 +509,9 @@ async function createSsccLabel(dbClient, lineId, commissionLineId, pickedCartons
   const originCountry = originCountryOverride || line.origin_country || '';
   const supplier = line.partner || '';
   const destination = line.destination || '';
+  const grossWeight = line.gross_weight || null;
+  const netWeight = line.net_weight || null;
+  const lotNumber = line.lot_number || '';
 
   // SSCC generálása
   const seqRes = await dbClient.raw("SELECT nextval('sscc_labels_id_seq') as next_id");
@@ -542,6 +545,9 @@ async function createSsccLabel(dbClient, lineId, commissionLineId, pickedCartons
     supplier: supplier,
     destination: destination,
     origin_country: originCountry,
+    gross_weight: grossWeight,
+    net_weight: netWeight,
+    lot_number: lotNumber,
     is_provisional: isProvisional,
     pallets_json: palletsJsonData ? JSON.stringify(palletsJsonData) : null
   }).returning('*');
@@ -550,6 +556,13 @@ async function createSsccLabel(dbClient, lineId, commissionLineId, pickedCartons
 }
 
 function generateZpl(label) {
+  const isMaster = label.is_consolidated_master;
+  const netWeight = Number(label.net_weight) || 0;
+  const pickedCartons = Number(label.picked_cartons) || 0;
+  const grossWeight = Number(label.gross_weight) || 0;
+  const lotNumber = label.lot_number || '';
+  const avgWeight = (pickedCartons > 0 && netWeight > 0) ? (netWeight / pickedCartons).toFixed(2) : '';
+
   return `^XA
 ^PW1180
 ^LL2480
@@ -560,11 +573,14 @@ function generateZpl(label) {
 ^FO0,440^A0N,130,130^FB1180,1,0,C^FD${label.product_name || ''}^FS
 ^FO0,600^A0N,50,50^FB1180,1,0,C^FDTermék megnevezése^FS
 ^FO40,680^GB1150,5,5^FS
-^FO40,750^A0N,60,60^FDÉrkezés dátuma: ${label.delivery_date || ''}^FS
-^FO40,850^A0N,60,60^FDKarton szám: ${label.picked_cartons || ''} db^FS
-^FO40,950^A0N,60,60^FDBeszállító: ${label.supplier || ''}^FS
-^FO40,1050^A0N,60,60^FDÜgyfél: ${label.destination || ''}^FS
-^FO40,1150^A0N,60,60^FDSzármazási ország: ${label.origin_country || ''}^FS
+^FO40,750^A0N,60,60^FDSzállítási dátum: ${label.delivery_date || ''}^FS
+^FO40,850^A0N,60,60^FDSzállítási hely: ${label.destination || ''}^FS
+^FO40,950^A0N,60,60^FDKartonszám: ${label.picked_cartons || ''} db^FS
+^FO40,1050^A0N,60,60^FDBruttó kg: ${grossWeight ? grossWeight.toFixed(2) + ' kg' : ''}^FS
+^FO40,1150^A0N,60,60^FDNettó kg: ${netWeight ? netWeight.toFixed(2) + ' kg' : ''}^FS
+^FO40,1250^A0N,60,60^FDÁtlag súly (nettó): ${avgWeight ? avgWeight + ' kg/db' : ''}^FS
+^FO40,1350^A0N,60,60^FDLotszám: ${lotNumber}^FS
+^FO40,1450^A0N,60,60^FDSzármazási ország: ${label.origin_country || ''}^FS
 ^FO40,1800^GB1150,5,5^FS
 ^FO150,1880^BY4
 ^BCN,350,N,N,N

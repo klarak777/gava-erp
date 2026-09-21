@@ -30,6 +30,7 @@ router.get('/pallet-labels', async (req, res) => {
         's.id', 's.created_at', 's.sscc', 's.truck_number', 's.product_name',
         's.picked_cartons', 's.supplier', 's.destination', 's.origin_country',
         's.pallets_json', 's.location_name',
+        's.gross_weight', 's.net_weight', 's.lot_number',
         's.consolidated_sscc', 's.is_consolidated_master',
         'c.pallets_json as commission_pallets_json',
         'p.name as legacy_pallet_name', 'p.category as legacy_pallet_category',
