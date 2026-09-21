@@ -497,7 +497,7 @@ async function processPick(trx, id, reqData, locationId = null) {
 }
 
 // ── SSCC és ZPL segédfüggvények ─────────────────────────────
-async function createSsccLabel(dbClient, lineId, commissionLineId, pickedCartons, originCountryOverride, palletsJsonData = null) {
+async function createSsccLabel(dbClient, lineId, commissionLineId, pickedCartons, originCountryOverride, palletsJsonData = null, area = null) {
   const line = await dbClient('aldi_truck_lines').where('id', lineId).first();
   if (!line) throw new Error('A komissiózott tétel nem található.');
 
@@ -508,7 +508,20 @@ async function createSsccLabel(dbClient, lineId, commissionLineId, pickedCartons
   const deliveryDate = (line.delivery_date || truck?.delivery_date) ? new Date(line.delivery_date || truck.delivery_date).toISOString().split('T')[0] : '';
   const originCountry = originCountryOverride || line.origin_country || '';
   const supplier = line.partner || '';
-  const destination = line.destination || 'ALDI';
+  
+  let defaultDest = 'ALDI';
+  if (area) {
+    const areaLower = area.toLowerCase();
+    if (areaLower === 'tesco') defaultDest = 'Tesco';
+    else if (areaLower === 'penny') defaultDest = 'Penny';
+    else if (areaLower === 'spar') defaultDest = 'Spar';
+  } else if (supplier) {
+    if (supplier.toLowerCase().includes('tesco')) defaultDest = 'Tesco';
+    else if (supplier.toLowerCase().includes('penny')) defaultDest = 'Penny';
+    else if (supplier.toLowerCase().includes('spar')) defaultDest = 'Spar';
+  }
+  const destination = line.destination || defaultDest;
+  
   const grossWeight = line.gross_weight || null;
   const netWeight = line.net_weight || null;
   const lotNumber = line.lot_number || '';
@@ -785,7 +798,7 @@ router.put('/commission-lines/:id/pick-and-assign', verifyToken, async (req, res
 // ── POST /generate-pallet-label ──────────────────────────────
 router.post('/generate-pallet-label', verifyToken, async (req, res) => {
   try {
-    const { lineId, pickedCartons, originCountry } = req.body;
+    const { lineId, pickedCartons, originCountry, area } = req.body;
     if (!lineId) return res.status(400).json({ error: 'A tételsor azonosítója kötelező.' });
 
     try {
@@ -797,7 +810,7 @@ router.post('/generate-pallet-label', verifyToken, async (req, res) => {
       console.error('[PDA] Ideiglenes címkék törlése sikertelen:', e);
     }
 
-    const label = await createSsccLabel(knex, lineId, null, pickedCartons, originCountry);
+    const label = await createSsccLabel(knex, lineId, null, pickedCartons, originCountry, null, area);
     res.json({ success: true, label });
   } catch (err) {
     console.error('[PDA] /generate-pallet-label hiba:', err);

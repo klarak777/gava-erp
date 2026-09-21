@@ -722,7 +722,8 @@ export async function renderCommission(container, params = {}) {
 
   async function loadData() {
     const area = select.value;
-    if (area !== 'aldi' && area !== 'crossdocking') {
+    const allowedAreas = ['aldi', 'crossdocking', 'tesco', 'penny', 'spar'];
+    if (!allowedAreas.includes(area)) {
       tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px; color: #94a3b8;">Nincs komissiózandó feladat ehhez a területhez.</td></tr>';
       return;
     }
@@ -982,12 +983,14 @@ export async function renderCommission(container, params = {}) {
     try {
       submitBtn.disabled = true;
       submitBtn.style.opacity = '0.5';
+      const areaVal = container.querySelector('#pda-terulet-select').value;
       const res = await apiFetch('/api/v1/pda/generate-pallet-label', {
         method: 'POST',
         body: JSON.stringify({
           lineId: currentLineId,
           pickedCartons: qty,
-          originCountry: orszagSel.value
+          originCountry: orszagSel.value,
+          area: areaVal
         })
       });
       const data = await res.json();
