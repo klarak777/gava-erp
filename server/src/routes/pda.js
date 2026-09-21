@@ -508,7 +508,7 @@ async function createSsccLabel(dbClient, lineId, commissionLineId, pickedCartons
   const deliveryDate = (line.delivery_date || truck?.delivery_date) ? new Date(line.delivery_date || truck.delivery_date).toISOString().split('T')[0] : '';
   const originCountry = originCountryOverride || line.origin_country || '';
   const supplier = line.partner || '';
-  const destination = line.destination || '';
+  const destination = line.destination || 'ALDI';
   const grossWeight = line.gross_weight || null;
   const netWeight = line.net_weight || null;
   const lotNumber = line.lot_number || '';
@@ -607,7 +607,7 @@ function generateZpl(label) {
 ^FO0,600^A0N,50,50^FB1180,1,0,C^FDTermék megnevezése^FS
 ^FO40,680^GB1150,5,5^FS
 ^FO40,750^A0N,60,60^FDSzállítási dátum: ${formattedDate}^FS
-^FO40,850^A0N,60,60^FDSzállítási hely: ${label.destination || ''}^FS
+^FO40,850^A0N,60,60^FDSzállítási hely: ${label.destination || 'ALDI'}^FS
 ^FO40,950^A0N,60,60^FDKartonszám: ${label.picked_cartons || ''} db^FS
 ^FO40,1050^A0N,60,60^FDBruttó kg: ${grossWeight ? grossWeight.toFixed(2) + ' kg' : ''}^FS
 ^FO40,1150^A0N,60,60^FDNettó kg: ${netWeight ? netWeight.toFixed(2) + ' kg' : ''}^FS

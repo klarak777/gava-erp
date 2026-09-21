@@ -966,7 +966,7 @@ export function openPalletLabelsTable(wm) {
                 
                 <div style="display:flex; flex-direction:column; gap:4px; font-size:13.5px; color:#111; font-weight:600;">
                     <div>Szállítási dátum: <strong style="font-weight:800;">${label.delivery_date || '-'}</strong></div>
-                    <div>Szállítási hely: <strong style="font-weight:800;">${label.destination || '-'}</strong></div>
+                    <div>Szállítási hely: <strong style="font-weight:800;">${label.destination || 'ALDI'}</strong></div>
                     <div>Kartonszám: <strong style="font-weight:800;">${label.picked_cartons != null ? label.picked_cartons + ' db' : '-'}</strong></div>
                     <div>Bruttó kg: <strong style="font-weight:800;">${label.gross_weight ? Number(label.gross_weight).toFixed(2) + ' kg' : '-'}</strong></div>
                     <div>Nettó kg: <strong style="font-weight:800;">${label.net_weight ? Number(label.net_weight).toFixed(2) + ' kg' : '-'}</strong></div>
