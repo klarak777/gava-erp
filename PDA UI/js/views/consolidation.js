@@ -37,28 +37,30 @@ export async function renderConsolidation(container, params = {}) {
 
   // ── HTML ──────────────────────────────────────────────────────────
   container.innerHTML = `
-    <!-- PANE 1: Kamion kiválasztás -->
-    <div id="pane-truck" class="pda-pane active">
-      <div class="pda-dashboard__header" style="display:flex; align-items:center; justify-content:space-between; padding:8px 14px 8px 10px; background:#f8f9fc; gap:4px;">
-        <div style="display:flex; align-items:center; gap:6px;">
-          <img src="/logo.ico" alt="Gava Logo" onerror="this.style.display='none'" style="width:32px; height:32px; flex-shrink:0;">
-          <div>
-            <div style="font-size:13.5px; font-weight:800; color:#0f172a; line-height:1.15;">Összeemelés</div>
-            <div style="font-size:7.5px; color:#64748b; font-weight:700; text-transform:uppercase; margin-top:1px;">FELHASZNÁLÓ</div>
-            <div style="font-size:11px; font-weight:700; color:#0f172a; max-width:95px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escHtml(userName)}</div>
-          </div>
+    <!-- PANE 1: Raklapok beolvasása -->
+    <div id="pane-scan-member" class="pda-pane active" style="flex-direction:column; height:100%; background:#f8fafc;">
+      <div class="pda-dashboard__header" style="display:flex; align-items:center; padding:8px 14px; background:#f8f9fc; gap:4px;">
+        <img src="/logo.ico" alt="Gava Logo" onerror="this.style.display='none'" style="width:32px; height:32px; flex-shrink:0;">
+        <div>
+          <div style="font-size:13.5px; font-weight:800; color:#0f172a;">Összeemelés</div>
+          <div id="scan-truck-name" style="font-size:10px; color:#0369a1; font-weight:700; margin-top:1px;">Nincs kamion azonosítva</div>
         </div>
       </div>
 
-      <div style="padding:16px; font-size:16px; color:#0f172a; text-align:center; font-weight:800;">Kamion kiválasztása</div>
+      <div style="padding:10px 16px 4px; font-size:13px; font-weight:700; color:#0f172a;">Olvasd be az összeemelendő raklapokat:</div>
+      
+      <div style="padding: 0 16px; margin-bottom: 8px; position: relative; display: flex; align-items: center;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 28px;">
+          <path d="M4 7V4h16v3M9 20h6M12 14v6M4 17v3h16v-3M9 7h6v5H9z"></path>
+        </svg>
+        <input type="text" id="member-barcode" placeholder="Raklap SSCC vonalkód" style="width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #fff; color: #0f172a;">
+      </div>
+      <div id="member-scan-error" style="display:none; color:#dc2626; font-size:12px; font-weight:600; text-align:center; margin:0 16px 8px;"></div>
 
-      <div style="flex:1; overflow-y:auto; padding:12px 16px;">
-        <div style="font-size:12px; font-weight:600; color:#334155; margin-bottom:8px;">Válassz egy kamiont az összeemeléshez:</div>
-        <div id="truck-loading" style="color:#94a3b8; font-size:13px; text-align:center; padding:20px;">Betöltés...</div>
-        <select id="truck-select" style="display:none; width:100%; padding:12px; border:2px solid #cbd5e1; border-radius:8px; font-size:14px; font-weight:600; color:#0f172a; background:#fff; margin-bottom:16px;">
-          <option value="">-- Válassz kamiont --</option>
-        </select>
-        <div id="truck-error" style="display:none; color:#dc2626; font-size:12px; font-weight:600; margin-top:8px;"></div>
+      <div style="flex:1; overflow-y:auto; padding:0 12px 8px;">
+        <div id="scanned-members-list" style="display:flex; flex-direction:column; gap:6px;">
+          <div id="empty-members-msg" style="color:#94a3b8; font-size:12px; text-align:center; padding:20px; font-style:italic;">Még nincs raklap beolvasva.</div>
+        </div>
       </div>
 
       <div class="pda-bottom-nav" style="display:flex; padding:12px 16px; background:#fff; border-top:1px solid #e2e8f0; align-items:center; justify-content:space-between;">
@@ -66,37 +68,7 @@ export async function renderConsolidation(container, params = {}) {
           <svg fill="currentColor" viewBox="0 0 24 24" style="width:24px;height:24px;"><path d="M3 13h1v7c0 1.103.897 2 2 2h12c1.103 0 2-.897 2-2v-7h1a1 1 0 00.707-1.707l-9-9a.999.999 0 00-1.414 0l-9 9A1 1 0 003 13zm7 7v-5h4v5h-4z"></path></svg>
           <span style="font-size:10px; font-weight:600; margin-top:2px;">Főoldal</span>
         </div>
-        <button id="btn-truck-next" style="cursor:pointer; border:none; display:flex; align-items:center; justify-content:center; background:#4f46e5; color:white; border-radius:8px; padding:0 20px; height:44px; font-size:12px; font-weight:700; opacity:0.5;" disabled>
-          Következő →
-        </button>
-      </div>
-    </div>
-
-    <!-- PANE 2: Raklap lista jelölőnégyzetekkel -->
-    <div id="pane-labels" class="pda-pane">
-      <div class="pda-dashboard__header" style="display:flex; align-items:center; padding:8px 14px; background:#f8f9fc; gap:4px;">
-        <img src="/logo.ico" alt="Gava Logo" onerror="this.style.display='none'" style="width:32px; height:32px; flex-shrink:0;">
-        <div>
-          <div style="font-size:13.5px; font-weight:800; color:#0f172a;">Összeemelés</div>
-          <div id="labels-truck-name" style="font-size:10px; color:#0369a1; font-weight:700; margin-top:1px;"></div>
-        </div>
-      </div>
-
-      <div style="padding:10px 16px 4px; font-size:13px; font-weight:700; color:#0f172a;">Válaszd ki az összeemelendő raklapokat:</div>
-      <div id="labels-count-info" style="padding:0 16px 6px; font-size:11px; color:#64748b;"></div>
-
-      <div style="flex:1; overflow-y:auto; padding:0 12px 8px;">
-        <div id="labels-list" style="display:flex; flex-direction:column; gap:6px;">
-          <div style="color:#94a3b8; font-size:13px; text-align:center; padding:20px;">Betöltés...</div>
-        </div>
-      </div>
-
-      <div class="pda-bottom-nav" style="display:flex; padding:12px 16px; background:#fff; border-top:1px solid #e2e8f0; align-items:center; justify-content:space-between;">
-        <div class="pda-nav-labels-back-btn" style="cursor:pointer; display:flex; flex-direction:column; align-items:center; color:#64748b;">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"></path></svg>
-          <span style="font-size:10px; font-weight:600; margin-top:2px;">Vissza</span>
-        </div>
-        <button id="btn-labels-next" style="cursor:pointer; border:none; display:flex; align-items:center; justify-content:center; background:#4f46e5; color:white; border-radius:8px; padding:0 16px; height:44px; font-size:12px; font-weight:700; opacity:0.5;" disabled>
+        <button id="btn-scan-next" style="cursor:pointer; border:none; display:flex; align-items:center; justify-content:center; background:#4f46e5; color:white; border-radius:8px; padding:0 16px; height:44px; font-size:12px; font-weight:700; opacity:0.5;" disabled>
           Címke nyomtatása →
         </button>
       </div>
@@ -106,21 +78,18 @@ export async function renderConsolidation(container, params = {}) {
   `;
 
   // ── DOM ELEMEK ────────────────────────────────────────────────────
-  const paneTruck     = container.querySelector('#pane-truck');
-  const paneLabels    = container.querySelector('#pane-labels');
-  const panePrint     = container.querySelector('#pane-print');
-  const paneLocation  = container.querySelector('#pane-dest');
-  const paneScan      = container.querySelector('#pane-sscc');
+  const paneScanMember = container.querySelector('#pane-scan-member');
+  const panePrint      = container.querySelector('#pane-print');
+  const paneLocation   = container.querySelector('#pane-dest');
+  const paneScan       = container.querySelector('#pane-sscc');
 
-  const truckLoading  = container.querySelector('#truck-loading');
-  const truckSelect   = container.querySelector('#truck-select');
-  const truckError    = container.querySelector('#truck-error');
-  const btnTruckNext  = container.querySelector('#btn-truck-next');
-
-  const labelsTruckName = container.querySelector('#labels-truck-name');
-  const labelsCountInfo = container.querySelector('#labels-count-info');
-  const labelsList      = container.querySelector('#labels-list');
-  const btnLabelsNext   = container.querySelector('#btn-labels-next');
+  const scanTruckName      = container.querySelector('#scan-truck-name');
+  const memberBarcode      = container.querySelector('#member-barcode');
+  const memberScanError    = container.querySelector('#member-scan-error');
+  const scannedMembersList = container.querySelector('#scanned-members-list');
+  const emptyMembersMsg    = container.querySelector('#empty-members-msg');
+  const btnScanNext        = container.querySelector('#btn-scan-next');
+  const scannedMembers = new Map(); // id -> label data
 
   const printPrinterInput = container.querySelector('#print-printer-barcode');
   const printBtn          = container.querySelector('#print-btn');
@@ -146,8 +115,7 @@ export async function renderConsolidation(container, params = {}) {
     if (isBusy()) return;
     if (paneScan.classList.contains('active')) showPane(paneLocation);
     else if (paneLocation.classList.contains('active')) showPane(panePrint);
-    else if (panePrint.classList.contains('active')) showPane(paneLabels);
-    else if (paneLabels.classList.contains('active')) showPane(paneTruck);
+    else if (panePrint.classList.contains('active')) showPane(paneScanMember);
     else goDashboard();
   };
   container.querySelectorAll('.pda-nav-home-btn').forEach(b => b.addEventListener('click', goDashboard));
@@ -156,157 +124,125 @@ export async function renderConsolidation(container, params = {}) {
   window._currentHwBack = goBack;
   window.addEventListener('hwBack', goBack);
 
-  // ── PANE 1: Kamion betöltés ───────────────────────────────────────
-  try {
-    const res = await apiFetch('/api/v1/pda/trucks-for-consolidation');
-    let trucks = null;
-    try { trucks = await res.json(); } catch (_) {}
-    truckLoading.style.display = 'none';
-    if (!res.ok || !Array.isArray(trucks) || trucks.length === 0) {
-      if (trucks && trucks.error) {
-        truckError.textContent = trucks.error;
-      } else if (Array.isArray(trucks) && trucks.length === 0) {
-        truckError.textContent = 'Nincs rakodásra váró kamion.';
-      } else {
-        truckError.textContent = `Hiba a kamionok betöltésekor (HTTP ${res.status}).`;
-      }
-      truckError.style.display = 'block';
+  // ── PANE 1: Raklapok beolvasása ───────────────────────────────────────
+  function renderScannedMembers() {
+    scannedMembersList.innerHTML = '';
+    if (scannedMembers.size === 0) {
+      emptyMembersMsg.style.display = 'block';
+      scannedMembersList.appendChild(emptyMembersMsg);
     } else {
-      availableTrucks = trucks;
-      trucks.forEach(t => {
-        const opt = document.createElement('option');
-        opt.value = t.id;
-        opt.dataset.truckNumber = t.truck_number;
-        opt.textContent = `${t.truck_number}${t.delivery_date ? ' – ' + t.delivery_date : ''}`;
-        truckSelect.appendChild(opt);
-      });
-      truckSelect.style.display = 'block';
-    }
-  } catch (err) {
-    truckLoading.style.display = 'none';
-    truckError.textContent = 'Hálózati hiba a kamionok betöltésekor.';
-    truckError.style.display = 'block';
-  }
-
-  truckSelect.addEventListener('change', () => {
-    const val = truckSelect.value;
-    if (val) {
-      selectedTruck = availableTrucks.find(t => Number(t.id) === Number(val));
-      btnTruckNext.disabled = false;
-      btnTruckNext.style.opacity = '1';
-    } else {
-      selectedTruck = null;
-      btnTruckNext.disabled = true;
-      btnTruckNext.style.opacity = '0.5';
-    }
-  });
-
-  btnTruckNext.addEventListener('click', async () => {
-    if (!selectedTruck) return;
-    showPane(paneLabels);
-    await loadLabels();
-  });
-
-  // ── PANE 2: Raklap lista betöltés ────────────────────────────────
-  async function loadLabels() {
-    selectedLabelIds.clear();
-    updateLabelsNextBtn();
-    labelsTruckName.textContent = selectedTruck.truck_number;
-    labelsCountInfo.textContent = 'Betöltés...';
-    labelsList.innerHTML = '<div style="color:#94a3b8; font-size:13px; text-align:center; padding:20px;">Betöltés...</div>';
-
-    try {
-      const res = await apiFetch(`/api/v1/pda/labels-for-truck/${selectedTruck.id}`);
-      let data = null;
-      try { data = await res.json(); } catch (_) {}
-      availableLabels = data;
-      if (!res.ok || !Array.isArray(availableLabels)) {
-        labelsList.innerHTML = `<div style="color:#dc2626; font-size:13px; text-align:center; padding:16px;">${escHtml((data && data.error) || `Hiba a betöltéskor (HTTP ${res.status}).`)}</div>`;
-        labelsCountInfo.textContent = '';
-        return;
-      }
-      if (availableLabels.length === 0) {
-        labelsList.innerHTML = '<div style="color:#94a3b8; font-size:13px; text-align:center; padding:20px;">Nincs összeemelésre váró raklap ennél a kamiononál.</div>';
-        labelsCountInfo.textContent = '';
-        return;
-      }
-      renderLabelsList();
-      const eligible = availableLabels.filter(label => label.can_consolidate !== false).length;
-      labelsCountInfo.textContent = `${eligible} raklap választható – legalább 2 szükséges.${eligible < availableLabels.length ? ` ${availableLabels.length - eligible} raklap készletadata hibás.` : ''}`;
-    } catch (err) {
-      labelsList.innerHTML = '<div style="color:#dc2626; font-size:13px; text-align:center; padding:16px;">Hálózati hiba a raklapok betöltésekor.</div>';
-    }
-  }
-
-  function renderLabelsList() {
-    labelsList.innerHTML = '';
-    availableLabels.forEach(label => {
-      // Raklap típus meghatározása pallets_json-ból
-      let palletTypeTxt = '-';
-      if (label.pallets_json) {
-        try {
-          const pallets = JSON.parse(label.pallets_json);
-          if (Array.isArray(pallets) && pallets.length > 0) {
-            palletTypeTxt = pallets.map(p => `${p.name || p} (${Number(p.tare_weight_kg || 0).toFixed(1)} kg)`).join(', ');
-          }
-        } catch (_) {}
-      }
-
-      const item = document.createElement('div');
-      item.style.cssText = 'background:#fff; border:1.5px solid #e2e8f0; border-radius:8px; padding:10px 10px 10px 12px; display:flex; align-items:flex-start; gap:10px;';
-      item.innerHTML = `
-        <input type="checkbox" data-id="${label.id}" ${label.can_consolidate === false ? 'disabled' : ''} style="width:20px; height:20px; margin-top:2px; cursor:pointer; accent-color:#4f46e5; flex-shrink:0;">
-        <div style="flex:1; min-width:0;">
-          <div style="font-size:12px; font-weight:800; color:#0f172a; font-family:monospace; letter-spacing:0.5px; word-break:break-all;">${escHtml(label.sscc)}</div>
-          <div style="font-size:11px; color:#334155; font-weight:600; margin-top:2px;">${escHtml(label.product_name || '-')}</div>
-          <div style="display:flex; gap:8px; margin-top:3px; flex-wrap:wrap;">
-            <span style="font-size:10px; background:#dbeafe; color:#1d4ed8; border-radius:4px; padding:1px 5px; font-weight:700;">${label.picked_cartons || 0} karton</span>
-            ${label.location_name ? `<span style="font-size:10px; background:#dcfce7; color:#15803d; border-radius:4px; padding:1px 5px; font-weight:700;">📍 ${escHtml(label.location_name)}</span>` : ''}
+      emptyMembersMsg.style.display = 'none';
+      scannedMembers.forEach(label => {
+        const item = document.createElement('div');
+        item.style.cssText = 'background:#fff; border:1.5px solid #e2e8f0; border-radius:8px; padding:10px 10px 10px 12px; display:flex; align-items:center; gap:10px; justify-content:space-between;';
+        item.innerHTML = `
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:12px; font-weight:800; color:#0f172a; font-family:monospace; letter-spacing:0.5px; word-break:break-all;">${escHtml(label.sscc)}</div>
+            <div style="font-size:11px; color:#334155; font-weight:600; margin-top:2px;">${escHtml(label.product_name || '-')}</div>
           </div>
-          <div style="font-size:10px; color:#64748b; margin-top:2px;">${escHtml(palletTypeTxt)}</div>
-          ${label.can_consolidate === false ? `<div role="alert" style="font-size:11px; color:#b91c1c; margin-top:6px;">${escHtml(label.consolidation_error || 'A raklap készletadatai hiányosak.')}</div>` : ''}
-        </div>
-      `;
-
-      const cb = item.querySelector('input[type="checkbox"]');
-      cb.addEventListener('change', () => {
-        if (label.can_consolidate === false) return;
-        if (cb.checked) {
-          selectedLabelIds.add(label.id);
-          item.style.borderColor = '#4f46e5';
-          item.style.background = '#f5f3ff';
-        } else {
+          <button class="remove-member-btn" data-id="${label.id}" style="cursor:pointer; background:none; border:none; color:#dc2626; padding:8px; border-radius:4px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"></path>
+            </svg>
+          </button>
+        `;
+        
+        item.querySelector('.remove-member-btn').addEventListener('click', () => {
+          scannedMembers.delete(label.id);
           selectedLabelIds.delete(label.id);
-          item.style.borderColor = '#e2e8f0';
-          item.style.background = '#fff';
-        }
-        updateLabelsNextBtn();
-        labelsCountInfo.textContent = `${availableLabels.length} raklap – ${selectedLabelIds.size} kijelölve (min. 2 szükséges)`;
+          if (scannedMembers.size === 0) {
+            selectedTruck = null;
+            scanTruckName.textContent = 'Nincs kamion azonosítva';
+          }
+          updateScanNextBtn();
+          renderScannedMembers();
+        });
+
+        scannedMembersList.appendChild(item);
       });
-
-      labelsList.appendChild(item);
-    });
+    }
   }
 
-  function updateLabelsNextBtn() {
-    const enough = !generatingLabel && selectedLabelIds.size >= 2;
-    btnLabelsNext.disabled = !enough;
-    btnLabelsNext.style.opacity = enough ? '1' : '0.5';
+  function updateScanNextBtn() {
+    const enough = !generatingLabel && scannedMembers.size >= 2;
+    btnScanNext.disabled = !enough;
+    btnScanNext.style.opacity = enough ? '1' : '0.5';
   }
 
-  btnLabelsNext.addEventListener('click', async () => {
-    if (selectedLabelIds.size < 2 || btnLabelsNext.disabled) return;
+  memberBarcode.addEventListener('keydown', async (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const sscc = memberBarcode.value.trim();
+      if (!sscc) return;
+      memberBarcode.disabled = true;
+      memberScanError.style.display = 'none';
+      memberScanError.textContent = '';
 
-    // Címke előkészítése / előnézet generálása
-    const originalHtml = btnLabelsNext.innerHTML;
+      try {
+        const res = await apiFetch(`/api/v1/pda/consolidation-member?sscc=${encodeURIComponent(sscc)}`);
+        const data = await res.json();
+        
+        if (res.ok && data.success && data.label) {
+          const lbl = data.label;
+          if (scannedMembers.has(lbl.id)) {
+            memberScanError.textContent = 'Ezt a raklapot már hozzáadtad.';
+            memberScanError.style.display = 'block';
+          } else {
+            if (!selectedTruck) {
+              selectedTruck = {
+                id: lbl.truck_id,
+                truck_number: lbl.truck_number,
+                target_locations: lbl.target_locations
+              };
+              scanTruckName.textContent = lbl.truck_number;
+            } else if (selectedTruck.id !== lbl.truck_id) {
+              memberScanError.textContent = 'Ez a raklap egy másik kamionhoz tartozik! Ezért nem lehetséges az összeemelése a megelőzővel.';
+              memberScanError.style.display = 'block';
+              memberBarcode.disabled = false;
+              memberBarcode.value = '';
+              memberBarcode.focus();
+              return;
+            }
+            
+            scannedMembers.set(lbl.id, lbl);
+            selectedLabelIds.add(lbl.id);
+            memberBarcode.value = '';
+            renderScannedMembers();
+            updateScanNextBtn();
+          }
+        } else {
+          memberScanError.textContent = (data && data.error) || 'Hiba a raklap ellenőrzésekor.';
+          memberScanError.style.display = 'block';
+        }
+      } catch (err) {
+        memberScanError.textContent = 'Hálózati hiba a raklap ellenőrzésekor.';
+        memberScanError.style.display = 'block';
+      } finally {
+        memberBarcode.disabled = false;
+        if (!memberScanError.textContent) {
+          setTimeout(() => memberBarcode.focus(), 50);
+        } else {
+          setTimeout(() => {
+            memberBarcode.value = '';
+            memberBarcode.focus();
+          }, 1500); // Clear error and reset focus after 1.5s
+        }
+      }
+    }
+  });
+
+  btnScanNext.addEventListener('click', async () => {
+    if (scannedMembers.size < 2 || btnScanNext.disabled) return;
+
+    const originalHtml = btnScanNext.innerHTML;
     generatingLabel = true;
-    btnLabelsNext.innerHTML = '⌛ Generálás...';
-    btnLabelsNext.disabled = true;
+    btnScanNext.innerHTML = '⌛ Generálás...';
+    btnScanNext.disabled = true;
 
     try {
       const res = await apiFetch('/api/v1/pda/consolidation-preview', {
         method: 'POST',
-        body: JSON.stringify({ labelIds: Array.from(selectedLabelIds) })
+        body: JSON.stringify({ labelIds: Array.from(scannedMembers.keys()) })
       });
       let data = null;
       try { data = await res.json(); } catch (_) {}
@@ -323,8 +259,8 @@ export async function renderConsolidation(container, params = {}) {
       alert('Hálózati hiba a címke generálása során.');
     } finally {
       generatingLabel = false;
-      btnLabelsNext.innerHTML = originalHtml;
-      updateLabelsNextBtn();
+      btnScanNext.innerHTML = originalHtml;
+      updateScanNextBtn();
     }
   });
 
