@@ -103,7 +103,7 @@ export async function renderConsolidation(container, params = {}) {
 
   // ── NAVIGÁCIÓ ────────────────────────────────────────────────────
   const showPane = (pane) => {
-    [paneTruck, paneLabels, panePrint, paneLocation, paneScan].forEach(p => {
+    [paneScanMember, panePrint, paneLocation, paneScan].forEach(p => {
       p.classList.remove('active');
     });
     pane.classList.add('active');
@@ -148,6 +148,7 @@ export async function renderConsolidation(container, params = {}) {
         `;
         
         item.querySelector('.remove-member-btn').addEventListener('click', () => {
+          if (generatingLabel) return;
           scannedMembers.delete(label.id);
           selectedLabelIds.delete(label.id);
           if (scannedMembers.size === 0) {
@@ -156,6 +157,7 @@ export async function renderConsolidation(container, params = {}) {
           }
           updateScanNextBtn();
           renderScannedMembers();
+          setTimeout(() => memberBarcode.focus(), 50);
         });
 
         scannedMembersList.appendChild(item);
@@ -169,7 +171,10 @@ export async function renderConsolidation(container, params = {}) {
     btnScanNext.style.opacity = enough ? '1' : '0.5';
   }
 
+  setTimeout(() => { if (!isBusy()) memberBarcode.focus(); }, 150);
+
   memberBarcode.addEventListener('keydown', async (e) => {
+    if (generatingLabel) return;
     if (e.key === 'Enter') {
       e.preventDefault();
       const sscc = memberBarcode.value.trim();
@@ -219,14 +224,7 @@ export async function renderConsolidation(container, params = {}) {
         memberScanError.style.display = 'block';
       } finally {
         memberBarcode.disabled = false;
-        if (!memberScanError.textContent) {
-          setTimeout(() => memberBarcode.focus(), 50);
-        } else {
-          setTimeout(() => {
-            memberBarcode.value = '';
-            memberBarcode.focus();
-          }, 1500); // Clear error and reset focus after 1.5s
-        }
+        setTimeout(() => memberBarcode.focus(), 50);
       }
     }
   });

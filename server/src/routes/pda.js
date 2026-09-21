@@ -910,6 +910,63 @@ router.get('/labels-for-truck/:truckId', verifyToken, async (req, res) => {
   }
 });
 
+// ── GET /consolidation-member ──────────────────────────────────────────────
+router.get('/consolidation-member', verifyToken, async (req, res) => {
+  try {
+    const { sscc } = req.query;
+    if (!sscc) return res.status(400).json({ error: 'SSCC paraméter kötelező.' });
+    const val = normalizeSscc(sscc);
+    if (!val) return res.status(400).json({ error: 'Érvénytelen SSCC vonalkód.' });
+
+    const label = await knex('sscc_labels')
+      .where('sscc', val)
+      .where('is_provisional', false)
+      .where(function() {
+        this.where('is_consolidated_master', false).orWhereNull('is_consolidated_master');
+      })
+      .whereNull('consolidated_sscc')
+      .first();
+
+    if (!label) return res.status(404).json({ error: 'A raklap nem található, már összeemelték, vagy még nem véglegesítették.' });
+
+    const commissionId = Number(label.commission_line_id);
+    if (!Number.isInteger(commissionId)) return res.status(400).json({ error: 'A raklaphoz nem tartozik komissiózási rekord.' });
+
+    const commissionRow = await knex('aldi_commission_lines').where('id', commissionId).first();
+    if (!commissionRow) return res.status(400).json({ error: 'A komissiózási rekord nem található.' });
+
+    const truckId = Number(commissionRow.aldi_truck_id);
+    const truck = await knex('aldi_trucks').where('id', truckId).first();
+    if (!truck || !truck.sent_to_pda || truck.is_loaded) {
+      return res.status(400).json({ error: 'A kamion nem szerepel aktív PDA-feladatként, vagy már rakodva van.' });
+    }
+
+    const stockRows = await knex('aldi_stock_locations').where('commission_line_id', commissionId);
+    const locationIds = [...new Set(stockRows.map(s => s.location_id))];
+    const locations = locationIds.length > 0 ? await knex('aldi_locations').whereIn('id', locationIds) : [];
+
+    const issues = consolidationStockIssues([label], [commissionRow], stockRows, locations);
+    if (issues.length > 0 && issues[0].error) {
+      return res.status(400).json({ error: issues[0].error });
+    }
+
+    res.json({
+      success: true,
+      label: {
+        id: label.id,
+        sscc: label.sscc,
+        product_name: label.product_name,
+        truck_id: truck.id,
+        truck_number: truck.truck_number,
+        target_locations: truck.target_locations
+      }
+    });
+  } catch (err) {
+    console.error('[PDA] /consolidation-member hiba:', err);
+    res.status(500).json({ error: 'Hiba a raklap adatainak lekérdezésekor.' });
+  }
+});
+
 // ── POST /consolidation-preview, /consolidation-validate-location, /consolidation ──
 // Előnézet, céllokáció-ellenőrzés, majd a visszaszkennelt mester SSCC utáni véglegesítés.
 router.post('/consolidation-preview', verifyToken, async (req, res) => {
