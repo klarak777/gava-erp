@@ -319,9 +319,10 @@ async function processPick(trx, id, reqData, locationId = null) {
 
     // Ha a kapacitás 0, az azt jelenti, hogy nincs meghatározva – ne blokkoljuk
     if (capacity > 0) {
-      const currentLocStock = await trx('aldi_stock_locations')
-        .where('location_id', locationId)
-        .count('id as occupied_pallets')
+      const currentLocStock = await trx('aldi_stock_locations as s')
+        .leftJoin('sscc_labels as sl', 'sl.commission_line_id', 's.commission_line_id')
+        .where('s.location_id', locationId)
+        .select(trx.raw('COUNT(DISTINCT COALESCE(sl.consolidated_sscc, s.id::text)) as occupied_pallets'))
         .first();
 
       const existingPallets = parseInt(currentLocStock?.occupied_pallets) || 0;
@@ -617,9 +618,10 @@ router.post('/commission-lines/:id/validate-location', verifyToken, async (req, 
     // Check capacity
     const capacity = parseInt(location.capacity) || 0;
     if (capacity > 0) {
-      const currentLocStock = await knex('aldi_stock_locations')
-        .where('location_id', location.id)
-        .count('id as occupied_pallets')
+      const currentLocStock = await knex('aldi_stock_locations as s')
+        .leftJoin('sscc_labels as sl', 'sl.commission_line_id', 's.commission_line_id')
+        .where('s.location_id', location.id)
+        .select(knex.raw('COUNT(DISTINCT COALESCE(sl.consolidated_sscc, s.id::text)) as occupied_pallets'))
         .first();
       const existingPallets = parseInt(currentLocStock?.occupied_pallets) || 0;
       

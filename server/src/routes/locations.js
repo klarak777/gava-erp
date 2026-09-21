@@ -14,12 +14,13 @@ router.get('/', async (req, res) => {
   try {
     const locations = await knex('aldi_locations as l')
       .leftJoin('aldi_stock_locations as s', 's.location_id', 'l.id')
+      .leftJoin('sscc_labels as sl', 'sl.commission_line_id', 's.commission_line_id')
       .leftJoin('aldi_daily_order_lines as ol', 'ol.id', 's.order_line_id')
       .groupBy('l.id')
       .select(
         'l.*',
         knex.raw('COALESCE(SUM(s.quantity_cartons), 0)::integer as current_cartons'),
-        knex.raw('COUNT(s.id)::integer as occupied_pallets')
+        knex.raw('COUNT(DISTINCT COALESCE(sl.consolidated_sscc, s.id::text))::integer as occupied_pallets')
       )
       .orderBy('l.type_code')
       .orderBy('l.building_num')

@@ -59,13 +59,19 @@ async function consolidationCapacityError(db, location, stockRows) {
   const capacity = parseInt(location.capacity, 10) || 0;
   if (capacity <= 0) return null;
   // A már itt lévő kijelölt raklapot nem szabad kétszer beleszámítani.
-  const occupied = await db('aldi_stock_locations')
-    .where('location_id', location.id)
-    .whereNotIn('id', stockRows.map(stock => stock.id))
-    .count('id as count').first();
-  const occupiedCount = Number(occupied?.count || 0);
-  if (occupiedCount + stockRows.length > capacity) {
-    return `A céllokáció megtelt. Kapacitás: ${capacity}, foglalt: ${occupiedCount}, érkező raklapok: ${stockRows.length}.`;
+  // Az összeemelt raklapok (azonos consolidated_sscc) csak 1 helyet foglalnak el fizikailag.
+  const res = await db('aldi_stock_locations as s')
+    .leftJoin('sscc_labels as sl', 'sl.commission_line_id', 's.commission_line_id')
+    .where('s.location_id', location.id)
+    .whereNotIn('s.id', stockRows.map(stock => stock.id))
+    .select(db.raw('COUNT(DISTINCT COALESCE(sl.consolidated_sscc, s.id::text)) as occupied_count'))
+    .first();
+  const occupiedCount = Number(res?.occupied_count || 0);
+
+  // Mivel ezek a raklapok most lesznek összeemelve egyetlen SSCC alá, a helyigényük pontosan 1.
+  const incomingSpace = 1;
+  if (occupiedCount + incomingSpace > capacity) {
+    return `A céllokáció megtelt. Kapacitás: ${capacity}, foglalt: ${occupiedCount}, érkező (összeemelt) raklapok helyigénye: ${incomingSpace}.`;
   }
   return null;
 }
