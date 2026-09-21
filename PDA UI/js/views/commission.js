@@ -722,9 +722,10 @@ export async function renderCommission(container, params = {}) {
 
   async function loadData() {
     const area = select.value;
-    const allowedAreas = ['aldi', 'crossdocking', 'tesco', 'penny', 'spar'];
-    if (!allowedAreas.includes(area)) {
+    if (area !== 'aldi' && area !== 'crossdocking') {
       tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px; color: #94a3b8;">Nincs komissiózandó feladat ehhez a területhez.</td></tr>';
+      container.querySelector('#hdr-total-items').textContent = '0';
+      container.querySelector('#hdr-total-cartons').textContent = '0';
       return;
     }
 
