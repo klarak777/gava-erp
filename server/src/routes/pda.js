@@ -1160,7 +1160,7 @@ router.post('/consolidation', verifyToken, async (req, res) => {
       if (existing) throw new Error('Ez az összeemelt SSCC már szerepel a rendszerben.');
       const masterData = {
         id: masterId, sscc: expectedSscc, commission_line_id: null, picked_cartons: totalCartons,
-        truck_number: truck.truck_number, product_name: products.length > 1 ? 'Vegyes raklap' : (products[0] || 'Vegyes'),
+        truck_number: truck.truck_number, product_name: 'Vegyes raklap',
         delivery_date: masterLabel.delivery_date || new Date().toISOString().split('T')[0],
         supplier: suppliers.join(', ').substring(0, 255), destination: destinations.join(', ').substring(0, 255),
         origin_country: origins.join(', ').substring(0, 255), location_name: loc.name,
