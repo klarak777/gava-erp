@@ -705,8 +705,6 @@ router.put('/commission-lines/:id/pick-and-assign', verifyToken, async (req, res
       result = await processPick(trx, req.params.id, { ...req.body, scannedSscc }, location.id);
       if (result.label && !result.isAlreadyProcessed) {
         await trx('sscc_labels').where('id', result.label.id).update({ location_name: location.name });
-        // Also update the line's destination field with the actual location name
-        await trx('aldi_truck_lines').where('id', req.params.id).update({ destination: location.name });
       }
     });
 
