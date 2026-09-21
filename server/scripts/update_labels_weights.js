@@ -40,9 +40,15 @@ async function migrateExistingLabels() {
       if (memberSsccs.length > 0) {
         const members = await db('sscc_labels').whereIn('sscc', memberSsccs);
         const totalGrossWeight = members.reduce((sum, m) => sum + (parseFloat(m.gross_weight) || 0), 0);
+        const totalNetWeight = members.reduce((sum, m) => sum + (parseFloat(m.net_weight) || 0), 0);
         
+        const deliveryDates = [...new Set(members.map(label => label.delivery_date).filter(Boolean))];
+        const finalDeliveryDate = deliveryDates.length > 0 ? deliveryDates[0] : master.delivery_date;
+
         await db('sscc_labels').where('id', master.id).update({
           gross_weight: totalGrossWeight > 0 ? totalGrossWeight : null,
+          net_weight: totalNetWeight > 0 ? totalNetWeight : null,
+          delivery_date: finalDeliveryDate,
           product_name: 'Vegyes raklap'
         });
         masterCount++;

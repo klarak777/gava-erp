@@ -1192,19 +1192,23 @@ router.post('/consolidation', verifyToken, async (req, res) => {
       if (Array.isArray(suppliedMembers) && JSON.stringify(suppliedMembers) !== JSON.stringify(memberSsccs)) throw new Error('Az összeemelt címke tagraklap-listája nem egyezik a kijelöléssel.');
       const totalCartons = orderedLabels.reduce((sum, label) => sum + (parseInt(label.picked_cartons, 10) || 0), 0);
       const totalGrossWeight = orderedLabels.reduce((sum, label) => sum + (parseFloat(label.gross_weight) || 0), 0);
+      const totalNetWeight = orderedLabels.reduce((sum, label) => sum + (parseFloat(label.net_weight) || 0), 0);
       const products = [...new Set(orderedLabels.map(label => label.product_name).filter(Boolean))];
       const suppliers = [...new Set(orderedLabels.map(label => label.supplier).filter(Boolean))];
       const destinations = [...new Set(orderedLabels.map(label => label.destination).filter(Boolean))];
       const origins = [...new Set(orderedLabels.map(label => label.origin_country).filter(Boolean))];
+      const deliveryDates = [...new Set(orderedLabels.map(label => label.delivery_date).filter(Boolean))];
+      const finalDeliveryDate = deliveryDates.length > 0 ? deliveryDates[0] : (masterLabel.delivery_date || new Date().toISOString().split('T')[0]);
       const existing = await trx('sscc_labels').where(function() { this.where('id', masterId).orWhere('sscc', expectedSscc); }).first();
       if (existing) throw new Error('Ez az összeemelt SSCC már szerepel a rendszerben.');
       const masterData = {
         id: masterId, sscc: expectedSscc, commission_line_id: null, picked_cartons: totalCartons,
         truck_number: truck.truck_number, product_name: 'Vegyes raklap',
-        delivery_date: masterLabel.delivery_date || new Date().toISOString().split('T')[0],
+        delivery_date: finalDeliveryDate,
         supplier: suppliers.join(', ').substring(0, 255), destination: destinations.join(', ').substring(0, 255),
         origin_country: origins.join(', ').substring(0, 255), location_name: loc.name,
         gross_weight: totalGrossWeight > 0 ? totalGrossWeight : null,
+        net_weight: totalNetWeight > 0 ? totalNetWeight : null,
         is_provisional: false, is_consolidated_master: true, pallets_json: JSON.stringify(memberSsccs)
       };
       await trx('sscc_labels').insert(masterData);
