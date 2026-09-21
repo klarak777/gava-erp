@@ -166,7 +166,7 @@ export async function renderConsolidation(container, params = {}) {
   }
 
   function updateScanNextBtn() {
-    const enough = !generatingLabel && scannedMembers.size >= 2;
+    const enough = !generatingLabel && !memberBarcode.disabled && scannedMembers.size >= 2;
     btnScanNext.disabled = !enough;
     btnScanNext.style.opacity = enough ? '1' : '0.5';
   }
@@ -180,6 +180,7 @@ export async function renderConsolidation(container, params = {}) {
       const sscc = memberBarcode.value.trim();
       if (!sscc) return;
       memberBarcode.disabled = true;
+      updateScanNextBtn();
       memberScanError.style.display = 'none';
       memberScanError.textContent = '';
 
@@ -203,9 +204,7 @@ export async function renderConsolidation(container, params = {}) {
             } else if (selectedTruck.id !== lbl.truck_id) {
               memberScanError.textContent = 'Ez a raklap egy másik kamionhoz tartozik! Ezért nem lehetséges az összeemelése a megelőzővel.';
               memberScanError.style.display = 'block';
-              memberBarcode.disabled = false;
               memberBarcode.value = '';
-              memberBarcode.focus();
               return;
             }
             
@@ -224,6 +223,7 @@ export async function renderConsolidation(container, params = {}) {
         memberScanError.style.display = 'block';
       } finally {
         memberBarcode.disabled = false;
+        updateScanNextBtn();
         setTimeout(() => memberBarcode.focus(), 50);
       }
     }
@@ -449,5 +449,5 @@ export async function renderConsolidation(container, params = {}) {
   }
 
   // Kezdeti pane megjelenítés
-  showPane(paneTruck);
+  showPane(paneScanMember);
 }

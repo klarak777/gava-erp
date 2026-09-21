@@ -61,7 +61,7 @@ export function renderLogin(container) {
       </form>
 
       <div class="pda-login__footer">
-        GAVA WMS PDA<br>Verzió 1.0.0
+        GAVA WMS PDA<br>Verzió V0.9.3.1
       </div>
     </div>
   `;
