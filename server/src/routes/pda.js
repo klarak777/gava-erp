@@ -9,6 +9,7 @@ const express = require('express');
 const router = express.Router();
 const knex = require('../db/db');
 const jwt = require('jsonwebtoken');
+const { consolidationStockIssues, assertConsolidationStock, consolidationCapacityError } = require('../services/consolidationStock');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_for_gava';
 
@@ -34,6 +35,23 @@ function targetLocationIds(value) {
     .map(item => (item && typeof item === 'object' ? item.id : item))
     .map(Number)
     .filter(Number.isInteger))];
+}
+
+function validSscc(value) {
+  const sscc = normalizeSscc(value);
+  if (!/^\d{18}$/.test(sscc)) return false;
+  const body = sscc.slice(0, 17);
+  let sum = 0;
+  for (let i = body.length - 1, position = 0; i >= 0; i--, position++) {
+    sum += Number(body[i]) * (position % 2 === 0 ? 3 : 1);
+  }
+  const checkDigit = (10 - (sum % 10)) % 10;
+  return checkDigit === Number(sscc[17]);
+}
+
+function isParentLocation(location) {
+  const type = String(location?.location_type || '');
+  return type === 'Szülő' || type === 'SzÃ¼lÅ‘';
 }
 
 /**
@@ -367,7 +385,7 @@ async function processPick(trx, id, reqData, locationId = null) {
   if (!isNaN(reqGross) && reqGross > 0) {
     const totalTare = (reqTare * qty) + totalPalletTareKg;
     if (reqGross < totalTare) {
-      const palletTareStr = palletsJsonData.map(p => `${p.name} (${p.tare_weight_kg} kg)`).join(' + ');
+      const palletTareStr = palletsJsonData.map(p => `${p.name} (${p.tare_weight_kg.toFixed(1)} kg)`).join(' + ');
       const err = new Error(`A bruttó súly (${reqGross} kg) kisebb, mint a göngyöleg (${reqTare} kg x ${qty} db) és a raklapok (${palletTareStr}) tára összege!`);
       err.code = 'INVALID_WEIGHT'; throw err;
     }
@@ -754,7 +772,9 @@ router.post('/print-pallet-label', verifyToken, async (req, res) => {
 
     // 2. Címke előkeresése vagy generálása
     let label = null;
-    if (labelId) {
+    if (req.body.labelData) {
+      label = req.body.labelData;
+    } else if (labelId) {
       label = await knex('sscc_labels').where('id', labelId).first();
     }
     if (!label && commissionLineId) {
@@ -838,7 +858,7 @@ router.get('/trucks-for-consolidation', verifyToken, async (req, res) => {
     const trucks = await knex('aldi_trucks')
       .where('sent_to_pda', true)
       .where('is_loaded', false)
-      .select('id', 'truck_number', 'delivery_date', 'transporter')
+      .select('id', 'truck_number', 'delivery_date', 'transporter', 'target_locations')
       .orderBy('delivery_date', 'desc')
       .orderBy('id', 'desc');
     res.json(trucks);
@@ -864,127 +884,241 @@ router.get('/labels-for-truck/:truckId', verifyToken, async (req, res) => {
       })
       .whereNull('s.consolidated_sscc')
       .select(
-        's.id', 's.sscc', 's.product_name', 's.picked_cartons',
+        's.id', 's.sscc', 's.commission_line_id', 's.product_name', 's.picked_cartons',
         's.pallets_json', 's.location_name', 's.truck_number',
         's.supplier', 's.destination', 's.origin_country', 's.created_at'
       )
       .orderBy('s.id', 'asc');
-    res.json(labels);
+    const commissionIds = labels.map(label => label.commission_line_id);
+    const commissionRows = await knex('aldi_commission_lines').whereIn('id', commissionIds);
+    const stockRows = await knex('aldi_stock_locations').whereIn('commission_line_id', commissionIds);
+    const locations = await knex('aldi_locations').whereIn('id', stockRows.map(stock => stock.location_id));
+    const issues = consolidationStockIssues(labels, commissionRows, stockRows, locations);
+    const byLabel = new Map(issues.map(issue => [issue.labelId, issue]));
+    res.json(labels.map(label => {
+      const issue = byLabel.get(Number(label.id));
+      return {
+        ...label,
+        can_consolidate: !issue.error,
+        consolidation_error: issue.error,
+        location_name: issue.location?.name || label.location_name
+      };
+    }));
   } catch (err) {
     console.error('[PDA] /labels-for-truck hiba:', err);
     res.status(500).json({ error: 'Hiba a raklapcímkék betöltésekor.' });
   }
 });
 
-// ── POST /consolidation ──────────────────────────────
-// Összeemelés véglegesítése: mester SSCC generálás, tag-raklapok frissítése,
-// lokáció beállítása az összes érintett sornál.
-// Payload: { labelIds: [101, 102, ...], locationName: "A-01-01" }
-router.post('/consolidation', verifyToken, async (req, res) => {
+// ── POST /consolidation-preview, /consolidation-validate-location, /consolidation ──
+// Előnézet, céllokáció-ellenőrzés, majd a visszaszkennelt mester SSCC utáni véglegesítés.
+router.post('/consolidation-preview', verifyToken, async (req, res) => {
   try {
-    const { labelIds, locationName } = req.body;
-    if (!labelIds || !Array.isArray(labelIds) || labelIds.length < 2) {
+    const { labelIds } = req.body;
+    if (!Array.isArray(labelIds) || labelIds.length < 2) {
       return res.status(400).json({ error: 'Legalább 2 raklapot meg kell adni az összeemeléshez.' });
     }
-    if (!locationName || !String(locationName).trim()) {
-      return res.status(400).json({ error: 'A céllokáció megadása kötelező az összeemeléshez.' });
+    const ids = labelIds.map(Number);
+    const uniqueIds = [...new Set(ids)];
+    if (ids.some(id => !Number.isInteger(id) || id <= 0) || uniqueIds.length !== ids.length) {
+      return res.status(400).json({ error: 'Érvénytelen vagy ismétlődő raklapazonosító.' });
     }
 
-    let newLabel = null;
+    let previewLabel = null;
     await knex.transaction(async (trx) => {
-      // Lekérjük a kijelölt raklapokat (zárolással)
       const labels = await trx('sscc_labels')
-        .whereIn('id', labelIds)
+        .whereIn('id', uniqueIds)
         .where('is_provisional', false)
         .where(function() {
           this.where('is_consolidated_master', false).orWhereNull('is_consolidated_master');
         })
-        .whereNull('consolidated_sscc')
-        .forUpdate();
-
-      if (labels.length !== labelIds.length) {
+        .whereNull('consolidated_sscc');
+      if (labels.length !== uniqueIds.length) {
         throw new Error('Egy vagy több raklap érvénytelen, már összeemelve, vagy nem található.');
       }
+      const commissionIds = [...new Set(labels.map(label => Number(label.commission_line_id)).filter(Number.isInteger))];
+      const commissionRows = await trx('aldi_commission_lines').whereIn('id', commissionIds);
+      const truckIds = [...new Set(commissionRows.map(row => Number(row.aldi_truck_id)))];
+      if (commissionIds.length !== labels.length || commissionRows.length !== commissionIds.length || truckIds.length !== 1) {
+        throw new Error('A kijelölt raklapok nem ugyanahhoz a kamionhoz tartoznak.');
+      }
+      const labelsById = new Map(labels.map(label => [Number(label.id), label]));
+      const orderedLabels = uniqueIds.map(id => labelsById.get(id));
+      const truck = await trx('aldi_trucks').where('id', truckIds[0]).first();
+      if (!truck || !truck.sent_to_pda || truck.is_loaded) {
+        throw new Error('A kamion nem szerepel aktív PDA-feladatként, vagy már rakodva van.');
+      }
 
-      // Összesítés adatokhoz
+      // A hibás történeti címkék még nyomtatás előtt megállítják a folyamatot.
+      const stockRows = await trx('aldi_stock_locations').whereIn('commission_line_id', commissionIds);
+      const locations = await trx('aldi_locations').whereIn('id', stockRows.map(stock => stock.location_id));
+      assertConsolidationStock(consolidationStockIssues(labels, commissionRows, stockRows, locations));
+
       let totalCartons = 0;
       const productNames = new Set();
       const suppliers = new Set();
       const destinations = new Set();
       const origins = new Set();
-      const truckNumbers = new Set();
-
-      for (const lbl of labels) {
-        totalCartons += parseInt(lbl.picked_cartons) || 0;
-        if (lbl.product_name) productNames.add(lbl.product_name);
-        if (lbl.supplier) suppliers.add(lbl.supplier);
-        if (lbl.destination) destinations.add(lbl.destination);
-        if (lbl.origin_country) origins.add(lbl.origin_country);
-        if (lbl.truck_number) truckNumbers.add(lbl.truck_number);
+      for (const label of orderedLabels) {
+        totalCartons += parseInt(label.picked_cartons, 10) || 0;
+        if (label.product_name) productNames.add(label.product_name);
+        if (label.supplier) suppliers.add(label.supplier);
+        if (label.destination) destinations.add(label.destination);
+        if (label.origin_country) origins.add(label.origin_country);
       }
-
-      // Mester SSCC generálás
       const seqRes = await trx.raw("SELECT nextval('sscc_labels_id_seq') as next_id");
-      const nextId = seqRes.rows[0].next_id;
+      const nextId = Number(seqRes.rows[0].next_id);
       const extDigit = '3';
       const companyPrefix = process.env.GS1_COMPANY_PREFIX || '5990001';
       const serialNum = String(nextId).padStart(17 - companyPrefix.length - extDigit.length, '0');
       const baseSSCC = extDigit + companyPrefix + serialNum;
-
       let sum = 0;
       for (let i = baseSSCC.length - 1; i >= 0; i--) {
         const digit = parseInt(baseSSCC[i], 10);
         const posFromRight = baseSSCC.length - 1 - i;
-        const multiplier = posFromRight % 2 === 0 ? 3 : 1;
-        sum += digit * multiplier;
+        sum += digit * (posFromRight % 2 === 0 ? 3 : 1);
       }
-      const checkDigit = (10 - (sum % 10)) % 10;
-      const finalSSCC = baseSSCC + checkDigit;
-
-      const productName = productNames.size > 1 ? 'Vegyes raklap' : (Array.from(productNames)[0] || 'Vegyes');
-      const supplier = Array.from(suppliers).join(', ').substring(0, 255);
-      const destination = Array.from(destinations).join(', ').substring(0, 255);
-      const originCountry = Array.from(origins).join(', ').substring(0, 255);
-      const truckNumber = Array.from(truckNumbers).join(', ').substring(0, 255);
-      const deliveryDate = new Date().toISOString().split('T')[0];
-
-      // A tagraklapok SSCC kódjait mentjük a mester rekordjába (JSON)
-      const memberSsccs = labels.map(l => l.sscc);
-
-      // Mester rekord létrehozása
-      [newLabel] = await trx('sscc_labels').insert({
+      const finalSSCC = baseSSCC + ((10 - (sum % 10)) % 10);
+      previewLabel = {
         id: nextId,
         sscc: finalSSCC,
         commission_line_id: null,
         picked_cartons: totalCartons,
-        truck_number: truckNumber,
-        product_name: productName,
-        delivery_date: deliveryDate,
-        supplier: supplier,
-        destination: destination,
-        origin_country: originCountry,
-        location_name: locationName.trim(),
+        truck_number: truck.truck_number,
+        product_name: productNames.size > 1 ? 'Vegyes raklap' : (Array.from(productNames)[0] || 'Vegyes'),
+        delivery_date: new Date().toISOString().split('T')[0],
+        supplier: Array.from(suppliers).join(', ').substring(0, 255),
+        destination: Array.from(destinations).join(', ').substring(0, 255),
+        origin_country: Array.from(origins).join(', ').substring(0, 255),
+        location_name: null,
         is_provisional: false,
         is_consolidated_master: true,
-        pallets_json: JSON.stringify(memberSsccs)  // tag-SSCC-k listája
-      }).returning('*');
-
-      // Tag-raklapok frissítése: consolidated_sscc + lokáció
-      await trx('sscc_labels')
-        .whereIn('id', labelIds)
-        .update({
-          consolidated_sscc: finalSSCC,
-          location_name: locationName.trim()
-        });
+        pallets_json: JSON.stringify(orderedLabels.map(label => label.sscc))
+      };
     });
-
-    res.json({ success: true, label: newLabel });
+    res.json({ success: true, label: previewLabel });
   } catch (err) {
-    console.error('[PDA] /consolidation hiba:', err);
-    res.status(400).json({ error: err.message || 'Hiba történt az összeemelés során.' });
+    console.error('[PDA] /consolidation-preview hiba:', err);
+    res.status(400).json({ error: err.message || 'Hiba történt a címke generálása során.' });
   }
 });
 
+router.post('/consolidation-validate-location', verifyToken, async (req, res) => {
+  try {
+    const { truckId, locationInput, labelIds } = req.body;
+    if (!truckId || !locationInput) return res.status(400).json({ error: 'Kamionazonosító és lokáció megadása kötelező.' });
+    if (!Array.isArray(labelIds) || labelIds.length < 2) return res.status(400).json({ error: 'A kapacitás ellenőrzéséhez legalább 2 kijelölt raklap szükséges. Frissítsd a PDA alkalmazást.' });
+    const ids = labelIds.map(Number);
+    if (ids.some(id => !Number.isInteger(id) || id <= 0) || new Set(ids).size !== ids.length) {
+      return res.status(400).json({ error: 'Érvénytelen vagy ismétlődő raklapazonosító.' });
+    }
+    const truck = await knex('aldi_trucks').where('id', truckId).first();
+    if (!truck) return res.status(404).json({ error: 'A kamion nem található.' });
+    if (!truck.sent_to_pda || truck.is_loaded) return res.status(400).json({ error: 'A kamion nem szerepel aktív PDA-feladatként, vagy már rakodva van.' });
+    const loc = await findAldiLocation(locationInput, knex);
+    if (!loc) return res.status(404).json({ error: 'Érvénytelen lokáció.' });
+    if (isParentLocation(loc)) return res.status(400).json({ error: 'Szülő lokáció nem használható céltárhelyként.' });
+    const allowedIds = targetLocationIds(truck.target_locations);
+    const locationRowId = loc.parent_id ? Number(loc.parent_id) : Number(loc.id);
+    if (allowedIds.length === 0 || (!allowedIds.includes(locationRowId) && !allowedIds.includes(Number(loc.id)))) {
+      return res.status(400).json({ error: 'A megadott lokáció nem szerepel a kamion cél lokációi között.' });
+    }
+    const labels = await knex('sscc_labels').whereIn('id', ids).where('is_provisional', false)
+      .where(function() { this.where('is_consolidated_master', false).orWhereNull('is_consolidated_master'); })
+      .whereNull('consolidated_sscc');
+    if (labels.length !== ids.length) return res.status(400).json({ error: 'Egy vagy több raklap érvénytelen, már összeemelve, vagy nem található.' });
+    const commissionIds = labels.map(label => label.commission_line_id);
+    const commissionRows = await knex('aldi_commission_lines').whereIn('id', commissionIds);
+    if (commissionRows.length !== labels.length || commissionRows.some(row => Number(row.aldi_truck_id) !== Number(truck.id))) {
+      return res.status(400).json({ error: 'A kijelölt raklapok nem ehhez a kamionhoz tartoznak.' });
+    }
+    const stockRows = await knex('aldi_stock_locations').whereIn('commission_line_id', commissionIds);
+    const locations = await knex('aldi_locations').whereIn('id', stockRows.map(stock => stock.location_id));
+    assertConsolidationStock(consolidationStockIssues(labels, commissionRows, stockRows, locations));
+    const capacityError = await consolidationCapacityError(knex, loc, stockRows);
+    if (capacityError) return res.status(400).json({ error: capacityError });
+    return res.json({ success: true, locationId: loc.id, locationName: loc.name });
+  } catch (err) {
+    if (err.code === 'INVALID_CONSOLIDATION_STOCK') return res.status(400).json({ error: err.message });
+    console.error('[PDA] /consolidation-validate-location hiba:', err);
+    res.status(500).json({ error: 'Hiba a lokáció validálása során.' });
+  }
+});
+
+router.post('/consolidation', verifyToken, async (req, res) => {
+  try {
+    const { labelIds, truckId, locationId, locationName, scannedSscc, masterLabel } = req.body;
+    if (!Array.isArray(labelIds) || labelIds.length < 2) return res.status(400).json({ error: 'Legalább 2 raklapot meg kell adni az összeemeléshez.' });
+    const ids = labelIds.map(Number);
+    const uniqueIds = [...new Set(ids)];
+    if (ids.some(id => !Number.isInteger(id) || id <= 0) || uniqueIds.length !== ids.length) return res.status(400).json({ error: 'Érvénytelen vagy ismétlődő raklapazonosító.' });
+    if (!masterLabel?.id || !masterLabel?.sscc || !scannedSscc) return res.status(400).json({ error: 'Hiányzó összeemelt címke vagy visszaszkennelt SSCC.' });
+    const expectedSscc = normalizeSscc(masterLabel.sscc);
+    if (normalizeSscc(scannedSscc) !== expectedSscc || !validSscc(expectedSscc)) return res.status(400).json({ error: 'A visszaszkennelt SSCC nem egyezik az érvényes összeemelt címkével.' });
+    const masterId = Number(masterLabel.id);
+    if (!Number.isInteger(masterId) || masterId <= 0) return res.status(400).json({ error: 'Érvénytelen összeemelt címke azonosító.' });
+
+    let resultLabel = null;
+    await knex.transaction(async (trx) => {
+      const labels = await trx('sscc_labels').whereIn('id', uniqueIds).where('is_provisional', false)
+        .where(function() { this.where('is_consolidated_master', false).orWhereNull('is_consolidated_master'); })
+        .whereNull('consolidated_sscc').forUpdate();
+      if (labels.length !== uniqueIds.length) throw new Error('Egy vagy több raklap érvénytelen, már összeemelve, vagy nem található.');
+      const commissionIds = [...new Set(labels.map(label => Number(label.commission_line_id)).filter(Number.isInteger))];
+      if (commissionIds.length !== labels.length || commissionIds.some(id => id <= 0)) throw new Error('A kijelölt raklaphoz nem tartozik érvényes komissiózási rekord.');
+      const commissionRows = await trx('aldi_commission_lines').whereIn('id', commissionIds);
+      const truckIds = [...new Set(commissionRows.map(row => Number(row.aldi_truck_id)))];
+      if (commissionRows.length !== commissionIds.length || truckIds.length !== 1 || (truckId && Number(truckId) !== truckIds[0])) throw new Error('A kijelölt raklapok nem ugyanahhoz a kamionhoz tartoznak.');
+      const truck = await trx('aldi_trucks').where('id', truckIds[0]).forUpdate().first();
+      if (!truck || !truck.sent_to_pda || truck.is_loaded) throw new Error('A kamion nem szerepel aktív PDA-feladatként, vagy már rakodva van.');
+
+      let loc = locationId ? await trx('aldi_locations').where('id', Number(locationId)).first() : await findAldiLocation(locationName, trx);
+      if (!loc) throw new Error('A megadott céllokáció nem található.');
+      loc = await trx('aldi_locations').where('id', loc.id).forUpdate().first();
+      if (!loc) throw new Error('A megadott céllokáció nem található.');
+      if (isParentLocation(loc)) throw new Error('Szülő lokáció nem használható céltárhelyként.');
+      const allowedIds = targetLocationIds(truck.target_locations);
+      const locationRowId = loc.parent_id ? Number(loc.parent_id) : Number(loc.id);
+      if (allowedIds.length === 0 || (!allowedIds.includes(locationRowId) && !allowedIds.includes(Number(loc.id)))) throw new Error('A megadott lokáció nem szerepel a kamion cél lokációi között.');
+
+      const stockRows = await trx('aldi_stock_locations').whereIn('commission_line_id', commissionIds).forUpdate();
+      const locations = await trx('aldi_locations').whereIn('id', stockRows.map(stock => stock.location_id));
+      assertConsolidationStock(consolidationStockIssues(labels, commissionRows, stockRows, locations));
+      const stockIds = stockRows.map(stock => stock.id);
+      const capacityError = await consolidationCapacityError(trx, loc, stockRows);
+      if (capacityError) throw new Error(capacityError);
+
+      const byId = new Map(labels.map(label => [Number(label.id), label]));
+      const orderedLabels = uniqueIds.map(id => byId.get(id));
+      const memberSsccs = orderedLabels.map(label => label.sscc);
+      let suppliedMembers = null;
+      try { suppliedMembers = JSON.parse(masterLabel.pallets_json || 'null'); } catch (_) {}
+      if (Array.isArray(suppliedMembers) && JSON.stringify(suppliedMembers) !== JSON.stringify(memberSsccs)) throw new Error('Az összeemelt címke tagraklap-listája nem egyezik a kijelöléssel.');
+      const totalCartons = orderedLabels.reduce((sum, label) => sum + (parseInt(label.picked_cartons, 10) || 0), 0);
+      const products = [...new Set(orderedLabels.map(label => label.product_name).filter(Boolean))];
+      const suppliers = [...new Set(orderedLabels.map(label => label.supplier).filter(Boolean))];
+      const destinations = [...new Set(orderedLabels.map(label => label.destination).filter(Boolean))];
+      const origins = [...new Set(orderedLabels.map(label => label.origin_country).filter(Boolean))];
+      const existing = await trx('sscc_labels').where(function() { this.where('id', masterId).orWhere('sscc', expectedSscc); }).first();
+      if (existing) throw new Error('Ez az összeemelt SSCC már szerepel a rendszerben.');
+      const masterData = {
+        id: masterId, sscc: expectedSscc, commission_line_id: null, picked_cartons: totalCartons,
+        truck_number: truck.truck_number, product_name: products.length > 1 ? 'Vegyes raklap' : (products[0] || 'Vegyes'),
+        delivery_date: masterLabel.delivery_date || new Date().toISOString().split('T')[0],
+        supplier: suppliers.join(', ').substring(0, 255), destination: destinations.join(', ').substring(0, 255),
+        origin_country: origins.join(', ').substring(0, 255), location_name: loc.name,
+        is_provisional: false, is_consolidated_master: true, pallets_json: JSON.stringify(memberSsccs)
+      };
+      await trx('sscc_labels').insert(masterData);
+      await trx('sscc_labels').whereIn('id', uniqueIds).update({ consolidated_sscc: expectedSscc, location_name: loc.name });
+      await trx('aldi_stock_locations').whereIn('id', stockIds).update({ location_id: loc.id });
+      resultLabel = masterData;
+    });
+    res.json({ success: true, label: resultLabel });
+  } catch (err) {
+    console.error('[PDA] /consolidation hiba:', err);
+    res.status(400).json({ error: err.message || 'Hiba történt az összeemelés véglegesítése során.' });
+  }
+});
 
 module.exports = router;
-

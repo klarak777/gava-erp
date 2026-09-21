@@ -1,10 +1,12 @@
+import { renderPalletFlow, renderAllowedRows } from '../components/palletFlow.js?v=2';
 /**
- * consolidation.js – Összeemelés modul (átdolgozott, kamion-alapú, 4 pane)
+ * consolidation.js – Összeemelés modul (átdolgozott, kamion-alapú, 5 pane)
  *
  * PANE 1: Kamion kiválasztás legördülőből (csak nem rakodott, PDA-ra küldött kamionok)
  * PANE 2: Raklap lista jelölőnégyzetekkel (az adott kamion komissiózott raklapjai)
- * PANE 3: Céllokáció megadása vonalkód beolvasással (kötelező)
- * PANE 4: Mester összeemelő raklapcímke nyomtatása
+ * PANE 3–5: A normál komissiózással közös nyomtatás, céllokáció és SSCC felület
+ * PANE 4: Céllokáció megadása vonalkód beolvasással (validálás a kamion target_locations alapján)
+ * PANE 5: Mester címke visszaolvasása a véglegesítéshez
  */
 import { showView, apiFetch, appState } from '../app.js';
 
@@ -17,18 +19,26 @@ export async function renderConsolidation(container, params = {}) {
       ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])
     );
   };
+  const normalizeSscc = (value) => {
+    const raw = String(value ?? '').trim().replace(/^\]C1/i, '').replace(/^\(00\)/, '');
+    const digits = raw.replace(/\D/g, '');
+    return digits.length > 18 ? digits.slice(-18) : digits;
+  };
 
   // Állapot
   let selectedTruck = null;        // { id, truck_number, delivery_date }
+  let availableTrucks = [];
   let availableLabels = [];        // az API-ból betöltött raklapok
   let selectedLabelIds = new Set(); // kijelölt jelölőnégyzetek
   let locationName = '';           // beolvasott céllokáció
-  let consolidatedLabel = null;    // a visszakapott mester rekord
+  let locationId = null;
+  let previewLabel = null;         // a szerver által generált (de nem mentett) mester címke
+  let generatingLabel = false;
 
   // ── HTML ──────────────────────────────────────────────────────────
   container.innerHTML = `
     <!-- PANE 1: Kamion kiválasztás -->
-    <div id="pane-truck" class="pda-pane active" style="display:flex; flex-direction:column; height:100%; background:#f8fafc;">
+    <div id="pane-truck" class="pda-pane active">
       <div class="pda-dashboard__header" style="display:flex; align-items:center; justify-content:space-between; padding:8px 14px 8px 10px; background:#f8f9fc; gap:4px;">
         <div style="display:flex; align-items:center; gap:6px;">
           <img src="/logo.ico" alt="Gava Logo" onerror="this.style.display='none'" style="width:32px; height:32px; flex-shrink:0;">
@@ -63,7 +73,7 @@ export async function renderConsolidation(container, params = {}) {
     </div>
 
     <!-- PANE 2: Raklap lista jelölőnégyzetekkel -->
-    <div id="pane-labels" class="pda-pane" style="display:none; flex-direction:column; height:100%; background:#f8fafc;">
+    <div id="pane-labels" class="pda-pane">
       <div class="pda-dashboard__header" style="display:flex; align-items:center; padding:8px 14px; background:#f8f9fc; gap:4px;">
         <img src="/logo.ico" alt="Gava Logo" onerror="this.style.display='none'" style="width:32px; height:32px; flex-shrink:0;">
         <div>
@@ -87,111 +97,20 @@ export async function renderConsolidation(container, params = {}) {
           <span style="font-size:10px; font-weight:600; margin-top:2px;">Vissza</span>
         </div>
         <button id="btn-labels-next" style="cursor:pointer; border:none; display:flex; align-items:center; justify-content:center; background:#4f46e5; color:white; border-radius:8px; padding:0 16px; height:44px; font-size:12px; font-weight:700; opacity:0.5;" disabled>
-          Összeemelés befejezése →
+          Címke nyomtatása →
         </button>
       </div>
     </div>
 
-    <!-- PANE 3: Céllokáció megadása -->
-    <div id="pane-location" class="pda-pane" style="display:none; flex-direction:column; height:100%; background:#f8fafc;">
-      <div class="pda-dashboard__header" style="display:flex; align-items:center; padding:8px 14px; background:#f8f9fc; gap:4px;">
-        <img src="/logo.ico" alt="Gava Logo" onerror="this.style.display='none'" style="width:32px; height:32px; flex-shrink:0;">
-        <div>
-          <div style="font-size:13.5px; font-weight:800; color:#0f172a;">Összeemelés</div>
-          <div style="font-size:10px; color:#0369a1; font-weight:700; margin-top:1px;">Céllokáció megadása</div>
-        </div>
-      </div>
-
-      <div style="flex:1; overflow-y:auto; padding:12px 16px;">
-        <!-- Kiválasztott raklapok összefoglalója -->
-        <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:10px; margin-bottom:14px;">
-          <div style="font-size:11px; font-weight:700; color:#1e40af; margin-bottom:6px;">Összeemelendő raklapok:</div>
-          <div id="loc-selected-summary" style="font-size:11px; color:#1e293b; display:flex; flex-direction:column; gap:3px;"></div>
-        </div>
-
-        <!-- Lokáció beolvasás -->
-        <div style="font-size:12px; font-weight:700; color:#334155; margin-bottom:6px;">Olvasd be a céllokáció vonalkódját: <span style="color:#dc2626;">*</span></div>
-        <div style="position:relative; display:flex; align-items:center;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="position:absolute; left:12px;">
-            <path d="M4 7V4h16v3M9 20h6M12 14v6M4 17v3h16v-3M9 7h6v5H9z"></path>
-          </svg>
-          <input type="text" id="loc-barcode" placeholder="Olvasd be a lokáció kódját" autofocus
-            style="width:100%; padding:14px 12px 14px 40px; border:2px solid #cbd5e1; border-radius:8px; font-size:14px; font-weight:600; background:#fff; color:#0f172a;">
-        </div>
-        <div id="loc-confirmed" style="display:none; margin-top:8px; padding:8px 12px; background:#dcfce7; border:1px solid #86efac; border-radius:6px; font-size:12px; font-weight:700; color:#15803d;"></div>
-        <div id="loc-error" style="display:none; color:#dc2626; margin-top:8px; font-size:12px; font-weight:600;"></div>
-      </div>
-
-      <div class="pda-bottom-nav" style="display:flex; padding:12px 16px; background:#fff; border-top:1px solid #e2e8f0; align-items:center; justify-content:space-between;">
-        <div class="pda-nav-loc-back-btn" style="cursor:pointer; display:flex; flex-direction:column; align-items:center; color:#64748b;">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"></path></svg>
-          <span style="font-size:10px; font-weight:600; margin-top:2px;">Vissza</span>
-        </div>
-        <button id="btn-loc-next" style="cursor:pointer; border:none; display:flex; align-items:center; justify-content:center; background:#4f46e5; color:white; border-radius:8px; padding:0 16px; height:44px; font-size:12px; font-weight:700; opacity:0.5;" disabled>
-          Nyomtatáshoz →
-        </button>
-      </div>
-    </div>
-
-    <!-- PANE 4: Nyomtatás -->
-    <div id="pane-print" class="pda-pane" style="display:none; flex-direction:column; height:100%; background:#f8fafc;">
-      <div class="pda-dashboard__header" style="display:flex; align-items:center; padding:8px 14px; background:#f8f9fc; gap:4px;">
-        <img src="/logo.ico" alt="Gava Logo" onerror="this.style.display='none'" style="width:32px; height:32px; flex-shrink:0;">
-        <div>
-          <div style="font-size:13.5px; font-weight:800; color:#0f172a;">Összeemelés</div>
-          <div style="font-size:10px; color:#0369a1; font-weight:700; margin-top:1px;">Raklapcímke nyomtatása</div>
-        </div>
-      </div>
-
-      <div style="flex:1; overflow-y:auto; padding:0 12px 14px; background:#fff;">
-        <div id="pallet-label-preview-card" style="border:2px solid #0f172a; border-radius:6px; background:#fff; padding:10px 12px; margin-bottom:10px; box-shadow:0 2px 4px rgba(0,0,0,0.06);">
-          <div id="lbl-truck" style="font-size:19px; font-weight:900; color:#0f172a; line-height:1.1;"></div>
-          <div style="font-size:9.5px; font-weight:700; color:#64748b; text-transform:uppercase;">Kamionszám</div>
-          <div style="border-top:1.5px solid #0f172a; margin:5px 0;"></div>
-          <div id="lbl-product" style="font-size:15px; font-weight:800; color:#0f172a; line-height:1.2;"></div>
-          <div style="font-size:9.5px; font-weight:700; color:#64748b; text-transform:uppercase;">Összeemelés</div>
-          <div style="border-top:1.5px solid #0f172a; margin:5px 0;"></div>
-          <div style="display:flex; flex-direction:column; gap:2px; font-size:11.5px; color:#1e293b;">
-            <div>Karton szám: <strong id="lbl-cartons"></strong></div>
-            <div>Lokáció: <strong id="lbl-location" style="color:#0369a1;"></strong></div>
-            <div>Befoglalt raklapok: <strong id="lbl-members"></strong></div>
-          </div>
-          <div style="border-top:1.5px solid #0f172a; margin:5px 0;"></div>
-          <div style="text-align:center; padding-top:2px;">
-            <svg id="preview-sscc-svg" style="max-width:100%; height:auto; display:block; margin:0 auto;"></svg>
-            <div style="font-size:10.5px; font-weight:800; color:#0f172a; margin-top:2px;">SSCC – Összeemelő mester</div>
-          </div>
-        </div>
-
-        <div style="padding:10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; margin-bottom:8px;">
-          <div style="font-size:11.5px; font-weight:700; color:#334155; margin-bottom:5px;">Címkenyomtató vonalkód (Zebra ZPL)</div>
-          <div style="position:relative; display:flex; align-items:center;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="position:absolute; left:10px;">
-              <path d="M4 7V4h16v3M9 20h6M12 14v6M4 17v3h16v-3M9 7h6v5H9z"></path>
-            </svg>
-            <input type="text" id="print-printer-barcode" placeholder="Olvasd be a nyomtatót"
-              style="width:100%; padding:8px 8px 8px 34px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; background:#fff; color:#0f172a;">
-          </div>
-        </div>
-        <button class="pda-btn" id="print-btn" style="width:100%; height:42px; display:flex; align-items:center; justify-content:center; gap:8px; background:#0ea5e9; color:#fff; border:none; border-radius:6px; font-weight:700;">
-          🖨️ Nyomtatás címkenyomtatóra
-        </button>
-      </div>
-
-      <div class="pda-bottom-nav" style="display:flex; padding:16px; background:#fff; border-top:1px solid #e2e8f0; gap:12px;">
-        <div class="pda-nav-home-btn" style="cursor:pointer; flex:1; display:flex; flex-direction:column; align-items:center; color:#64748b;">
-          <svg fill="currentColor" viewBox="0 0 24 24" style="width:24px;height:24px;"><path d="M3 13h1v7c0 1.103.897 2 2 2h12c1.103 0 2-.897 2-2v-7h1a1 1 0 00.707-1.707l-9-9a.999.999 0 00-1.414 0l-9 9A1 1 0 003 13zm7 7v-5h4v5h-4z"></path></svg>
-          <span style="font-size:10px; font-weight:600; margin-top:4px;">Főoldal</span>
-        </div>
-      </div>
-    </div>
+    ${renderPalletFlow({ userName, title: 'Összeemelés' })}
   `;
 
   // ── DOM ELEMEK ────────────────────────────────────────────────────
   const paneTruck     = container.querySelector('#pane-truck');
   const paneLabels    = container.querySelector('#pane-labels');
-  const paneLocation  = container.querySelector('#pane-location');
   const panePrint     = container.querySelector('#pane-print');
+  const paneLocation  = container.querySelector('#pane-dest');
+  const paneScan      = container.querySelector('#pane-sscc');
 
   const truckLoading  = container.querySelector('#truck-loading');
   const truckSelect   = container.querySelector('#truck-select');
@@ -203,30 +122,39 @@ export async function renderConsolidation(container, params = {}) {
   const labelsList      = container.querySelector('#labels-list');
   const btnLabelsNext   = container.querySelector('#btn-labels-next');
 
-  const locSelectedSummary = container.querySelector('#loc-selected-summary');
-  const locBarcode         = container.querySelector('#loc-barcode');
-  const locConfirmed       = container.querySelector('#loc-confirmed');
-  const locError           = container.querySelector('#loc-error');
-  const btnLocNext         = container.querySelector('#btn-loc-next');
-
   const printPrinterInput = container.querySelector('#print-printer-barcode');
   const printBtn          = container.querySelector('#print-btn');
 
+  const locBarcode         = container.querySelector('#dest-vonalkod');
+  const locError           = container.querySelector('#dest-error');
+  const btnLocNext         = container.querySelector('#btn-dest-save');
+
+  const scanBarcodeInput = container.querySelector('#sscc-vonalkod');
+  const scanError        = container.querySelector('#scan-error');
+
   // ── NAVIGÁCIÓ ────────────────────────────────────────────────────
   const showPane = (pane) => {
-    [paneTruck, paneLabels, paneLocation, panePrint].forEach(p => {
-      p.style.display = 'none';
+    [paneTruck, paneLabels, panePrint, paneLocation, paneScan].forEach(p => {
       p.classList.remove('active');
     });
-    pane.style.display = 'flex';
     pane.classList.add('active');
   };
 
-  const goDashboard = () => showView('dashboard');
+  const isBusy = () => generatingLabel || printBtn.disabled || locBarcode.disabled || scanBarcodeInput.disabled;
+  const goDashboard = () => { if (!isBusy()) showView('dashboard'); };
+  const goBack = () => {
+    if (isBusy()) return;
+    if (paneScan.classList.contains('active')) showPane(paneLocation);
+    else if (paneLocation.classList.contains('active')) showPane(panePrint);
+    else if (panePrint.classList.contains('active')) showPane(paneLabels);
+    else if (paneLabels.classList.contains('active')) showPane(paneTruck);
+    else goDashboard();
+  };
   container.querySelectorAll('.pda-nav-home-btn').forEach(b => b.addEventListener('click', goDashboard));
-  container.querySelector('.pda-nav-labels-back-btn').addEventListener('click', () => showPane(paneTruck));
-  container.querySelector('.pda-nav-loc-back-btn').addEventListener('click', () => showPane(paneLabels));
-  window.addEventListener('hwBack', goDashboard);
+  container.querySelectorAll('.pda-nav-back-btn, .pda-nav-labels-back-btn').forEach(b => b.addEventListener('click', goBack));
+  if (window._currentHwBack) window.removeEventListener('hwBack', window._currentHwBack);
+  window._currentHwBack = goBack;
+  window.addEventListener('hwBack', goBack);
 
   // ── PANE 1: Kamion betöltés ───────────────────────────────────────
   try {
@@ -244,6 +172,7 @@ export async function renderConsolidation(container, params = {}) {
       }
       truckError.style.display = 'block';
     } else {
+      availableTrucks = trucks;
       trucks.forEach(t => {
         const opt = document.createElement('option');
         opt.value = t.id;
@@ -262,8 +191,7 @@ export async function renderConsolidation(container, params = {}) {
   truckSelect.addEventListener('change', () => {
     const val = truckSelect.value;
     if (val) {
-      const opt = truckSelect.options[truckSelect.selectedIndex];
-      selectedTruck = { id: Number(val), truck_number: opt.dataset.truckNumber || opt.textContent };
+      selectedTruck = availableTrucks.find(t => Number(t.id) === Number(val));
       btnTruckNext.disabled = false;
       btnTruckNext.style.opacity = '1';
     } else {
@@ -303,7 +231,8 @@ export async function renderConsolidation(container, params = {}) {
         return;
       }
       renderLabelsList();
-      labelsCountInfo.textContent = `${availableLabels.length} raklap érhető el – válassz legalább 2-t.`;
+      const eligible = availableLabels.filter(label => label.can_consolidate !== false).length;
+      labelsCountInfo.textContent = `${eligible} raklap választható – legalább 2 szükséges.${eligible < availableLabels.length ? ` ${availableLabels.length - eligible} raklap készletadata hibás.` : ''}`;
     } catch (err) {
       labelsList.innerHTML = '<div style="color:#dc2626; font-size:13px; text-align:center; padding:16px;">Hálózati hiba a raklapok betöltésekor.</div>';
     }
@@ -318,7 +247,7 @@ export async function renderConsolidation(container, params = {}) {
         try {
           const pallets = JSON.parse(label.pallets_json);
           if (Array.isArray(pallets) && pallets.length > 0) {
-            palletTypeTxt = pallets.map(p => `${p.name || p} (${Number(p.tare_weight_kg || 0).toFixed(3)} kg)`).join(', ');
+            palletTypeTxt = pallets.map(p => `${p.name || p} (${Number(p.tare_weight_kg || 0).toFixed(1)} kg)`).join(', ');
           }
         } catch (_) {}
       }
@@ -326,7 +255,7 @@ export async function renderConsolidation(container, params = {}) {
       const item = document.createElement('div');
       item.style.cssText = 'background:#fff; border:1.5px solid #e2e8f0; border-radius:8px; padding:10px 10px 10px 12px; display:flex; align-items:flex-start; gap:10px;';
       item.innerHTML = `
-        <input type="checkbox" data-id="${label.id}" style="width:20px; height:20px; margin-top:2px; cursor:pointer; accent-color:#4f46e5; flex-shrink:0;">
+        <input type="checkbox" data-id="${label.id}" ${label.can_consolidate === false ? 'disabled' : ''} style="width:20px; height:20px; margin-top:2px; cursor:pointer; accent-color:#4f46e5; flex-shrink:0;">
         <div style="flex:1; min-width:0;">
           <div style="font-size:12px; font-weight:800; color:#0f172a; font-family:monospace; letter-spacing:0.5px; word-break:break-all;">${escHtml(label.sscc)}</div>
           <div style="font-size:11px; color:#334155; font-weight:600; margin-top:2px;">${escHtml(label.product_name || '-')}</div>
@@ -335,11 +264,13 @@ export async function renderConsolidation(container, params = {}) {
             ${label.location_name ? `<span style="font-size:10px; background:#dcfce7; color:#15803d; border-radius:4px; padding:1px 5px; font-weight:700;">📍 ${escHtml(label.location_name)}</span>` : ''}
           </div>
           <div style="font-size:10px; color:#64748b; margin-top:2px;">${escHtml(palletTypeTxt)}</div>
+          ${label.can_consolidate === false ? `<div role="alert" style="font-size:11px; color:#b91c1c; margin-top:6px;">${escHtml(label.consolidation_error || 'A raklap készletadatai hiányosak.')}</div>` : ''}
         </div>
       `;
 
       const cb = item.querySelector('input[type="checkbox"]');
       cb.addEventListener('change', () => {
+        if (label.can_consolidate === false) return;
         if (cb.checked) {
           selectedLabelIds.add(label.id);
           item.style.borderColor = '#4f46e5';
@@ -358,111 +289,46 @@ export async function renderConsolidation(container, params = {}) {
   }
 
   function updateLabelsNextBtn() {
-    const enough = selectedLabelIds.size >= 2;
+    const enough = !generatingLabel && selectedLabelIds.size >= 2;
     btnLabelsNext.disabled = !enough;
     btnLabelsNext.style.opacity = enough ? '1' : '0.5';
   }
 
-  btnLabelsNext.addEventListener('click', () => {
-    if (selectedLabelIds.size < 2) return;
-    // Összefoglaló feltöltése a lokáció pane-be
-    const selected = availableLabels.filter(l => selectedLabelIds.has(l.id));
-    locSelectedSummary.innerHTML = selected.map(l =>
-      `<div style="display:flex; justify-content:space-between; padding:2px 0;">
-        <span style="font-family:monospace; font-size:10px; color:#1e40af;">${escHtml(l.sscc)}</span>
-        <span style="font-size:10px; color:#475569;">${escHtml(l.product_name || '')} – ${l.picked_cartons || 0} karton</span>
-      </div>`
-    ).join('');
-    locationName = '';
-    locBarcode.value = '';
-    locConfirmed.style.display = 'none';
-    locError.style.display = 'none';
-    btnLocNext.disabled = true;
-    btnLocNext.style.opacity = '0.5';
-    showPane(paneLocation);
-    setTimeout(() => locBarcode.focus(), 150);
-  });
+  btnLabelsNext.addEventListener('click', async () => {
+    if (selectedLabelIds.size < 2 || btnLabelsNext.disabled) return;
 
-  // ── PANE 3: Lokáció beolvasás ─────────────────────────────────────
-  locBarcode.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const val = locBarcode.value.trim();
-      if (!val) return;
-      locationName = val;
-      locConfirmed.textContent = `✅ Lokáció elfogadva: ${locationName}`;
-      locConfirmed.style.display = 'block';
-      locError.style.display = 'none';
-      btnLocNext.disabled = false;
-      btnLocNext.style.opacity = '1';
-    }
-  });
-
-  btnLocNext.addEventListener('click', async () => {
-    if (!locationName) return;
-    const originalHtml = btnLocNext.innerHTML;
-    btnLocNext.innerHTML = '⌛ Mentés...';
-    btnLocNext.disabled = true;
+    // Címke előkészítése / előnézet generálása
+    const originalHtml = btnLabelsNext.innerHTML;
+    generatingLabel = true;
+    btnLabelsNext.innerHTML = '⌛ Generálás...';
+    btnLabelsNext.disabled = true;
 
     try {
-      const res = await apiFetch('/api/v1/pda/consolidation', {
+      const res = await apiFetch('/api/v1/pda/consolidation-preview', {
         method: 'POST',
-        body: JSON.stringify({
-          labelIds: Array.from(selectedLabelIds),
-          locationName
-        })
+        body: JSON.stringify({ labelIds: Array.from(selectedLabelIds) })
       });
       let data = null;
       try { data = await res.json(); } catch (_) {}
 
       if (res.ok && data && data.success) {
-        consolidatedLabel = data.label;
-        renderPrintPane();
+        previewLabel = data.label;
+        printPrinterInput.value = '';
         showPane(panePrint);
+        setTimeout(() => printPrinterInput.focus(), 150);
       } else {
-        locError.textContent = (data && data.error) ? data.error : `Hiba az összeemelés során (HTTP ${res.status}).`;
-        locError.style.display = 'block';
-        btnLocNext.innerHTML = originalHtml;
-        btnLocNext.disabled = false;
+        alert('Hiba a címke generálása során: ' + ((data && data.error) ? data.error : `HTTP ${res.status}`));
       }
     } catch (err) {
-      locError.textContent = 'Hálózati hiba az összeemelés során.';
-      locError.style.display = 'block';
-      btnLocNext.innerHTML = originalHtml;
-      btnLocNext.disabled = false;
+      alert('Hálózati hiba a címke generálása során.');
+    } finally {
+      generatingLabel = false;
+      btnLabelsNext.innerHTML = originalHtml;
+      updateLabelsNextBtn();
     }
   });
 
-  // ── PANE 4: Nyomtatás ─────────────────────────────────────────────
-  function renderPrintPane() {
-    if (!consolidatedLabel) return;
-    container.querySelector('#lbl-truck').textContent = consolidatedLabel.truck_number || '-';
-    container.querySelector('#lbl-product').textContent = consolidatedLabel.product_name || '-';
-    container.querySelector('#lbl-cartons').textContent = consolidatedLabel.picked_cartons || '0';
-    container.querySelector('#lbl-location').textContent = consolidatedLabel.location_name || '-';
 
-    // Tag SSCC-k listázása
-    let memberList = '-';
-    if (consolidatedLabel.pallets_json) {
-      try {
-        const members = JSON.parse(consolidatedLabel.pallets_json);
-        if (Array.isArray(members) && members.length > 0) {
-          memberList = members.length + ' db';
-        }
-      } catch (_) {}
-    }
-    container.querySelector('#lbl-members').textContent = memberList;
-
-    if (window.JsBarcode) {
-      window.JsBarcode('#preview-sscc-svg', consolidatedLabel.sscc, {
-        format: 'CODE128',
-        displayValue: true,
-        fontSize: 16,
-        height: 40,
-        margin: 0
-      });
-    }
-  }
 
   printPrinterInput.addEventListener('keydown', async (e) => {
     if (e.key === 'Enter') { e.preventDefault(); await triggerZplPrint(); }
@@ -470,7 +336,7 @@ export async function renderConsolidation(container, params = {}) {
   printBtn.addEventListener('click', () => triggerZplPrint());
 
   async function triggerZplPrint() {
-    if (!consolidatedLabel) return;
+    if (!previewLabel || printBtn.disabled || !panePrint.classList.contains('active')) return;
     const pBarcode = printPrinterInput.value.trim();
     if (!pBarcode) {
       alert('Olvasd be a nyomtató vonalkódját!');
@@ -486,15 +352,16 @@ export async function renderConsolidation(container, params = {}) {
       const res = await apiFetch('/api/v1/pda/print-pallet-label', {
         method: 'POST',
         body: JSON.stringify({
-          labelId: consolidatedLabel.id,
+          labelData: previewLabel, // Direkt átadjuk a címke adatokat az API-nak
           printerBarcode: pBarcode
         })
       });
       let data = null;
       try { data = await res.json(); } catch (_) {}
       if (res.ok && data && data.success) {
-        alert('Nyomtatás sikeresen elküldve! Az összeemelés véglegesítve.');
-        showView('dashboard');
+        // Sikeres nyomtatás után tovább a lokációra
+        alert('Címke kinyomtatva!');
+        goToLocationPane();
       } else {
         alert('Hiba a nyomtatás során: ' + ((data && data.error) || `HTTP ${res.status}`));
       }
@@ -504,6 +371,147 @@ export async function renderConsolidation(container, params = {}) {
       printBtn.innerHTML = originalHtml;
       printBtn.disabled = false;
     }
+  }
+
+
+  function goToLocationPane() {
+    renderAllowedRows(container, selectedTruck.target_locations, selectedTruck.truck_number);
+    locationName = '';
+    locationId = null;
+    locBarcode.value = '';
+    locError.style.display = 'none';
+    showPane(paneLocation);
+    setTimeout(() => locBarcode.focus(), 150);
+  }
+
+  // ── PANE 4: Lokáció beolvasás ─────────────────────────────────────
+  async function saveDestination() {
+    if (btnLocNext.disabled || !paneLocation.classList.contains('active')) return;
+    const val = locBarcode.value.trim();
+    locationName = '';
+    locationId = null;
+    if (!val) {
+      locError.textContent = 'Olvasd be a cél tárhely vonalkódját!';
+      locError.style.display = 'block';
+      locBarcode.focus();
+      return;
+    }
+    locError.style.display = 'none';
+    locBarcode.disabled = true;
+    btnLocNext.disabled = true;
+    try {
+      const res = await apiFetch('/api/v1/pda/consolidation-validate-location', {
+        method: 'POST',
+        body: JSON.stringify({ truckId: selectedTruck.id, locationInput: val, labelIds: Array.from(selectedLabelIds) })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        locationId = data.locationId || null;
+        locationName = data.locationName || val;
+        if (container.contains(paneLocation)) goToScanPane();
+      } else {
+        locError.textContent = data.error || 'Érvénytelen lokáció.';
+        locError.style.display = 'block';
+      }
+    } catch (err) {
+      locError.textContent = 'Hiba a lokáció ellenőrzése során.';
+      locError.style.display = 'block';
+    } finally {
+      locBarcode.disabled = false;
+      btnLocNext.disabled = false;
+    }
+  }
+  locBarcode.addEventListener('input', () => { locationName = ''; locationId = null; });
+  locBarcode.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); saveDestination(); }
+  });
+  btnLocNext.addEventListener('click', saveDestination);
+
+  function goToScanPane() {
+    scanBarcodeInput.value = '';
+    scanError.style.display = 'none';
+
+    const hintDiv = container.querySelector('#test-sscc-hint');
+    if (hintDiv) {
+      hintDiv.innerHTML = `<em>(Teszteléshez generált SSCC: <strong>${escHtml(previewLabel?.sscc || '')}</strong>)</em>`;
+    }
+
+    showPane(paneScan);
+    setTimeout(() => scanBarcodeInput.focus(), 150);
+  }
+
+  // ── PANE 5: Összeemelt címke beolvasása és mentés ─────────────────────
+  async function saveScanFinal() {
+    if (scanBarcodeInput.disabled || !previewLabel || !locationName || !paneScan.classList.contains('active')) return;
+    const val = scanBarcodeInput.value.trim();
+    if (!val) return;
+
+    if (normalizeSscc(val) !== normalizeSscc(previewLabel.sscc)) {
+      scanError.textContent = 'A beolvasott vonalkód nem egyezik az imént kinyomtatott összeemelt raklapcímkével!';
+      scanError.style.display = 'block';
+      scanBarcodeInput.value = '';
+      return;
+    }
+
+    scanError.style.display = 'none';
+    scanBarcodeInput.disabled = true;
+    const prevPlaceholder = scanBarcodeInput.placeholder;
+    scanBarcodeInput.placeholder = 'Mentés folyamatban...';
+
+    const btnSsccSave = container.querySelector('#btn-sscc-save');
+    if (btnSsccSave) {
+      btnSsccSave.disabled = true;
+      btnSsccSave.style.opacity = '0.5';
+    }
+
+    try {
+      const res = await apiFetch('/api/v1/pda/consolidation', {
+        method: 'POST',
+        body: JSON.stringify({
+          labelIds: Array.from(selectedLabelIds),
+          truckId: selectedTruck.id,
+          locationId: locationId,
+          locationName: locationName,
+          scannedSscc: val,
+          masterLabel: previewLabel
+        })
+      });
+      let data = null;
+      try { data = await res.json(); } catch (_) {}
+
+      if (res.ok && data && data.success) {
+        alert('Összeemelés sikeresen megtörtént!');
+        showView('dashboard');
+      } else {
+        scanError.textContent = (data && data.error) ? data.error : 'Hiba történt az összeemelés véglegesítése során.';
+        scanError.style.display = 'block';
+      }
+    } catch (err) {
+      scanError.textContent = 'Hálózati hiba a véglegesítés során.';
+      scanError.style.display = 'block';
+    } finally {
+      scanBarcodeInput.disabled = false;
+      scanBarcodeInput.placeholder = prevPlaceholder;
+      scanBarcodeInput.value = '';
+      if (btnSsccSave) {
+        btnSsccSave.disabled = false;
+        btnSsccSave.style.opacity = '1';
+      }
+    }
+  }
+
+  scanBarcodeInput.addEventListener('keydown', async (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      await saveScanFinal();
+    }
+  });
+
+  const btnSsccSave = container.querySelector('#btn-sscc-save');
+  if (btnSsccSave) {
+    btnSsccSave.addEventListener('click', async () => {
+      await saveScanFinal();
+    });
   }
 
   // Kezdeti pane megjelenítés

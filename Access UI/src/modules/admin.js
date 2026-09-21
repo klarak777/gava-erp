@@ -251,6 +251,11 @@ export function openAdminTable(wm, title, tableName, columns, extraPayload = {},
                         if (c.type === 'boolean') {
                             return `<td style="text-align:center;">${item[c.field] ? '✅' : '❌'}</td>`;
                         }
+                        if (tableName === 'ref_packaging_types' && c.field === 'tare_weight_kg' &&
+                            [item.name, item.category].some(value => /raklap/i.test(String(value || ''))) &&
+                            item[c.field] != null && item[c.field] !== '' && Number.isFinite(Number(item[c.field]))) {
+                            return `<td>${Number(item[c.field]).toFixed(1)}</td>`;
+                        }
                         return `<td>${item[c.field] !== null && item[c.field] !== undefined ? item[c.field] : ''}</td>`;
                     }).join('')}
                     ${(extraPayload.isReadonly && !extraPayload.allowReassign) ? '' : `
@@ -880,17 +885,8 @@ export function openPalletLabelsTable(wm) {
                     } else {
                         palletCellHtml = '📦 Összeemelt';
                     }
-                } else if (isTag) {
-                    // Tag rekord: mutatja a mester SSCC-t
-                    const masterLabel = labels.find(lb => lb.sscc === l.consolidated_sscc);
-                    const masterId = masterLabel ? masterLabel.id : null;
-                    if (masterId) {
-                        palletCellHtml = `<span class="pl-cons-sscc-link" data-id="${masterId}" style="display:inline-block; font-size:10px; font-family:monospace; background:#fde68a; border:1px solid #d97706; border-radius:4px; padding:1px 5px; cursor:pointer; color:#78350f; font-weight:700;" title="Mester összeemelő rekord megtekintése">🔗 Mester: ${esc(l.consolidated_sscc)}</span>`;
-                    } else {
-                        palletCellHtml = `<span style="font-size:10px; color:#78350f; font-weight:600;">🔗 Mester: ${esc(l.consolidated_sscc)}</span>`;
-                    }
                 } else {
-                    // Normál raklap – meglévő pallets_json logika
+                    // Az eredeti raklap saját típusa összeemelés után is megmarad.
                     const palletsJson = l.pallets_json || l.commission_pallets_json;
                     if (palletsJson) {
                         try {
@@ -901,7 +897,7 @@ export function openPalletLabelsTable(wm) {
                                     const category = String(p.category || 'Raklap');
                                     const displayName = /raklap/i.test(name) ? name : `${name} ${category}`;
                                     const safeName = esc(displayName);
-                                    return `<div style="white-space:nowrap; font-size:11px; font-weight:600; color:#0f172a;">${safeName} <span style="color:#64748b; font-weight:400;">(${Number(p.tare_weight_kg).toFixed(3)} kg)</span></div>`;
+                                    return `<div style="white-space:nowrap; font-size:11px; font-weight:600; color:#0f172a;">${safeName} <span style="color:#64748b; font-weight:400;">(${Number(p.tare_weight_kg).toFixed(1)} kg)</span></div>`;
                                 }).join('');
                             }
                         } catch (e) {
@@ -912,7 +908,7 @@ export function openPalletLabelsTable(wm) {
                         const category = String(l.legacy_pallet_category || 'Raklap');
                         const displayName = /raklap/i.test(name) ? name : `${name} ${category}`;
                         const tare = Number(l.legacy_pallet_tare_weight_kg);
-                        palletCellHtml = `<div style="font-size:11px; font-weight:600; color:#0f172a;">${esc(displayName)} <span style="color:#64748b; font-weight:400;">(${Number.isFinite(tare) ? tare.toFixed(3) : '-'} kg)</span></div>`;
+                        palletCellHtml = `<div style="font-size:11px; font-weight:600; color:#0f172a;">${esc(displayName)} <span style="color:#64748b; font-weight:400;">(${Number.isFinite(tare) ? tare.toFixed(1) : '-'} kg)</span></div>`;
                     }
                 }
 

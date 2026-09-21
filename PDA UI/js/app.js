@@ -4,8 +4,8 @@
 
 import { renderLogin } from './views/login.js?v=2';
 import { renderDashboard } from './views/dashboard.js?v=2';
-import { renderCommission } from './views/commission.js?v=13';
-import { renderConsolidation } from './views/consolidation.js?v=1';
+import { renderCommission } from './views/commission.js?v=16';
+import { renderConsolidation } from './views/consolidation.js?v=5';
 import { renderScanPallet } from './views/scanPallet.js?v=1';
 
 const root = document.getElementById('pda-app-root');
@@ -19,6 +19,10 @@ export const appState = {
 
 // ── Nézetváltó ────────────────────────────────
 export function showView(viewName, params = {}) {
+  if (window._currentHwBack) {
+    window.removeEventListener('hwBack', window._currentHwBack);
+    window._currentHwBack = null;
+  }
   root.innerHTML = '';
   appState.currentView = viewName;
 
