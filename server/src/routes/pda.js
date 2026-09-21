@@ -1061,16 +1061,22 @@ router.post('/consolidation-preview', verifyToken, async (req, res) => {
       assertConsolidationStock(consolidationStockIssues(labels, commissionRows, stockRows, locations));
 
       let totalCartons = 0;
+      let totalGrossWeight = 0;
+      let totalNetWeight = 0;
       const productNames = new Set();
       const suppliers = new Set();
       const destinations = new Set();
       const origins = new Set();
+      const deliveryDates = new Set();
       for (const label of orderedLabels) {
         totalCartons += parseInt(label.picked_cartons, 10) || 0;
+        totalGrossWeight += parseFloat(label.gross_weight) || 0;
+        totalNetWeight += parseFloat(label.net_weight) || 0;
         if (label.product_name) productNames.add(label.product_name);
         if (label.supplier) suppliers.add(label.supplier);
         if (label.destination) destinations.add(label.destination);
         if (label.origin_country) origins.add(label.origin_country);
+        if (label.delivery_date) deliveryDates.add(label.delivery_date);
       }
       const seqRes = await trx.raw("SELECT nextval('sscc_labels_id_seq') as next_id");
       const nextId = Number(seqRes.rows[0].next_id);
@@ -1092,11 +1098,13 @@ router.post('/consolidation-preview', verifyToken, async (req, res) => {
         picked_cartons: totalCartons,
         truck_number: truck.truck_number,
         product_name: productNames.size > 1 ? 'Vegyes raklap' : (Array.from(productNames)[0] || 'Vegyes'),
-        delivery_date: new Date().toISOString().split('T')[0],
+        delivery_date: deliveryDates.size > 0 ? Array.from(deliveryDates)[0] : new Date().toISOString().split('T')[0],
         supplier: Array.from(suppliers).join(', ').substring(0, 255),
         destination: Array.from(destinations).join(', ').substring(0, 255),
         origin_country: Array.from(origins).join(', ').substring(0, 255),
         location_name: null,
+        gross_weight: totalGrossWeight > 0 ? totalGrossWeight : null,
+        net_weight: totalNetWeight > 0 ? totalNetWeight : null,
         is_provisional: false,
         is_consolidated_master: true,
         pallets_json: JSON.stringify(orderedLabels.map(label => label.sscc))
