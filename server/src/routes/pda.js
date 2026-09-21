@@ -563,6 +563,29 @@ function generateZpl(label) {
   const lotNumber = label.lot_number || '';
   const avgWeight = (pickedCartons > 0 && netWeight > 0) ? (netWeight / pickedCartons).toFixed(2) : '';
 
+  if (isMaster) {
+    return `^XA
+^PW1180
+^LL2480
+^CI28
+^FO0,80^A0N,200,200^FB1180,1,0,C^FD${label.truck_number || ''}^FS
+^FO0,300^A0N,55,55^FB1180,1,0,C^FDKamionszám^FS
+^FO40,380^GB1150,5,5^FS
+^FO0,440^A0N,130,130^FB1180,1,0,C^FD${label.product_name || ''}^FS
+^FO0,600^A0N,50,50^FB1180,1,0,C^FDTermék megnevezése^FS
+^FO40,680^GB1150,5,5^FS
+^FO40,750^A0N,60,60^FDSzállítási dátum: ${label.delivery_date || ''}^FS
+^FO40,850^A0N,60,60^FDKartonszám: ${label.picked_cartons || ''} #^FS
+^FO40,950^A0N,60,60^FDBruttó kg: ${grossWeight ? grossWeight.toFixed(2) : ''}^FS
+^FO40,1800^GB1150,5,5^FS
+^FO150,1880^BY4
+^BCN,350,N,N,N
+^FD${label.sscc}^FS
+^FO0,2260^A0N,65,65^FB1180,1,0,C^FD${label.sscc}^FS
+^FO0,2340^A0N,55,55^FB1180,1,0,C^FDSSCC^FS
+^XZ`;
+  }
+
   return `^XA
 ^PW1180
 ^LL2480
@@ -1168,6 +1191,7 @@ router.post('/consolidation', verifyToken, async (req, res) => {
       try { suppliedMembers = JSON.parse(masterLabel.pallets_json || 'null'); } catch (_) {}
       if (Array.isArray(suppliedMembers) && JSON.stringify(suppliedMembers) !== JSON.stringify(memberSsccs)) throw new Error('Az összeemelt címke tagraklap-listája nem egyezik a kijelöléssel.');
       const totalCartons = orderedLabels.reduce((sum, label) => sum + (parseInt(label.picked_cartons, 10) || 0), 0);
+      const totalGrossWeight = orderedLabels.reduce((sum, label) => sum + (parseFloat(label.gross_weight) || 0), 0);
       const products = [...new Set(orderedLabels.map(label => label.product_name).filter(Boolean))];
       const suppliers = [...new Set(orderedLabels.map(label => label.supplier).filter(Boolean))];
       const destinations = [...new Set(orderedLabels.map(label => label.destination).filter(Boolean))];
@@ -1180,6 +1204,7 @@ router.post('/consolidation', verifyToken, async (req, res) => {
         delivery_date: masterLabel.delivery_date || new Date().toISOString().split('T')[0],
         supplier: suppliers.join(', ').substring(0, 255), destination: destinations.join(', ').substring(0, 255),
         origin_country: origins.join(', ').substring(0, 255), location_name: loc.name,
+        gross_weight: totalGrossWeight > 0 ? totalGrossWeight : null,
         is_provisional: false, is_consolidated_master: true, pallets_json: JSON.stringify(memberSsccs)
       };
       await trx('sscc_labels').insert(masterData);
