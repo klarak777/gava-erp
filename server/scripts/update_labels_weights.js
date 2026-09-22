@@ -27,32 +27,48 @@ async function migrateExistingLabels() {
 
   // 2. Update consolidated master labels
   console.log('Fetching existing consolidated master labels...');
-  const masterLabels = await db('sscc_labels').where('is_consolidated_master', true);
+  const masterLabels = await db('sscc_labels')
+    .where('is_consolidated_master', true)
+    .orWhere('product_name', 'Vegyes raklap');
   
   let masterCount = 0;
   for (const master of masterLabels) {
+    let memberSsccs = [];
     if (master.pallets_json) {
-      let memberSsccs = [];
       try { 
         memberSsccs = JSON.parse(master.pallets_json); 
       } catch(e) {}
-      
-      if (memberSsccs.length > 0) {
-        const members = await db('sscc_labels').whereIn('sscc', memberSsccs);
-        const totalGrossWeight = members.reduce((sum, m) => sum + (parseFloat(m.gross_weight) || 0), 0);
-        const totalNetWeight = members.reduce((sum, m) => sum + (parseFloat(m.net_weight) || 0), 0);
-        
-        const deliveryDates = [...new Set(members.map(label => label.delivery_date).filter(Boolean))];
-        const finalDeliveryDate = deliveryDates.length > 0 ? deliveryDates[0] : master.delivery_date;
+    }
+    
+    let members = [];
+    if (Array.isArray(memberSsccs) && memberSsccs.length > 0) {
+      members = await db('sscc_labels').whereIn('sscc', memberSsccs);
+    }
+    if (members.length === 0) {
+      members = await db('sscc_labels').where('consolidated_sscc', master.sscc);
+    }
 
-        await db('sscc_labels').where('id', master.id).update({
-          gross_weight: totalGrossWeight > 0 ? totalGrossWeight : null,
-          net_weight: totalNetWeight > 0 ? totalNetWeight : null,
-          delivery_date: finalDeliveryDate,
-          product_name: 'Vegyes raklap'
-        });
-        masterCount++;
-      }
+    if (members.length > 0) {
+      const childSsccs = members.map(m => m.sscc);
+      await db('sscc_labels').whereIn('sscc', childSsccs).update({ consolidated_sscc: master.sscc });
+
+      const sumCartons = members.reduce((sum, m) => sum + (parseInt(m.picked_cartons, 10) || 0), 0);
+      const totalGrossWeight = members.reduce((sum, m) => sum + (parseFloat(m.gross_weight) || 0), 0);
+      const totalNetWeight = members.reduce((sum, m) => sum + (parseFloat(m.net_weight) || 0), 0);
+      
+      const deliveryDates = [...new Set(members.map(label => label.delivery_date).filter(Boolean))];
+      const finalDeliveryDate = deliveryDates.length > 0 ? deliveryDates[0] : master.delivery_date;
+
+      await db('sscc_labels').where('id', master.id).update({
+        is_consolidated_master: true,
+        picked_cartons: sumCartons > 0 ? sumCartons : master.picked_cartons,
+        gross_weight: totalGrossWeight > 0 ? totalGrossWeight : null,
+        net_weight: totalNetWeight > 0 ? totalNetWeight : null,
+        delivery_date: finalDeliveryDate,
+        product_name: master.product_name || 'Vegyes raklap',
+        pallets_json: JSON.stringify(childSsccs)
+      });
+      masterCount++;
     }
   }
   console.log(`Updated ${masterCount} master sscc_labels.`);

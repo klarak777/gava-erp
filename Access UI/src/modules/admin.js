@@ -791,6 +791,9 @@ export function openPalletLabelsTable(wm) {
                         <!-- Dinamikus tartalom -->
                     </div>
                     <div style="display:flex; justify-content:flex-end; gap:8px;">
+                        <button id="pl-modal-zebra-btn" class="secondary-btn" style="display:flex; align-items:center; gap:6px;">
+                            🖨️ Zebra nyomtatás
+                        </button>
                         <button id="pl-modal-print-btn" class="primary-btn" style="display:flex; align-items:center; gap:6px;">
                             📄 Nyomtatás / PDF mentés
                         </button>
@@ -807,6 +810,7 @@ export function openPalletLabelsTable(wm) {
         const modalClose = winContainer.querySelector('#pl-modal-close');
         const modalContent = winContainer.querySelector('#pl-modal-label-content');
         const modalPrintBtn = winContainer.querySelector('#pl-modal-print-btn');
+        const modalZebraBtn = winContainer.querySelector('#pl-modal-zebra-btn');
 
         let selectedLabel = null;
 
@@ -955,30 +959,94 @@ export function openPalletLabelsTable(wm) {
 
         function showLabelModal(label) {
             selectedLabel = label;
+            const isMaster = label.is_consolidated_master === true || label.is_consolidated_master === 1;
+
+            // Dátum formázása
+            let formattedDate = label.delivery_date || '-';
+            if (formattedDate && formattedDate !== '-') {
+                try {
+                    const d = new Date(formattedDate);
+                    if (!isNaN(d.getTime())) {
+                        formattedDate = d.toISOString().split('T')[0].replace(/-/g, '.');
+                    } else {
+                        formattedDate = String(formattedDate).replace(/-/g, '.');
+                    }
+                } catch (_) {}
+            }
+
+            let bodyHtml = '';
+
+            if (isMaster) {
+                // Gyermek címkék összegyűjtése
+                let childList = label.childrenLabels || [];
+                if (childList.length === 0 && label.pallets_json) {
+                    try {
+                        const memberSsccs = JSON.parse(label.pallets_json);
+                        if (Array.isArray(memberSsccs)) {
+                            childList = labels.filter(lb => memberSsccs.includes(lb.sscc));
+                        }
+                    } catch (_) {}
+                }
+                if (childList.length === 0) {
+                    childList = labels.filter(lb => lb.consolidated_sscc === label.sscc);
+                }
+
+                let childrenHtml = '';
+                if (childList.length > 0) {
+                    childrenHtml = childList.map(c => `
+                        <div style="background:#f8fafc; border:1px solid #cbd5e1; border-left:4px solid #0284c7; border-radius:4px; padding:6px 10px; margin-bottom:6px; font-size:13px; line-height:1.5;">
+                            <div>Termék neve: <strong style="font-weight:800; color:#0f172a;">${esc(c.product_name || '-')}</strong></div>
+                            <div>Kartonszám: <strong style="font-weight:800; color:#0284c7;">${c.picked_cartons != null ? c.picked_cartons : '-'} #</strong></div>
+                            <div>Azonosító: <strong style="font-family:monospace; font-weight:800; color:#334155;">${esc(c.sscc || '-')}</strong></div>
+                        </div>
+                    `).join('');
+                } else {
+                    childrenHtml = '<div style="color:#64748b; font-style:italic; padding:6px;">Nincsenek csatolt raklapok rögzítve.</div>';
+                }
+
+                bodyHtml = `
+                    <div style="display:flex; flex-direction:column; gap:4px; font-size:14px; color:#111; font-weight:600;">
+                        <div>Szállítási dátum: <strong style="font-weight:800;">${formattedDate}</strong></div>
+                        <div>Kartonszám: <strong style="font-weight:800;">${label.picked_cartons != null ? label.picked_cartons + ' #' : '-'}</strong></div>
+                        <div>Bruttó kg: <strong style="font-weight:800;">${label.gross_weight ? Number(label.gross_weight).toFixed(0) + ' kg' : '-'}</strong></div>
+                    </div>
+                    <div style="margin-top: 14px; border-top: 2px solid #000; padding-top: 8px;">
+                        <div style="font-size: 15px; font-weight: 900; color: #000; margin-bottom: 6px; text-transform: uppercase;">Raklapok</div>
+                        ${childrenHtml}
+                    </div>
+                `;
+            } else {
+                bodyHtml = `
+                    <div style="display:flex; flex-direction:column; gap:4px; font-size:13.5px; color:#111; font-weight:600;">
+                        <div>Szállítási dátum: <strong style="font-weight:800;">${formattedDate}</strong></div>
+                        <div>Szállítási hely: <strong style="font-weight:800;">${label.destination || 'ALDI'}</strong></div>
+                        <div>Kartonszám: <strong style="font-weight:800;">${label.picked_cartons != null ? label.picked_cartons + ' db' : '-'}</strong></div>
+                        <div>Bruttó kg: <strong style="font-weight:800;">${label.gross_weight ? Number(label.gross_weight).toFixed(2) + ' kg' : '-'}</strong></div>
+                        <div>Nettó kg: <strong style="font-weight:800;">${label.net_weight ? Number(label.net_weight).toFixed(2) + ' kg' : '-'}</strong></div>
+                        <div>Átlag súly (nettó): <strong style="font-weight:800;">${(label.picked_cartons && label.net_weight) ? (Number(label.net_weight) / Number(label.picked_cartons)).toFixed(2) + ' kg/db' : '-'}</strong></div>
+                        <div>Lotszám: <strong style="font-weight:800;">${label.lot_number || '-'}</strong></div>
+                        <div>Származási ország: <strong style="font-weight:800;">${label.origin_country || '-'}</strong></div>
+                    </div>
+                `;
+            }
+
             modalContent.innerHTML = `
                 <div style="font-size: 26px; font-weight: 900; line-height: 1.1; color:#000; text-align: center;">${label.truck_number || '-'}</div>
                 <div style="font-size: 11px; font-weight: bold; color: #555; text-transform: uppercase; text-align: center; margin-bottom: 6px;">Kamionszám</div>
                 <div style="border-top: 2px solid #000; margin: 8px 0;"></div>
                 
-                <div style="font-size: 20px; font-weight: 800; line-height: 1.2; color:#000; text-align: center;">${label.product_name || '-'}</div>
+                <div style="font-size: 20px; font-weight: 800; line-height: 1.2; color:#000; text-align: center;">${label.product_name || (isMaster ? 'Vegyes raklap' : '-')}</div>
                 <div style="font-size: 11px; font-weight: bold; color: #555; text-transform: uppercase; text-align: center; margin-bottom: 6px;">Termék megnevezése</div>
                 <div style="border-top: 2px solid #000; margin: 8px 0;"></div>
                 
-                <div style="display:flex; flex-direction:column; gap:4px; font-size:13.5px; color:#111; font-weight:600;">
-                    <div>Szállítási dátum: <strong style="font-weight:800;">${label.delivery_date || '-'}</strong></div>
-                    <div>Szállítási hely: <strong style="font-weight:800;">${label.destination || 'ALDI'}</strong></div>
-                    <div>Kartonszám: <strong style="font-weight:800;">${label.picked_cartons != null ? label.picked_cartons + ' db' : '-'}</strong></div>
-                    <div>Bruttó kg: <strong style="font-weight:800;">${label.gross_weight ? Number(label.gross_weight).toFixed(2) + ' kg' : '-'}</strong></div>
-                    <div>Nettó kg: <strong style="font-weight:800;">${label.net_weight ? Number(label.net_weight).toFixed(2) + ' kg' : '-'}</strong></div>
-                    <div>Átlag súly (nettó): <strong style="font-weight:800;">${(label.picked_cartons && label.net_weight) ? (Number(label.net_weight) / Number(label.picked_cartons)).toFixed(2) + ' kg/db' : '-'}</strong></div>
-                    <div>Lotszám: <strong style="font-weight:800;">${label.lot_number || '-'}</strong></div>
-                    <div>Származási ország: <strong style="font-weight:800;">${label.origin_country || '-'}</strong></div>
-                </div>
-                <div style="margin-top: 24px; border-top: 2px solid #000; margin-bottom: 8px;"></div>
+                ${bodyHtml}
+
+                <div style="margin-top: 18px; border-top: 2px solid #000; margin-bottom: 8px;"></div>
 
                 <div style="text-align: center; margin-top: 6px;">
                     <svg id="pl-modal-barcode-svg" style="max-width: 100%; height: auto; display:block; margin:0 auto;"></svg>
-                    <div style="font-size: 12px; font-weight: 900; margin-top: 2px;">SSCC</div>
+                    <div style="font-size: 14px; font-weight: 900; font-family:monospace; margin-top: 4px;">${label.sscc || ''}</div>
+                    <div style="font-size: 12px; font-weight: 900; color:#555; margin-top: 1px;">${isMaster ? 'Azonosító' : 'SSCC'}</div>
                 </div>
             `;
 
@@ -986,7 +1054,7 @@ export function openPalletLabelsTable(wm) {
                 try {
                     window.JsBarcode(modalContent.querySelector('#pl-modal-barcode-svg'), label.sscc, {
                         format: "CODE128",
-                        displayValue: true,
+                        displayValue: false,
                         fontSize: 14,
                         height: 55,
                         margin: 2
@@ -1012,12 +1080,98 @@ export function openPalletLabelsTable(wm) {
             printLabelDirect(selectedLabel);
         });
 
+        if (modalZebraBtn) {
+            modalZebraBtn.addEventListener('click', async () => {
+                if (!selectedLabel) return;
+                try {
+                    modalZebraBtn.disabled = true;
+                    modalZebraBtn.textContent = '⏳ Küldés...';
+                    const res = await fetch('/api/v1/admin/print-pallet-label', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ labelId: selectedLabel.id, sscc: selectedLabel.sscc })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        alert(data.message || 'Címke sikeresen elküldve a Zebra nyomtatóra!');
+                    } else {
+                        alert('Hiba a nyomtatás során: ' + (data.error || 'Sikertelen nyomtatás'));
+                    }
+                } catch (err) {
+                    alert('Hálózati hiba a nyomtatáskor: ' + err.message);
+                } finally {
+                    modalZebraBtn.disabled = false;
+                    modalZebraBtn.innerHTML = '🖨️ Zebra nyomtatás';
+                }
+            });
+        }
+
         function printLabelDirect(label) {
             const printWindow = window.open('', '_blank', 'width=650,height=800');
             if (!printWindow) {
                 alert('A felugró ablak letiltásra került. Engedélyezd a felugró ablakokat a nyomtatáshoz!');
                 return;
             }
+
+            const isMaster = label.is_consolidated_master === true || label.is_consolidated_master === 1;
+
+            let formattedDate = label.delivery_date || '-';
+            if (formattedDate && formattedDate !== '-') {
+                try {
+                    const d = new Date(formattedDate);
+                    if (!isNaN(d.getTime())) {
+                        formattedDate = d.toISOString().split('T')[0].replace(/-/g, '.');
+                    } else {
+                        formattedDate = String(formattedDate).replace(/-/g, '.');
+                    }
+                } catch (_) {}
+            }
+
+            let contentHtml = '';
+
+            if (isMaster) {
+                let childList = label.childrenLabels || [];
+                if (childList.length === 0 && label.pallets_json) {
+                    try {
+                        const memberSsccs = JSON.parse(label.pallets_json);
+                        if (Array.isArray(memberSsccs)) {
+                            childList = labels.filter(lb => memberSsccs.includes(lb.sscc));
+                        }
+                    } catch (_) {}
+                }
+                if (childList.length === 0) {
+                    childList = labels.filter(lb => lb.consolidated_sscc === label.sscc);
+                }
+
+                const childRows = childList.map(c => `
+                    <div style="margin-bottom: 8px; font-size: 14px; line-height: 1.4;">
+                        <div>Termék neve: <strong>${c.product_name || '-'}</strong></div>
+                        <div>Kartonszám: <strong>${c.picked_cartons != null ? c.picked_cartons : '-'} #</strong></div>
+                        <div>Azonosító: <strong>${c.sscc || '-'}</strong></div>
+                    </div>
+                `).join('');
+
+                contentHtml = `
+                    <div class="label-data-row">Szállítási dátum: <span class="val">${formattedDate}</span></div>
+                    <div class="label-data-row">Kartonszám: <span class="val">${label.picked_cartons != null ? label.picked_cartons + ' #' : ''}</span></div>
+                    <div class="label-data-row">Bruttó kg: <span class="val">${label.gross_weight ? Number(label.gross_weight).toFixed(0) + ' kg' : ''}</span></div>
+                    <div class="label-divider" style="margin: 10px 0;"></div>
+                    <div style="font-size: 16px; font-weight: 900; margin-bottom: 6px;">Raklapok</div>
+                    ${childRows || '<div style="color:#666; font-style:italic;">Nincsenek csatolt raklapok</div>'}
+                `;
+            } else {
+                contentHtml = `
+                    <div class="label-data-row">Szállítási dátum: <span class="val">${formattedDate}</span></div>
+                    <div class="label-data-row">Szállítási hely: <span class="val">${label.destination || 'ALDI'}</span></div>
+                    <div class="label-data-row">Kartonszám: <span class="val">${label.picked_cartons != null ? label.picked_cartons + ' db' : ''}</span></div>
+                    <div class="label-data-row">Bruttó kg: <span class="val">${label.gross_weight ? Number(label.gross_weight).toFixed(2) + ' kg' : ''}</span></div>
+                    <div class="label-data-row">Nettó kg: <span class="val">${label.net_weight ? Number(label.net_weight).toFixed(2) + ' kg' : ''}</span></div>
+                    <div class="label-data-row">Átlag súly (nettó): <span class="val">${(label.picked_cartons && label.net_weight) ? (Number(label.net_weight) / Number(label.picked_cartons)).toFixed(2) + ' kg/db' : '-'}</span></div>
+                    <div class="label-data-row">Lotszám: <span class="val">${label.lot_number || '-'}</span></div>
+                    <div class="label-data-row">Származási ország: <span class="val">${label.origin_country || '-'}</span></div>
+                `;
+            }
+
             printWindow.document.write(`
                 <!DOCTYPE html>
                 <html>
@@ -1035,7 +1189,7 @@ export function openPalletLabelsTable(wm) {
                         .label-product { font-size: 26px; font-weight: 800; line-height: 1.15; text-align: center; }
                         .label-data-row { font-size: 16px; font-weight: 600; line-height: 1.5; display: flex; gap: 6px; }
                         .label-data-row span.val { font-weight: 800; }
-                        .label-spacer { flex: 1; min-height: 60px; }
+                        .label-spacer { flex: 1; min-height: 30px; }
                         .barcode-container { text-align: center; margin-top: 10px; }
                         .barcode-type { font-size: 14px; font-weight: 900; text-align: center; margin-top: 2px; }
                         @media print { body { padding: 0; } .pallet-label { border: none; width: 100%; max-width: none; min-height: 100vh; } }
@@ -1046,19 +1200,16 @@ export function openPalletLabelsTable(wm) {
                         <div class="label-truck">${label.truck_number || '-'}</div>
                         <div class="label-sub">Kamionszám</div>
                         <div class="label-divider"></div>
-                        <div class="label-product">${label.product_name || '-'}</div>
+                        <div class="label-product">${label.product_name || (isMaster ? 'Vegyes raklap' : '-')}</div>
                         <div class="label-sub">Termék megnevezése</div>
                         <div class="label-divider"></div>
-                        <div class="label-data-row">Érkezés dátuma: <span class="val">${label.delivery_date || '-'}</span></div>
-                        <div class="label-data-row">Karton szám: <span class="val">${label.picked_cartons != null ? label.picked_cartons : ''}</span></div>
-                        <div class="label-data-row">Beszállító: <span class="val">${label.supplier || '-'}</span></div>
-                        <div class="label-data-row">Ügyfél: <span class="val">${label.destination || '-'}</span></div>
-                        <div class="label-data-row">Származási ország: <span class="val">${label.origin_country || '-'}</span></div>
+                        ${contentHtml}
                         <div class="label-spacer"></div>
                         <div class="label-divider"></div>
                         <div class="barcode-container">
                             <svg id="print-barcode"></svg>
-                            <div class="barcode-type">SSCC</div>
+                            <div style="font-size:16px; font-family:monospace; font-weight:900; margin-top:4px;">${label.sscc || ''}</div>
+                            <div class="barcode-type">${isMaster ? 'Azonosító' : 'SSCC'}</div>
                         </div>
                     </div>
                     <script>
@@ -1066,7 +1217,7 @@ export function openPalletLabelsTable(wm) {
                             if (typeof JsBarcode !== 'undefined') {
                                 JsBarcode("#print-barcode", "${label.sscc || ''}", {
                                     format: "CODE128",
-                                    displayValue: true,
+                                    displayValue: false,
                                     fontSize: 16,
                                     height: 70,
                                     margin: 4

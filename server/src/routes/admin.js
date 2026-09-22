@@ -42,10 +42,111 @@ router.get('/pallet-labels', async (req, res) => {
         s.is_consolidated_master DESC,
         s.id DESC
       `);
+
+    // Gyermek címkék csatolása a mester raklapokhoz
+    for (const label of labels) {
+      if (label.is_consolidated_master === true || label.is_consolidated_master === 1) {
+        let memberSsccs = [];
+        try {
+          if (label.pallets_json) {
+            memberSsccs = JSON.parse(label.pallets_json);
+          }
+        } catch (_) {}
+
+        let children = [];
+        if (Array.isArray(memberSsccs) && memberSsccs.length > 0) {
+          children = labels.filter(l => memberSsccs.includes(l.sscc));
+        }
+        if (children.length === 0) {
+          children = labels.filter(l => l.consolidated_sscc === label.sscc);
+        }
+
+        if (children.length === 0) {
+          if (Array.isArray(memberSsccs) && memberSsccs.length > 0) {
+            children = await db('sscc_labels').whereIn('sscc', memberSsccs);
+          } else {
+            children = await db('sscc_labels').where('consolidated_sscc', label.sscc);
+          }
+        }
+
+        label.childrenLabels = children.map(c => ({
+          id: c.id,
+          sscc: c.sscc,
+          product_name: c.product_name,
+          picked_cartons: c.picked_cartons,
+          gross_weight: c.gross_weight,
+          net_weight: c.net_weight,
+          lot_number: c.lot_number,
+          delivery_date: c.delivery_date,
+          origin_country: c.origin_country,
+          supplier: c.supplier,
+          destination: c.destination
+        }));
+      }
+    }
+
     res.json(labels);
   } catch (err) {
     console.error('Hiba a raklapcímkék lekérésekor:', err);
     res.status(500).json({ error: 'Hiba a raklapcímkék lekérdezésekor.' });
+  }
+});
+
+// POST /api/v1/admin/print-pallet-label
+router.post('/print-pallet-label', async (req, res) => {
+  try {
+    const { labelId, sscc, printerId } = req.body;
+    let labelQuery = db('sscc_labels');
+    if (labelId) labelQuery = labelQuery.where('id', labelId);
+    else if (sscc) labelQuery = labelQuery.where('sscc', sscc);
+    else return res.status(400).json({ error: 'labelId vagy sscc megadása kötelező.' });
+
+    const label = await labelQuery.first();
+    if (!label) return res.status(404).json({ error: 'A raklapcímke nem található.' });
+
+    // Ha mester címke, gyermekek betöltése
+    if (label.is_consolidated_master) {
+      let memberSsccs = [];
+      try {
+        if (label.pallets_json) memberSsccs = JSON.parse(label.pallets_json);
+      } catch (_) {}
+
+      if (Array.isArray(memberSsccs) && memberSsccs.length > 0) {
+        label.childrenLabels = await db('sscc_labels').whereIn('sscc', memberSsccs);
+      }
+      if (!label.childrenLabels || label.childrenLabels.length === 0) {
+        label.childrenLabels = await db('sscc_labels').where('consolidated_sscc', label.sscc);
+      }
+    }
+
+    // Nyomtató kiválasztása
+    let printerQuery = db('printers').where('is_active', true);
+    if (printerId) printerQuery = printerQuery.where('id', printerId);
+    const printer = await printerQuery.first();
+
+    if (!printer) {
+      return res.status(404).json({ error: 'Nincs elérhető aktív címkenyomtató. Kérlek ellenőrizd az Admin Nyomtatók menüpontot!' });
+    }
+
+    const { generateZpl } = require('./pda');
+    const zpl = generateZpl(label);
+
+    const net = require('net');
+    const client = new net.Socket();
+
+    client.on('error', (e) => {
+      console.error('[Admin] TCP hiba a nyomtatóhoz kapcsolódáskor:', e.message);
+    });
+
+    client.connect(printer.port, printer.ip_address, function () {
+      client.write(zpl);
+      client.destroy();
+    });
+
+    res.json({ success: true, message: `Nyomtatási feladat sikeresen elküldve a(z) ${printer.name} nyomtatóra (${printer.ip_address}:${printer.port}).` });
+  } catch (err) {
+    console.error('Hiba az admin nyomtatáskor:', err);
+    res.status(500).json({ error: err.message || 'Hiba a nyomtatási feladat indításakor.' });
   }
 });
 

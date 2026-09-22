@@ -22,7 +22,10 @@ function fixture() {
     forUpdate() { return this; },
     orderBy() { return this; },
     count() { return this; },
+    leftJoin() { return this; },
+    select() { return this; },
     async first() { 
+      if (table.startsWith('aldi_stock_locations')) return { occupied_pallets: 0 };
       if (table === 'aldi_truck_lines') return { ...line };
       if (table === 'ref_packaging_types') return this._whereArgs?.[1] === 26 ? secondPallet : pallet;
       if (table === 'aldi_locations') return { id: 5, capacity: 10 };

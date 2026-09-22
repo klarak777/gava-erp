@@ -477,7 +477,9 @@ async function processPick(trx, id, reqData, locationId = null) {
       .update({
         commission_line_id: commissionId,
         is_provisional: false,
-        pallets_json: JSON.stringify(palletsJsonData)
+        pallets_json: JSON.stringify(palletsJsonData),
+        gross_weight: !isNaN(reqGross) ? reqGross : null,
+        net_weight: currentPickNet !== null ? currentPickNet : null
       })
       .returning('*');
     label = updated;
@@ -522,8 +524,20 @@ async function createSsccLabel(dbClient, lineId, commissionLineId, pickedCartons
   }
   const destination = line.destination || defaultDest;
   
-  const grossWeight = line.gross_weight || null;
-  const netWeight = line.net_weight || null;
+  let grossWeight = null;
+  let netWeight = null;
+  if (commissionLineId) {
+    const commLine = await dbClient('aldi_commission_lines').where('id', commissionLineId).first();
+    if (commLine) {
+      grossWeight = commLine.gross_weight !== null ? commLine.gross_weight : null;
+      netWeight = commLine.net_weight !== null ? commLine.net_weight : null;
+    }
+  } else {
+    if (line.ordered_cartons && line.ordered_cartons > 0 && pickedCartons > 0) {
+      if (line.net_weight !== null) netWeight = (parseFloat(line.net_weight) / line.ordered_cartons) * pickedCartons;
+      if (line.gross_weight !== null) grossWeight = (parseFloat(line.gross_weight) / line.ordered_cartons) * pickedCartons;
+    }
+  }
   const lotNumber = line.lot_number || '';
 
   // SSCC generálása
@@ -587,6 +601,21 @@ function generateZpl(label) {
   }
 
   if (isMaster) {
+    let childZpl = '';
+    if (label.childrenLabels && label.childrenLabels.length > 0) {
+      childZpl += `^FO40,1050^A0N,45,45^FDRaklapok^FS\n`;
+      let yPos = 1110;
+      for (const child of label.childrenLabels) {
+        if (yPos > 1700) break;
+        childZpl += `^FO40,${yPos}^A0N,40,40^FDTermék neve: ${child.product_name || ''}^FS\n`;
+        yPos += 45;
+        childZpl += `^FO40,${yPos}^A0N,40,40^FDKartonszám: ${child.picked_cartons || ''} #^FS\n`;
+        yPos += 45;
+        childZpl += `^FO40,${yPos}^A0N,40,40^FDAzonosító: ${child.sscc || ''}^FS\n`;
+        yPos += 55;
+      }
+    }
+
     return `^XA
 ^PW1180
 ^LL2480
@@ -599,13 +628,13 @@ function generateZpl(label) {
 ^FO40,680^GB1150,5,5^FS
 ^FO40,750^A0N,60,60^FDSzállítási dátum: ${formattedDate}^FS
 ^FO40,850^A0N,60,60^FDKartonszám: ${label.picked_cartons || ''} #^FS
-^FO40,950^A0N,60,60^FDBruttó kg: ${grossWeight > 0 ? grossWeight.toFixed(0) : ''}^FS
-^FO40,1800^GB1150,5,5^FS
+^FO40,950^A0N,60,60^FDBruttó kg:${grossWeight > 0 ? grossWeight.toFixed(0) + ' kg' : ''}^FS
+${childZpl}^FO40,1800^GB1150,5,5^FS
 ^FO150,1880^BY4
 ^BCN,350,N,N,N
 ^FD${label.sscc}^FS
 ^FO0,2260^A0N,65,65^FB1180,1,0,C^FD${label.sscc}^FS
-^FO0,2340^A0N,55,55^FB1180,1,0,C^FDSSCC^FS
+^FO0,2340^A0N,55,55^FB1180,1,0,C^FDAzonosító^FS
 ^XZ`;
   }
 
@@ -853,6 +882,23 @@ router.post('/print-pallet-label', verifyToken, async (req, res) => {
 
     if (!label) {
       return res.status(404).json({ error: 'A nyomtatandó raklapcímke nem található.' });
+    }
+
+    if (label.is_consolidated_master) {
+      try {
+        let memberSsccs = [];
+        if (label.pallets_json) {
+          try { memberSsccs = JSON.parse(label.pallets_json); } catch (_) {}
+        }
+        if (Array.isArray(memberSsccs) && memberSsccs.length > 0) {
+          label.childrenLabels = await knex('sscc_labels').whereIn('sscc', memberSsccs);
+        }
+        if (!label.childrenLabels || label.childrenLabels.length === 0) {
+          label.childrenLabels = await knex('sscc_labels').where('consolidated_sscc', label.sscc);
+        }
+      } catch (e) {
+        console.error('[PDA] Hiba a gyermek címkék betöltésekor:', e);
+      }
     }
 
     console.log(`[PDA] Nyomtatás kérése a(z) ${printer.name} nyomtatóra. SSCC: ${label.sscc}, tétel: ${label.product_name}, kamion: ${label.truck_number}, karton: ${label.picked_cartons}`);
@@ -1255,3 +1301,4 @@ router.post('/consolidation', verifyToken, async (req, res) => {
 });
 
 module.exports = router;
+module.exports.generateZpl = generateZpl;
