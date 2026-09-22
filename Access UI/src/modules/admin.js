@@ -791,9 +791,6 @@ export function openPalletLabelsTable(wm) {
                         <!-- Dinamikus tartalom -->
                     </div>
                     <div style="display:flex; justify-content:flex-end; gap:8px;">
-                        <button id="pl-modal-zebra-btn" class="secondary-btn" style="display:flex; align-items:center; gap:6px;">
-                            🖨️ Zebra nyomtatás
-                        </button>
                         <button id="pl-modal-print-btn" class="primary-btn" style="display:flex; align-items:center; gap:6px;">
                             📄 Nyomtatás / PDF mentés
                         </button>
@@ -810,7 +807,6 @@ export function openPalletLabelsTable(wm) {
         const modalClose = winContainer.querySelector('#pl-modal-close');
         const modalContent = winContainer.querySelector('#pl-modal-label-content');
         const modalPrintBtn = winContainer.querySelector('#pl-modal-print-btn');
-        const modalZebraBtn = winContainer.querySelector('#pl-modal-zebra-btn');
 
         let selectedLabel = null;
 
@@ -839,6 +835,8 @@ export function openPalletLabelsTable(wm) {
             }
         }
 
+        const esc = (s) => String(s || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+
         function renderTable() {
             const query = (searchInput?.value || '').toLowerCase().trim();
             const filtered = query ? labels.filter(l => {
@@ -856,7 +854,6 @@ export function openPalletLabelsTable(wm) {
                 return;
             }
 
-            const esc = (s) => String(s || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 
             tbody.innerHTML = filtered.map(l => {
                 const isMaster = l.is_consolidated_master === true || l.is_consolidated_master === 1;
@@ -1080,31 +1077,6 @@ export function openPalletLabelsTable(wm) {
             printLabelDirect(selectedLabel);
         });
 
-        if (modalZebraBtn) {
-            modalZebraBtn.addEventListener('click', async () => {
-                if (!selectedLabel) return;
-                try {
-                    modalZebraBtn.disabled = true;
-                    modalZebraBtn.textContent = '⏳ Küldés...';
-                    const res = await fetch('/api/v1/admin/print-pallet-label', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ labelId: selectedLabel.id, sscc: selectedLabel.sscc })
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                        alert(data.message || 'Címke sikeresen elküldve a Zebra nyomtatóra!');
-                    } else {
-                        alert('Hiba a nyomtatás során: ' + (data.error || 'Sikertelen nyomtatás'));
-                    }
-                } catch (err) {
-                    alert('Hálózati hiba a nyomtatáskor: ' + err.message);
-                } finally {
-                    modalZebraBtn.disabled = false;
-                    modalZebraBtn.innerHTML = '🖨️ Zebra nyomtatás';
-                }
-            });
-        }
 
         function printLabelDirect(label) {
             const printWindow = window.open('', '_blank', 'width=650,height=800');
