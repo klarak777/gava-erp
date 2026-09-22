@@ -15,9 +15,9 @@ async function migrateExistingLabels() {
       const truckLine = await db('aldi_truck_lines').where('id', commissionLine.aldi_truck_line_id).first();
       if (truckLine) {
         await db('sscc_labels').where('id', label.id).update({
-          gross_weight: truckLine.gross_weight || null,
-          net_weight: truckLine.net_weight || null,
-          lot_number: truckLine.lot_number || null,
+          gross_weight: commissionLine.gross_weight !== null ? commissionLine.gross_weight : null,
+          net_weight: commissionLine.net_weight !== null ? commissionLine.net_weight : null,
+          lot_number: commissionLine.lot_number || truckLine.lot_number || null,
         });
         normalCount++;
       }
