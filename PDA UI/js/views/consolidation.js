@@ -53,7 +53,7 @@ export async function renderConsolidation(container, params = {}) {
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 28px;">
           <path d="M4 7V4h16v3M9 20h6M12 14v6M4 17v3h16v-3M9 7h6v5H9z"></path>
         </svg>
-        <input type="text" id="member-barcode" placeholder="Raklap SSCC vonalkód" style="width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #fff; color: #0f172a;">
+        <input type="text" id="member-barcode" inputmode="none" autofocus placeholder="Raklap SSCC vonalkód" style="width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #fff; color: #0f172a;">
       </div>
       <div id="member-scan-error" style="display:none; color:#dc2626; font-size:12px; font-weight:600; text-align:center; margin:0 16px 8px;"></div>
 
@@ -183,8 +183,6 @@ export async function renderConsolidation(container, params = {}) {
     btnScanNext.style.opacity = enough ? '1' : '0.5';
   }
 
-  setTimeout(() => { if (!isBusy()) memberBarcode.focus(); }, 150);
-
   memberBarcode.addEventListener('input', () => {
     const val = memberBarcode.value.trim();
     if (val.length === 18 && !generatingLabel && !memberBarcode.disabled) {
@@ -208,49 +206,49 @@ export async function renderConsolidation(container, params = {}) {
     memberScanError.style.display = 'none';
     memberScanError.textContent = '';
 
-      try {
-        const res = await apiFetch(`/api/v1/pda/consolidation-member?sscc=${encodeURIComponent(sscc)}`);
-        const data = await res.json();
-        
-        if (res.ok && data.success && data.label) {
-          const lbl = data.label;
-          if (scannedMembers.has(lbl.id)) {
-            memberScanError.textContent = 'Ezt a raklapot már hozzáadtad.';
-            memberScanError.style.display = 'block';
-          } else {
-            if (!selectedTruck) {
-              selectedTruck = {
-                id: lbl.truck_id,
-                truck_number: lbl.truck_number,
-                target_locations: lbl.target_locations
-              };
-              scanTruckName.textContent = lbl.truck_number;
-            } else if (selectedTruck.id !== lbl.truck_id) {
-              memberScanError.textContent = 'Ez a raklap egy másik kamionhoz tartozik! Ezért nem lehetséges az összeemelése a megelőzővel.';
-              memberScanError.style.display = 'block';
-              memberBarcode.value = '';
-              return;
-            }
-            
-            scannedMembers.set(lbl.id, lbl);
-            selectedLabelIds.add(lbl.id);
-            memberBarcode.value = '';
-            renderScannedMembers();
-            updateScanNextBtn();
-          }
-        } else {
-          memberScanError.textContent = (data && data.error) || 'Hiba a raklap ellenőrzésekor.';
+    try {
+      const res = await apiFetch(`/api/v1/pda/consolidation-member?sscc=${encodeURIComponent(sscc)}`);
+      const data = await res.json();
+      
+      if (res.ok && data.success && data.label) {
+        const lbl = data.label;
+        if (scannedMembers.has(lbl.id)) {
+          memberScanError.textContent = 'Ezt a raklapot már hozzáadtad.';
           memberScanError.style.display = 'block';
+        } else {
+          if (!selectedTruck) {
+            selectedTruck = {
+              id: lbl.truck_id,
+              truck_number: lbl.truck_number,
+              target_locations: lbl.target_locations
+            };
+            scanTruckName.textContent = lbl.truck_number;
+          } else if (selectedTruck.id !== lbl.truck_id) {
+            memberScanError.textContent = 'Ez a raklap egy másik kamionhoz tartozik! Ezért nem lehetséges az összeemelése a megelőzővel.';
+            memberScanError.style.display = 'block';
+            memberBarcode.value = '';
+            return;
+          }
+          
+          scannedMembers.set(lbl.id, lbl);
+          selectedLabelIds.add(lbl.id);
+          memberBarcode.value = '';
+          renderScannedMembers();
+          updateScanNextBtn();
         }
-      } catch (err) {
-        memberScanError.textContent = 'Hálózati hiba a raklap ellenőrzésekor.';
+      } else {
+        memberScanError.textContent = (data && data.error) || 'Hiba a raklap ellenőrzésekor.';
         memberScanError.style.display = 'block';
-      } finally {
-        memberBarcode.disabled = false;
-        updateScanNextBtn();
-        setTimeout(() => memberBarcode.focus(), 50);
       }
+    } catch (err) {
+      memberScanError.textContent = 'Hálózati hiba a raklap ellenőrzésekor.';
+      memberScanError.style.display = 'block';
+    } finally {
+      memberBarcode.disabled = false;
+      updateScanNextBtn();
+      setTimeout(() => memberBarcode.focus(), 50);
     }
+  }
 
   btnScanNext.addEventListener('click', async () => {
     if (scannedMembers.size < 2 || btnScanNext.disabled) return;
@@ -336,29 +334,33 @@ export async function renderConsolidation(container, params = {}) {
     }
     printPrinterInput.disabled = true;
 
+    let success = false;
     try {
       const res = await apiFetch('/api/v1/pda/print-pallet-label', {
         method: 'POST',
         body: JSON.stringify({
-          labelData: previewLabel, // Direkt átadjuk a címke adatokat az API-nak
+          labelId: previewLabel.id,
           printerBarcode: pBarcode
         })
       });
       let data = null;
       try { data = await res.json(); } catch (_) {}
       if (res.ok && data && data.success) {
-        // Sikeres nyomtatás után tovább a lokációra
-        goToLocationPane();
+        success = true;
       } else {
         alert('Hiba a nyomtatás során: ' + ((data && data.error) || `HTTP ${res.status}`));
       }
     } catch (e) {
-      alert('Hiba a nyomtatás során! Részletek: ' + (e.message || e));
+      alert('Hálózati hiba a nyomtatás során! Részletek: ' + (e.message || e));
     } finally {
       printPrinterInput.disabled = false;
       if (printBtn) {
         printBtn.disabled = false;
       }
+    }
+
+    if (success) {
+      goToLocationPane();
     }
   }
 
@@ -388,26 +390,36 @@ export async function renderConsolidation(container, params = {}) {
     locError.style.display = 'none';
     locBarcode.disabled = true;
     if (btnLocNext) btnLocNext.disabled = true;
+    let isSuccess = false;
+    let responseData = null;
     try {
       const res = await apiFetch('/api/v1/pda/consolidation-validate-location', {
         method: 'POST',
         body: JSON.stringify({ truckId: selectedTruck.id, locationInput: val, labelIds: Array.from(selectedLabelIds) })
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        locationId = data.locationId || null;
-        locationName = data.locationName || val;
-        if (container.contains(paneLocation)) goToScanPane();
+      responseData = await res.json();
+      if (res.ok && responseData.success) {
+        isSuccess = true;
       } else {
-        locError.textContent = data.error || 'Érvénytelen lokáció.';
+        locError.textContent = responseData.error || 'Érvénytelen lokáció.';
         locError.style.display = 'block';
       }
     } catch (err) {
-      locError.textContent = 'Hiba a lokáció ellenőrzése során.';
+      locError.textContent = 'Hálózati hiba a lokáció ellenőrzése során.';
       locError.style.display = 'block';
     } finally {
       locBarcode.disabled = false;
       if (btnLocNext) btnLocNext.disabled = false;
+    }
+
+    if (isSuccess) {
+      try {
+        locationId = responseData.locationId || null;
+        locationName = responseData.locationName || val;
+        if (container.contains(paneLocation)) goToScanPane();
+      } catch (uiErr) {
+        alert('Felületi hiba: ' + uiErr.message);
+      }
     }
   }
   locBarcode.addEventListener('input', () => { 

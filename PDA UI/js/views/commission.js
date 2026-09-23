@@ -402,7 +402,7 @@ export async function renderCommission(container, params = {}) {
           <select id="form-gongyoleg" required></select>
         </div>
         <div class="pda-form-group">
-          <label>Göngyöleg tára (/un) <span style="color:red;">*</span></label>
+          <label>Göngyöleg egységtára (kg/karton) <span style="color:red;">*</span></label>
           <input type="number" step="0.001" id="form-tara" readonly required />
         </div>
         <div class="pda-form-group">
@@ -411,7 +411,7 @@ export async function renderCommission(container, params = {}) {
         </div>
         <div class="pda-form-group">
           <label>Lot szám <span style="color:red;">*</span></label>
-          <input type="number" id="form-lot" inputmode="numeric" required />
+          <input type="number" id="form-lot" required />
         </div>
         <div class="pda-form-group">
           <label>Raklap típus <span style="color:red;">*</span></label>
@@ -1000,36 +1000,53 @@ export async function renderCommission(container, params = {}) {
       pickSessionId: Date.now().toString(36) + Math.random().toString(36).substr(2, 5)
     };
 
+    let isSuccess = false;
+    let responseData = null;
+    const areaVal = container.querySelector('#pda-terulet-select').value;
+    lastPickPayload.area = areaVal; // Hozzáadjuk az areát a végső pick-and-assign híváshoz is
+
     try {
       submitBtn.disabled = true;
       submitBtn.style.opacity = '0.5';
-      const areaVal = container.querySelector('#pda-terulet-select').value;
       const res = await apiFetch('/api/v1/pda/generate-pallet-label', {
         method: 'POST',
         body: JSON.stringify({
           lineId: currentLineId,
-          pickedCartons: qty,
-          originCountry: orszagSel.value,
+          picked_cartons: qty,
+          gross_weight: grossValue,
+          tare_weight: Number(taraInput.value),
+          origin_country: orszagSel.value,
+          lot_number: lotInput.value.trim(),
+          pallet_types: allPalletIds,
           area: areaVal
         })
       });
-      const data = await res.json();
-      if (res.ok && data.label) {
-        currentLabel = data.label;
-        lastPickPayload.labelId = currentLabel.id; // Később átadjuk a pick-and-assign végpontnak
-        renderLabelPreview(currentLabel);
-        
-        container.querySelector('#print-printer-barcode').value = '';
-        showPane(panePrint);
-        setTimeout(() => container.querySelector('#print-printer-barcode').focus(), 100);
+      responseData = await res.json();
+      if (res.ok && responseData.label) {
+        isSuccess = true;
       } else {
-        alert(data.error || 'Hiba a címke generálásakor.');
+        alert(responseData.error || 'Hiba a címke generálásakor.');
       }
     } catch(err) {
       alert('Hálózati hiba a címke generálásakor.');
     } finally {
       submitBtn.disabled = false;
       submitBtn.style.opacity = '1';
+    }
+
+    if (isSuccess) {
+      try {
+        currentLabel = responseData.label;
+        lastPickPayload.labelId = currentLabel.id; // Később átadjuk a pick-and-assign végpontnak
+        renderLabelPreview(currentLabel);
+        
+        container.querySelector('#print-printer-barcode').value = '';
+        container.querySelector('#print-printer-barcode').setAttribute('inputmode', 'none');
+        showPane(panePrint);
+        setTimeout(() => container.querySelector('#print-printer-barcode').focus(), 100);
+      } catch (uiErr) {
+        alert('Felületi hiba: ' + uiErr.message);
+      }
     }
   });
 
@@ -1056,6 +1073,7 @@ export async function renderCommission(container, params = {}) {
       return;
     }
 
+    let isSuccess = false;
     try {
       printPrinterInput.disabled = true;
       if (printSubmitBtn) {
@@ -1075,25 +1093,34 @@ export async function renderCommission(container, params = {}) {
       });
 
       if (res.ok) {
-        printPrinterInput.value = '';
-    
-        // Nyomtatás után átlépünk a Cél lokációra
-        container.querySelector('#dest-title').textContent = currentDestination || 'Ismeretlen';
-        const destInputEl = container.querySelector('#dest-vonalkod');
-        if (destInputEl) destInputEl.value = '';
-        showPane(paneDest);
-        setTimeout(() => { if (destInputEl) destInputEl.focus(); }, 100);
+        isSuccess = true;
       } else {
         const errData = await res.json().catch(() => ({}));
         alert(errData.error || 'Hiba a nyomtatás során!');
       }
     } catch (e) {
-      alert('Hiba a nyomtatás során! Részletek: ' + (e.message || e));
+      alert('Hálózati hiba a nyomtatás során! Részletek: ' + (e.message || e));
     } finally {
       if (printPrinterInput) printPrinterInput.disabled = false;
       if (printSubmitBtn) {
         printSubmitBtn.disabled = false;
         printSubmitBtn.style.opacity = '1';
+      }
+    }
+
+    if (isSuccess) {
+      try {
+        printPrinterInput.value = '';
+        container.querySelector('#dest-title').textContent = currentDestination || 'Ismeretlen';
+        const destInputEl = container.querySelector('#dest-vonalkod');
+        if (destInputEl) {
+          destInputEl.value = '';
+          destInputEl.setAttribute('inputmode', 'none');
+        }
+        showPane(paneDest);
+        setTimeout(() => { if (destInputEl) destInputEl.focus(); }, 100);
+      } catch (uiErr) {
+        alert('Felületi hiba: ' + uiErr.message);
       }
     }
   };
@@ -1154,6 +1181,8 @@ export async function renderCommission(container, params = {}) {
       return;
     }
 
+    let isSuccess = false;
+    let responseData = null;
     try {
       if (destSaveBtn) {
         destSaveBtn.disabled = true;
@@ -1164,21 +1193,19 @@ export async function renderCommission(container, params = {}) {
         method: 'POST',
         body: JSON.stringify({ barcode })
       });
-      const data = await res.json();
+      responseData = await res.json();
 
       if (!res.ok) {
-        alert(data.error || 'Érvénytelen lokáció vagy megtelt tárhely.');
+        alert(responseData.error || 'Érvénytelen lokáció vagy megtelt tárhely.');
         if (destInput) {
           destInput.value = '';
           destInput.focus();
         }
-        return;
+      } else {
+        isSuccess = true;
       }
-
-      currentDestBarcode = data.resolved_barcode || barcode;
     } catch (err) {
       alert('Hálózati hiba a lokáció ellenőrzésekor: ' + (err.message || err));
-      return;
     } finally {
       if (destSaveBtn) {
         destSaveBtn.disabled = false;
@@ -1186,16 +1213,26 @@ export async function renderCommission(container, params = {}) {
       }
     }
 
-    const hintDiv = container.querySelector('#test-sscc-hint');
-    if (hintDiv) {
-      hintDiv.innerHTML = `<em>(Teszteléshez generált SSCC: <strong>${currentLabel?.sscc || ''}</strong>)</em>`;
-    }
+    if (isSuccess) {
+      try {
+        currentDestBarcode = responseData.resolved_barcode || barcode;
+        const hintDiv = container.querySelector('#test-sscc-hint');
+        if (hintDiv) {
+          hintDiv.innerHTML = `<em>(Teszteléshez generált SSCC: <strong>${currentLabel?.sscc || ''}</strong>)</em>`;
+        }
 
-    showPane(paneSscc);
-    setTimeout(() => {
-      const ssccInput = container.querySelector('#sscc-vonalkod');
-      if (ssccInput) ssccInput.focus();
-    }, 100);
+        showPane(paneSscc);
+        setTimeout(() => {
+          const ssccInput = container.querySelector('#sscc-vonalkod');
+          if (ssccInput) {
+            ssccInput.setAttribute('inputmode', 'none');
+            ssccInput.focus();
+          }
+        }, 100);
+      } catch (uiErr) {
+        alert('Felületi hiba: ' + uiErr.message);
+      }
+    }
   };
 
   if (destInput) {
@@ -1240,6 +1277,8 @@ export async function renderCommission(container, params = {}) {
       return;
     }
 
+    let isSuccess = false;
+    let responseData = null;
     try {
       ssccInput.disabled = true;
       if (ssccSaveBtn) {
@@ -1252,18 +1291,12 @@ export async function renderCommission(container, params = {}) {
         method: 'PUT',
         body: JSON.stringify(payload)
       });
-      const data = await res.json();
+      responseData = await res.json();
 
       if (res.ok) {
-        currentLabel = data.label || null;
-        destInput.value = '';
-        ssccInput.value = '';
-        showPane(paneList);
-        loadData();
-        lastPickPayload = null;
-        currentDestBarcode = null;
+        isSuccess = true;
       } else {
-        alert(data.error || 'Hiba a mentéskor.');
+        alert(responseData.error || 'Hiba a mentéskor.');
         ssccInput.value = '';
         ssccInput.focus();
       }
@@ -1274,6 +1307,20 @@ export async function renderCommission(container, params = {}) {
       if (ssccSaveBtn) {
         ssccSaveBtn.disabled = false;
         ssccSaveBtn.style.opacity = '1';
+      }
+    }
+
+    if (isSuccess) {
+      try {
+        currentLabel = responseData.label || null;
+        destInput.value = '';
+        ssccInput.value = '';
+        showPane(paneList);
+        loadData();
+        lastPickPayload = null;
+        currentDestBarcode = null;
+      } catch (uiErr) {
+        alert('Felületi hiba: ' + uiErr.message);
       }
     }
   };

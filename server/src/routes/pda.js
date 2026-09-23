@@ -265,6 +265,58 @@ router.get('/pallet-types', verifyToken, async (req, res) => {
 //   - ordered_cartons NINCS módosítva (az eredeti rendeltet tükrözi)
 //   - is_picked = true ha picked_cartons >= ordered_cartons
 //   - Ha qty > remaining: 409 hiba
+async function calculateAndValidateWeights(trx, line, qty, reqGross, reqTare, palletIds) {
+  if (!palletIds || palletIds.length === 0) {
+    const err = new Error('Válassz legalább egy raklaptípust a nettó súly számításához.'); err.code = 'BAD_REQUEST'; throw err;
+  }
+
+  let totalPalletTareKg = 0;
+  let primaryPalletTypeName = null;
+  const palletsJsonData = [];
+
+  for (const pid of palletIds) {
+    const palInfo = await trx('ref_packaging_types').where('id', pid).first();
+    if (!palInfo || !palInfo.is_active || ![palInfo.name, palInfo.category].some(v => String(v || '').toLowerCase().includes('raklap'))) {
+      const err = new Error('Érvénytelen vagy inaktív raklaptípus a listában. Kérlek válassz érvényes raklapot.'); err.code = 'BAD_REQUEST'; throw err;
+    }
+    if (palInfo.tare_weight_kg == null || !Number.isFinite(Number(palInfo.tare_weight_kg)) || Number(palInfo.tare_weight_kg) <= 0) {
+      const err = new Error(`A(z) "${palInfo.name}" raklaptípushoz nincs érvényes tára súly megadva a törzsadatban. Kérlek pótold az Admin felületen!`); err.code = 'INVALID_WEIGHT'; throw err;
+    }
+    const tare = parseFloat(palInfo.tare_weight_kg);
+    totalPalletTareKg += tare;
+    palletsJsonData.push({
+      id: palInfo.id,
+      name: palInfo.name,
+      category: palInfo.category,
+      tare_weight_kg: tare
+    });
+    if (!primaryPalletTypeName) primaryPalletTypeName = palInfo.name;
+  }
+
+  if (!Number.isFinite(reqGross) || reqGross <= 0 || reqTare == null || !Number.isFinite(reqTare) || reqTare < 0) {
+    const err = new Error('Adj meg pozitív bruttó súlyt és nem negatív göngyölegtárát.'); err.code = 'INVALID_WEIGHT'; throw err;
+  }
+
+  const alreadyPicked = parseInt(line.picked_cartons) || 0;
+  if (alreadyPicked > 0 && (line.gross_weight == null || line.net_weight == null)) {
+    const err = new Error('A korábbi komissió súlyadatai hiányosak. Folytatás előtt rendezni kell a korábbi bruttó és nettó súlyt.'); err.code = 'INVALID_WEIGHT'; throw err;
+  }
+
+  const totalTare = (reqTare * qty) + totalPalletTareKg;
+  if (reqGross < totalTare) {
+    const palletTareStr = palletsJsonData.map(p => `${p.name} (${p.tare_weight_kg.toFixed(1)} kg)`).join(' + ');
+    const err = new Error(`A bruttó súly (${reqGross} kg) kisebb, mint a göngyöleg (${reqTare} kg x ${qty} db) és a raklapok (${palletTareStr}) tára összege!`);
+    err.code = 'INVALID_WEIGHT'; throw err;
+  }
+
+  const netWeight = reqGross - totalTare;
+  if (netWeight < 0) {
+    const err = new Error('Számítási hiba: a nettó súly negatív!'); err.code = 'INVALID_WEIGHT'; throw err;
+  }
+
+  return { netWeight, palletsJsonData, primaryPalletTypeName };
+}
+
 // Közös segédfüggvény a komissiózás feldolgozásához
 async function processPick(trx, id, reqData, locationId = null) {
   const { picked_cartons, gross_weight, packaging_type, tare_weight, origin_country, lot_number, pallet_type, pallet_types, pickSessionId } = reqData;
@@ -342,66 +394,18 @@ async function processPick(trx, id, reqData, locationId = null) {
   }
 
   // 3. Súly és raklap kalkuláció – több raklap támogatással
-  // A frontend pallet_types tömbben küldi az összes raklap ID-ját.
-  // Ha csak régi pallet_type érkezik (backward compat), azt tömbként kezeljük.
   const palletIds = Array.isArray(pallet_types) && pallet_types.length > 0
     ? pallet_types
     : (pallet_type ? [pallet_type] : []);
 
-  if (palletIds.length === 0) {
-    const err = new Error('Válassz legalább egy raklaptípust a nettó súly számításához.'); err.code = 'BAD_REQUEST'; throw err;
-  }
-
-  let totalPalletTareKg = 0;
-  let primaryPalletTypeName = null;
-  const palletsJsonData = [];
-
-  for (const pid of palletIds) {
-    const palInfo = await trx('ref_packaging_types').where('id', pid).first();
-    if (!palInfo || !palInfo.is_active || ![palInfo.name, palInfo.category].some(v => String(v || '').toLowerCase().includes('raklap'))) {
-      const err = new Error('Érvénytelen vagy inaktív raklaptípus a listában. Kérlek válassz érvényes raklapot.'); err.code = 'BAD_REQUEST'; throw err;
-    }
-    if (palInfo.tare_weight_kg == null || !Number.isFinite(Number(palInfo.tare_weight_kg)) || Number(palInfo.tare_weight_kg) <= 0) {
-      const err = new Error(`A(z) "${palInfo.name}" raklaptípushoz nincs érvényes tára súly megadva a törzsadatban. Kérlek pótold az Admin felületen!`); err.code = 'INVALID_WEIGHT'; throw err;
-    }
-    const tare = parseFloat(palInfo.tare_weight_kg);
-    totalPalletTareKg += tare;
-    palletsJsonData.push({
-      id: palInfo.id,
-      name: palInfo.name,
-      category: palInfo.category,
-      tare_weight_kg: tare
-    });
-    if (!primaryPalletTypeName) primaryPalletTypeName = palInfo.name;
-  }
   const reqGross = Number(gross_weight);
   const reqTare = Number(tare_weight);
-  if (!Number.isFinite(reqGross) || reqGross <= 0 || tare_weight == null || tare_weight === '' || !Number.isFinite(reqTare) || reqTare < 0) {
-    const err = new Error('Adj meg pozitív bruttó súlyt és nem negatív göngyölegtárát.'); err.code = 'INVALID_WEIGHT'; throw err;
-  }
-  if (alreadyPicked > 0 && (line.gross_weight == null || line.net_weight == null)) {
-    const err = new Error('A korábbi komissió súlyadatai hiányosak. Folytatás előtt rendezni kell a korábbi bruttó és nettó súlyt.'); err.code = 'INVALID_WEIGHT'; throw err;
-  }
-
-  if (!isNaN(reqGross) && reqGross > 0) {
-    const totalTare = (reqTare * qty) + totalPalletTareKg;
-    if (reqGross < totalTare) {
-      const palletTareStr = palletsJsonData.map(p => `${p.name} (${p.tare_weight_kg.toFixed(1)} kg)`).join(' + ');
-      const err = new Error(`A bruttó súly (${reqGross} kg) kisebb, mint a göngyöleg (${reqTare} kg x ${qty} db) és a raklapok (${palletTareStr}) tára összege!`);
-      err.code = 'INVALID_WEIGHT'; throw err;
-    }
-  } else if (gross_weight !== undefined && gross_weight !== null && gross_weight !== '') {
-    const err = new Error('A bruttó súlynak pozitívnak kell lennie!');
+  if (isNaN(reqGross) || isNaN(reqTare) || reqGross <= 0 || reqTare < 0) {
+    const err = new Error('Adj meg pozitív bruttó súlyt és nem negatív göngyölegtárát.');
     err.code = 'INVALID_WEIGHT'; throw err;
   }
 
-  let currentPickNet = null;
-  if (!isNaN(reqGross) && reqGross > 0) {
-    currentPickNet = reqGross - (reqTare * qty) - totalPalletTareKg;
-    if (currentPickNet < 0) {
-      const err = new Error('Számítási hiba: a nettó súly negatív!'); err.code = 'INVALID_WEIGHT'; throw err;
-    }
-  }
+  const { netWeight: currentPickNet, palletsJsonData, primaryPalletTypeName } = await calculateAndValidateWeights(trx, line, qty, reqGross, reqTare, palletIds);
 
   // 4. Komissiózás rögzítése
   const [createdCommLine] = await trx('aldi_commission_lines').insert({
@@ -414,7 +418,7 @@ async function processPick(trx, id, reqData, locationId = null) {
     net_weight: currentPickNet,
     pallet_type: primaryPalletTypeName,
     pallets_json: JSON.stringify(palletsJsonData),
-    tare_weight: reqTare || null,
+    tare_weight: reqTare != null ? reqTare : null,
     carton_type: packaging_type || null,
     lot_number: lot_number || null,
     origin_country: origin_country || null,
@@ -456,7 +460,7 @@ async function processPick(trx, id, reqData, locationId = null) {
       net_weight: newNet,
       packaging_type: packaging_type || null,
       pallet_type: primaryPalletTypeName || null,
-      tare_weight: reqTare || null,
+      tare_weight: reqTare != null ? reqTare : null,
       origin_country: origin_country || null,
       lot_number: lot_number || null
     });
@@ -471,16 +475,45 @@ async function processPick(trx, id, reqData, locationId = null) {
     if (!labelRecord.is_provisional && labelRecord.commission_line_id !== commissionId) {
       const err = new Error('Ez a címke már véglegesítve lett egy másik komissióhoz.'); err.code = 'BAD_REQUEST'; throw err;
     }
+    if (labelRecord.is_provisional) {
+      const truck = await trx('aldi_trucks').where('id', line.aldi_truck_id).first();
+      const expectedTruckNumber = truck ? (truck.truck_number || truck.license_plate_1 || 'GHU 070/1') : 'GHU 070/1';
+      if (labelRecord.truck_number !== expectedTruckNumber && labelRecord.truck_number !== 'GHU 070/1') {
+         const err = new Error('Ez a címke egy másik kamionhoz vagy folyamathoz lett generálva.'); err.code = 'BAD_REQUEST'; throw err;
+      }
+    }
+
+    let dest = null;
+    if (reqData.area) {
+      const areaLower = reqData.area.toLowerCase();
+      if (areaLower === 'tesco') dest = 'Tesco';
+      else if (areaLower === 'penny') dest = 'Penny';
+      else if (areaLower === 'spar') dest = 'Spar';
+      else if (areaLower === 'crossdocking' || areaLower === 'cross') dest = 'Crossdocking';
+      else if (areaLower === 'aldi') dest = 'Aldi';
+      else {
+        const err = new Error(`Ismeretlen célterület: ${reqData.area}`);
+        err.code = 'BAD_REQUEST'; throw err;
+      }
+    }
+
+    const updateData = {
+      commission_line_id: commissionId,
+      is_provisional: false,
+      pallets_json: JSON.stringify(palletsJsonData),
+      gross_weight: reqGross,
+      net_weight: currentPickNet,
+      lot_number: lot_number || null,
+      origin_country: origin_country || null,
+      picked_cartons: qty
+    };
+    if (dest) {
+       updateData.destination = dest;
+    }
 
     const [updated] = await trx('sscc_labels')
       .where('id', reqData.labelId)
-      .update({
-        commission_line_id: commissionId,
-        is_provisional: false,
-        pallets_json: JSON.stringify(palletsJsonData),
-        gross_weight: !isNaN(reqGross) ? reqGross : null,
-        net_weight: currentPickNet !== null ? currentPickNet : null
-      })
+      .update(updateData)
       .returning('*');
     label = updated;
   }
@@ -499,7 +532,7 @@ async function processPick(trx, id, reqData, locationId = null) {
 }
 
 // ── SSCC és ZPL segédfüggvények ─────────────────────────────
-async function createSsccLabel(dbClient, lineId, commissionLineId, pickedCartons, originCountryOverride, palletsJsonData = null, area = null) {
+async function createSsccLabel(dbClient, lineId, commissionLineId, pickedCartons, originCountryOverride = null, palletsJsonData = null, area = null, explicitGross = null, explicitNet = null, explicitLot = null) {
   const line = await dbClient('aldi_truck_lines').where('id', lineId).first();
   if (!line) throw new Error('A komissiózott tétel nem található.');
 
@@ -511,34 +544,37 @@ async function createSsccLabel(dbClient, lineId, commissionLineId, pickedCartons
   const originCountry = originCountryOverride || line.origin_country || '';
   const supplier = line.partner || '';
   
-  let defaultDest = 'ALDI';
+  let defaultDest = 'Aldi';
   if (area) {
     const areaLower = area.toLowerCase();
     if (areaLower === 'tesco') defaultDest = 'Tesco';
     else if (areaLower === 'penny') defaultDest = 'Penny';
     else if (areaLower === 'spar') defaultDest = 'Spar';
+    else if (areaLower === 'crossdocking' || areaLower === 'cross') defaultDest = 'Crossdocking';
+    else if (areaLower === 'aldi') defaultDest = 'Aldi';
+    else throw new Error(`Ismeretlen célterület: ${area}`);
   } else if (supplier) {
     if (supplier.toLowerCase().includes('tesco')) defaultDest = 'Tesco';
     else if (supplier.toLowerCase().includes('penny')) defaultDest = 'Penny';
     else if (supplier.toLowerCase().includes('spar')) defaultDest = 'Spar';
   }
-  const destination = line.destination || defaultDest;
+  const destination = area ? defaultDest : (line.destination || defaultDest);
   
-  let grossWeight = null;
-  let netWeight = null;
-  if (commissionLineId) {
+  let grossWeight = explicitGross !== null ? explicitGross : null;
+  let netWeight = explicitNet !== null ? explicitNet : null;
+  if (commissionLineId && (grossWeight === null || netWeight === null)) {
     const commLine = await dbClient('aldi_commission_lines').where('id', commissionLineId).first();
     if (commLine) {
-      grossWeight = commLine.gross_weight !== null ? commLine.gross_weight : null;
-      netWeight = commLine.net_weight !== null ? commLine.net_weight : null;
+      if (grossWeight === null && commLine.gross_weight !== null) grossWeight = commLine.gross_weight;
+      if (netWeight === null && commLine.net_weight !== null) netWeight = commLine.net_weight;
     }
-  } else {
+  } else if (grossWeight === null || netWeight === null) {
     if (line.ordered_cartons && line.ordered_cartons > 0 && pickedCartons > 0) {
-      if (line.net_weight !== null) netWeight = (parseFloat(line.net_weight) / line.ordered_cartons) * pickedCartons;
-      if (line.gross_weight !== null) grossWeight = (parseFloat(line.gross_weight) / line.ordered_cartons) * pickedCartons;
+      if (netWeight === null && line.net_weight !== null) netWeight = (parseFloat(line.net_weight) / line.ordered_cartons) * pickedCartons;
+      if (grossWeight === null && line.gross_weight !== null) grossWeight = (parseFloat(line.gross_weight) / line.ordered_cartons) * pickedCartons;
     }
   }
-  const lotNumber = line.lot_number || '';
+  const lotNumber = explicitLot !== null ? explicitLot : (line.lot_number || '');
 
   // SSCC generálása
   const seqRes = await dbClient.raw("SELECT nextval('sscc_labels_id_seq') as next_id");
@@ -603,8 +639,8 @@ function generateZpl(label) {
   if (isMaster) {
     let childZpl = '';
     if (label.childrenLabels && label.childrenLabels.length > 0) {
-      childZpl += `^FO40,1050^A0N,45,45^FDRaklapok^FS\n`;
-      let yPos = 1110;
+      childZpl += `^FO40,1250^A0N,45,45^FDRaklapok^FS\n`;
+      let yPos = 1310;
       for (const child of label.childrenLabels) {
         if (yPos > 1700) break;
         childZpl += `^FO40,${yPos}^A0N,40,40^FDTermék neve: ${child.product_name || ''}^FS\n`;
@@ -627,8 +663,10 @@ function generateZpl(label) {
 ^FO0,600^A0N,50,50^FB1180,1,0,C^FDTermék megnevezése^FS
 ^FO40,680^GB1150,5,5^FS
 ^FO40,750^A0N,60,60^FDSzállítási dátum: ${formattedDate}^FS
-^FO40,850^A0N,60,60^FDKartonszám: ${label.picked_cartons ? label.picked_cartons + ' #' : ''}^FS
-^FO40,950^A0N,60,60^FDBruttó kg:${grossWeight > 0 ? grossWeight.toFixed(0) + ' kg' : ''}^FS
+^FO40,850^A0N,60,60^FDSzállítási hely: ${label.destination || ''}^FS
+^FO40,950^A0N,60,60^FDKartonszám: ${label.picked_cartons ? label.picked_cartons + ' #' : ''}^FS
+^FO40,1050^A0N,60,60^FDBruttó kg: ${grossWeight > 0 ? grossWeight.toFixed(2) + ' kg' : ''}^FS
+^FO40,1150^A0N,60,60^FDNettó kg: ${label.net_weight != null ? netWeight.toFixed(2) + ' kg' : ''}^FS
 ${childZpl}^FO40,1800^GB1150,5,5^FS
 ^FO150,1880^BY4
 ^BCN,350,N,N,N
@@ -651,8 +689,8 @@ ${childZpl}^FO40,1800^GB1150,5,5^FS
 ^FO40,750^A0N,60,60^FDSzállítási dátum: ${formattedDate}^FS
 ^FO40,850^A0N,60,60^FDSzállítási hely: ${label.destination || 'ALDI'}^FS
 ^FO40,950^A0N,60,60^FDKartonszám: ${label.picked_cartons ? label.picked_cartons + ' #' : ''}^FS
-^FO40,1050^A0N,60,60^FDBruttó kg: ${grossWeight ? grossWeight.toFixed(2) + ' kg' : ''}^FS
-^FO40,1150^A0N,60,60^FDNettó kg: ${netWeight ? netWeight.toFixed(2) + ' kg' : ''}^FS
+^FO40,1050^A0N,60,60^FDBruttó kg: ${grossWeight > 0 ? grossWeight.toFixed(2) + ' kg' : ''}^FS
+^FO40,1150^A0N,60,60^FDNettó kg: ${label.net_weight != null ? netWeight.toFixed(2) + ' kg' : ''}^FS
 ^FO40,1250^A0N,60,60^FDÁtlag súly (nettó): ${avgWeight ? avgWeight + ' kg/db' : ''}^FS
 ^FO40,1350^A0N,60,60^FDLotszám: ${lotNumber}^FS
 ^FO40,1450^A0N,60,60^FDSzármazási ország: ${label.origin_country || ''}^FS
@@ -827,8 +865,21 @@ router.put('/commission-lines/:id/pick-and-assign', verifyToken, async (req, res
 // ── POST /generate-pallet-label ──────────────────────────────
 router.post('/generate-pallet-label', verifyToken, async (req, res) => {
   try {
-    const { lineId, pickedCartons, originCountry, area } = req.body;
+    const { lineId, picked_cartons, origin_country, area, gross_weight, tare_weight, pallet_types, lot_number } = req.body;
     if (!lineId) return res.status(400).json({ error: 'A tételsor azonosítója kötelező.' });
+    if (!picked_cartons || picked_cartons <= 0 || !Number.isInteger(Number(picked_cartons))) return res.status(400).json({ error: 'A kartonszámnak pozitív egész számnak kell lennie.' });
+    if (!pallet_types || !Array.isArray(pallet_types) || pallet_types.length === 0) return res.status(400).json({ error: 'Legalább egy raklaptípust ki kell választani.' });
+    if (gross_weight == null || tare_weight == null) return res.status(400).json({ error: 'Bruttó súly és göngyölegtára megadása kötelező a címke generálásához.' });
+
+    const line = await knex('aldi_truck_lines').where('id', lineId).first();
+    if (!line) return res.status(404).json({ error: 'A tétel nem található.' });
+
+    let currentPickNet = null;
+    let palletsJsonData = [];
+    
+    const result = await calculateAndValidateWeights(knex, line, picked_cartons, Number(gross_weight), Number(tare_weight), pallet_types);
+    currentPickNet = result.netWeight;
+    palletsJsonData = result.palletsJsonData;
 
     try {
       await knex('sscc_labels')
@@ -839,9 +890,10 @@ router.post('/generate-pallet-label', verifyToken, async (req, res) => {
       console.error('[PDA] Ideiglenes címkék törlése sikertelen:', e);
     }
 
-    const label = await createSsccLabel(knex, lineId, null, pickedCartons, originCountry, null, area);
+    const label = await createSsccLabel(knex, lineId, null, picked_cartons, origin_country, palletsJsonData, area, gross_weight, currentPickNet, lot_number);
     res.json({ success: true, label });
   } catch (err) {
+    if (err.code === 'INVALID_WEIGHT' || err.code === 'BAD_REQUEST') return res.status(400).json({ error: err.message });
     console.error('[PDA] /generate-pallet-label hiba:', err);
     res.status(500).json({ error: 'Hiba a címke generálásakor.' });
   }
@@ -880,9 +932,7 @@ router.post('/print-pallet-label', verifyToken, async (req, res) => {
 
     // 2. Címke előkeresése vagy generálása
     let label = null;
-    if (req.body.labelData) {
-      label = req.body.labelData;
-    } else if (labelId) {
+    if (labelId) {
       label = await knex('sscc_labels').where('id', labelId).first();
     }
     if (!label && commissionLineId) {
@@ -924,15 +974,43 @@ router.post('/print-pallet-label', verifyToken, async (req, res) => {
 
     // Hálózati TCP kapcsolat a nyomtatóhoz
     const net = require('net');
-    const client = new net.Socket();
+    
+    await new Promise((resolve, reject) => {
+      const client = new net.Socket();
+      client.setTimeout(5000); // 5 seconds timeout
+      let isResolved = false;
 
-    client.on('error', (e) => {
-      console.error('[PDA] TCP hiba a nyomtatóhoz kapcsolódáskor:', e.message);
-    });
+      const cleanup = () => {
+        client.removeAllListeners();
+        client.destroy();
+      };
 
-    client.connect(printer.port, printer.ip_address, function () {
-      client.write(zpl);
-      client.destroy();
+      client.on('error', (e) => {
+        if (!isResolved) {
+          isResolved = true;
+          cleanup();
+          reject(new Error(`TCP hiba a nyomtatóhoz kapcsolódáskor: ${e.message}`));
+        }
+      });
+
+      client.on('timeout', () => {
+        if (!isResolved) {
+          isResolved = true;
+          cleanup();
+          reject(new Error('Nyomtató hálózati időtúllépés. A nyomtató nem válaszol.'));
+        }
+      });
+
+      client.connect(printer.port, printer.ip_address, function () {
+        client.write(zpl, (err) => {
+          if (!isResolved) {
+            isResolved = true;
+            cleanup();
+            if (err) return reject(new Error('Hiba történt a címke adatainak küldésekor.'));
+            resolve();
+          }
+        });
+      });
     });
 
     res.json({ success: true, message: 'Nyomtatási feladat sikeresen elküldve a címkenyomtatóra.', label });
@@ -1181,10 +1259,11 @@ router.post('/consolidation-preview', verifyToken, async (req, res) => {
         location_name: null,
         gross_weight: totalGrossWeight > 0 ? totalGrossWeight : null,
         net_weight: totalNetWeight > 0 ? totalNetWeight : null,
-        is_provisional: false,
+        is_provisional: true,
         is_consolidated_master: true,
         pallets_json: JSON.stringify(orderedLabels.map(label => label.sscc))
       };
+      await trx('sscc_labels').insert(previewLabel);
     });
     res.json({ success: true, label: previewLabel });
   } catch (err) {
@@ -1294,10 +1373,11 @@ router.post('/consolidation', verifyToken, async (req, res) => {
       const deliveryDates = [...new Set(orderedLabels.map(label => label.delivery_date).filter(Boolean))];
       const finalDeliveryDate = deliveryDates.length > 0 ? deliveryDates[0] : (masterLabel.delivery_date || new Date().toISOString().split('T')[0]);
       const existing = await trx('sscc_labels').where(function() { this.where('id', masterId).orWhere('sscc', expectedSscc); }).first();
-      if (existing) throw new Error('Ez az összeemelt SSCC már szerepel a rendszerben.');
+      if (existing && !existing.is_provisional) throw new Error('Ez az összeemelt SSCC már véglegesítve lett a rendszerben.');
+      
       const masterData = {
-        id: masterId, sscc: expectedSscc, commission_line_id: null, picked_cartons: totalCartons,
-        truck_number: truck.truck_number, product_name: 'Vegyes raklap',
+        commission_line_id: null, picked_cartons: totalCartons,
+        truck_number: truck.truck_number, product_name: products.length > 1 ? 'Vegyes raklap' : (products[0] || 'Vegyes'),
         delivery_date: finalDeliveryDate,
         supplier: suppliers.join(', ').substring(0, 255), destination: destinations.join(', ').substring(0, 255),
         origin_country: origins.join(', ').substring(0, 255), location_name: loc.name,
@@ -1305,7 +1385,14 @@ router.post('/consolidation', verifyToken, async (req, res) => {
         net_weight: totalNetWeight > 0 ? totalNetWeight : null,
         is_provisional: false, is_consolidated_master: true, pallets_json: JSON.stringify(memberSsccs)
       };
-      await trx('sscc_labels').insert(masterData);
+      
+      if (existing) {
+        await trx('sscc_labels').where('id', masterId).update(masterData);
+      } else {
+        await trx('sscc_labels').insert({ id: masterId, sscc: expectedSscc, ...masterData });
+      }
+      masterData.id = masterId;
+      masterData.sscc = expectedSscc;
       await trx('sscc_labels').whereIn('id', uniqueIds).update({ consolidated_sscc: expectedSscc, location_name: loc.name });
       await trx('aldi_stock_locations').whereIn('id', stockIds).update({ location_id: loc.id });
       resultLabel = masterData;

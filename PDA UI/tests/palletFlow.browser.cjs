@@ -45,7 +45,17 @@ async function run() {
       let status = 200;
       let json = [];
       if (url.endsWith('/trucks-for-consolidation')) json = [{ id: 2, truck_number: 'AL02', target_locations: JSON.stringify(targets) }];
-      else if (url.endsWith('/labels-for-truck/2')) json = [1, 2, 3].map(id => ({ id, sscc: '01234567890123456' + id, product_name: 'Nektarin 7kg', picked_cartons: 10, can_consolidate: id !== 3, consolidation_error: id === 3 ? 'Nincs hozzá lokációs készletsor.' : null }));
+      else if (url.includes('/consolidation-member')) {
+        const urlObj = new URL(req.url());
+        const s = urlObj.searchParams.get('sscc') || '';
+        const id = Number(s.slice(-1));
+        if (id === 1 || id === 2 || id === 3) {
+           if (id === 3) { status = 400; json = { error: 'Nincs hozzá lokációs készletsor.' }; }
+           else json = { success: true, label: { id, sscc: s, product_name: 'Nektarin 7kg', picked_cartons: 10, truck_id: 2, truck_number: 'AL02', target_locations: JSON.stringify(targets) } };
+        } else {
+           status = 404; json = { error: 'Not found' };
+        }
+      }
       else if (url.endsWith('/consolidation-preview') || url.endsWith('/generate-pallet-label')) json = { success: true, label: { id: 99, sscc } };
       else if (url.endsWith('/print-pallet-label')) { status = failPrint ? 400 : 200; json = failPrint ? { error: 'Ismeretlen nyomtató' } : { success: true }; }
       else if (url.endsWith('/consolidation-validate-location') || url.endsWith('/validate-location')) {
@@ -93,25 +103,30 @@ async function run() {
     }
     async function consolidationToPrint() {
       await activate('consolidation');
-      await page.locator('#truck-select').selectOption('2');
-      await page.locator('#btn-truck-next').click();
-      await page.locator('#labels-list input[data-id="3"]').waitFor();
-      assert.equal(await page.locator('#labels-list input[data-id="3"]').isDisabled(), true);
-      assert.match(await page.locator('#labels-list [role="alert"]').textContent(), /készletsor/);
-      await page.locator('#labels-list input[data-id="1"]').check();
-      await page.locator('#labels-list input[data-id="2"]').check();
-      await page.locator('#btn-labels-next').click();
+      await page.locator('#member-barcode').fill('012345678901234563');
+      await page.waitForFunction(() => document.getElementById('member-scan-error').style.display !== 'none');
+      assert.match(await page.locator('#member-scan-error').textContent(), /készletsor/);
+      
+      await page.locator('#member-barcode').fill('012345678901234561');
+      await page.waitForFunction(() => document.querySelectorAll('.remove-member-btn').length === 1);
+      
+      await page.locator('#member-barcode').fill('012345678901234562');
+      await page.waitForFunction(() => document.querySelectorAll('.remove-member-btn').length === 2);
+      
+      await page.locator('#btn-scan-next').click();
       await checkLayout('pane-print');
     }
     await page.goto(base);
     await consolidationToPrint();
-    await page.locator('#print-printer-barcode').fill('PRN-001');
     failPrint = true;
-    await page.locator('#print-btn').click();
-    await page.waitForFunction(() => !document.getElementById('print-btn').disabled);
+    await page.locator('#print-printer-barcode').fill('PRN-001');
+    // Várjuk meg az automatikus nyomtatás befejezését (300ms timeout + hálózati kérés)
+    await page.waitForFunction(() => document.getElementById('print-printer-barcode').disabled === false);
     await visible('pane-print');
     failPrint = false;
-    await page.locator('#print-btn').click();
+    // Újra triggereljük az inputot
+    await page.locator('#print-printer-barcode').fill('PRN-002');
+    await page.waitForFunction(() => document.getElementById('pane-dest').classList.contains('active'));
     await checkLayout('pane-dest');
     assert.match(await page.locator('#allowed-rows-box').textContent(), /AL02.*1\. sor/s);
     assert.equal(commits().length, 0);
@@ -178,7 +193,7 @@ async function run() {
       await page.locator('#form-submit').click();
       await checkLayout('pane-print');
       await page.locator('#print-printer-barcode').fill('PRN-001');
-      await page.locator('#print-btn').click();
+      await page.waitForFunction(() => document.getElementById('pane-dest').classList.contains('active'));
       await checkLayout('pane-dest');
       await page.locator('#dest-vonalkod').fill('S01010000');
       await page.locator('#btn-dest-save').click();
