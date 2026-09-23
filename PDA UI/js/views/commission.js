@@ -1041,7 +1041,6 @@ export async function renderCommission(container, params = {}) {
         renderLabelPreview(currentLabel);
         
         container.querySelector('#print-printer-barcode').value = '';
-        container.querySelector('#print-printer-barcode').setAttribute('inputmode', 'none');
         showPane(panePrint);
         setTimeout(() => container.querySelector('#print-printer-barcode').focus(), 100);
       } catch (uiErr) {
@@ -1115,7 +1114,6 @@ export async function renderCommission(container, params = {}) {
         const destInputEl = container.querySelector('#dest-vonalkod');
         if (destInputEl) {
           destInputEl.value = '';
-          destInputEl.setAttribute('inputmode', 'none');
         }
         showPane(paneDest);
         setTimeout(() => { if (destInputEl) destInputEl.focus(); }, 100);
@@ -1225,7 +1223,6 @@ export async function renderCommission(container, params = {}) {
         setTimeout(() => {
           const ssccInput = container.querySelector('#sscc-vonalkod');
           if (ssccInput) {
-            ssccInput.setAttribute('inputmode', 'none');
             ssccInput.focus();
           }
         }, 100);
