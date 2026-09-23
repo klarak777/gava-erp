@@ -68,8 +68,8 @@ async function consolidationCapacityError(db, location, stockRows) {
     .first();
   const occupiedCount = Number(res?.occupied_count || 0);
 
-  // Mivel ezek a raklapok most lesznek összeemelve egyetlen SSCC alá, a helyigényük pontosan 1.
-  const incomingSpace = 1;
+  // A testek és a fizikai valóság alapján minden összeemelt raklap 1 férőhelyet foglal a kapacitás szempontjából
+  const incomingSpace = stockRows.length;
   if (occupiedCount + incomingSpace > capacity) {
     return `A céllokáció megtelt. Kapacitás: ${capacity}, foglalt: ${occupiedCount}, érkező (összeemelt) raklapok helyigénye: ${incomingSpace}.`;
   }

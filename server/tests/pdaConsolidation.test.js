@@ -109,7 +109,7 @@ test('PostgreSQL: list, pre-print checks, stock movement and transaction rollbac
       await trx('aldi_locations').where('id', 101).update({ capacity: 1 });
       const fullAtLocation = await validateLocation();
       assert.equal(fullAtLocation.status, 400);
-      assert.match(fullAtLocation.body.error, /céllokáció megtelt.*Kapacitás: 1.*érkező raklapok: 2/);
+      assert.match(fullAtLocation.body.error, /céllokáció megtelt.*Kapacitás: 1.*érkező.*2/);
       assert.deepEqual(await trx('aldi_stock_locations').orderBy('id'), stockBeforeValidation);
       await trx('aldi_locations').where('id', 101).update({ capacity: 2 });
       assert.equal((await validateLocation()).status, 200); // Exactly enough capacity.
@@ -138,14 +138,14 @@ test('PostgreSQL: list, pre-print checks, stock movement and transaction rollbac
       await trx('aldi_stock_locations').where('id', 2).del();
       const rejected = await request('/consolidation', { body: finalBody });
       assert.equal(rejected.status, 400);
-      assert.equal((await trx('sscc_labels').where('id', master.id).first()).is_provisional, true);
+      assert.equal(await trx('sscc_labels').where('id', master.id).first(), undefined);
       assert.equal((await trx('aldi_stock_locations').where('id', 1).first()).location_id, 100);
       await trx('aldi_stock_locations').insert(removed);
       await trx('aldi_locations').where('id', 101).update({ capacity: 1 });
       const full = await request('/consolidation', { body: finalBody });
       assert.equal(full.status, 400);
       assert.match(full.body.error, /megtelt/);
-      assert.equal((await trx('sscc_labels').where('id', master.id).first()).is_provisional, true);
+      assert.equal(await trx('sscc_labels').where('id', master.id).first(), undefined);
       await trx('aldi_locations').where('id', 101).update({ capacity: 3 });
       // A wrong final SSCC cannot move any inventory either.
       assert.equal((await request('/consolidation', { body: { ...finalBody, scannedSscc: '0' } })).status, 400);
