@@ -14,7 +14,7 @@ const root = document.getElementById('pda-app-root');
 export const appState = {
   token: localStorage.getItem('pda_token') || null,
   user: JSON.parse(localStorage.getItem('pda_user') || 'null'),
-  apiBaseUrl: localStorage.getItem('pda_api_base_url') || '',
+  apiBaseUrl: 'http://138.68.143.223:3001',
   currentView: null,
 };
 

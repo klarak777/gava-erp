@@ -43,24 +43,6 @@ export function renderLogin(container) {
           </div>
         </div>
 
-        <!-- Szerver URL beállítása (opcionális, főleg telepített APK-hoz) -->
-        <div class="pda-form-group" style="margin-top: 16px;">
-          <label class="pda-form-label" for="pda-server-url" style="font-size: 14px; display: flex; align-items: center; gap: 8px; color: #0f172a; margin-bottom: 8px;">
-            <svg style="width: 20px; height: 20px; color: #6366f1;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
-            Szerver címe (pl. https://app.gavahungria.hu)
-          </label>
-          <div style="position: relative; display: flex; align-items: center;">
-            <svg style="position: absolute; left: 16px; width: 22px; height: 22px; color: #94a3b8;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-            <input
-              class="pda-form-input"
-              id="pda-server-url"
-              type="url"
-              placeholder="Hagyd üresen ha weben használod"
-              autocomplete="off"
-              style="padding-left: 48px; border-radius: 12px; height: 56px; border: 1px solid #cbd5e1; font-size: 15px;"
-            >
-          </div>
-        </div>
 
         <div id="pda-login-error" style="
           display:none;
@@ -88,14 +70,7 @@ export function renderLogin(container) {
   const form = container.querySelector('#pda-login-form');
   const errorEl = container.querySelector('#pda-login-error');
   const errDiv = container.querySelector('#pda-login-error');
-  const serverInput = container.querySelector('#pda-server-url');
   const input = container.querySelector('#pda-username');
-
-  import('../app.js').then(({ appState }) => {
-    if (appState.apiBaseUrl && serverInput) {
-      serverInput.value = appState.apiBaseUrl;
-    }
-  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -109,18 +84,7 @@ export function renderLogin(container) {
       return;
     }
 
-    if (serverInput) {
-      const serverUrl = serverInput.value.trim();
-      import('../app.js').then(({ appState }) => {
-        if (serverUrl) {
-          appState.apiBaseUrl = serverUrl;
-          localStorage.setItem('pda_api_base_url', serverUrl);
-        } else {
-          appState.apiBaseUrl = '';
-          localStorage.removeItem('pda_api_base_url');
-        }
-      });
-    }
+
 
     // Teszt mód: bármilyen névvel be lehet lépni, API nélkül
     setAuth('pda-mock-token-' + Date.now(), { name: username });
