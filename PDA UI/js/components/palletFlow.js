@@ -43,7 +43,7 @@ export function renderPalletFlow({ userName, title = 'Komissiózás' }) {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 10px;">
               <path d="M4 7V4h16v3M9 20h6M12 14v6M4 17v3h16v-3M9 7h6v5H9z"></path>
             </svg>
-            <input type="text" id="print-printer-barcode" placeholder="Olvasd be a nyomtatót" style="width: 100%; padding: 8px 8px 8px 34px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; background: #fff; color: #0f172a;">
+            <input type="text" inputmode="none" id="print-printer-barcode" placeholder="Olvasd be a nyomtatót" style="width: 100%; padding: 8px 8px 8px 34px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; background: #fff; color: #0f172a;">
           </div>
           <button type="button" id="btn-print-submit" style="display: none; margin-top: 10px; width: 100%; padding: 12px; background: #0ea5e9; color: #fff; font-weight: 700; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">Tovább / Nyomtatás</button>
         </div>
@@ -94,7 +94,7 @@ export function renderPalletFlow({ userName, title = 'Komissiózás' }) {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px;">
               <path d="M4 7V4h16v3M9 20h6M12 14v6M4 17v3h16v-3M9 7h6v5H9z"></path>
             </svg>
-            <input type="text" id="dest-vonalkod" placeholder="Vonalkód (pl. S01010000) vagy sornév (pl. 1. sor)" style="width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #f8fafc; color: #0f172a;">
+            <input type="text" inputmode="none" id="dest-vonalkod" placeholder="Vonalkód (pl. S01010000) vagy sornév (pl. 1. sor)" style="width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #f8fafc; color: #0f172a;">
           </div>
 
           <button type="button" id="btn-dest-save" style="display: none; margin-bottom: 10px; width: 100%; padding: 12px; background: #0ea5e9; color: #fff; font-weight: 700; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">Tovább / Lokáció mentése</button>
@@ -139,7 +139,7 @@ export function renderPalletFlow({ userName, title = 'Komissiózás' }) {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px;">
               <path d="M4 7V4h16v3M9 20h6M12 14v6M4 17v3h16v-3M9 7h6v5H9z"></path>
             </svg>
-            <input type="text" id="sscc-vonalkod" placeholder="Vonalkód" style="width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #f8fafc; color: #0f172a;">
+            <input type="text" inputmode="none" id="sscc-vonalkod" placeholder="Vonalkód" style="width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #f8fafc; color: #0f172a;">
           </div>
           <button type="button" id="btn-sscc-save" style="display: none; margin-bottom: 10px; width: 100%; padding: 12px; background: #0ea5e9; color: #fff; font-weight: 700; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">Befejezés</button>
           <div id="test-sscc-hint" style="display: none;"></div>

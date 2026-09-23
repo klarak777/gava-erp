@@ -411,7 +411,7 @@ export async function renderCommission(container, params = {}) {
         </div>
         <div class="pda-form-group">
           <label>Lot szám <span style="color:red;">*</span></label>
-          <input type="text" id="form-lot" required />
+          <input type="number" id="form-lot" inputmode="numeric" required />
         </div>
         <div class="pda-form-group">
           <label>Raklap típus <span style="color:red;">*</span></label>

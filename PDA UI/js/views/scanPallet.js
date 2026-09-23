@@ -41,7 +41,7 @@ export async function renderScanPallet(container, params = {}) {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px;">
             <path d="M4 7V4h16v3M9 20h6M12 14v6M4 17v3h16v-3M9 7h6v5H9z"></path>
           </svg>
-          <input type="text" id="scan-pallet-barcode" placeholder="Kérjük, olvasd be a vonalkódot" style="width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #f8fafc; color: #0f172a;" autofocus>
+          <input type="text" inputmode="none" id="scan-pallet-barcode" placeholder="Kérjük, olvasd be a vonalkódot" style="width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #f8fafc; color: #0f172a;" autofocus>
         </div>
 
         <!-- Eredmény konténer -->
