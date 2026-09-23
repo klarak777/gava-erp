@@ -1087,6 +1087,15 @@ export async function renderCommission(container, params = {}) {
         await submitPrinterBarcode();
       }
     });
+    
+    // Auto-továbbítás, ha a formátum megfelel az IP cím + 4 jegyű port mintának
+    printPrinterInput.addEventListener('input', async (e) => {
+      const val = printPrinterInput.value.trim();
+      const ipPortRegex = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{4}$/;
+      if (ipPortRegex.test(val) && !printPrinterInput.disabled) {
+        await submitPrinterBarcode();
+      }
+    });
   }
 
   if (printSubmitBtn) {
