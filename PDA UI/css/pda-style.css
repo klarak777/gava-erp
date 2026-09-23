@@ -309,10 +309,10 @@ input[type="number"] {
 .pda-menu-card {
   background: #fff;
   border-radius: 12px;
-  padding: 12px 10px;
+  padding: 12px 6px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.03);
   cursor: pointer;
   border: 1px solid #f1f5f9;
@@ -363,11 +363,11 @@ input[type="number"] {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding-right: 8px;
+  padding-right: 2px;
 }
 
 .pda-menu-card__label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--clr-text);
   line-height: 1.15;
