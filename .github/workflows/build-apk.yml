@@ -43,8 +43,7 @@ jobs:
       - name: Build APK (Debug)
         working-directory: ./PDA-App/android
         run: |
-          sudo apt-get install -y dos2unix
-          dos2unix gradlew
+          sed -i 's/\r$//' gradlew
           chmod +x gradlew
           ./gradlew assembleDebug
 
