@@ -18,6 +18,15 @@ export const appState = {
   currentView: null,
 };
 
+// ── Billentyűzet elrejtése szkenneléshez ──────────────────
+window.addEventListener('focusin', (e) => {
+  if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'text') {
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Keyboard) {
+      window.Capacitor.Plugins.Keyboard.hide().catch(() => {});
+    }
+  }
+});
+
 // ── Nézetváltó ────────────────────────────────
 export function showView(viewName, params = {}) {
   if (window._currentHwBack) {
