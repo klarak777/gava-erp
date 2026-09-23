@@ -86,7 +86,10 @@ export function renderPalletFlow({ userName, title = 'Komissiózás' }) {
       
       <div class="pda-form-body" style="padding: 0; background: #fff;">
         <div class="pda-print-box">
-          <div id="allowed-rows-box" style="display:none;"></div>
+          <div id="allowed-rows-box" style="display:none; background:#eff6ff; border:1px solid #93c5fd; border-radius:8px; padding:10px 12px; margin-bottom:14px;">
+            <div style="font-size:11px; font-weight:700; color:#1d4ed8; margin-bottom:5px; text-transform:uppercase; letter-spacing:0.3px;" id="allowed-rows-truck-label"></div>
+            <div id="allowed-rows-list" style="display:flex; flex-wrap:wrap; gap:5px;"></div>
+          </div>
           <div style="font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 8px;">Cél tárhely vonalkód</div>
           <div style="position: relative; display: flex; align-items: center; margin-bottom: 8px;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px;">

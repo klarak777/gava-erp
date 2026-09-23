@@ -463,6 +463,18 @@ export async function renderCommission(container, params = {}) {
     if (paneEl === paneDest) {
       renderAllowedRowsBox();
     }
+
+    setTimeout(() => {
+      let focusInput = null;
+      if (paneEl === paneForm) focusInput = container.querySelector('#form-karton');
+      else if (paneEl === panePrint) focusInput = container.querySelector('#print-printer-barcode');
+      else if (paneEl === paneDest) focusInput = container.querySelector('#dest-vonalkod');
+      else if (paneEl === paneSscc) focusInput = container.querySelector('#sscc-vonalkod');
+      
+      if (focusInput && !focusInput.disabled) {
+        focusInput.focus();
+      }
+    }, 150);
   }
 
   // Navigation events
@@ -1076,7 +1088,7 @@ export async function renderCommission(container, params = {}) {
         alert(errData.error || 'Hiba a nyomtatás során!');
       }
     } catch (e) {
-      alert('Hálózati hiba a nyomtatás során!');
+      alert('Hiba a nyomtatás során! Részletek: ' + (e.message || e));
     } finally {
       if (printPrinterInput) printPrinterInput.disabled = false;
       if (printSubmitBtn) {
