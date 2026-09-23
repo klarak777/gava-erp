@@ -323,7 +323,6 @@ export async function renderConsolidation(container, params = {}) {
       try { data = await res.json(); } catch (_) {}
       if (res.ok && data && data.success) {
         // Sikeres nyomtatás után tovább a lokációra
-        alert('Címke kinyomtatva!');
         goToLocationPane();
       } else {
         alert('Hiba a nyomtatás során: ' + ((data && data.error) || `HTTP ${res.status}`));
@@ -458,7 +457,6 @@ export async function renderConsolidation(container, params = {}) {
       try { data = await res.json(); } catch (_) {}
 
       if (res.ok && data && data.success) {
-        alert('Összeemelés sikeresen megtörtént!');
         showView('dashboard');
       } else {
         scanError.textContent = (data && data.error) ? data.error : 'Hiba történt az összeemelés véglegesítése során.';

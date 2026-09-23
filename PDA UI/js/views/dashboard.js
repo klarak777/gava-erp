@@ -116,7 +116,6 @@ export function renderDashboard(container) {
               </div>
               <div class="pda-menu-card__content">
                 <div class="pda-menu-card__label">${item.label}</div>
-                <div class="pda-menu-card__desc">${item.desc}</div>
               </div>
               <svg class="pda-menu-card__arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
             </div>

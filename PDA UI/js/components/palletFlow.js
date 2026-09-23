@@ -47,10 +47,8 @@ export function renderPalletFlow({ userName, title = 'Komissiózás' }) {
           </div>
           <button type="button" id="btn-print-submit" style="display: none; margin-top: 10px; width: 100%; padding: 12px; background: #0ea5e9; color: #fff; font-weight: 700; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">Tovább / Nyomtatás</button>
         </div>
-
-        <div style="font-size: 11.5px; color: #64748b; margin-bottom: 14px; line-height: 1.4; text-align: center;">
-          💡 <em>A nyomtatás automatikusan elindul a nyomtató vonalkódjának beolvasásakor.</em>
-        </div>      </div>
+        </div>
+      </div>
 
       <!-- Alsó navigáció -->
       <div class="pda-bottom-nav">
@@ -90,10 +88,7 @@ export function renderPalletFlow({ userName, title = 'Komissiózás' }) {
       
       <div class="pda-form-body" style="padding: 0; background: #fff;">
         <div class="pda-print-box">
-          <div id="allowed-rows-box" style="display:none; background:#eff6ff; border:1px solid #93c5fd; border-radius:8px; padding:10px 12px; margin-bottom:14px;">
-            <div style="font-size:11px; font-weight:700; color:#1d4ed8; margin-bottom:5px; text-transform:uppercase; letter-spacing:0.3px;" id="allowed-rows-truck-label"></div>
-            <div id="allowed-rows-list" style="display:flex; flex-wrap:wrap; gap:5px;"></div>
-          </div>
+          <div id="allowed-rows-box" style="display:none;"></div>
           <div style="font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 8px;">Cél tárhely vonalkód</div>
           <div style="position: relative; display: flex; align-items: center; margin-bottom: 8px;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px;">
@@ -101,9 +96,7 @@ export function renderPalletFlow({ userName, title = 'Komissiózás' }) {
             </svg>
             <input type="text" id="dest-vonalkod" placeholder="Vonalkód (pl. S01010000) vagy sornév (pl. 1. sor)" style="width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #f8fafc; color: #0f172a;">
           </div>
-          <div style="font-size: 11.5px; color: #64748b; margin-bottom: 14px; line-height: 1.4;">
-            💡 <em>Vonalkódolvasóval beolvashatod vagy kézzel megadhatod.</em>
-          </div>
+
           <button type="button" id="btn-dest-save" style="display: none; margin-bottom: 10px; width: 100%; padding: 12px; background: #0ea5e9; color: #fff; font-weight: 700; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">Tovább / Lokáció mentése</button>
           <div id="dest-error" role="alert" style="display:none; color:#dc2626; font-size:12px; margin-bottom:10px;"></div>
           <div id="dest-error" role="alert" style="display:none; color:#dc2626; font-size:12px; margin-bottom:10px;"></div>
@@ -149,7 +142,7 @@ export function renderPalletFlow({ userName, title = 'Komissiózás' }) {
             <input type="text" id="sscc-vonalkod" placeholder="Vonalkód" style="width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #f8fafc; color: #0f172a;">
           </div>
           <button type="button" id="btn-sscc-save" style="display: none; margin-bottom: 10px; width: 100%; padding: 12px; background: #0ea5e9; color: #fff; font-weight: 700; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">Befejezés</button>
-          <div id="test-sscc-hint" style="font-size: 11px; color: #64748b; margin-bottom: 16px; text-align: center; user-select: text;"></div>
+          <div id="test-sscc-hint" style="display: none;"></div>
           <div id="scan-error" role="alert" style="display:none; color:#dc2626; font-size:12px; margin-bottom:10px;"></div>
           <div id="scan-error" role="alert" style="display:none; color:#dc2626; font-size:12px; margin-bottom:10px;"></div>
         </div>

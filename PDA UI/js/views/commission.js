@@ -187,25 +187,32 @@ export async function renderCommission(container, params = {}) {
       
       .pda-form-group {
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        margin-bottom: 12px;
+        gap: 8px;
       }
       .pda-form-group label {
-        font-size: 13px;
-        font-weight: 600;
+        font-size: 12px;
+        font-weight: 700;
         color: #334155;
-        margin-bottom: 6px;
+        margin-bottom: 0;
+        flex: 1;
+        text-align: left;
+        line-height: 1.2;
       }
       .pda-form-group input, .pda-form-group select {
-        width: 100%;
-        max-width: 300px;
-        padding: 10px 12px;
+        width: 50%;
+        max-width: 160px;
+        padding: 10px 10px;
         border: 1px solid #cbd5e1;
         border-radius: 8px;
-        font-size: 15px;
+        font-size: 14px;
         background: #fff;
         color: #0f172a;
-        text-align: left;
+        text-align: center;
       }
       .pda-form-group input::-webkit-outer-spin-button,
       .pda-form-group input::-webkit-inner-spin-button {
@@ -1056,7 +1063,6 @@ export async function renderCommission(container, params = {}) {
       });
 
       if (res.ok) {
-        alert('Címke nyomtatása sikeresen elküldve!');
         printPrinterInput.value = '';
     
         // Nyomtatás után átlépünk a Cél lokációra
@@ -1224,7 +1230,6 @@ export async function renderCommission(container, params = {}) {
 
       if (res.ok) {
         currentLabel = data.label || null;
-        alert(data.message || 'Lokáció és komissió mentve!');
         destInput.value = '';
         ssccInput.value = '';
         showPane(paneList);
