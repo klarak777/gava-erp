@@ -1,4 +1,4 @@
-import { renderPalletFlow, renderAllowedRows } from '../components/palletFlow.js?v=2';
+import { renderPalletFlow, renderAllowedRows } from '../components/palletFlow.js?v=3';
 /**
  * consolidation.js – Összeemelés modul (átdolgozott, kamion-alapú, 5 pane)
  *
@@ -109,7 +109,7 @@ export async function renderConsolidation(container, params = {}) {
     pane.classList.add('active');
   };
 
-  const isBusy = () => generatingLabel || printBtn.disabled || locBarcode.disabled || scanBarcodeInput.disabled;
+  const isBusy = () => generatingLabel || (printBtn && printBtn.disabled) || locBarcode.disabled || scanBarcodeInput.disabled;
   const goDashboard = () => { if (!isBusy()) showView('dashboard'); };
   const goBack = () => {
     if (isBusy()) return;
@@ -173,16 +173,28 @@ export async function renderConsolidation(container, params = {}) {
 
   setTimeout(() => { if (!isBusy()) memberBarcode.focus(); }, 150);
 
+  memberBarcode.addEventListener('input', () => {
+    const val = memberBarcode.value.trim();
+    if (val.length === 18 && !generatingLabel && !memberBarcode.disabled) {
+      processMemberBarcode(val);
+    }
+  });
+
   memberBarcode.addEventListener('keydown', async (e) => {
     if (generatingLabel) return;
     if (e.key === 'Enter') {
       e.preventDefault();
       const sscc = memberBarcode.value.trim();
-      if (!sscc) return;
-      memberBarcode.disabled = true;
-      updateScanNextBtn();
-      memberScanError.style.display = 'none';
-      memberScanError.textContent = '';
+      processMemberBarcode(sscc);
+    }
+  });
+
+  async function processMemberBarcode(sscc) {
+    if (!sscc) return;
+    memberBarcode.disabled = true;
+    updateScanNextBtn();
+    memberScanError.style.display = 'none';
+    memberScanError.textContent = '';
 
       try {
         const res = await apiFetch(`/api/v1/pda/consolidation-member?sscc=${encodeURIComponent(sscc)}`);
@@ -227,7 +239,6 @@ export async function renderConsolidation(container, params = {}) {
         setTimeout(() => memberBarcode.focus(), 50);
       }
     }
-  });
 
   btnScanNext.addEventListener('click', async () => {
     if (scannedMembers.size < 2 || btnScanNext.disabled) return;
@@ -265,12 +276,20 @@ export async function renderConsolidation(container, params = {}) {
 
 
   printPrinterInput.addEventListener('keydown', async (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); await triggerZplPrint(); }
+    if (e.key === 'Enter') { 
+      e.preventDefault(); 
+      await triggerZplPrint(); 
+    }
   });
-  printBtn.addEventListener('click', () => triggerZplPrint());
+  
+  // Also support input auto trigger if printer barcodes have a known length? 
+  // We don't know the length, so we rely on Enter. But if there was a printBtn, we remove it.
+  if (printBtn) {
+    printBtn.style.display = 'none'; // Hide print button completely as requested
+  }
 
   async function triggerZplPrint() {
-    if (!previewLabel || printBtn.disabled || !panePrint.classList.contains('active')) return;
+    if (!previewLabel || !panePrint.classList.contains('active')) return;
     const pBarcode = printPrinterInput.value.trim();
     if (!pBarcode) {
       alert('Olvasd be a nyomtató vonalkódját!');
@@ -278,9 +297,10 @@ export async function renderConsolidation(container, params = {}) {
       return;
     }
 
-    const originalHtml = printBtn.innerHTML;
-    printBtn.innerHTML = '⌛ Nyomtatás...';
-    printBtn.disabled = true;
+    if (printBtn) {
+      printBtn.disabled = true;
+    }
+    printPrinterInput.disabled = true;
 
     try {
       const res = await apiFetch('/api/v1/pda/print-pallet-label', {
@@ -302,8 +322,10 @@ export async function renderConsolidation(container, params = {}) {
     } catch (e) {
       alert('Hálózati hiba a nyomtatás során.');
     } finally {
-      printBtn.innerHTML = originalHtml;
-      printBtn.disabled = false;
+      printPrinterInput.disabled = false;
+      if (printBtn) {
+        printBtn.disabled = false;
+      }
     }
   }
 
@@ -320,7 +342,7 @@ export async function renderConsolidation(container, params = {}) {
 
   // ── PANE 4: Lokáció beolvasás ─────────────────────────────────────
   async function saveDestination() {
-    if (btnLocNext.disabled || !paneLocation.classList.contains('active')) return;
+    if ((btnLocNext && btnLocNext.disabled) || !paneLocation.classList.contains('active')) return;
     const val = locBarcode.value.trim();
     locationName = '';
     locationId = null;
@@ -332,7 +354,7 @@ export async function renderConsolidation(container, params = {}) {
     }
     locError.style.display = 'none';
     locBarcode.disabled = true;
-    btnLocNext.disabled = true;
+    if (btnLocNext) btnLocNext.disabled = true;
     try {
       const res = await apiFetch('/api/v1/pda/consolidation-validate-location', {
         method: 'POST',
@@ -352,14 +374,21 @@ export async function renderConsolidation(container, params = {}) {
       locError.style.display = 'block';
     } finally {
       locBarcode.disabled = false;
-      btnLocNext.disabled = false;
+      if (btnLocNext) btnLocNext.disabled = false;
     }
   }
-  locBarcode.addEventListener('input', () => { locationName = ''; locationId = null; });
+  locBarcode.addEventListener('input', () => { 
+    locationName = ''; 
+    locationId = null; 
+    // Auto submit if needed, but length is variable. We rely on Enter.
+  });
   locBarcode.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); saveDestination(); }
   });
-  btnLocNext.addEventListener('click', saveDestination);
+  
+  if (btnLocNext) {
+    btnLocNext.style.display = 'none'; // Eltávolítjuk a beviteli gombot
+  }
 
   function goToScanPane() {
     scanBarcodeInput.value = '';
@@ -434,6 +463,13 @@ export async function renderConsolidation(container, params = {}) {
     }
   }
 
+  scanBarcodeInput.addEventListener('input', async () => {
+    const val = scanBarcodeInput.value.trim();
+    if (val.length === 18 && !scanBarcodeInput.disabled) {
+      await saveScanFinal();
+    }
+  });
+
   scanBarcodeInput.addEventListener('keydown', async (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -443,9 +479,7 @@ export async function renderConsolidation(container, params = {}) {
 
   const btnSsccSave = container.querySelector('#btn-sscc-save');
   if (btnSsccSave) {
-    btnSsccSave.addEventListener('click', async () => {
-      await saveScanFinal();
-    });
+    btnSsccSave.style.display = 'none'; // Eltávolítjuk a beviteli gombot
   }
 
   // Kezdeti pane megjelenítés

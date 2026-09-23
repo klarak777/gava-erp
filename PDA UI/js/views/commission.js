@@ -1,4 +1,4 @@
-import { renderPalletFlow, renderAllowedRows } from '../components/palletFlow.js?v=2';
+import { renderPalletFlow, renderAllowedRows } from '../components/palletFlow.js?v=3';
 /**
  * commission.js – PDA Komissió modul
  */
@@ -1023,22 +1023,22 @@ export async function renderCommission(container, params = {}) {
 
 
 
-  // Zebra nyomtatás gomb / eseménykezelő
-  container.querySelector('#print-btn').addEventListener('click', async (e) => {
-    const btn = e.currentTarget;
-    if (btn.disabled) return;
+  // Zebra nyomtatás gomb / eseménykezelő -> Automatikus nyomtatás vonalkód beolvasásakor
+  const printPrinterInput = container.querySelector('#print-printer-barcode');
+  if (printPrinterInput) {
+    printPrinterInput.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (printPrinterInput.disabled) return;
 
-    const barcodeInput = container.querySelector('#print-printer-barcode');
-    const printerBarcode = barcodeInput.value.trim();
+        const printerBarcode = printPrinterInput.value.trim();
+        if (!printerBarcode) {
+          alert('Kérlek add meg a nyomtató azonosítóját / vonalkódját!');
+          return;
+        }
 
-    if (!printerBarcode) {
-      alert('Kérlek add meg a nyomtató azonosítóját / vonalkódját!');
-      return;
-    }
-
-    try {
-      btn.disabled = true;
-      btn.style.opacity = '0.5';
+        try {
+          printPrinterInput.disabled = true;
 
       // Hívjuk a nyomtatás végpontot
       const res = await apiFetch(`/api/v1/pda/print-pallet-label`, {
@@ -1051,9 +1051,9 @@ export async function renderCommission(container, params = {}) {
         })
       });
 
-      if (res.ok) {
-        alert('Címke nyomtatása sikeresen elküldve!');
-        barcodeInput.value = '';
+          if (res.ok) {
+            alert('Címke nyomtatása sikeresen elküldve!');
+            printPrinterInput.value = '';
         
         // Nyomtatás után átlépünk a Cél lokációra
         container.querySelector('#dest-title').textContent = currentDestination || 'Ismeretlen';
@@ -1065,13 +1065,14 @@ export async function renderCommission(container, params = {}) {
         const errData = await res.json().catch(() => ({}));
         alert(errData.error || 'Hiba a nyomtatás során!');
       }
-    } catch (e) {
-      alert('Hálózati hiba a nyomtatás során!');
-    } finally {
-      btn.disabled = false;
-      btn.style.opacity = '1';
-    }
-  });
+        } catch (e) {
+          alert('Hálózati hiba a nyomtatás során!');
+        } finally {
+          printPrinterInput.disabled = false;
+        }
+      }
+    });
+  }
 
   // Cél lokáció vonalkód beolvasása (3. Lépés)
   const destInput = container.querySelector('#dest-vonalkod');
@@ -1214,6 +1215,13 @@ export async function renderCommission(container, params = {}) {
   const ssccSaveBtn = container.querySelector('#btn-sscc-save');
   
   if (ssccInput) {
+    ssccInput.addEventListener('input', async () => {
+      const scannedSscc = ssccInput.value.trim();
+      if (scannedSscc.length === 18 && !ssccInput.disabled) {
+        await saveCommissionFinal();
+      }
+    });
+
     ssccInput.addEventListener('keydown', async (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();

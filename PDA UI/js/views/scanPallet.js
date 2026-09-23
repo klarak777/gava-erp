@@ -108,59 +108,80 @@ export async function renderScanPallet(container, params = {}) {
     goDashboard();
   });
 
-  // Handle barcode input
-  barcodeInput.addEventListener('keydown', async (e) => {
+  // Process Barcode Logic
+  async function processBarcode(code) {
+    if (!code) return;
+    
+    resultBox.style.display = 'none';
+    errorBox.style.display = 'none';
+    barcodeInput.disabled = true;
+
+    try {
+      const res = await apiFetch(`/api/v1/pda/pallet-label/${encodeURIComponent(code)}`);
+      const data = await res.json();
+      
+      if (res.ok) {
+        lblTruck.textContent = data.truck_number || '-';
+        lblProduct.textContent = data.product_name || '-';
+        lblDate.textContent = data.delivery_date || '-';
+        lblCartons.textContent = data.picked_cartons || '0';
+        lblSupplier.textContent = data.supplier || '-';
+        lblDest.textContent = data.destination || '-';
+        lblOrigin.textContent = data.origin_country || '-';
+
+        // Generate barcode via JsBarcode if available
+        if (window.JsBarcode) {
+          window.JsBarcode("#scan-pallet-sscc-svg", data.sscc, {
+            format: "CODE128",
+            displayValue: true,
+            fontSize: 16,
+            height: 40,
+            margin: 0
+          });
+        }
+
+        resultBox.style.display = 'block';
+      } else {
+        errorBox.textContent = data.error || 'A raklapcímke nem található.';
+        errorBox.style.display = 'block';
+      }
+    } catch (err) {
+      errorBox.textContent = 'Hálózati hiba történt a lekérdezés során.';
+      errorBox.style.display = 'block';
+    } finally {
+      barcodeInput.disabled = false;
+      barcodeInput.value = '';
+      barcodeInput.focus();
+    }
+  }
+
+  // Handle barcode input via Enter key (for scanners that append Enter)
+  barcodeInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       const code = barcodeInput.value.trim();
-      if (!code) return;
-      
-      resultBox.style.display = 'none';
-      errorBox.style.display = 'none';
-      barcodeInput.disabled = true;
+      processBarcode(code);
+    }
+  });
 
-      try {
-        const res = await apiFetch(`/api/v1/pda/pallet-label/${encodeURIComponent(code)}`);
-        const data = await res.json();
-        
-        if (res.ok) {
-          lblTruck.textContent = data.truck_number || '-';
-          lblProduct.textContent = data.product_name || '-';
-          lblDate.textContent = data.delivery_date || '-';
-          lblCartons.textContent = data.picked_cartons || '0';
-          lblSupplier.textContent = data.supplier || '-';
-          lblDest.textContent = data.destination || '-';
-          lblOrigin.textContent = data.origin_country || '-';
-
-          // Generate barcode via JsBarcode if available
-          if (window.JsBarcode) {
-            window.JsBarcode("#scan-pallet-sscc-svg", data.sscc, {
-              format: "CODE128",
-              displayValue: true,
-              fontSize: 16,
-              height: 40,
-              margin: 0
-            });
-          }
-
-          resultBox.style.display = 'block';
-        } else {
-          errorBox.textContent = data.error || 'A raklapcímke nem található.';
-          errorBox.style.display = 'block';
-        }
-      } catch (err) {
-        errorBox.textContent = 'Hálózati hiba történt a lekérdezés során.';
-        errorBox.style.display = 'block';
-      } finally {
-        barcodeInput.disabled = false;
-        barcodeInput.value = '';
-        barcodeInput.focus();
-      }
+  // Handle barcode input automatically when length reaches 18 characters (SSCC length)
+  barcodeInput.addEventListener('input', () => {
+    const code = barcodeInput.value.trim();
+    if (code.length === 18) {
+      processBarcode(code);
     }
   });
 
   // Fókuszban tartás
   setTimeout(() => {
-    if (barcodeInput) barcodeInput.focus();
+    if (barcodeInput) {
+      barcodeInput.focus();
+      // Kis trükk: kattintásra mindig kerüljön fókuszba, ha valahogy elvesztené
+      document.body.addEventListener('click', () => {
+        if (document.getElementById('scan-pallet-barcode') && !barcodeInput.disabled) {
+          barcodeInput.focus();
+        }
+      });
+    }
   }, 100);
 }
