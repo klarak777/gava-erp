@@ -609,7 +609,7 @@ function generateZpl(label) {
         if (yPos > 1700) break;
         childZpl += `^FO40,${yPos}^A0N,40,40^FDTermék neve: ${child.product_name || ''}^FS\n`;
         yPos += 45;
-        childZpl += `^FO40,${yPos}^A0N,40,40^FDKartonszám: ${child.picked_cartons || ''} #^FS\n`;
+        childZpl += `^FO40,${yPos}^A0N,40,40^FDKartonszám: ${child.picked_cartons || ''}^FS\n`;
         yPos += 45;
         childZpl += `^FO40,${yPos}^A0N,40,40^FDAzonosító: ${child.sscc || ''}^FS\n`;
         yPos += 55;
@@ -627,7 +627,7 @@ function generateZpl(label) {
 ^FO0,600^A0N,50,50^FB1180,1,0,C^FDTermék megnevezése^FS
 ^FO40,680^GB1150,5,5^FS
 ^FO40,750^A0N,60,60^FDSzállítási dátum: ${formattedDate}^FS
-^FO40,850^A0N,60,60^FDKartonszám: ${label.picked_cartons || ''} #^FS
+^FO40,850^A0N,60,60^FDKartonszám: ${label.picked_cartons || ''}^FS
 ^FO40,950^A0N,60,60^FDBruttó kg:${grossWeight > 0 ? grossWeight.toFixed(0) + ' kg' : ''}^FS
 ${childZpl}^FO40,1800^GB1150,5,5^FS
 ^FO150,1880^BY4
@@ -650,7 +650,7 @@ ${childZpl}^FO40,1800^GB1150,5,5^FS
 ^FO40,680^GB1150,5,5^FS
 ^FO40,750^A0N,60,60^FDSzállítási dátum: ${formattedDate}^FS
 ^FO40,850^A0N,60,60^FDSzállítási hely: ${label.destination || 'ALDI'}^FS
-^FO40,950^A0N,60,60^FDKartonszám: ${label.picked_cartons || ''} db^FS
+^FO40,950^A0N,60,60^FDKartonszám: ${label.picked_cartons || ''}^FS
 ^FO40,1050^A0N,60,60^FDBruttó kg: ${grossWeight ? grossWeight.toFixed(2) + ' kg' : ''}^FS
 ^FO40,1150^A0N,60,60^FDNettó kg: ${netWeight ? netWeight.toFixed(2) + ' kg' : ''}^FS
 ^FO40,1250^A0N,60,60^FDÁtlag súly (nettó): ${avgWeight ? avgWeight + ' kg/db' : ''}^FS
@@ -661,7 +661,7 @@ ${childZpl}^FO40,1800^GB1150,5,5^FS
 ^BCN,350,N,N,N
 ^FD${label.sscc}^FS
 ^FO0,2260^A0N,65,65^FB1180,1,0,C^FD${label.sscc}^FS
-^FO0,2340^A0N,55,55^FB1180,1,0,C^FDSSCC^FS
+^FO0,2340^A0N,55,55^FB1180,1,0,C^FDAzonosító^FS
 ^XZ`;
 }
 
