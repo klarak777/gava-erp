@@ -389,7 +389,10 @@ export async function renderConsolidation(container, params = {}) {
   locBarcode.addEventListener('input', () => { 
     locationName = ''; 
     locationId = null; 
-    // Auto submit if needed, but length is variable. We rely on Enter.
+    const val = locBarcode.value.trim();
+    if (val.length === 9 && !locBarcode.disabled) {
+      saveDestination();
+    }
   });
   locBarcode.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); saveDestination(); }

@@ -1173,6 +1173,13 @@ export async function renderCommission(container, params = {}) {
         await saveDestination();
       }
     });
+
+    destInput.addEventListener('input', async (e) => {
+      const val = destInput.value.trim();
+      if (val.length === 9 && !destInput.disabled) {
+        await saveDestination();
+      }
+    });
   }
 
   if (destSaveBtn) {
