@@ -3,6 +3,7 @@
   "appName": "GAVA PDA",
   "webDir": "../PDA UI",
   "server": {
-    "cleartext": true
+    "cleartext": true,
+    "allowNavigation": ["138.68.143.223"]
   }
 }
