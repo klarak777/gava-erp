@@ -1,4 +1,4 @@
-import { renderPalletFlow, renderAllowedRows } from '../components/palletFlow.js?v=3';
+import { renderPalletFlow, renderAllowedRows } from '../components/palletFlow.js';
 /**
  * commission.js – PDA Komissió modul
  */

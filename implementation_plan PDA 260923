@@ -1,0 +1,53 @@
+# PDA Nyomtatási és Adatkezelési Hibajavítások
+
+A PDA komissiózási és összeemelési folyamatainak javítása a friss visszajelzések alapján, kifejezetten fókuszálva a pontos bruttó/nettó súlyokra a címkéken, a helyes szállítási célokra, a szétválasztott hibakezelésre, valamint a tesztek frissítésére.
+
+## User Review Required
+
+> [!WARNING]
+> Kérlek nézd át, hogy a nettó súly számításához szükséges "tára x kartonszám + raklapok tára" képlet így megfelelő-e a címkegenerálásnál (ez fog megegyezni a végleges `pick-and-assign` mentésnél használt logikával).
+
+## Proposed Changes
+
+### Frontend (PDA UI)
+
+#### [MODIFY] [commission.js](file:///c:/Users/klara/Documents/Nepelemes%20%C3%BCgyek/Gav%C3%A1/ERP%20Access/PDA%20UI/js/views/commission.js)
+- **Címkegenerálás kérés kibővítése**: Az `/api/v1/pda/generate-pallet-label` végpont hívásakor az összes, a felületen már megadott adatot (bruttó súly, göngyöleg tára, kiválasztott raklap(ok) ID-jai, lotszám) elküldjük a payloadban, nem csak a kartonszámot és országot.
+- **Hibakezelés szétválasztása**: A nyomtatást intéző `submitPrinterBarcode` és a lokációmentést intéző függvényekben a hálózati `fetch` API hívásokat egy dedikált `try/catch` blokkba tesszük, míg a UI frissítéseket (pl. `showPane`, `.focus()`, DOM manipulációk) ezen *kívülre*. Így ha egy DOM hiba lép fel a felületen, azt nem nyomtatási/hálózati hibaként fogja jelezni a program.
+
+#### [MODIFY] [consolidation.js](file:///c:/Users/klara/Documents/Nepelemes%20%C3%BCgyek/Gav%C3%A1/ERP%20Access/PDA%20UI/js/views/consolidation.js)
+- **Hibakezelés szétválasztása**: Hasonlóan a `commission.js`-hez, a nyomtatási hálózati kérések hiba-elfogását (catch blokk) leválasztjuk a UI váltásokról (lokáció kártya megjelenítése). 
+
+---
+
+### Backend (Server)
+
+#### [MODIFY] [pda.js](file:///c:/Users/klara/Documents/Nepelemes%20%C3%BCgyek/Gav%C3%A1/ERP%20Access/server/src/routes/pda.js)
+- **`/api/v1/pda/generate-pallet-label` frissítése**: 
+  - Kinyerjük a frontend által küldött új mezőket: `grossWeight`, `tareWeight`, `palletTypes`, `lotNumber`.
+  - Lekérjük a raklapok súlyait a DB-ből (`ref_packaging_types`) és összegezzük azokat (`totalPalletTareKg`).
+  - Kiszámoljuk a nettó súlyt ugyanazzal az algoritmussal, mint a véglegesítésnél: `Nettó = Bruttó - (Göngyölegtára * Kartonszám) - Raklapok össztárája`.
+  - Az explicit súlyokat és lotszámot átadjuk a `createSsccLabel` segédfüggvénynek.
+- **`createSsccLabel` frissítése**:
+  - Fogadja az új explicit paramétereket (bruttó, nettó, lotszám). Ha meg vannak adva, akkor ezeket használja az adatbázisos becslés helyett.
+  - **Szállítási hely prioritás**: Kijavítjuk a logikát, hogy a felületen kiválasztott `area` (terület) domináljon a `line.destination`-nel szemben. Tehát ha az `area` 'aldi', 'penny' vagy 'spar', akkor az kerül a címkére és a DB-be, felülírva az esetlegesen beragadt '1'-es vagy '2'-es lokációs számot a `line.destination`-ből.
+- **Végleges mentés (`pick-and-assign`)**: Biztosítjuk, hogy a lezáráskor frissüljön az `sscc_labels` tábla, hátha történt még utolsó pillanatos módosítás (ez jelenleg a `processPickAndAssign`-ben megtörténik, de teszteljük).
+
+---
+
+### Tesztek
+
+#### [MODIFY] [palletFlow.browser.cjs](file:///c:/Users/klara/Documents/Nepelemes%20%C3%BCgyek/Gav%C3%A1/ERP%20Access/PDA%20UI/tests/palletFlow.browser.cjs)
+- **Regressziós böngészőteszt javítása**: A teszt scriptet átírjuk, hogy az megfeleljen az új vonalkódos beolvasási flow-nak:
+  - Nem várja el többé a lenyíló listás "Kamion" vagy "Céllokáció" legördülőket.
+  - Szimulálja a Zebra szkenner viselkedését (vonalkód beírása és auto-továbbítás 300ms után, vagy Enter nyomása).
+  - Figyeli a UI panelek (kártyák) közötti váltást.
+
+## Verification Plan
+
+### Automatikus tesztek
+- A `palletFlow.browser.cjs` (Playwright / Puppeteer) teszt futtatása a frontend-en a változtatások után.
+- A `server/tests/pdaWeights.test.js` és `server/tests/pdaConsolidation.test.js` tesztek futtatása a backend logikai integritásának ellenőrzésére.
+
+### Kézi ellenőrzés
+- A PDA felületén egy címke generálása és a ZPL előnézeti fájl tartalmának vizuális ellenőrzése (helyes-e a nettó és bruttó súly, jó-e a szállítási hely).

@@ -5,7 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname, '../src/routes/pda.js'), 'utf8');
-const start = source.indexOf('async function processPick(');
+const start = source.indexOf('async function calculateAndValidateWeights(');
 // The location-validation route sits between processPick and the final pick
 // endpoint. Stop before the ZPL helper so the extracted unit remains stable
 // when additional routes are added.

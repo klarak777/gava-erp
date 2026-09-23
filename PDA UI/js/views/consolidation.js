@@ -1,4 +1,4 @@
-import { renderPalletFlow, renderAllowedRows } from '../components/palletFlow.js?v=3';
+import { renderPalletFlow, renderAllowedRows } from '../components/palletFlow.js';
 /**
  * consolidation.js – Összeemelés modul (átdolgozott, kamion-alapú, 5 pane)
  *
@@ -121,7 +121,13 @@ export async function renderConsolidation(container, params = {}) {
     }, 150);
   };
 
-  const isBusy = () => generatingLabel || (printBtn && printBtn.disabled) || locBarcode.disabled || scanBarcodeInput.disabled;
+  const isBusy = () => {
+    if (generatingLabel) return true;
+    if (panePrint.classList.contains('active') && printBtn && printBtn.disabled) return true;
+    if (paneLocation.classList.contains('active') && locBarcode.disabled) return true;
+    if (paneScan.classList.contains('active') && scanBarcodeInput.disabled) return true;
+    return false;
+  };
   const goDashboard = () => { if (!isBusy()) showView('dashboard'); };
   const goBack = () => {
     if (isBusy()) return;

@@ -130,35 +130,39 @@ async function run() {
     await checkLayout('pane-dest');
     assert.match(await page.locator('#allowed-rows-box').textContent(), /AL02.*1\. sor/s);
     assert.equal(commits().length, 0);
-    await page.locator('#btn-dest-save').click();
+    // Test inputmode none
+    assert.equal(await page.locator('#dest-vonalkod').getAttribute('inputmode'), 'none');
+    
+    await page.locator('#dest-vonalkod').press('Enter');
     await page.locator('#dest-error').waitFor({ state: 'visible' });
     await page.locator('#dest-vonalkod').fill('S02010000');
-    await page.locator('#btn-dest-save').click();
+    await page.locator('#dest-vonalkod').press('Enter');
     await page.waitForFunction(() => document.getElementById('dest-error').textContent.includes('Nem engedélyezett'));
     await visible('pane-dest');
     await page.locator('#dest-vonalkod').fill('S01010199');
-    await page.locator('#dest-vonalkod').press('Enter');
     await page.waitForFunction(() => document.getElementById('dest-error').textContent.includes('céllokáció megtelt'));
     await visible('pane-dest');
     assert.equal(await page.locator('#pane-sscc').isVisible(), false);
     assert.equal(commits().length, 0);
     assert.deepEqual(apiCalls.filter(c => c.url.endsWith('/consolidation-validate-location')).at(-1).body.labelIds, [1, 2]);
     await page.locator('#dest-vonalkod').fill('S01010000');
-    await page.locator('#btn-dest-save').click();
+    await page.locator('#dest-vonalkod').press('Enter');
     await checkLayout('pane-sscc');
+    // Test inputmode none
+    assert.equal(await page.locator('#sscc-vonalkod').getAttribute('inputmode'), 'none');
     assert.match(await page.locator('#test-sscc-hint').textContent(), new RegExp(sscc));
     assert.equal(commits().length, 0);
     await page.locator('#sscc-vonalkod').fill('999999999999999999');
-    await page.locator('#btn-sscc-save').click();
     await page.locator('#scan-error').waitFor({ state: 'visible' });
     assert.equal(commits().length, 0);
     // The actual hardware bridge must move back exactly one screen.
+    await page.waitForTimeout(200);
     await page.evaluate(() => window.postMessage({ action: 'hw-back' }, '*'));
     await visible('pane-dest');
-    await page.locator('#dest-vonalkod').press('Enter');
+    await page.locator('#dest-vonalkod').fill('S01010000');
     await visible('pane-sscc');
     await page.locator('#sscc-vonalkod').fill('(00)' + sscc);
-    await page.locator('#btn-sscc-save').click();
+    await page.locator('#sscc-vonalkod').press('Enter');
     await page.locator('.pda-dashboard').waitFor({ state: 'visible' });
     assert.equal(commits().length, 1);
     assert.deepEqual(commits()[0].body.labelIds, [1, 2]);
@@ -173,14 +177,13 @@ async function run() {
       await checkLayout('pane-dest');
       await page.screenshot({ path: path.join(require('node:os').tmpdir(), `pda-destination-${viewport.width}.png`) });
       await page.locator('#dest-vonalkod').fill('S01010000');
-      await page.locator('#dest-vonalkod').press('Enter');
       await checkLayout('pane-sscc');
       await page.locator('#pane-sscc .pda-nav-back-btn').click();
       await checkLayout('pane-dest');
       await page.locator('#pane-dest .pda-nav-back-btn').click();
       await checkLayout('pane-print');
       await page.locator('#pane-print .pda-nav-back-btn').click();
-      await visible('pane-labels');
+      await visible('pane-scan-member');
 
       await activate('commission');
       await page.locator('#pda-comm-tbody tr').first().click();
@@ -188,7 +191,7 @@ async function run() {
       await page.locator('#form-brutto').fill('100');
       await page.locator('#form-gongyoleg').selectOption('Doboz');
       await page.locator('#form-orszag').selectOption('Magyarország');
-      await page.locator('#form-lot').fill('TEST-LOT');
+      await page.locator('#form-lot').fill('123456');
       await page.locator('#form-raklap').selectOption('4');
       await page.locator('#form-submit').click();
       await checkLayout('pane-print');
@@ -196,11 +199,9 @@ async function run() {
       await page.waitForFunction(() => document.getElementById('pane-dest').classList.contains('active'));
       await checkLayout('pane-dest');
       await page.locator('#dest-vonalkod').fill('S01010000');
-      await page.locator('#btn-dest-save').click();
       await checkLayout('pane-sscc');
       const before = commits().length;
       await page.locator('#sscc-vonalkod').fill(sscc);
-      await page.locator('#btn-sscc-save').click();
       await visible('pane-list');
       assert.equal(commits().length, before + 1);
       assert.equal(commits().at(-1).body.barcode, 'S01010000');

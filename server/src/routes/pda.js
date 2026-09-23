@@ -476,10 +476,8 @@ async function processPick(trx, id, reqData, locationId = null) {
       const err = new Error('Ez a címke már véglegesítve lett egy másik komissióhoz.'); err.code = 'BAD_REQUEST'; throw err;
     }
     if (labelRecord.is_provisional) {
-      const truck = await trx('aldi_trucks').where('id', line.aldi_truck_id).first();
-      const expectedTruckNumber = truck ? (truck.truck_number || truck.license_plate_1 || 'GHU 070/1') : 'GHU 070/1';
-      if (labelRecord.truck_number !== expectedTruckNumber && labelRecord.truck_number !== 'GHU 070/1') {
-         const err = new Error('Ez a címke egy másik kamionhoz vagy folyamathoz lett generálva.'); err.code = 'BAD_REQUEST'; throw err;
+      if (labelRecord.aldi_truck_line_id && labelRecord.aldi_truck_line_id !== id) {
+         const err = new Error('Ez a címke egy másik tételhez lett generálva.'); err.code = 'BAD_REQUEST'; throw err;
       }
     }
 
@@ -612,7 +610,8 @@ async function createSsccLabel(dbClient, lineId, commissionLineId, pickedCartons
     net_weight: netWeight,
     lot_number: lotNumber,
     is_provisional: isProvisional,
-    pallets_json: palletsJsonData ? JSON.stringify(palletsJsonData) : null
+    pallets_json: palletsJsonData ? JSON.stringify(palletsJsonData) : null,
+    aldi_truck_line_id: lineId
   }).returning('*');
 
   return createdLabel;
@@ -1232,6 +1231,16 @@ router.post('/consolidation-preview', verifyToken, async (req, res) => {
         if (label.origin_country) origins.add(label.origin_country);
         if (label.delivery_date) deliveryDates.add(label.delivery_date);
       }
+      
+      try {
+        await trx('sscc_labels')
+          .where('is_provisional', true)
+          .andWhere('created_at', '<', trx.raw("NOW() - INTERVAL '2 hours'"))
+          .del();
+      } catch (e) {
+        console.error('[PDA] Ideiglenes címkék törlése sikertelen:', e);
+      }
+
       const seqRes = await trx.raw("SELECT nextval('sscc_labels_id_seq') as next_id");
       const nextId = Number(seqRes.rows[0].next_id);
       const extDigit = '3';
@@ -1360,9 +1369,17 @@ router.post('/consolidation', verifyToken, async (req, res) => {
       const byId = new Map(labels.map(label => [Number(label.id), label]));
       const orderedLabels = uniqueIds.map(id => byId.get(id));
       const memberSsccs = orderedLabels.map(label => label.sscc);
-      let suppliedMembers = null;
-      try { suppliedMembers = JSON.parse(masterLabel.pallets_json || 'null'); } catch (_) {}
-      if (Array.isArray(suppliedMembers) && JSON.stringify(suppliedMembers) !== JSON.stringify(memberSsccs)) throw new Error('Az összeemelt címke tagraklap-listája nem egyezik a kijelöléssel.');
+
+      const existing = await trx('sscc_labels').where('id', masterId).andWhere('sscc', expectedSscc).first();
+      if (!existing) throw new Error('A megadott ideiglenes mestercímke nem található vagy érvénytelen.');
+      if (!existing.is_provisional) throw new Error('Ez az összeemelt SSCC már véglegesítve lett a rendszerben.');
+      
+      let existingMembers = [];
+      try { existingMembers = JSON.parse(existing.pallets_json || '[]'); } catch (_) {}
+      if (JSON.stringify(existingMembers) !== JSON.stringify(memberSsccs)) {
+        throw new Error('Az összeemelt címke tagraklap-listája nem egyezik a kijelöléssel.');
+      }
+
       const totalCartons = orderedLabels.reduce((sum, label) => sum + (parseInt(label.picked_cartons, 10) || 0), 0);
       const totalGrossWeight = orderedLabels.reduce((sum, label) => sum + (parseFloat(label.gross_weight) || 0), 0);
       const totalNetWeight = orderedLabels.reduce((sum, label) => sum + (parseFloat(label.net_weight) || 0), 0);
@@ -1372,8 +1389,6 @@ router.post('/consolidation', verifyToken, async (req, res) => {
       const origins = [...new Set(orderedLabels.map(label => label.origin_country).filter(Boolean))];
       const deliveryDates = [...new Set(orderedLabels.map(label => label.delivery_date).filter(Boolean))];
       const finalDeliveryDate = deliveryDates.length > 0 ? deliveryDates[0] : (masterLabel.delivery_date || new Date().toISOString().split('T')[0]);
-      const existing = await trx('sscc_labels').where(function() { this.where('id', masterId).orWhere('sscc', expectedSscc); }).first();
-      if (existing && !existing.is_provisional) throw new Error('Ez az összeemelt SSCC már véglegesítve lett a rendszerben.');
       
       const masterData = {
         commission_line_id: null, picked_cartons: totalCartons,
@@ -1386,11 +1401,8 @@ router.post('/consolidation', verifyToken, async (req, res) => {
         is_provisional: false, is_consolidated_master: true, pallets_json: JSON.stringify(memberSsccs)
       };
       
-      if (existing) {
-        await trx('sscc_labels').where('id', masterId).update(masterData);
-      } else {
-        await trx('sscc_labels').insert({ id: masterId, sscc: expectedSscc, ...masterData });
-      }
+      await trx('sscc_labels').where('id', masterId).update(masterData);
+      
       masterData.id = masterId;
       masterData.sscc = expectedSscc;
       await trx('sscc_labels').whereIn('id', uniqueIds).update({ consolidated_sscc: expectedSscc, location_name: loc.name });

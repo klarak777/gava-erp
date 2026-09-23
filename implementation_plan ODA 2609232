@@ -1,0 +1,52 @@
+# PDA Nyomtatási és Adatkezelési Hibajavítások V2.0
+
+A legutóbbi visszajelzések alapján a tervet kiegészítettük és pontosítottuk. Cél, hogy maradéktalanul helyreálljon a korábbi működés az új, összeemelt folyamat igényeinek megfelelően, anélkül, hogy adat-inkonzisztencia vagy felesleges billentyűzet-felugrás zavarná a munkát.
+
+## Proposed Changes
+
+### 1. Közös Súly- és Adatvalidációs Logika (Backend - `pda.js`)
+- Nem lesz két külön algoritmus a címkegenerálásnál és a véglegesítésnél (`pick-and-assign`). Készítünk egy közös függvényt (pl. `calculateAndValidateWeights`), amely elvégzi az ellenőrzéseket mindkét végponton.
+- A függvény kiszámolja a nettó súlyt: `Nettó = Bruttó - (Göngyöleg egységtára * Kartonszám) - Raklapok össztárája`.
+- **Validációk a szerveren**:
+  - A raklaptípusok aktívak-e, van-e érvényes tárasúlyuk.
+  - Szűrjük a duplikált raklapazonosítókat, ha szükséges.
+  - Ellenőrizzük, hogy a megadott bruttó súly ne legyen kisebb, mint az összeszámolt tára (göngyöleg + raklapok).
+
+### 2. Szállítási Hely (Destination) Prioritás
+- A `createSsccLabel` függvényben a "Terület" kiválasztása határozza meg a címkére és adatbázisba kerülő értéket mind az 5 esetben: **Penny, Spar, Tesco, Aldi, Crossdocking**. Ezzel felülírva a kamionsoron lévő értéket, így nem jelenik meg hibásan "1" a címkén.
+
+### 3. Végleges Mentés (`pick-and-assign`) Kibővítése
+- A lezáráskor a `sscc_labels` táblában nem csak a bruttó/nettó súlyt és raklapadatokat frissítjük, hanem **kifejezetten (explicit módon) minden adatot**, amit a PDA beküldött: `destination`, `lot_number`, `origin_country`, `picked_cartons`, `gross_weight`, `net_weight`, és `pallets_json`.
+
+### 4. Payload Változók és Frontend Megnevezések (PDA UI)
+- A payloadban megtartjuk a meglévő, snake_case változóneveket (`gross_weight`, `tare_weight`, `pallet_types`).
+- **Felirat módosítása**: A `commission.js` űrlapján a göngyöleg mező nevét **"Göngyöleg egységtára (kg/karton)"**-ra cseréljük, hogy egyértelmű legyen: nem a teljes tárát kell beírni, a szorzást a backend végzi.
+- **Duplikált HTML azonosítók törlése**: A `dest-error` és `scan-error` ismétlődő diveit eltávolítjuk a HTML-ből (mind a `palletFlow.js`-ben).
+
+### 5. Virtuális Billentyűzet és Szkenner Kombinálása
+- Visszaállítjuk a `inputmode="none"` attribútumot, ami Androidon letiltja a felugró képernyő-billentyűzetet.
+- Mivel ez a Capacitor Webview-ban a fizikai szkenner karakter-injektálását is blokkolhatja, bevezetünk egy globális `keydown` figyelőt (vagy egy rejtett input mezőt), amely elkapja a fizikai szkenner által küldött billentyű-leütéseket, és betűzi a kódot a vizuális, billentyűzet nélküli fókuszált mezőbe. Ezzel megmarad az automatikus auto-továbbítás (300ms) és a hardveres olvasás, de nem ugrik fel a virtuális keyboard.
+
+### 6. Mestercímke ZPL Kibővítése
+- Az összeemelt mestercímke (`generateZpl` / `isMaster = true`) esetében a ZPL kódba belekerül a nettó súly (`FDNettó kg`) és a szállítási hely (`FDSzállítási hely`) is.
+
+### 7. Hálózati Hibakezelés a Képernyőváltástól Elválasztva (Frontend)
+- A nyomtatásnál a UI váltásokat (lokáció kártya megjelenítése) kivesszük a `try/catch` blokkból. Egy `isSuccess` logikai változóval vezéreljük, és ha a JS DOM manipuláció közben hiba van, az már nem hálózati hibaként jelenik meg.
+
+### 8. TCP Kapcsolat Várakozás a Nyomtatásnál (Backend)
+- Jelenleg a backend azonnal sikert küld, mielőtt a TCP `client.write` befejeződne. 
+- Ezt Promise-alapúvá tesszük: a válasz (`res.json`) csak akkor küldődik el, ha a `client.write` callback lefutott, kiegészítve egy 5 másodperces időtúllépéssel (timeout), így garantált a valós hibaüzenet, ha a nyomtató nem elérhető.
+
+### 9. Tesztek Frissítése
+- **Böngésző/Regressziós teszt**: A `PDA UI/tests/palletFlow.browser.cjs` tesztet a lenyíló lista nélküli, auto-szkenneres folyamathoz igazítjuk (ellenőrizve, hogy kap-e fókuszt a mező anélkül, hogy billentyűzetet nyitna).
+- A tesztek kiegészülnek azzal, hogy (1) az `area: aldi` pontosan "Aldi"-t eredményezzen, (2) a végleges DB rekord minden sora egyezzen a kinyomtatottal.
+
+### 10. APK Generálás
+- Amint a kód javításra kerül és a commit felmegy GitHub-ra, el kell készíteni a frissített Capacitor build-et (`npx cap sync android`), hogy az új `app-debugV6.apk` kipróbálható legyen.
+
+## Verification Plan
+
+1. **Szkenner Teszt**: Vonalkód olvasása `inputmode="none"` mellett; a billentyűzet nem ugorhat fel, de az értéknek be kell kerülnie.
+2. **Súly Teszt**: 100 kg bruttó, 0.5 kg/karton göngyöleg, 10 karton, 23 kg raklap = 72 kg nettó súly generálása a ZPL-ben és elmentése a DB-ben.
+3. **Nyomtatás Hiba Teszt**: Kamion címke nyomtatása kikapcsolt IP-jű nyomtatóval timeout hibát kell dobjon.
+4. **Automatizált Tesztek**: `pdaWeights.test.js`, `pdaConsolidation.test.js`, és `palletFlow.browser.cjs` sikeres lefutása.
