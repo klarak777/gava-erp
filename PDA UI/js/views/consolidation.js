@@ -275,19 +275,32 @@ export async function renderConsolidation(container, params = {}) {
 
 
 
+  let printerDebounceTimer = null;
   printPrinterInput.addEventListener('keydown', async (e) => {
     if (e.key === 'Enter') { 
       e.preventDefault(); 
+      clearTimeout(printerDebounceTimer);
       await triggerZplPrint(); 
     }
   });
 
-  printPrinterInput.addEventListener('input', async (e) => {
+  printPrinterInput.addEventListener('input', () => {
+    clearTimeout(printerDebounceTimer);
     const val = printPrinterInput.value.trim();
-    const ipPortRegex = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{4}$/;
-    if (ipPortRegex.test(val) && !printPrinterInput.disabled) {
-      await triggerZplPrint();
+    if (!val || printPrinterInput.disabled) return;
+
+    const ipPortRegex = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}([.:]\d{2,5})?$/;
+    if (ipPortRegex.test(val)) {
+      triggerZplPrint();
+      return;
     }
+
+    printerDebounceTimer = setTimeout(() => {
+      const currentVal = printPrinterInput.value.trim();
+      if (currentVal.length >= 2 && !printPrinterInput.disabled) {
+        triggerZplPrint();
+      }
+    }, 300);
   });
   
   if (printBtn) {

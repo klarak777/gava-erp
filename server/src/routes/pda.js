@@ -855,8 +855,25 @@ router.post('/print-pallet-label', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'Nyomtató vonalkód megadása kötelező.' });
     }
 
-    // 1. Nyomtató megkeresése az adatbázisban
-    const printer = await knex('printers').where('barcode', printerBarcode).andWhere('is_active', true).first();
+    // 1. Nyomtató megkeresése az adatbázisban (barcode, IP cím, név vagy egyetlen aktív nyomtató fallback)
+    let printer = await knex('printers').where('barcode', printerBarcode).andWhere('is_active', true).first();
+    if (!printer) {
+      const cleanIp = printerBarcode.replace(/[:.]\d{2,5}$/, '');
+      printer = await knex('printers')
+        .where('is_active', true)
+        .andWhere(function() {
+          this.where('ip_address', printerBarcode)
+              .orWhere('ip_address', cleanIp)
+              .orWhere('name', printerBarcode);
+        })
+        .first();
+    }
+    if (!printer) {
+      const activePrinters = await knex('printers').where('is_active', true);
+      if (activePrinters.length === 1) {
+        printer = activePrinters[0];
+      }
+    }
     if (!printer) {
       return res.status(404).json({ error: 'A megadott vonalkódhoz nem tartozik aktív nyomtató.' });
     }

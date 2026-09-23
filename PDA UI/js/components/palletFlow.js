@@ -45,8 +45,7 @@ export function renderPalletFlow({ userName, title = 'Komissiózás' }) {
             </svg>
             <input type="text" inputmode="none" id="print-printer-barcode" placeholder="Olvasd be a nyomtatót" style="width: 100%; padding: 8px 8px 8px 34px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; background: #fff; color: #0f172a;">
           </div>
-          <button type="button" id="btn-print-submit" style="display: none; margin-top: 10px; width: 100%; padding: 12px; background: #0ea5e9; color: #fff; font-weight: 700; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">Tovább / Nyomtatás</button>
-        </div>
+          <button type="button" id="btn-print-submit" style="margin-top: 10px; width: 100%; padding: 12px; background: #0ea5e9; color: #fff; font-weight: 700; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">Tovább / Nyomtatás</button>
         </div>
       </div>
 

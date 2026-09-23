@@ -1086,21 +1086,35 @@ export async function renderCommission(container, params = {}) {
     }
   };
 
+  let printerDebounceTimer = null;
   if (printPrinterInput) {
     printPrinterInput.addEventListener('keydown', async (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
+        clearTimeout(printerDebounceTimer);
         await submitPrinterBarcode();
       }
     });
     
-    // Auto-továbbítás, ha a formátum megfelel az IP cím + 4 jegyű port mintának
-    printPrinterInput.addEventListener('input', async (e) => {
+    // Auto-továbbítás: felismeri az IP formátumot vagy szkenneres olvasáskor automatikusan tovább lép
+    printPrinterInput.addEventListener('input', () => {
+      clearTimeout(printerDebounceTimer);
       const val = printPrinterInput.value.trim();
-      const ipPortRegex = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{4}$/;
-      if (ipPortRegex.test(val) && !printPrinterInput.disabled) {
-        await submitPrinterBarcode();
+      if (!val || printPrinterInput.disabled) return;
+
+      const ipPortRegex = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}([.:]\d{2,5})?$/;
+      if (ipPortRegex.test(val)) {
+        submitPrinterBarcode();
+        return;
       }
+
+      // Hardver szkenner vagy beírás esetén: amint a szkenner befejezte a bevitelt (300ms szünet), automatikusan tovább lép
+      printerDebounceTimer = setTimeout(() => {
+        const currentVal = printPrinterInput.value.trim();
+        if (currentVal.length >= 2 && !printPrinterInput.disabled) {
+          submitPrinterBarcode();
+        }
+      }, 300);
     });
   }
 
