@@ -65,7 +65,7 @@ export async function renderScanPallet(container, params = {}) {
 
           <div style="text-align: center; padding-top: 2px;">
             <svg id="scan-pallet-sscc-svg" style="max-width: 100%; height: auto; display: block; margin: 0 auto;"></svg>
-            <div style="font-size: 10.5px; font-weight: 800; color: #0f172a; margin-top: 2px;">SSCC</div>
+            <div style="font-size: 10.5px; font-weight: 800; color: #0f172a; margin-top: 2px;">Azonosító</div>
           </div>
         </div>
         

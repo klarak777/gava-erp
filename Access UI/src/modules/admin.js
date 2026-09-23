@@ -993,7 +993,7 @@ export function openPalletLabelsTable(wm) {
                     childrenHtml = childList.map(c => `
                         <div style="background:#f8fafc; border:1px solid #cbd5e1; border-left:4px solid #0284c7; border-radius:4px; padding:6px 10px; margin-bottom:6px; font-size:13px; line-height:1.5;">
                             <div>Termék neve: <strong style="font-weight:800; color:#0f172a;">${esc(c.product_name || '-')}</strong></div>
-                            <div>Kartonszám: <strong style="font-weight:800; color:#0284c7;">${c.picked_cartons != null ? c.picked_cartons : '-'} #</strong></div>
+                            <div>Kartonszám: <strong style="font-weight:800; color:#0284c7;">${c.picked_cartons != null ? c.picked_cartons : '-'}</strong></div>
                             <div>Azonosító: <strong style="font-family:monospace; font-weight:800; color:#334155;">${esc(c.sscc || '-')}</strong></div>
                         </div>
                     `).join('');
@@ -1004,7 +1004,7 @@ export function openPalletLabelsTable(wm) {
                 bodyHtml = `
                     <div style="display:flex; flex-direction:column; gap:4px; font-size:14px; color:#111; font-weight:600;">
                         <div>Szállítási dátum: <strong style="font-weight:800;">${formattedDate}</strong></div>
-                        <div>Kartonszám: <strong style="font-weight:800;">${label.picked_cartons != null ? label.picked_cartons + ' #' : '-'}</strong></div>
+                        <div>Kartonszám: <strong style="font-weight:800;">${label.picked_cartons != null ? label.picked_cartons : '-'}</strong></div>
                         <div>Bruttó kg: <strong style="font-weight:800;">${label.gross_weight ? Number(label.gross_weight).toFixed(0) + ' kg' : '-'}</strong></div>
                     </div>
                     <div style="margin-top: 14px; border-top: 2px solid #000; padding-top: 8px;">
@@ -1017,7 +1017,7 @@ export function openPalletLabelsTable(wm) {
                     <div style="display:flex; flex-direction:column; gap:4px; font-size:13.5px; color:#111; font-weight:600;">
                         <div>Szállítási dátum: <strong style="font-weight:800;">${formattedDate}</strong></div>
                         <div>Szállítási hely: <strong style="font-weight:800;">${label.destination || 'ALDI'}</strong></div>
-                        <div>Kartonszám: <strong style="font-weight:800;">${label.picked_cartons != null ? label.picked_cartons + ' db' : '-'}</strong></div>
+                        <div>Kartonszám: <strong style="font-weight:800;">${label.picked_cartons != null ? label.picked_cartons : '-'}</strong></div>
                         <div>Bruttó kg: <strong style="font-weight:800;">${label.gross_weight ? Number(label.gross_weight).toFixed(2) + ' kg' : '-'}</strong></div>
                         <div>Nettó kg: <strong style="font-weight:800;">${label.net_weight ? Number(label.net_weight).toFixed(2) + ' kg' : '-'}</strong></div>
                         <div>Átlag súly (nettó): <strong style="font-weight:800;">${(label.picked_cartons && label.net_weight) ? (Number(label.net_weight) / Number(label.picked_cartons)).toFixed(2) + ' kg/db' : '-'}</strong></div>
@@ -1043,7 +1043,7 @@ export function openPalletLabelsTable(wm) {
                 <div style="text-align: center; margin-top: 6px;">
                     <svg id="pl-modal-barcode-svg" style="max-width: 100%; height: auto; display:block; margin:0 auto;"></svg>
                     <div style="font-size: 14px; font-weight: 900; font-family:monospace; margin-top: 4px;">${label.sscc || ''}</div>
-                    <div style="font-size: 12px; font-weight: 900; color:#555; margin-top: 1px;">${isMaster ? 'Azonosító' : 'SSCC'}</div>
+                    <div style="font-size: 12px; font-weight: 900; color:#555; margin-top: 1px;">Azonosító</div>
                 </div>
             `;
 
@@ -1118,14 +1118,14 @@ export function openPalletLabelsTable(wm) {
                 const childRows = childList.map(c => `
                     <div style="margin-bottom: 8px; font-size: 14px; line-height: 1.4;">
                         <div>Termék neve: <strong>${c.product_name || '-'}</strong></div>
-                        <div>Kartonszám: <strong>${c.picked_cartons != null ? c.picked_cartons : '-'} #</strong></div>
+                        <div>Kartonszám: <strong>${c.picked_cartons != null ? c.picked_cartons : '-'}</strong></div>
                         <div>Azonosító: <strong>${c.sscc || '-'}</strong></div>
                     </div>
                 `).join('');
 
                 contentHtml = `
                     <div class="label-data-row">Szállítási dátum: <span class="val">${formattedDate}</span></div>
-                    <div class="label-data-row">Kartonszám: <span class="val">${label.picked_cartons != null ? label.picked_cartons + ' #' : ''}</span></div>
+                    <div class="label-data-row">Kartonszám: <span class="val">${label.picked_cartons != null ? label.picked_cartons : ''}</span></div>
                     <div class="label-data-row">Bruttó kg: <span class="val">${label.gross_weight ? Number(label.gross_weight).toFixed(0) + ' kg' : ''}</span></div>
                     <div class="label-divider" style="margin: 10px 0;"></div>
                     <div style="font-size: 16px; font-weight: 900; margin-bottom: 6px;">Raklapok</div>
@@ -1135,7 +1135,7 @@ export function openPalletLabelsTable(wm) {
                 contentHtml = `
                     <div class="label-data-row">Szállítási dátum: <span class="val">${formattedDate}</span></div>
                     <div class="label-data-row">Szállítási hely: <span class="val">${label.destination || 'ALDI'}</span></div>
-                    <div class="label-data-row">Kartonszám: <span class="val">${label.picked_cartons != null ? label.picked_cartons + ' db' : ''}</span></div>
+                    <div class="label-data-row">Kartonszám: <span class="val">${label.picked_cartons != null ? label.picked_cartons : ''}</span></div>
                     <div class="label-data-row">Bruttó kg: <span class="val">${label.gross_weight ? Number(label.gross_weight).toFixed(2) + ' kg' : ''}</span></div>
                     <div class="label-data-row">Nettó kg: <span class="val">${label.net_weight ? Number(label.net_weight).toFixed(2) + ' kg' : ''}</span></div>
                     <div class="label-data-row">Átlag súly (nettó): <span class="val">${(label.picked_cartons && label.net_weight) ? (Number(label.net_weight) / Number(label.picked_cartons)).toFixed(2) + ' kg/db' : '-'}</span></div>
@@ -1181,7 +1181,7 @@ export function openPalletLabelsTable(wm) {
                         <div class="barcode-container">
                             <svg id="print-barcode"></svg>
                             <div style="font-size:16px; font-family:monospace; font-weight:900; margin-top:4px;">${label.sscc || ''}</div>
-                            <div class="barcode-type">${isMaster ? 'Azonosító' : 'SSCC'}</div>
+                            <div class="barcode-type">Azonosító</div>
                         </div>
                     </div>
                     <script>
