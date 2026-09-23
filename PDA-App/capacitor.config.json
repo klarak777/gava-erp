@@ -5,5 +5,8 @@
   "server": {
     "cleartext": true,
     "allowNavigation": ["138.68.143.223"]
+  },
+  "android": {
+    "allowMixedContent": true
   }
 }
