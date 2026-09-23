@@ -1,5 +1,8 @@
 {
   "appId": "com.gava.pda",
   "appName": "GAVA PDA",
-  "webDir": "../PDA UI"
+  "webDir": "../PDA UI",
+  "server": {
+    "cleartext": true
+  }
 }
