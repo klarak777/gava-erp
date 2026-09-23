@@ -202,8 +202,17 @@ async function run() {
       await page.locator('#sscc-vonalkod').fill(sscc);
       await visible('pane-list');
       assert.equal(commits().length, before + 1);
-      assert.equal(commits().at(-1).body.barcode, 'S01010000');
-      console.log(`PASS both workflows: shared layout and navigation at ${viewport.width}x${viewport.height}`);
+      const commitBody = commits().at(-1).body;
+      assert.equal(commitBody.barcode, 'S01010000');
+      console.log('COMMIT BODY:', commitBody);
+      // Verify data consistency from the form inputs
+      assert.equal(commitBody.gross_weight, 100, 'Brutto kilók nem egyeznek');
+      assert.equal(commitBody.picked_cartons, 10, 'Kartonszám nem egyezik');
+      assert.equal(commitBody.packaging_type, 'Doboz', 'Göngyöleg (Doboz) nem egyezik');
+      assert.equal(commitBody.origin_country, 'Magyarország', 'Származási hely nem egyezik');
+      assert.equal(commitBody.lot_number, '123456', 'LOT szám nem egyezik');
+      assert.deepEqual(commitBody.pallet_types, [4], 'Raklap típus (EU Raklap = id 4) nem egyezik');
+      console.log(`PASS mindkét munkafolyamat és konzisztens címkeadatok: ${viewport.width}x${viewport.height}`);
     }
     assert.deepEqual(errors, []);
     console.log('PASS no browser script errors; all APIs mocked');

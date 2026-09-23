@@ -168,7 +168,7 @@ export function renderAllowedRows(container, targetLocations, truckNumber = '') 
   const list = container.querySelector('#allowed-rows-list');
   box.style.display = 'block';
   if (Array.isArray(rows) && rows.length) {
-    label.textContent = truckNumber ? truckNumber + ' – engedélyezett célsorok:' : 'Engedélyezett cél sorok:';
+    label.textContent = truckNumber ? truckNumber : '';
     list.innerHTML = rows.map(row => {
       const name = row && typeof row === 'object' ? (row.name || '') : String(row);
       return '<span style="background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;display:inline-flex;align-items:center;">' + escHtml(name) + '</span>';
