@@ -1025,20 +1025,24 @@ export async function renderCommission(container, params = {}) {
 
   // Zebra nyomtatás gomb / eseménykezelő -> Automatikus nyomtatás vonalkód beolvasásakor
   const printPrinterInput = container.querySelector('#print-printer-barcode');
-  if (printPrinterInput) {
-    printPrinterInput.addEventListener('keydown', async (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        if (printPrinterInput.disabled) return;
+  const printSubmitBtn = container.querySelector('#btn-print-submit');
 
-        const printerBarcode = printPrinterInput.value.trim();
-        if (!printerBarcode) {
-          alert('Kérlek add meg a nyomtató azonosítóját / vonalkódját!');
-          return;
-        }
+  const submitPrinterBarcode = async () => {
+    if (!printPrinterInput || printPrinterInput.disabled) return;
 
-        try {
-          printPrinterInput.disabled = true;
+    const printerBarcode = printPrinterInput.value.trim();
+    if (!printerBarcode) {
+      alert('Kérlek add meg a nyomtató azonosítóját / vonalkódját!');
+      if (printPrinterInput) printPrinterInput.focus();
+      return;
+    }
+
+    try {
+      printPrinterInput.disabled = true;
+      if (printSubmitBtn) {
+        printSubmitBtn.disabled = true;
+        printSubmitBtn.style.opacity = '0.5';
+      }
 
       // Hívjuk a nyomtatás végpontot
       const res = await apiFetch(`/api/v1/pda/print-pallet-label`, {
@@ -1051,10 +1055,10 @@ export async function renderCommission(container, params = {}) {
         })
       });
 
-          if (res.ok) {
-            alert('Címke nyomtatása sikeresen elküldve!');
-            printPrinterInput.value = '';
-        
+      if (res.ok) {
+        alert('Címke nyomtatása sikeresen elküldve!');
+        printPrinterInput.value = '';
+    
         // Nyomtatás után átlépünk a Cél lokációra
         container.querySelector('#dest-title').textContent = currentDestination || 'Ismeretlen';
         const destInputEl = container.querySelector('#dest-vonalkod');
@@ -1065,12 +1069,30 @@ export async function renderCommission(container, params = {}) {
         const errData = await res.json().catch(() => ({}));
         alert(errData.error || 'Hiba a nyomtatás során!');
       }
-        } catch (e) {
-          alert('Hálózati hiba a nyomtatás során!');
-        } finally {
-          printPrinterInput.disabled = false;
-        }
+    } catch (e) {
+      alert('Hálózati hiba a nyomtatás során!');
+    } finally {
+      if (printPrinterInput) printPrinterInput.disabled = false;
+      if (printSubmitBtn) {
+        printSubmitBtn.disabled = false;
+        printSubmitBtn.style.opacity = '1';
       }
+    }
+  };
+
+  if (printPrinterInput) {
+    printPrinterInput.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        await submitPrinterBarcode();
+      }
+    });
+  }
+
+  if (printSubmitBtn) {
+    printSubmitBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      await submitPrinterBarcode();
     });
   }
 

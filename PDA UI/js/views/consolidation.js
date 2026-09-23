@@ -92,7 +92,7 @@ export async function renderConsolidation(container, params = {}) {
   const scannedMembers = new Map(); // id -> label data
 
   const printPrinterInput = container.querySelector('#print-printer-barcode');
-  const printBtn          = container.querySelector('#print-btn');
+  const printBtn          = container.querySelector('#btn-print-submit');
 
   const locBarcode         = container.querySelector('#dest-vonalkod');
   const locError           = container.querySelector('#dest-error');
@@ -282,10 +282,11 @@ export async function renderConsolidation(container, params = {}) {
     }
   });
   
-  // Also support input auto trigger if printer barcodes have a known length? 
-  // We don't know the length, so we rely on Enter. But if there was a printBtn, we remove it.
   if (printBtn) {
-    printBtn.style.display = 'none'; // Hide print button completely as requested
+    printBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      await triggerZplPrint();
+    });
   }
 
   async function triggerZplPrint() {
@@ -387,7 +388,10 @@ export async function renderConsolidation(container, params = {}) {
   });
   
   if (btnLocNext) {
-    btnLocNext.style.display = 'none'; // Eltávolítjuk a beviteli gombot
+    btnLocNext.addEventListener('click', (e) => {
+      e.preventDefault();
+      saveDestination();
+    });
   }
 
   function goToScanPane() {
@@ -479,7 +483,10 @@ export async function renderConsolidation(container, params = {}) {
 
   const btnSsccSave = container.querySelector('#btn-sscc-save');
   if (btnSsccSave) {
-    btnSsccSave.style.display = 'none'; // Eltávolítjuk a beviteli gombot
+    btnSsccSave.addEventListener('click', async (e) => {
+      e.preventDefault();
+      await saveScanFinal();
+    });
   }
 
   // Kezdeti pane megjelenítés

@@ -45,6 +45,7 @@ export function renderPalletFlow({ userName, title = 'Komissiózás' }) {
             </svg>
             <input type="text" id="print-printer-barcode" placeholder="Olvasd be a nyomtatót" style="width: 100%; padding: 8px 8px 8px 34px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; background: #fff; color: #0f172a;">
           </div>
+          <button type="button" id="btn-print-submit" style="margin-top: 10px; width: 100%; padding: 12px; background: #0ea5e9; color: #fff; font-weight: 700; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">Tovább / Nyomtatás</button>
         </div>
 
         <div style="font-size: 11.5px; color: #64748b; margin-bottom: 14px; line-height: 1.4; text-align: center;">
@@ -103,6 +104,7 @@ export function renderPalletFlow({ userName, title = 'Komissiózás' }) {
           <div style="font-size: 11.5px; color: #64748b; margin-bottom: 14px; line-height: 1.4;">
             💡 <em>Vonalkódolvasóval beolvashatod vagy kézzel megadhatod.</em>
           </div>
+          <button type="button" id="btn-dest-save" style="margin-bottom: 10px; width: 100%; padding: 12px; background: #0ea5e9; color: #fff; font-weight: 700; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">Tovább / Lokáció mentése</button>
           <div id="dest-error" role="alert" style="display:none; color:#dc2626; font-size:12px; margin-bottom:10px;"></div>
           <div id="dest-error" role="alert" style="display:none; color:#dc2626; font-size:12px; margin-bottom:10px;"></div>
         </div>
@@ -146,6 +148,7 @@ export function renderPalletFlow({ userName, title = 'Komissiózás' }) {
             </svg>
             <input type="text" id="sscc-vonalkod" placeholder="Vonalkód" style="width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #f8fafc; color: #0f172a;">
           </div>
+          <button type="button" id="btn-sscc-save" style="margin-bottom: 10px; width: 100%; padding: 12px; background: #0ea5e9; color: #fff; font-weight: 700; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">Befejezés</button>
           <div id="test-sscc-hint" style="font-size: 11px; color: #64748b; margin-bottom: 16px; text-align: center; user-select: text;"></div>
           <div id="scan-error" role="alert" style="display:none; color:#dc2626; font-size:12px; margin-bottom:10px;"></div>
           <div id="scan-error" role="alert" style="display:none; color:#dc2626; font-size:12px; margin-bottom:10px;"></div>
