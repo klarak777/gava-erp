@@ -14,6 +14,7 @@ const root = document.getElementById('pda-app-root');
 export const appState = {
   token: localStorage.getItem('pda_token') || null,
   user: JSON.parse(localStorage.getItem('pda_user') || 'null'),
+  apiBaseUrl: localStorage.getItem('pda_api_base_url') || '',
   currentView: null,
 };
 
@@ -69,7 +70,11 @@ export async function apiFetch(path, options = {}) {
     ...(appState.token ? { 'Authorization': `Bearer ${appState.token}` } : {}),
     ...(options.headers || {}),
   };
-  const res = await fetch(path, { ...options, headers });
+  
+  const baseUrl = appState.apiBaseUrl ? appState.apiBaseUrl.replace(/\/+$/, '') : '';
+  const fullPath = baseUrl ? `${baseUrl}${path}` : path;
+  
+  const res = await fetch(fullPath, { ...options, headers });
   return res;
 }
 
