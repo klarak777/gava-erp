@@ -10,6 +10,33 @@ import { renderScanPallet } from './views/scanPallet.js';
 
 const root = document.getElementById('pda-app-root');
 
+// ── Global Barcode Listener ──────────────────
+let barcodeBuffer = '';
+let barcodeTimer = null;
+
+document.addEventListener('keydown', (e) => {
+  if (e.target && ((e.target.tagName === 'INPUT' && !e.target.readOnly && e.target.type !== 'radio' && e.target.type !== 'checkbox') || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) {
+    return;
+  }
+  
+  if (e.key.length === 1) {
+    barcodeBuffer += e.key;
+    clearTimeout(barcodeTimer);
+    barcodeTimer = setTimeout(() => {
+      if (barcodeBuffer.length > 0) {
+        window.dispatchEvent(new CustomEvent('pda-barcode-scanned', { detail: barcodeBuffer }));
+        barcodeBuffer = '';
+      }
+    }, 150);
+  } else if (e.key === 'Enter') {
+    clearTimeout(barcodeTimer);
+    if (barcodeBuffer.length > 0) {
+      window.dispatchEvent(new CustomEvent('pda-barcode-scanned', { detail: barcodeBuffer }));
+      barcodeBuffer = '';
+    }
+  }
+});
+
 // ── Állapot ────────────────────────────────────
 export const appState = {
   token: localStorage.getItem('pda_token') || null,

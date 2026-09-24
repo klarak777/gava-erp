@@ -53,7 +53,7 @@ export async function renderConsolidation(container, params = {}) {
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 28px;">
           <path d="M4 7V4h16v3M9 20h6M12 14v6M4 17v3h16v-3M9 7h6v5H9z"></path>
         </svg>
-        <input type="text" id="member-barcode" autofocus placeholder="Raklap SSCC vonalkód" style="width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #fff; color: #0f172a;">
+        <input type="text" id="member-barcode" readonly placeholder="Várakozás vonalkódra..." style="width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #fff; color: #0f172a;">
       </div>
       <div id="member-scan-error" style="display:none; color:#dc2626; font-size:12px; font-weight:600; text-align:center; margin:0 16px 8px;"></div>
 
@@ -116,7 +116,7 @@ export async function renderConsolidation(container, params = {}) {
       else if (pane === paneScan) focusInput = container.querySelector('#sscc-vonalkod');
       
       if (focusInput && !focusInput.disabled) {
-        focusInput.focus();
+        focusInput/* focus removed */;
       }
     }, 150);
   };
@@ -136,7 +136,56 @@ export async function renderConsolidation(container, params = {}) {
     else if (panePrint.classList.contains('active')) showPane(paneScanMember);
     else goDashboard();
   };
-  container.querySelectorAll('.pda-nav-home-btn').forEach(b => b.addEventListener('click', goDashboard));
+  
+  // ── Globális vonalkód esemény kezelése ──
+  const handleScan = (e) => {
+    const code = e.detail;
+    
+    const paneMember = document.getElementById('pane-scan-member');
+    const panePrint = document.getElementById('pane-print');
+    const paneLocation = document.getElementById('pane-scan-location');
+    const paneScan = document.getElementById('pane-scan');
+
+    if (paneMember && paneMember.classList.contains('active')) {
+      if (!memberBarcode.disabled && !generatingLabel) {
+        memberBarcode.value = code;
+        if (typeof processMemberBarcode === 'function') processMemberBarcode(code);
+      }
+    } else if (panePrint && panePrint.classList.contains('active')) {
+      if (!printPrinterInput.disabled) {
+        printPrinterInput.value = code;
+        if (typeof triggerZplPrint === 'function') triggerZplPrint();
+      }
+    } else if (paneLocation && paneLocation.classList.contains('active')) {
+      if (!locBarcode.disabled) {
+        locBarcode.value = code;
+        // In original code, saveDestination resets locationName, locationId
+        locationName = '';
+        locationId = null;
+        if (typeof saveDestination === 'function') saveDestination();
+      }
+    } else if (paneScan && paneScan.classList.contains('active')) {
+      if (!scanBarcodeInput.disabled && previewLabel && locationName) {
+        scanBarcodeInput.value = code;
+        if (typeof saveScanFinal === 'function') saveScanFinal();
+      }
+    }
+  };
+  
+  window.addEventListener('pda-barcode-scanned', handleScan);
+  
+  const origGoDashboard = goDashboard;
+  goDashboard = () => {
+    window.removeEventListener('pda-barcode-scanned', handleScan);
+    origGoDashboard();
+  };
+  
+  const origHwBack = window._currentHwBack;
+  window.addEventListener('hwBack', () => {
+    window.removeEventListener('pda-barcode-scanned', handleScan);
+  });
+  
+container.querySelectorAll('.pda-nav-home-btn').forEach(b => b.addEventListener('click', goDashboard));
   container.querySelectorAll('.pda-nav-back-btn, .pda-nav-labels-back-btn').forEach(b => b.addEventListener('click', goBack));
   if (window._currentHwBack) window.removeEventListener('hwBack', window._currentHwBack);
   window._currentHwBack = goBack;
@@ -175,7 +224,7 @@ export async function renderConsolidation(container, params = {}) {
           }
           updateScanNextBtn();
           renderScannedMembers();
-          setTimeout(() => memberBarcode.focus(), 50);
+          setTimeout(() => memberBarcode/* focus removed */, 50);
         });
 
         scannedMembersList.appendChild(item);
@@ -189,21 +238,9 @@ export async function renderConsolidation(container, params = {}) {
     btnScanNext.style.opacity = enough ? '1' : '0.5';
   }
 
-  memberBarcode.addEventListener('input', () => {
-    const val = memberBarcode.value.trim();
-    if (val.length === 18 && !generatingLabel && !memberBarcode.disabled) {
-      processMemberBarcode(val);
-    }
-  });
+  
 
-  memberBarcode.addEventListener('keydown', async (e) => {
-    if (generatingLabel) return;
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const sscc = memberBarcode.value.trim();
-      processMemberBarcode(sscc);
-    }
-  });
+  
 
   async function processMemberBarcode(sscc) {
     if (!sscc) return;
@@ -252,7 +289,7 @@ export async function renderConsolidation(container, params = {}) {
     } finally {
       memberBarcode.disabled = false;
       updateScanNextBtn();
-      setTimeout(() => memberBarcode.focus(), 50);
+      setTimeout(() => memberBarcode/* focus removed */, 50);
     }
   }
 
@@ -276,7 +313,7 @@ export async function renderConsolidation(container, params = {}) {
         previewLabel = data.label;
         printPrinterInput.value = '';
         showPane(panePrint);
-        setTimeout(() => printPrinterInput.focus(), 150);
+        setTimeout(() => printPrinterInput/* focus removed */, 150);
       } else {
         alert('Hiba a címke generálása során: ' + ((data && data.error) ? data.error : `HTTP ${res.status}`));
       }
@@ -292,32 +329,9 @@ export async function renderConsolidation(container, params = {}) {
 
 
   let printerDebounceTimer = null;
-  printPrinterInput.addEventListener('keydown', async (e) => {
-    if (e.key === 'Enter') { 
-      e.preventDefault(); 
-      clearTimeout(printerDebounceTimer);
-      await triggerZplPrint(); 
-    }
-  });
+  
 
-  printPrinterInput.addEventListener('input', () => {
-    clearTimeout(printerDebounceTimer);
-    const val = printPrinterInput.value.trim();
-    if (!val || printPrinterInput.disabled) return;
-
-    const ipPortRegex = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}([.:]\d{2,5})?$/;
-    if (ipPortRegex.test(val)) {
-      triggerZplPrint();
-      return;
-    }
-
-    printerDebounceTimer = setTimeout(() => {
-      const currentVal = printPrinterInput.value.trim();
-      if (currentVal.length >= 2 && !printPrinterInput.disabled) {
-        triggerZplPrint();
-      }
-    }, 300);
-  });
+  
   
   if (printBtn) {
     printBtn.addEventListener('click', async (e) => {
@@ -331,7 +345,7 @@ export async function renderConsolidation(container, params = {}) {
     const pBarcode = printPrinterInput.value.trim();
     if (!pBarcode) {
       alert('Olvasd be a nyomtató vonalkódját!');
-      printPrinterInput.focus();
+      printPrinterInput/* focus removed */;
       return;
     }
 
@@ -378,7 +392,7 @@ export async function renderConsolidation(container, params = {}) {
     locBarcode.value = '';
     locError.style.display = 'none';
     showPane(paneLocation);
-    setTimeout(() => locBarcode.focus(), 150);
+    setTimeout(() => locBarcode/* focus removed */, 150);
   }
 
   // ── PANE 4: Lokáció beolvasás ─────────────────────────────────────
@@ -390,7 +404,7 @@ export async function renderConsolidation(container, params = {}) {
     if (!val) {
       locError.textContent = 'Olvasd be a cél tárhely vonalkódját!';
       locError.style.display = 'block';
-      locBarcode.focus();
+      locBarcode/* focus removed */;
       return;
     }
     locError.style.display = 'none';
@@ -428,17 +442,8 @@ export async function renderConsolidation(container, params = {}) {
       }
     }
   }
-  locBarcode.addEventListener('input', () => { 
-    locationName = ''; 
-    locationId = null; 
-    const val = locBarcode.value.trim();
-    if (val.length === 9 && !locBarcode.disabled) {
-      saveDestination();
-    }
-  });
-  locBarcode.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); saveDestination(); }
-  });
+  
+  
   
   if (btnLocNext) {
     btnLocNext.addEventListener('click', (e) => {
@@ -457,7 +462,7 @@ export async function renderConsolidation(container, params = {}) {
     }
 
     showPane(paneScan);
-    setTimeout(() => scanBarcodeInput.focus(), 150);
+    setTimeout(() => scanBarcodeInput/* focus removed */, 150);
   }
 
   // ── PANE 5: Összeemelt címke beolvasása és mentés ─────────────────────
@@ -519,19 +524,9 @@ export async function renderConsolidation(container, params = {}) {
     }
   }
 
-  scanBarcodeInput.addEventListener('input', async () => {
-    const val = scanBarcodeInput.value.trim();
-    if (val.length === 18 && !scanBarcodeInput.disabled) {
-      await saveScanFinal();
-    }
-  });
+  
 
-  scanBarcodeInput.addEventListener('keydown', async (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      await saveScanFinal();
-    }
-  });
+  
 
   const btnSsccSave = container.querySelector('#btn-sscc-save');
   if (btnSsccSave) {

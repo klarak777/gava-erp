@@ -41,7 +41,7 @@ export async function renderScanPallet(container, params = {}) {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px;">
             <path d="M4 7V4h16v3M9 20h6M12 14v6M4 17v3h16v-3M9 7h6v5H9z"></path>
           </svg>
-          <input type="text" id="scan-pallet-barcode" placeholder="Kérjük, olvasd be a vonalkódot" style="width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #f8fafc; color: #0f172a;" autofocus>
+          <div id="scan-pallet-barcode" style="width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #f8fafc; color: #0f172a; display: flex; align-items: center; min-height: 44px; box-sizing: border-box;">Várakozás beolvasásra...</div>
         </div>
 
         <!-- Eredmény konténer -->
@@ -150,38 +150,32 @@ export async function renderScanPallet(container, params = {}) {
       errorBox.style.display = 'block';
     } finally {
       barcodeInput.disabled = false;
-      barcodeInput.value = '';
-      barcodeInput.focus();
+      barcodeInput.innerHTML = 'Várakozás beolvasásra...';
     }
   }
 
-  // Handle barcode input via Enter key (for scanners that append Enter)
-  barcodeInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const code = barcodeInput.value.trim();
-      processBarcode(code);
-    }
+  // ── Globális vonalkód esemény kezelése ──
+  const handleScan = (e) => {
+    const pane = document.getElementById('pane-scan-pallet');
+    if (!pane || !pane.classList.contains('active')) return;
+    if (barcodeInput.disabled) return;
+    
+    const code = e.detail;
+    barcodeInput.innerHTML = `Beolvasva: <strong>${code}</strong>`;
+    processBarcode(code);
+  };
+  
+  window.addEventListener('pda-barcode-scanned', handleScan);
+  
+  // Amikor elhagyjuk a nézetet, takarítsunk le (ez a SPA router miatt hasznos)
+  const oldGoDashboard = goDashboard;
+  goDashboard = () => {
+    window.removeEventListener('pda-barcode-scanned', handleScan);
+    oldGoDashboard();
+  };
+  
+  const oldHwBack = window._currentHwBack;
+  window.addEventListener('hwBack', () => {
+    window.removeEventListener('pda-barcode-scanned', handleScan);
   });
-
-  // Handle barcode input automatically when length reaches 18 characters (SSCC length)
-  barcodeInput.addEventListener('input', () => {
-    const code = barcodeInput.value.trim();
-    if (code.length === 18) {
-      processBarcode(code);
-    }
-  });
-
-  // Fókuszban tartás
-  setTimeout(() => {
-    if (barcodeInput) {
-      barcodeInput.focus();
-      // Kis trükk: kattintásra mindig kerüljön fókuszba, ha valahogy elvesztené
-      document.body.addEventListener('click', () => {
-        if (document.getElementById('scan-pallet-barcode') && !barcodeInput.disabled) {
-          barcodeInput.focus();
-        }
-      });
-    }
-  }, 100);
 }
