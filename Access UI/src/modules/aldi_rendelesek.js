@@ -1364,9 +1364,7 @@ export function renderAldiRendelesek(container, windowManager) {
           <button id="aldi-btn-add-product" class="secondary-btn" style="height:34px; padding:0 16px; border-radius:8px; font-size:13px; font-weight:700; border:1px solid #cbd5e1; background:#ffffff; display:inline-flex; align-items:center; gap:6px; cursor:pointer; color:#0f172a;">
             ➕ Új termék sor hozzáadása
           </button>
-          <button id="aldi-btn-save-products" class="primary-btn" style="height:34px; padding:0 18px; border-radius:8px; font-size:13px; font-weight:700; background:${state.hasUnsavedChanges ? '#16a34a' : '#2563eb'}; display:inline-flex; align-items:center; gap:6px; cursor:pointer; box-shadow:0 2px 4px rgba(37,99,235,0.2);">
-            💾 Mentés ${state.hasUnsavedChanges ? '(Nem mentett adatok!)' : ''}
-          </button>
+          
         </div>
         <div>
           <input type="text" id="aldi-product-search-input" class="access-control-input" value="${state.productSearch || ''}" placeholder="Keresés név, cikkszám, GTIN..." style="height:32px; width:220px; font-size:12px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 10px;">
@@ -1380,7 +1378,6 @@ export function renderAldiRendelesek(container, windowManager) {
               <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px;">CIKKSZÁM</th>
               <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px;">GTIN AZONOSÍTÓ</th>
               <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px;">EAN AZONOSÍTÓ</th>
-              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px;">CÍMKE</th>
               
               <th style="padding:10px 10px; text-align:center; font-size:11px; font-weight:800; color:#64748b; letter-spacing:0.5px; width:60px;">MŰVELET</th>
             </tr>
@@ -1394,7 +1391,7 @@ export function renderAldiRendelesek(container, windowManager) {
                 <td style="padding:6px 14px; color:#334155;">${p.articleNo || ''}</td>
                 <td style="padding:6px 14px; color:#334155; font-family:monospace;">${p.gtin || ''}</td>
                 <td style="padding:6px 14px; color:#334155; font-family:monospace;">${p.ean || ''}</td>
-                <td style="padding:6px 14px; color:#334155;">${p.label || ''}</td>
+                
                 <td style="padding:6px 10px; text-align:center;">
                   <button class="aldi-prod-delete-btn" data-id="${p.id || p.tempId}" style="background:none; border:none; cursor:pointer; font-size:14px; opacity:0.6; padding:4px; border-radius:4px; transition:opacity 0.2s;" title="Sor törlése" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">🗑️</button>
                 </td>
@@ -1469,7 +1466,37 @@ export function renderAldiRendelesek(container, windowManager) {
                      <option value="${selectedProd.label_origin || ''}">${selectedProd.label_origin || 'Válassz...'}</option>
                    </select>
                  </div>
-        <!-- EGYSÉG CÍMKE -->
+                 <div>GAVA-Hungria Kft.<br>H-1239 Budapest, Nagykőrösi út 353.</div>
+                 <div>
+                   LOT: <input type="text" id="aldi-inline-lot" value="${selectedProd.label_lot || ''}" class="access-control-input" style="width:60px; text-align:center; padding:2px; height:24px;"> &nbsp;&nbsp; 
+                   GLN: <input type="text" id="aldi-inline-gln" value="${selectedProd.label_gln || ''}" class="access-control-input" style="width:120px; text-align:center; padding:2px; height:24px;">
+                 </div>
+                 <div style="font-weight:700;">
+                   Nettó tömeg: <input type="text" id="aldi-inline-weight-c" value="${selectedProd.label_net_weight_carton || ''}" class="access-control-input" style="width:80px; text-align:center; padding:2px; height:24px;">
+                 </div>
+               </div>
+               <div style="display:flex; gap:10px; margin-top:12px; justify-content:center;">
+                 <button class="secondary-btn inline-cancel-btn" style="height:28px; padding:0 12px; font-size:11px; font-weight:600;">Mégse</button>
+                 <button class="primary-btn inline-save-label-btn" style="height:28px; padding:0 16px; font-size:11px; font-weight:600; background:#16a34a; border:none; color:#fff;">Mentés</button>
+               </div>
+             ` : `
+               <div style="text-align:left; font-weight:700; color:#475569; margin-bottom:4px; font-size:12px;">CAJA:</div>
+               <div style="border:1px solid #cbd5e1; padding:16px; background:#f8fafc; text-align:center; font-size:12px; line-height:1.6; display:flex; flex-direction:column; gap:4px;">
+                 <div style="font-size:14px; font-weight:800; text-transform:uppercase;">${selectedProd.name || 'TERMÉKNÉV'}</div>
+                 <div>${selectedProd.label_class || 'I.'} oszt. Méret: ${selectedProd.label_size || '-'}</div>
+                 <div>Származási hely: ${selectedProd.label_origin || '-'}</div>
+                 <div>GAVA-Hungria Kft.<br>H-1239 Budapest, Nagykőrösi út 353.</div>
+                 <div>LOT: ${selectedProd.label_lot || '-'} &nbsp;&nbsp; GLN: ${selectedProd.label_gln || '-'}</div>
+                 <div style="font-weight:700;">Nettó tömeg: ${selectedProd.label_net_weight_carton || '-'}</div>
+               </div>
+               <div style="display:flex; gap:10px; margin-top:12px; justify-content:center;">
+                 <button class="secondary-btn inline-edit-carton-btn" style="height:28px; padding:0 12px; font-size:11px; font-weight:600;">Szerkesztés</button>
+               </div>
+             `
+      ) : `
+            <div style="color:#94a3b8; font-size:13px; text-align:center; padding:20px 0;">Válassz ki egy terméket a táblázatból!</div>
+          `}
+        </div><!-- EGYSÉG CÍMKE -->
         <div style="border:1px solid #cbd5e1; border-radius:8px; padding:16px; background:#fff; position:relative;">
           <h4 style="margin:0 0 12px 0; color:#1e3a8a; font-size:13px; font-weight:800; letter-spacing:0.5px;">EGYSÉG CÍMKE</h4>
           ${selectedProd ? (
@@ -1524,37 +1551,6 @@ export function renderAldiRendelesek(container, windowManager) {
         </div>
         
         
-                 <div>GAVA-Hungria Kft.<br>H-1239 Budapest, Nagykőrösi út 353.</div>
-                 <div>
-                   LOT: <input type="text" id="aldi-inline-lot" value="${selectedProd.label_lot || ''}" class="access-control-input" style="width:60px; text-align:center; padding:2px; height:24px;"> &nbsp;&nbsp; 
-                   GLN: <input type="text" id="aldi-inline-gln" value="${selectedProd.label_gln || ''}" class="access-control-input" style="width:120px; text-align:center; padding:2px; height:24px;">
-                 </div>
-                 <div style="font-weight:700;">
-                   Nettó tömeg: <input type="text" id="aldi-inline-weight-c" value="${selectedProd.label_net_weight_carton || ''}" class="access-control-input" style="width:80px; text-align:center; padding:2px; height:24px;">
-                 </div>
-               </div>
-               <div style="display:flex; gap:10px; margin-top:12px; justify-content:center;">
-                 <button class="secondary-btn inline-cancel-btn" style="height:28px; padding:0 12px; font-size:11px; font-weight:600;">Mégse</button>
-                 <button class="primary-btn inline-save-label-btn" style="height:28px; padding:0 16px; font-size:11px; font-weight:600; background:#16a34a; border:none; color:#fff;">Mentés</button>
-               </div>
-             ` : `
-               <div style="text-align:left; font-weight:700; color:#475569; margin-bottom:4px; font-size:12px;">CAJA:</div>
-               <div style="border:1px solid #cbd5e1; padding:16px; background:#f8fafc; text-align:center; font-size:12px; line-height:1.6; display:flex; flex-direction:column; gap:4px;">
-                 <div style="font-size:14px; font-weight:800; text-transform:uppercase;">${selectedProd.name || 'TERMÉKNÉV'}</div>
-                 <div>${selectedProd.label_class || 'I.'} oszt. Méret: ${selectedProd.label_size || '-'}</div>
-                 <div>Származási hely: ${selectedProd.label_origin || '-'}</div>
-                 <div>GAVA-Hungria Kft.<br>H-1239 Budapest, Nagykőrösi út 353.</div>
-                 <div>LOT: ${selectedProd.label_lot || '-'} &nbsp;&nbsp; GLN: ${selectedProd.label_gln || '-'}</div>
-                 <div style="font-weight:700;">Nettó tömeg: ${selectedProd.label_net_weight_carton || '-'}</div>
-               </div>
-               <div style="display:flex; gap:10px; margin-top:12px; justify-content:center;">
-                 <button class="secondary-btn inline-edit-carton-btn" style="height:28px; padding:0 12px; font-size:11px; font-weight:600;">Szerkesztés</button>
-               </div>
-             `
-      ) : `
-            <div style="color:#94a3b8; font-size:13px; text-align:center; padding:20px 0;">Válassz ki egy terméket a táblázatból!</div>
-          `}
-        </div>
 
 
 
@@ -1641,6 +1637,7 @@ export function renderAldiRendelesek(container, windowManager) {
       state.hasUnsavedChanges = true;
       modalOverlay.remove();
       renderModule();
+      if (typeof saveProductsToDb === 'function') { saveProductsToDb(); }
     });
   }
 
