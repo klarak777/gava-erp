@@ -60,7 +60,7 @@ export function renderAldiRendelesek(container, windowManager) {
     hetiLekotesWeeks: [],
     hetiLekotesData: { commitment: null, items: [], stocks: [], daily_orders: [], week_dates: [] },
     hetiLekotesIsLoading: false,
-    
+
     // Komissió state
     komissioView: 'summary', // 'summary' | 'detail'
     komissioFilterDate: '',
@@ -103,7 +103,7 @@ export function renderAldiRendelesek(container, windowManager) {
     windowManager.open('komissio-detail-' + truckId, 'Komissió: ' + truckNo, (contentEl, wm) => {
       // Az összes kapott sor már egy-egy megkezdett vagy befejezett komissió (raklap)
       const pickedLines = lines;
-      
+
       let sumCartons = 0, sumGross = 0, sumNet = 0, sumPallets = 0;
       pickedLines.forEach(l => {
         sumCartons += (parseFloat(l.cartons) || 0);
@@ -251,12 +251,12 @@ export function renderAldiRendelesek(container, windowManager) {
           }));
         }
         state.hasUnsavedChanges = false;
-        
+
         // Frissítjük a Heti árak felületet is, ha van kiválasztott hét
         if (state.hetiArakSelectedWeekId) {
           await fetchHetiArakLines(state.hetiArakSelectedWeekId);
         }
-        
+
         renderModule();
         alert('💾 Termékadatok sikeresen elmentve az adatbázisba!');
       } else {
@@ -327,7 +327,7 @@ export function renderAldiRendelesek(container, windowManager) {
     let focusSelector = null;
     let selectionStart = null;
     let selectionEnd = null;
-    
+
     if (activeEl && wrapper.contains(activeEl)) {
       if (activeEl.id) {
         focusSelector = '#' + activeEl.id;
@@ -340,7 +340,7 @@ export function renderAldiRendelesek(container, windowManager) {
         try {
           selectionStart = activeEl.selectionStart;
           selectionEnd = activeEl.selectionEnd;
-        } catch (e) {}
+        } catch (e) { }
       }
     }
 
@@ -382,8 +382,8 @@ export function renderAldiRendelesek(container, windowManager) {
         ${state.activeTab === 'napi' ? renderNapiRendelesHtml() :
         state.activeTab === 'heti' ? renderHetiLekotesHtml() :
           state.activeTab === 'heti_arak' ? renderHetiArakHtml() :
-          state.activeTab === 'komissio' ? renderKomissioHtml() :
-            renderTermekekHtml()
+            state.activeTab === 'komissio' ? renderKomissioHtml() :
+              renderTermekekHtml()
       }
       </div>
     `;
@@ -398,7 +398,7 @@ export function renderAldiRendelesek(container, windowManager) {
         if (selectionStart !== null) {
           try {
             elToFocus.setSelectionRange(selectionStart, selectionEnd);
-          } catch (e) {}
+          } catch (e) { }
         }
       }
     }
@@ -450,7 +450,7 @@ export function renderAldiRendelesek(container, windowManager) {
           </thead>
           <tbody>
             ${filteredOrders.length === 0 ? `
-              <tr><td colspan="6" style="padding:24px; text-align:center; color:#94a3b8; font-size:13px;">Nincs megjeleníthető rendelés a megadott szűrési feltételekkel.</td></tr>
+              <tr><td colspan="5" style="padding:24px; text-align:center; color:#94a3b8; font-size:13px;">Nincs megjeleníthető rendelés a megadott szűrési feltételekkel.</td></tr>
             ` : filteredOrders.map((o, idx) => {
       const dt = new Date(o.delivery_date);
       const formattedDate = !isNaN(dt) ? dt.toISOString().split('T')[0] : o.delivery_date;
@@ -526,7 +526,7 @@ export function renderAldiRendelesek(container, windowManager) {
       { name: 'Hétfő', key: 'mon' },
       { name: 'Kedd', key: 'tue' }
     ];
-    
+
     const productGroups = {};
     const items = state.hetiLekotesData.items || [];
     const dailyOrders = state.hetiLekotesData.daily_orders || [];
@@ -537,14 +537,14 @@ export function renderAldiRendelesek(container, windowManager) {
       const pid = item.display_name;
       if (!productGroups[pid]) {
         productGroups[pid] = {
-           product_id: item.product_id,
-           display_name: item.display_name,
-           product_name: item.product_name,
-           action_period: null,
-           total_action: 0,
-           actionPeriods: {},
-           actionDailyValues: {},
-           total_normal: 0,
+          product_id: item.product_id,
+          display_name: item.display_name,
+          product_name: item.product_name,
+          action_period: null,
+          total_action: 0,
+          actionPeriods: {},
+          actionDailyValues: {},
+          total_normal: 0,
         };
       }
       if (item.type === 'action') {
@@ -577,70 +577,70 @@ export function renderAldiRendelesek(container, windowManager) {
     let keszletRows = '';
 
     Object.values(productGroups).forEach(pg => {
-       const stockInput = (state.hetiLekotesData.stocks || []).find(s => s.article_number == pg.display_name || (s.product_id && s.product_id == pg.product_id)) || {};
-       const { result: distribution } = getEstimatedDistribution(0, pg.total_normal, null);
-       const actionDays = [];
-       for (const [period, quantity] of Object.entries(pg.actionPeriods)) {
-         const dailyValues = pg.actionDailyValues[period] || null;
-         const estimate = getEstimatedDistribution(quantity, 0, period, dailyValues);
-         if (dailyValues) {
-           // Ha daily_values elérhető: az összes nap (akciós + akción kívüli) a Rendelési tervből jön
-           Object.assign(distribution, estimate.result);
-         } else {
-           // Ha nincs daily_values: csak az akciós napokat írjuk felül (régi viselkedés)
-           for (const key of estimate.actionDays) { distribution[key] = estimate.result[key]; }
-         }
-         for (const key of estimate.actionDays) { if (!actionDays.includes(key)) actionDays.push(key); }
-       }
-       pg.action_period = Object.keys(pg.actionPeriods).join(', ');
-       
-       let cells = '';
-       let keszletCells = '';
-       
-       let futoKeszlet = Math.round(parseFloat(stockInput.initial_stock) || 0);
-       const closingStocks = [];
-       
-       days.forEach((day, index) => {
-         const dayDateStr = weekDates[index];
-         const isActionDay = actionDays.includes(day.key);
-         
-         const incKey = 'inc_' + day.key;
-         const erkezo = Math.round(parseFloat(stockInput[incKey]) || 0);
-         let hiany = 0;
+      const stockInput = (state.hetiLekotesData.stocks || []).find(s => s.article_number == pg.display_name || (s.product_id && s.product_id == pg.product_id)) || {};
+      const { result: distribution } = getEstimatedDistribution(0, pg.total_normal, null);
+      const actionDays = [];
+      for (const [period, quantity] of Object.entries(pg.actionPeriods)) {
+        const dailyValues = pg.actionDailyValues[period] || null;
+        const estimate = getEstimatedDistribution(quantity, 0, period, dailyValues);
+        if (dailyValues) {
+          // Ha daily_values elérhető: az összes nap (akciós + akción kívüli) a Rendelési tervből jön
+          Object.assign(distribution, estimate.result);
+        } else {
+          // Ha nincs daily_values: csak az akciós napokat írjuk felül (régi viselkedés)
+          for (const key of estimate.actionDays) { distribution[key] = estimate.result[key]; }
+        }
+        for (const key of estimate.actionDays) { if (!actionDays.includes(key)) actionDays.push(key); }
+      }
+      pg.action_period = Object.keys(pg.actionPeriods).join(', ');
 
-         const orderObj = dailyOrders.find(o => o.date === dayDateStr && o.article_number === pg.display_name);
-         const rendeltNum = orderObj ? orderObj.total : undefined;
-         const becsultNum = distribution[day.key];
-         
-         const balance = dailyBalance(futoKeszlet, erkezo, rendeltNum, becsultNum);
-         hiany = balance.shortage;
-         futoKeszlet = balance.closing;
-         closingStocks.push(futoKeszlet);
-         
-         const isCurrentWeek = weekDates.includes(todayStr);
-         const isPastDay = dayDateStr < todayStr;
-         
-         let cellBg = isActionDay ? '#bbf7d0' : '#ffffff';
-         let textColor = '#0f172a';
-         
-         let rendeltStr = rendeltNum !== undefined ? Math.round(rendeltNum) : '-';
-         let becsultStr = Math.round(becsultNum || 0);
-         let hianyStr = hiany > 0 ? `-${Math.round(hiany)}` : '';
-         let erkezoVal = stockInput[incKey] !== undefined && stockInput[incKey] !== null ? Math.round(Number(stockInput[incKey])) : '';
+      let cells = '';
+      let keszletCells = '';
 
-         if (isPastDay) {
-            cellBg = '#f1f5f9';
-            textColor = '#94a3b8';
-         }
-         
-         cells += `
+      let futoKeszlet = Math.round(parseFloat(stockInput.initial_stock) || 0);
+      const closingStocks = [];
+
+      days.forEach((day, index) => {
+        const dayDateStr = weekDates[index];
+        const isActionDay = actionDays.includes(day.key);
+
+        const incKey = 'inc_' + day.key;
+        const erkezo = Math.round(parseFloat(stockInput[incKey]) || 0);
+        let hiany = 0;
+
+        const orderObj = dailyOrders.find(o => o.date === dayDateStr && o.article_number === pg.display_name);
+        const rendeltNum = orderObj ? orderObj.total : undefined;
+        const becsultNum = distribution[day.key];
+
+        const balance = dailyBalance(futoKeszlet, erkezo, rendeltNum, becsultNum);
+        hiany = balance.shortage;
+        futoKeszlet = balance.closing;
+        closingStocks.push(futoKeszlet);
+
+        const isCurrentWeek = weekDates.includes(todayStr);
+        const isPastDay = dayDateStr < todayStr;
+
+        let cellBg = isActionDay ? '#bbf7d0' : '#ffffff';
+        let textColor = '#0f172a';
+
+        let rendeltStr = rendeltNum !== undefined ? Math.round(rendeltNum) : '-';
+        let becsultStr = Math.round(becsultNum || 0);
+        let hianyStr = hiany > 0 ? `-${Math.round(hiany)}` : '';
+        let erkezoVal = stockInput[incKey] !== undefined && stockInput[incKey] !== null ? Math.round(Number(stockInput[incKey])) : '';
+
+        if (isPastDay) {
+          cellBg = '#f1f5f9';
+          textColor = '#94a3b8';
+        }
+
+        cells += `
            <td style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:${cellBg}; color:${textColor}; font-weight:${isActionDay && !isPastDay ? 'bold' : 'normal'};">${rendeltStr}</td>
            <td style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:${cellBg}; color:${textColor}; font-weight:${isActionDay && !isPastDay ? 'bold' : 'normal'};">${becsultStr}</td>
          `;
-         
-         let keszletBg = isPastDay ? '#f1f5f9' : (isActionDay ? '#f0fdf4' : '#ffffff');
-         
-         keszletCells += `
+
+        let keszletBg = isPastDay ? '#f1f5f9' : (isActionDay ? '#f0fdf4' : '#ffffff');
+
+        keszletCells += `
            <td style="padding:8px; border:1px solid #e2e8f0; background:${keszletBg};">
              <input type="number" class="lekotes-stock-input" data-article="${pg.display_name}" data-field="${incKey}" value="${erkezoVal}" style="width:50px; text-align:center; padding:4px; border:1px solid #cbd5e1; border-radius:4px; font-size:12px; color:#0f172a; background:#ffffff;">
            </td>
@@ -648,11 +648,11 @@ export function renderAldiRendelesek(container, windowManager) {
              ${hianyStr}
            </td>
          `;
-       });
+      });
 
-       const termekNev = pg.product_name ? pg.product_name : `⚠️ ${pg.display_name}`;
+      const termekNev = pg.product_name ? pg.product_name : `⚠️ ${pg.display_name}`;
 
-       lekotesRows += `
+      lekotesRows += `
          <tr style="background:#fff; color:#0f172a;">
            <td style="padding:8px; border:1px solid #e2e8f0; font-weight:600; background:#dcfce7; color:#0f172a;">${termekNev}</td>
            <td style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:#fde047; color:#0f172a; font-weight:700;">${pg.action_period || '-'}</td>
@@ -660,9 +660,9 @@ export function renderAldiRendelesek(container, windowManager) {
            ${cells}
          </tr>
        `;
-       
-       const displayedStock = stockAtDate(stockInput.initial_stock, weekDates, closingStocks);
-       keszletRows += `
+
+      const displayedStock = stockAtDate(stockInput.initial_stock, weekDates, closingStocks);
+      keszletRows += `
          <tr style="background:#fff; color:#0f172a;">
            <td style="padding:8px; border:1px solid #e2e8f0; font-weight:600; background:#dcfce7; color:#0f172a;">${termekNev}</td>
            <td style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:#fef9c3;">
@@ -677,8 +677,8 @@ export function renderAldiRendelesek(container, windowManager) {
     });
 
     if (Object.keys(productGroups).length === 0) {
-       lekotesRows = '<tr><td colspan="17" style="padding:20px; text-align:center; color:#64748b;">Nincs megjeleníthető adat (tölts fel Excel fájlokat).</td></tr>';
-       keszletRows = '<tr><td colspan="16" style="padding:20px; text-align:center; color:#64748b;">Nincs megjeleníthető adat.</td></tr>';
+      lekotesRows = '<tr><td colspan="17" style="padding:20px; text-align:center; color:#64748b;">Nincs megjeleníthető adat (tölts fel Excel fájlokat).</td></tr>';
+      keszletRows = '<tr><td colspan="16" style="padding:20px; text-align:center; color:#64748b;">Nincs megjeleníthető adat.</td></tr>';
     }
 
     return `
@@ -793,30 +793,30 @@ export function renderAldiRendelesek(container, windowManager) {
   }
 
   async function fetchHetiLekotesData(silent = false) {
-     if (!state.hetiLekotesSelectedWeek) {
-       state.hetiLekotesIsLoading = false;
-       renderModule();
-       return;
-     }
-     if (!silent) { state.hetiLekotesIsLoading = true; renderModule(); }
-     const requestedYear = state.hetiLekotesYear, requestedWeek = state.hetiLekotesSelectedWeek;
-     let changed = !silent;
-     try {
-       const res = await fetch(`/api/v1/aldi-weekly-commitments/${state.hetiLekotesYear}/${state.hetiLekotesSelectedWeek}`);
-       if (!res.ok) throw new Error('HTTP ' + res.status);
-       const data = await res.json();
-       if (requestedYear !== state.hetiLekotesYear || requestedWeek !== state.hetiLekotesSelectedWeek || (silent && pendingStockSaves)) return;
-       changed = !silent || JSON.stringify(data) !== JSON.stringify(state.hetiLekotesData);
-       state.hetiLekotesData = data || { commitment: null, items: [], stocks: [], daily_orders: [], week_dates: [] };
-     } catch (err) {
-       console.error('Heti lekötés adatok betöltési hiba:', err);
-       if (!silent) alert('Nem sikerült betölteni a lekötés adatokat.');
-     } finally {
-       state.hetiLekotesIsLoading = false;
-       if (changed) renderModule();
-     }
+    if (!state.hetiLekotesSelectedWeek) {
+      state.hetiLekotesIsLoading = false;
+      renderModule();
+      return;
+    }
+    if (!silent) { state.hetiLekotesIsLoading = true; renderModule(); }
+    const requestedYear = state.hetiLekotesYear, requestedWeek = state.hetiLekotesSelectedWeek;
+    let changed = !silent;
+    try {
+      const res = await fetch(`/api/v1/aldi-weekly-commitments/${state.hetiLekotesYear}/${state.hetiLekotesSelectedWeek}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      if (requestedYear !== state.hetiLekotesYear || requestedWeek !== state.hetiLekotesSelectedWeek || (silent && pendingStockSaves)) return;
+      changed = !silent || JSON.stringify(data) !== JSON.stringify(state.hetiLekotesData);
+      state.hetiLekotesData = data || { commitment: null, items: [], stocks: [], daily_orders: [], week_dates: [] };
+    } catch (err) {
+      console.error('Heti lekötés adatok betöltési hiba:', err);
+      if (!silent) alert('Nem sikerült betölteni a lekötés adatokat.');
+    } finally {
+      state.hetiLekotesIsLoading = false;
+      if (changed) renderModule();
+    }
   }
-  
+
   function openHetiLekotesUploadModal() {
     const modalOverlay = document.createElement('div');
     modalOverlay.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.4); z-index:9999; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);';
@@ -870,7 +870,25 @@ export function renderAldiRendelesek(container, windowManager) {
       label.innerHTML = '<input type="checkbox" id="commitment-replace"> Kiválasztott hét javítása (KW' + state.hetiLekotesSelectedWeek + ')';
       modalOverlay.firstElementChild.appendChild(label);
     }
+
     document.body.appendChild(modalOverlay);
+
+    // Fetch origin countries
+    fetch('/api/v1/admin/ref_origin_countries')
+      .then(r => r.json())
+      .then(countries => {
+        const select = modalOverlay.querySelector('#aldi-lbl-origin');
+        select.innerHTML = '<option value="">Válassz...</option>';
+        countries.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.name;
+          opt.textContent = c.name;
+          if (c.name === prod.label_origin) opt.selected = true;
+          select.appendChild(opt);
+        });
+      })
+      .catch(err => console.error('Hiba az országok betöltésekor', err));
+
 
     let selectedFile = null;
     const fileInput = modalOverlay.querySelector('#aldi-lekotes-file-input');
@@ -940,13 +958,13 @@ export function renderAldiRendelesek(container, windowManager) {
         });
 
         if (res.status === 409) {
-            const data = await res.json();
-            if (data.requires_resolution) {
-                showMergeResolutionModal(data.conflicts);
-                uploadBtn.textContent = '📤 Feltöltés';
-                uploadBtn.disabled = false;
-                return;
-            }
+          const data = await res.json();
+          if (data.requires_resolution) {
+            showMergeResolutionModal(data.conflicts);
+            uploadBtn.textContent = '📤 Feltöltés';
+            uploadBtn.disabled = false;
+            return;
+          }
         }
 
         const data = await res.json();
@@ -985,29 +1003,29 @@ export function renderAldiRendelesek(container, windowManager) {
     }
 
     function showMergeResolutionModal(conflicts) {
-        const resolutionOverlay = document.createElement('div');
-        resolutionOverlay.style.position = 'fixed';
-        resolutionOverlay.style.top = '0';
-        resolutionOverlay.style.left = '0';
-        resolutionOverlay.style.width = '100%';
-        resolutionOverlay.style.height = '100%';
-        resolutionOverlay.style.background = 'rgba(0,0,0,0.5)';
-        resolutionOverlay.style.display = 'flex';
-        resolutionOverlay.style.alignItems = 'center';
-        resolutionOverlay.style.justifyContent = 'center';
-        resolutionOverlay.style.zIndex = '10001';
+      const resolutionOverlay = document.createElement('div');
+      resolutionOverlay.style.position = 'fixed';
+      resolutionOverlay.style.top = '0';
+      resolutionOverlay.style.left = '0';
+      resolutionOverlay.style.width = '100%';
+      resolutionOverlay.style.height = '100%';
+      resolutionOverlay.style.background = 'rgba(0,0,0,0.5)';
+      resolutionOverlay.style.display = 'flex';
+      resolutionOverlay.style.alignItems = 'center';
+      resolutionOverlay.style.justifyContent = 'center';
+      resolutionOverlay.style.zIndex = '10001';
 
-        const modalDiv = document.createElement('div');
-        modalDiv.style.background = 'white';
-        modalDiv.style.padding = '24px';
-        modalDiv.style.borderRadius = '12px';
-        modalDiv.style.width = '600px';
-        modalDiv.style.maxWidth = '90%';
-        modalDiv.style.boxShadow = '0 10px 25px rgba(0,0,0,0.2)';
+      const modalDiv = document.createElement('div');
+      modalDiv.style.background = 'white';
+      modalDiv.style.padding = '24px';
+      modalDiv.style.borderRadius = '12px';
+      modalDiv.style.width = '600px';
+      modalDiv.style.maxWidth = '90%';
+      modalDiv.style.boxShadow = '0 10px 25px rgba(0,0,0,0.2)';
 
-        let listHtml = conflicts.map(c => `<li><strong>${c.display_name}</strong> (Időszak: ${c.action_period || '-'})</li>`).join('');
+      let listHtml = conflicts.map(c => `<li><strong>${c.display_name}</strong> (Időszak: ${c.action_period || '-'})</li>`).join('');
 
-        modalDiv.innerHTML = `
+      modalDiv.innerHTML = `
             <h2 style="margin-top: 0; color: #1e293b; font-size: 1.25rem;">⚠️ Ütköző tételek találhatók</h2>
             <p style="color: #475569; margin-bottom: 12px;">
                 Az Excel fájlban szereplő alábbi termékek már szerepelnek a kiválasztott hétre feltöltött adatok között:
@@ -1025,20 +1043,20 @@ export function renderAldiRendelesek(container, windowManager) {
             </div>
         `;
 
-        resolutionOverlay.appendChild(modalDiv);
-        document.body.appendChild(resolutionOverlay);
+      resolutionOverlay.appendChild(modalDiv);
+      document.body.appendChild(resolutionOverlay);
 
-        modalDiv.querySelector('#res-cancel').addEventListener('click', () => {
-            document.body.removeChild(resolutionOverlay);
-        });
-        modalDiv.querySelector('#res-add').addEventListener('click', () => {
-            document.body.removeChild(resolutionOverlay);
-            performUpload('add');
-        });
-        modalDiv.querySelector('#res-overwrite').addEventListener('click', () => {
-            document.body.removeChild(resolutionOverlay);
-            performUpload('overwrite');
-        });
+      modalDiv.querySelector('#res-cancel').addEventListener('click', () => {
+        document.body.removeChild(resolutionOverlay);
+      });
+      modalDiv.querySelector('#res-add').addEventListener('click', () => {
+        document.body.removeChild(resolutionOverlay);
+        performUpload('add');
+      });
+      modalDiv.querySelector('#res-overwrite').addEventListener('click', () => {
+        document.body.removeChild(resolutionOverlay);
+        performUpload('overwrite');
+      });
     }
   }
 
@@ -1151,7 +1169,7 @@ export function renderAldiRendelesek(container, windowManager) {
 
           let rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
           if (line.period_status && line.period_status !== 'valid') {
-              rowBg = '#fef08a'; // Sárga kiemelés
+            rowBg = '#fef08a'; // Sárga kiemelés
           }
 
           // Aktuális mai nap szerinti aktív periódus meghatározása
@@ -1241,7 +1259,7 @@ export function renderAldiRendelesek(container, windowManager) {
     `;
   }
 
-  
+
   // ─── Komissió utasítás fül ────────────────────────────────────────────────────────
 
   function renderKomissioHtml() {
@@ -1274,13 +1292,13 @@ export function renderAldiRendelesek(container, windowManager) {
           </thead>
           <tbody>
             ${state.komissioSummaryData.length === 0 ? `<tr><td colspan="10" style="padding:24px; text-align:center; color:#94a3b8;">Nincs adat.</td></tr>` :
-              state.komissioSummaryData.map((t, idx) => {
-                const dt = new Date(t.delivery_date);
-                const formattedDate = !isNaN(dt) ? dt.toISOString().split('T')[0] : t.delivery_date;
-                const statusColor = t.status_percent === 100 ? '#10b981' : (t.status_percent > 0 ? '#f59e0b' : '#64748b');
-                const statusPct = Math.min(100, Math.max(0, t.status_percent || 0));
-                
-                return `
+        state.komissioSummaryData.map((t, idx) => {
+          const dt = new Date(t.delivery_date);
+          const formattedDate = !isNaN(dt) ? dt.toISOString().split('T')[0] : t.delivery_date;
+          const statusColor = t.status_percent === 100 ? '#10b981' : (t.status_percent > 0 ? '#f59e0b' : '#64748b');
+          const statusPct = Math.min(100, Math.max(0, t.status_percent || 0));
+
+          return `
                 <tr style="border-bottom:1px solid #f1f5f9; ${idx % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;'}">
                   <td style="padding:10px; font-weight:500;">${formattedDate}</td>
                   <td style="padding:10px; font-weight:700;">${t.truck_number}</td>
@@ -1303,13 +1321,14 @@ export function renderAldiRendelesek(container, windowManager) {
                   </td>
                 </tr>
                 `;
-              }).join('')
-            }
+        }).join('')
+      }
           </tbody>
         </table>
       </div>
     `;
   }
+
 
 
 
@@ -1318,7 +1337,9 @@ export function renderAldiRendelesek(container, windowManager) {
 
   function renderTermekekHtml() {
     const q = (state.productSearch || '').toLowerCase().trim();
-    const filteredProducts = state.products.filter(p => {
+    // ABC sorrendbe rendezés name alapján
+    let sortedProducts = [...state.products].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    const filteredProducts = sortedProducts.filter(p => {
       if (!q) return true;
       return (p.name && p.name.toLowerCase().includes(q)) ||
         (p.articleNo && p.articleNo.toLowerCase().includes(q)) ||
@@ -1327,8 +1348,18 @@ export function renderAldiRendelesek(container, windowManager) {
         (p.label && p.label.toLowerCase().includes(q));
     });
 
-    return `
-      <div style="display:flex; align-items:center; justify-content:space-between; margin:16px 0 12px 0; max-width:920px; flex-wrap:wrap; gap:10px;">
+    // Pagináció
+    const itemsPerPage = 10;
+    const totalPages = Math.ceil(filteredProducts.length / itemsPerPage) || 1;
+    let currentPage = state.productsPage || 1;
+    if (currentPage > totalPages) currentPage = totalPages;
+    const paginatedProducts = filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+    // Kiválasztott termék
+    const selectedProd = state.selectedProductId ? state.products.find(p => p.id == state.selectedProductId || p.tempId == state.selectedProductId) : null;
+
+    let html = `
+      <div style="display:flex; align-items:center; justify-content:space-between; margin:16px 0 12px 0; max-width:1200px; flex-wrap:wrap; gap:10px;">
         <div style="display:flex; align-items:center; gap:10px;">
           <button id="aldi-btn-add-product" class="secondary-btn" style="height:34px; padding:0 16px; border-radius:8px; font-size:13px; font-weight:700; border:1px solid #cbd5e1; background:#ffffff; display:inline-flex; align-items:center; gap:6px; cursor:pointer; color:#0f172a;">
             ➕ Új termék sor hozzáadása
@@ -1336,58 +1367,201 @@ export function renderAldiRendelesek(container, windowManager) {
           <button id="aldi-btn-save-products" class="primary-btn" style="height:34px; padding:0 18px; border-radius:8px; font-size:13px; font-weight:700; background:${state.hasUnsavedChanges ? '#16a34a' : '#2563eb'}; display:inline-flex; align-items:center; gap:6px; cursor:pointer; box-shadow:0 2px 4px rgba(37,99,235,0.2);">
             💾 Mentés ${state.hasUnsavedChanges ? '(Nem mentett adatok!)' : ''}
           </button>
-          <span style="font-size:12px; color:#64748b; font-weight:500;">Összesen: <strong>${state.products.length}</strong> termék</span>
         </div>
         <div>
-          <input type="text" id="aldi-product-search-input" class="access-control-input" value="${state.productSearch}" placeholder="Keresés név, cikkszám, GTIN..." style="height:32px; width:220px; font-size:12px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 10px;">
+          <input type="text" id="aldi-product-search-input" class="access-control-input" value="${state.productSearch || ''}" placeholder="Keresés név, cikkszám, GTIN..." style="height:32px; width:220px; font-size:12px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 10px;">
         </div>
       </div>
-      <div style="border:1px solid #cbd5e1; border-radius:8px; overflow:hidden; max-width:920px; box-shadow:0 1px 4px rgba(0,0,0,0.04); background:#ffffff;">
+      <div style="border:1px solid #cbd5e1; border-radius:8px; overflow:hidden; max-width:1200px; box-shadow:0 1px 4px rgba(0,0,0,0.04); background:#ffffff;">
         <table style="width:100%; border-collapse:collapse; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size:13px;">
           <thead>
             <tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;">
-              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:220px;">TERMÉK MEGNEVEZÉSE</th>
-              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:130px;">CIKKSZÁM</th>
-              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:170px;">GTIN AZONOSÍTÓ</th>
-              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:140px;">EAN AZONOSÍTÓ</th>
-              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:120px;">CÍMKE</th>
+              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px;">TERMÉK MEGNEVEZÉSE</th>
+              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px;">CIKKSZÁM</th>
+              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px;">GTIN AZONOSÍTÓ</th>
+              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px;">EAN AZONOSÍTÓ</th>
+              
               <th style="padding:10px 10px; text-align:center; font-size:11px; font-weight:800; color:#64748b; letter-spacing:0.5px; width:60px;">MŰVELET</th>
             </tr>
           </thead>
           <tbody id="aldi-products-tbody">
-            ${filteredProducts.length === 0 ? `
-              <tr><td colspan="6" style="padding:24px; text-align:center; color:#94a3b8; font-size:13px;">Nincs megjeleníthető termék. Kattints a <strong>➕ Új termék sor hozzáadása</strong> gombra!</td></tr>
-            ` : filteredProducts.map((p, idx) => `
-              <tr data-index="${idx}" data-id="${p.id || ''}" style="border-bottom:1px solid #f1f5f9; ${idx % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;'}">
-                <td style="padding:6px 14px; color:#1e293b; font-weight:600;">
-                  <input type="text" class="aldi-prod-field aldi-prod-name" data-field="name" data-id="${p.id || ''}" data-index="${idx}" value="${p.name || ''}" placeholder="Termék neve..." style="width:100%; border:1px solid transparent; background:transparent; font-weight:600; padding:4px 6px; border-radius:4px; font-size:13px;" onfocus="this.style.border='1px solid #93c5fd'; this.style.background='#fff';" onblur="this.style.border='1px solid transparent'; this.style.background='transparent';">
-                </td>
-                <td style="padding:6px 14px; color:#334155;">
-                  <input type="text" class="aldi-prod-field aldi-prod-article" data-field="articleNo" data-id="${p.id || ''}" data-index="${idx}" value="${p.articleNo || ''}" placeholder="Cikkszám..." style="width:100%; border:1px solid transparent; background:transparent; padding:4px 6px; border-radius:4px; font-size:13px;" onfocus="this.style.border='1px solid #93c5fd'; this.style.background='#fff';" onblur="this.style.border='1px solid transparent'; this.style.background='transparent';">
-                </td>
-                <td style="padding:6px 14px; color:#334155; font-family:monospace;">
-                  <input type="text" class="aldi-prod-field aldi-prod-gtin" data-field="gtin" data-id="${p.id || ''}" data-index="${idx}" value="${p.gtin || ''}" placeholder="GTIN..." style="width:100%; border:1px solid transparent; background:transparent; font-family:monospace; padding:4px 6px; border-radius:4px; font-size:13px;" onfocus="this.style.border='1px solid #93c5fd'; this.style.background='#fff';" onblur="this.style.border='1px solid transparent'; this.style.background='transparent';">
-                </td>
-                <td style="padding:6px 14px; color:#334155; font-family:monospace;">
-                  <input type="text" class="aldi-prod-field aldi-prod-ean" data-field="ean" data-id="${p.id || ''}" data-index="${idx}" value="${p.ean || ''}" placeholder="EAN..." style="width:100%; border:1px solid transparent; background:transparent; font-family:monospace; padding:4px 6px; border-radius:4px; font-size:13px;" onfocus="this.style.border='1px solid #93c5fd'; this.style.background='#fff';" onblur="this.style.border='1px solid transparent'; this.style.background='transparent';">
-                </td>
-                <td style="padding:6px 14px; color:#334155;">
-                  <input type="text" class="aldi-prod-field aldi-prod-label" data-field="label" data-id="${p.id || ''}" data-index="${idx}" value="${p.label || ''}" placeholder="Címke..." style="width:100%; border:1px solid transparent; background:transparent; padding:4px 6px; border-radius:4px; font-size:13px;" onfocus="this.style.border='1px solid #93c5fd'; this.style.background='#fff';" onblur="this.style.border='1px solid transparent'; this.style.background='transparent';">
-                </td>
+            ${paginatedProducts.length === 0 ? `
+              <tr><td colspan="5" style="padding:24px; text-align:center; color:#94a3b8; font-size:13px;">Nincs megjeleníthető termék.</td></tr>
+            ` : paginatedProducts.map((p, idx) => `
+              <tr class="aldi-prod-row" data-id="${p.id || p.tempId}" style="border-bottom:1px solid #f1f5f9; cursor:pointer; transition:background 0.2s; ${state.selectedProductId == (p.id || p.tempId) ? 'background:#e0f2fe;' : (idx % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;')}">
+                <td style="padding:6px 14px; color:#1e293b; font-weight:600;">${p.name || ''}</td>
+                <td style="padding:6px 14px; color:#334155;">${p.articleNo || ''}</td>
+                <td style="padding:6px 14px; color:#334155; font-family:monospace;">${p.gtin || ''}</td>
+                <td style="padding:6px 14px; color:#334155; font-family:monospace;">${p.ean || ''}</td>
+                <td style="padding:6px 14px; color:#334155;">${p.label || ''}</td>
                 <td style="padding:6px 10px; text-align:center;">
-                  <button class="aldi-prod-delete-btn" data-id="${p.id || ''}" data-index="${idx}" style="background:none; border:none; cursor:pointer; font-size:14px; opacity:0.6; padding:4px; border-radius:4px; transition:opacity 0.2s;" title="Sor törlése" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">🗑️</button>
+                  <button class="aldi-prod-delete-btn" data-id="${p.id || p.tempId}" style="background:none; border:none; cursor:pointer; font-size:14px; opacity:0.6; padding:4px; border-radius:4px; transition:opacity 0.2s;" title="Sor törlése" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">🗑️</button>
                 </td>
               </tr>
             `).join('')}
           </tbody>
         </table>
+        
+        <div style="padding:10px 14px; background:#f8fafc; border-top:1px solid #cbd5e1; display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:12px; color:#64748b;">Összesen: ${filteredProducts.length} termék</span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button id="aldi-prod-prev-page" style="background:#fff; border:1px solid #cbd5e1; border-radius:4px; padding:4px 8px; cursor:pointer; color:#334155;" ${currentPage === 1 ? 'disabled style="opacity:0.5"' : ''}>&lt;</button>
+            <span style="font-size:13px; font-weight:600; color:#1e293b;">${currentPage} / ${totalPages}</span>
+            <button id="aldi-prod-next-page" style="background:#fff; border:1px solid #cbd5e1; border-radius:4px; padding:4px 8px; cursor:pointer; color:#334155;" ${currentPage === totalPages ? 'disabled style="opacity:0.5"' : ''}>&gt;</button>
+          </div>
+        </div>
       </div>
-      <div style="font-size:11px; color:#64748b; margin-top:8px;">
-        💡 A cellák módosítása és új sor felvétele után kattints a fenti <strong>💾 Mentés</strong> gombra a végleges adatbázisba íráshoz!
+
+      <!-- Három alsó blokk -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:20px; margin-top:20px; max-width:1200px;">
+        
+        
+        
+        
+        <!-- TERMÉK RÉSZLETEI -->
+        <div style="border:1px solid #cbd5e1; border-radius:8px; padding:16px; background:#fff;">
+          <h4 style="margin:0 0 12px 0; color:#1e3a8a; font-size:13px; font-weight:800; letter-spacing:0.5px;">TERMÉK RÉSZLETEI</h4>
+          ${selectedProd ? (
+        state.editingBlock === 'base' ? `
+               <div style="display:flex; flex-direction:column; gap:8px; font-size:13px; margin-bottom:16px;">
+                 <div style="display:grid; grid-template-columns:120px 1fr; align-items:center;"><strong>Termék név *</strong><input type="text" id="aldi-inline-name" value="${selectedProd.name || ''}" class="access-control-input" style="height:28px; padding:2px 8px;"></div>
+                 <div style="display:grid; grid-template-columns:120px 1fr; align-items:center;"><strong>Cikkszám *</strong><input type="text" id="aldi-inline-articleno" value="${selectedProd.articleNo || ''}" class="access-control-input" style="height:28px; padding:2px 8px;"></div>
+                 <div style="display:grid; grid-template-columns:120px 1fr; align-items:center;"><strong>GTIN</strong><input type="text" id="aldi-inline-gtin" value="${selectedProd.gtin || ''}" class="access-control-input" style="height:28px; padding:2px 8px;"></div>
+                 <div style="display:grid; grid-template-columns:120px 1fr; align-items:center;"><strong>EAN</strong><input type="text" id="aldi-inline-ean" value="${selectedProd.ean || ''}" class="access-control-input" style="height:28px; padding:2px 8px;"></div>
+               </div>
+               <div style="display:flex; gap:10px;">
+                 <button class="secondary-btn inline-cancel-btn" style="height:32px; padding:0 12px; font-size:12px; font-weight:600;">Mégse</button>
+                 <button class="primary-btn inline-save-base-btn" style="height:32px; padding:0 16px; font-size:12px; font-weight:600; background:#16a34a; border:none; color:#fff;">Mentés</button>
+               </div>
+             ` : `
+               <div style="display:flex; flex-direction:column; gap:8px; font-size:13px; margin-bottom:16px;">
+                 <div style="display:grid; grid-template-columns:120px 1fr;"><strong>Termék név</strong><span>${selectedProd.name || ''}</span></div>
+                 <div style="display:grid; grid-template-columns:120px 1fr;"><strong>Cikkszám</strong><span>${selectedProd.articleNo || ''}</span></div>
+                 <div style="display:grid; grid-template-columns:120px 1fr;"><strong>GTIN azonosító</strong><span>${selectedProd.gtin || ''}</span></div>
+                 <div style="display:grid; grid-template-columns:120px 1fr;"><strong>EAN azonosító</strong><span>${selectedProd.ean || ''}</span></div>
+               </div>
+               <div style="display:flex; gap:10px;">
+                 <button class="secondary-btn inline-edit-base-btn" style="height:32px; padding:0 16px; font-size:12px; font-weight:600;">Szerkesztés</button>
+                 <button class="primary-btn inline-dl-btn" data-id="${selectedProd.id}" style="height:32px; padding:0 16px; font-size:12px; font-weight:600; background:#2563eb; color:#fff; border:none;">Letöltés (DOCX)</button>
+               </div>
+             `
+      ) : `
+            <div style="color:#94a3b8; font-size:13px; text-align:center; padding:20px 0;">Válassz ki egy terméket a táblázatból!</div>
+          `}
+        </div>
+
+        <!-- EGYSÉG CÍMKE -->
+        <div style="border:1px solid #cbd5e1; border-radius:8px; padding:16px; background:#fff; position:relative;">
+          <h4 style="margin:0 0 12px 0; color:#1e3a8a; font-size:13px; font-weight:800; letter-spacing:0.5px;">EGYSÉG CÍMKE</h4>
+          ${selectedProd ? (
+        state.editingBlock === 'unit' ? `
+               <div style="text-align:left; font-weight:700; color:#475569; margin-bottom:4px; font-size:12px;">PIEZA:</div>
+               <div style="border:1px dashed #cbd5e1; padding:16px; background:#f8fafc; text-align:center; font-size:12px; line-height:2.0; display:flex; flex-direction:column; gap:4px;">
+                 <div style="font-size:14px; font-weight:800; text-transform:uppercase;">${selectedProd.name || 'TERMÉKNÉV'}</div>
+                 <div>
+                   <input type="text" id="aldi-inline-class-u" value="${selectedProd.label_class || ''}" class="access-control-input" style="width:40px; text-align:center; padding:2px; height:24px;"> oszt. Méret: 
+                   <input type="text" id="aldi-inline-size-u" value="${selectedProd.label_size || ''}" class="access-control-input" style="width:100px; text-align:center; padding:2px; height:24px;">
+                 </div>
+                 <div style="display:flex; justify-content:center; align-items:center; gap:6px;">
+                   Származási hely: 
+                   <select id="aldi-inline-origin-u" class="access-control-input" style="width:140px; padding:2px; height:24px;">
+                     <option value="${selectedProd.label_origin || ''}">${selectedProd.label_origin || 'Válassz...'}</option>
+                   </select>
+                 </div>
+                 <div>GAVA-Hungria Kft.<br>H-1239 Budapest, Nagykőrösi út 353.</div>
+                 <div>
+                   LOT: <input type="text" id="aldi-inline-lot-u" value="${selectedProd.label_lot || ''}" class="access-control-input" style="width:60px; text-align:center; padding:2px; height:24px;"> &nbsp;&nbsp; 
+                   GLN: <input type="text" id="aldi-inline-gln-u" value="${selectedProd.label_gln || ''}" class="access-control-input" style="width:120px; text-align:center; padding:2px; height:24px;">
+                 </div>
+                 <div>
+                   Nettó tömeg: <input type="text" id="aldi-inline-weight-u" value="${selectedProd.label_net_weight_unit || ''}" class="access-control-input" style="width:80px; text-align:center; padding:2px; height:24px;">
+                 </div>
+                 <div style="font-weight:700;">
+                    EAN kód: <input type="text" id="aldi-inline-ean-u" value="${selectedProd.ean || ''}" class="access-control-input" style="width:130px; text-align:center; padding:2px; height:24px;">
+                  </div>
+               </div>
+               <div style="display:flex; gap:10px; margin-top:12px; justify-content:center;">
+                 <button class="secondary-btn inline-cancel-btn" style="height:28px; padding:0 12px; font-size:11px; font-weight:600;">Mégse</button>
+                 <button class="primary-btn inline-save-label-u-btn" style="height:28px; padding:0 16px; font-size:11px; font-weight:600; background:#16a34a; border:none; color:#fff;">Mentés</button>
+               </div>
+             ` : `
+               <div style="text-align:left; font-weight:700; color:#475569; margin-bottom:4px; font-size:12px;">PIEZA:</div>
+               <div style="border:1px solid #cbd5e1; padding:16px; background:#f8fafc; text-align:center; font-size:12px; line-height:1.6; display:flex; flex-direction:column; gap:4px;">
+                 <div style="font-size:14px; font-weight:800; text-transform:uppercase;">${selectedProd.name || 'TERMÉKNÉV'}</div>
+                 <div>${selectedProd.label_class || 'I.'} oszt. Méret: ${selectedProd.label_size || '-'}</div>
+                 <div>Származási hely: ${selectedProd.label_origin || '-'}</div>
+                 <div>GAVA-Hungria Kft.<br>H-1239 Budapest, Nagykőrösi út 353.</div>
+                 <div>LOT: ${selectedProd.label_lot || '-'} &nbsp;&nbsp; GLN: ${selectedProd.label_gln || '-'}</div>
+                 <div>Nettó tömeg: ${selectedProd.label_net_weight_unit || '-'}</div>
+                 <div style="font-weight:700;">EAN kód: ${selectedProd.ean || '-'}</div>
+               </div>
+               <div style="display:flex; gap:10px; margin-top:12px; justify-content:center;">
+                 <button class="secondary-btn inline-edit-unit-btn" style="height:28px; padding:0 12px; font-size:11px; font-weight:600;">Szerkesztés</button>
+               </div>
+             `
+      ) : `
+            <div style="color:#94a3b8; font-size:13px; text-align:center; padding:20px 0;">Válassz ki egy terméket a táblázatból!</div>
+          `}
+        </div>
+        
+        <!-- KARTON CÍMKE -->
+        <div style="border:1px solid #cbd5e1; border-radius:8px; padding:16px; background:#fff; position:relative;">
+          <h4 style="margin:0 0 12px 0; color:#1e3a8a; font-size:13px; font-weight:800; letter-spacing:0.5px;">KARTON CÍMKE</h4>
+          ${selectedProd ? (
+        state.editingBlock === 'carton' ? `
+               <div style="text-align:left; font-weight:700; color:#475569; margin-bottom:4px; font-size:12px;">CAJA:</div>
+               <div style="border:1px dashed #cbd5e1; padding:16px; background:#f8fafc; text-align:center; font-size:12px; line-height:2.0; display:flex; flex-direction:column; gap:4px;">
+                 <div style="font-size:14px; font-weight:800; text-transform:uppercase;">${selectedProd.name || 'TERMÉKNÉV'}</div>
+                 <div>
+                   <input type="text" id="aldi-inline-class" value="${selectedProd.label_class || ''}" class="access-control-input" style="width:40px; text-align:center; padding:2px; height:24px;"> oszt. Méret: 
+                   <input type="text" id="aldi-inline-size" value="${selectedProd.label_size || ''}" class="access-control-input" style="width:100px; text-align:center; padding:2px; height:24px;">
+                 </div>
+                 <div style="display:flex; justify-content:center; align-items:center; gap:6px;">
+                   Származási hely: 
+                   <select id="aldi-inline-origin" class="access-control-input" style="width:140px; padding:2px; height:24px;">
+                     <option value="${selectedProd.label_origin || ''}">${selectedProd.label_origin || 'Válassz...'}</option>
+                   </select>
+                 </div>
+                 <div>GAVA-Hungria Kft.<br>H-1239 Budapest, Nagykőrösi út 353.</div>
+                 <div>
+                   LOT: <input type="text" id="aldi-inline-lot" value="${selectedProd.label_lot || ''}" class="access-control-input" style="width:60px; text-align:center; padding:2px; height:24px;"> &nbsp;&nbsp; 
+                   GLN: <input type="text" id="aldi-inline-gln" value="${selectedProd.label_gln || ''}" class="access-control-input" style="width:120px; text-align:center; padding:2px; height:24px;">
+                 </div>
+                 <div style="font-weight:700;">
+                   Nettó tömeg: <input type="text" id="aldi-inline-weight-c" value="${selectedProd.label_net_weight_carton || ''}" class="access-control-input" style="width:80px; text-align:center; padding:2px; height:24px;">
+                 </div>
+               </div>
+               <div style="display:flex; gap:10px; margin-top:12px; justify-content:center;">
+                 <button class="secondary-btn inline-cancel-btn" style="height:28px; padding:0 12px; font-size:11px; font-weight:600;">Mégse</button>
+                 <button class="primary-btn inline-save-label-btn" style="height:28px; padding:0 16px; font-size:11px; font-weight:600; background:#16a34a; border:none; color:#fff;">Mentés</button>
+               </div>
+             ` : `
+               <div style="text-align:left; font-weight:700; color:#475569; margin-bottom:4px; font-size:12px;">CAJA:</div>
+               <div style="border:1px solid #cbd5e1; padding:16px; background:#f8fafc; text-align:center; font-size:12px; line-height:1.6; display:flex; flex-direction:column; gap:4px;">
+                 <div style="font-size:14px; font-weight:800; text-transform:uppercase;">${selectedProd.name || 'TERMÉKNÉV'}</div>
+                 <div>${selectedProd.label_class || 'I.'} oszt. Méret: ${selectedProd.label_size || '-'}</div>
+                 <div>Származási hely: ${selectedProd.label_origin || '-'}</div>
+                 <div>GAVA-Hungria Kft.<br>H-1239 Budapest, Nagykőrösi út 353.</div>
+                 <div>LOT: ${selectedProd.label_lot || '-'} &nbsp;&nbsp; GLN: ${selectedProd.label_gln || '-'}</div>
+                 <div style="font-weight:700;">Nettó tömeg: ${selectedProd.label_net_weight_carton || '-'}</div>
+               </div>
+               <div style="display:flex; gap:10px; margin-top:12px; justify-content:center;">
+                 <button class="secondary-btn inline-edit-carton-btn" style="height:28px; padding:0 12px; font-size:11px; font-weight:600;">Szerkesztés</button>
+               </div>
+             `
+      ) : `
+            <div style="color:#94a3b8; font-size:13px; text-align:center; padding:20px 0;">Válassz ki egy terméket a táblázatból!</div>
+          `}
+        </div>
+
+
+
+
       </div>
     `;
-  }
 
+    return html;
+  }
   // ─── Modálok ──────────────────────────────────────────────────────────────────
 
   function openAddProductModal() {
@@ -1429,7 +1603,25 @@ export function renderAldiRendelesek(container, windowManager) {
       </div>
     `;
 
+
     document.body.appendChild(modalOverlay);
+
+    // Fetch origin countries
+    fetch('/api/v1/admin/ref_origin_countries')
+      .then(r => r.json())
+      .then(countries => {
+        const select = modalOverlay.querySelector('#aldi-lbl-origin');
+        select.innerHTML = '<option value="">Válassz...</option>';
+        countries.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.name;
+          opt.textContent = c.name;
+          if (c.name === prod.label_origin) opt.selected = true;
+          select.appendChild(opt);
+        });
+      })
+      .catch(err => console.error('Hiba az országok betöltésekor', err));
+
 
     modalOverlay.querySelector('#aldi-prod-modal-close-x')?.addEventListener('click', () => modalOverlay.remove());
     modalOverlay.querySelector('#aldi-prod-modal-cancel')?.addEventListener('click', () => modalOverlay.remove());
@@ -1488,7 +1680,25 @@ export function renderAldiRendelesek(container, windowManager) {
         </div>
       `;
 
+
       document.body.appendChild(modalOverlay);
+
+      // Fetch origin countries
+      fetch('/api/v1/admin/ref_origin_countries')
+        .then(r => r.json())
+        .then(countries => {
+          const select = modalOverlay.querySelector('#aldi-lbl-origin');
+          select.innerHTML = '<option value="">Válassz...</option>';
+          countries.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.name;
+            opt.textContent = c.name;
+            if (c.name === prod.label_origin) opt.selected = true;
+            select.appendChild(opt);
+          });
+        })
+        .catch(err => console.error('Hiba az országok betöltésekor', err));
+
       modalOverlay.querySelector('#aldi-pdf-close').addEventListener('click', () => modalOverlay.remove());
     }
   }
@@ -1498,23 +1708,23 @@ export function renderAldiRendelesek(container, windowManager) {
     const title = `Rendelés: ${orderNo} | Dátum: ${dateStr}`;
 
     const fetchLines = async () => {
-        try {
-          const res = await fetch('/api/v1/aldi-daily-orders/' + id + '/lines');
-          return await res.json();
-        } catch(err) {
-          alert("Hiba történt a tételek betöltése során!");
-          return [];
-        }
+      try {
+        const res = await fetch('/api/v1/aldi-daily-orders/' + id + '/lines');
+        return await res.json();
+      } catch (err) {
+        alert("Hiba történt a tételek betöltése során!");
+        return [];
+      }
     };
 
     let lines = await fetchLines();
     const isCurrentVersion = !lines.length || lines[0].version_status !== 'superseded';
 
     const generateTableHtml = (linesData) => {
-        if (!linesData || linesData.length === 0) {
-            return '<div style="text-align:center; padding:20px; color:#64748b; font-size:13px;">Nem találhatók tételsorok.</div>';
-        }
-        return `
+      if (!linesData || linesData.length === 0) {
+        return '<div style="text-align:center; padding:20px; color:#64748b; font-size:13px;">Nem találhatók tételsorok.</div>';
+      }
+      return `
             <table style="width:100%; border-collapse:collapse; font-size:13px;">
               <thead>
                 <tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;">
@@ -1528,29 +1738,29 @@ export function renderAldiRendelesek(container, windowManager) {
               </thead>
               <tbody>
                 ${linesData.map((l, i) => {
-                  const prod = state.products.find(p => p.gtin === l.gtin || p.product_name === l.product_name);
-                  const cikk = prod ? (prod.articleNo || prod.article_number || '') : '';
-                  const ordered = parseFloat(l.ordered_cartons) || 0;
-                  const sent = parseFloat(l.sent_cartons) || 0;
-                  const delta = parseFloat(l.quantity_delta) || 0;
-                  const hasVersionComparison = Number(l.version_number) > 1;
-                  const isRemoved = !!l.is_virtual_removed;
-                  const rowBg = isRemoved ? 'background:#fee2e2;' : (i % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;');
-                  const changeBg = !hasVersionComparison
-                    ? 'transparent'
-                    : isRemoved ? '#fca5a5'
-                    : ['added', 'increased'].includes(l.change_type) ? '#dcfce7'
-                    : l.change_type === 'decreased' ? '#fef3c7'
-                    : 'transparent';
-                  const changeText = isRemoved ? `❌ ${l.action_code || 'Törölt'}`
-                    : !hasVersionComparison ? ''
-                    : ['added', 'increased'].includes(l.change_type) ? `+${delta}`
-                    : l.change_type === 'decreased' ? String(delta)
-                    : '';
-                  const nameStyle = isRemoved
-                    ? 'padding:8px 12px; color:#b91c1c; text-decoration:line-through; font-style:italic;'
-                    : 'padding:8px 12px; color:#1e293b;';
-                  return `
+        const prod = state.products.find(p => p.gtin === l.gtin || p.product_name === l.product_name);
+        const cikk = prod ? (prod.articleNo || prod.article_number || '') : '';
+        const ordered = parseFloat(l.ordered_cartons) || 0;
+        const sent = parseFloat(l.sent_cartons) || 0;
+        const delta = parseFloat(l.quantity_delta) || 0;
+        const hasVersionComparison = Number(l.version_number) > 1;
+        const isRemoved = !!l.is_virtual_removed;
+        const rowBg = isRemoved ? 'background:#fee2e2;' : (i % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;');
+        const changeBg = !hasVersionComparison
+          ? 'transparent'
+          : isRemoved ? '#fca5a5'
+            : ['added', 'increased'].includes(l.change_type) ? '#dcfce7'
+              : l.change_type === 'decreased' ? '#fef3c7'
+                : 'transparent';
+        const changeText = isRemoved ? `❌ ${l.action_code || 'Törölt'}`
+          : !hasVersionComparison ? ''
+            : ['added', 'increased'].includes(l.change_type) ? `+${delta}`
+              : l.change_type === 'decreased' ? String(delta)
+                : '';
+        const nameStyle = isRemoved
+          ? 'padding:8px 12px; color:#b91c1c; text-decoration:line-through; font-style:italic;'
+          : 'padding:8px 12px; color:#1e293b;';
+        return `
                   <tr style="${rowBg} border-bottom:1px solid #f1f5f9;${isRemoved ? 'color:#b91c1c;text-decoration:line-through;' : ''}">
                     <td style="padding:8px 12px; color:${isRemoved ? '#b91c1c' : '#475569'}; font-weight:600;text-decoration:${isRemoved ? 'line-through' : 'none'};">${cikk}</td>
                     <td style="${nameStyle}">${l.product_name}</td>
@@ -1560,7 +1770,7 @@ export function renderAldiRendelesek(container, windowManager) {
                     <td style="padding:8px 12px; text-align:right; font-weight:600; color:${isRemoved ? '#b91c1c' : '#334155'};text-decoration:${isRemoved ? 'line-through' : 'none'};">${isRemoved ? '0 / 0' : `${sent} / ${ordered}`} karton</td>
                   </tr>
                   `;
-                }).join('')}
+      }).join('')}
               </tbody>
             </table>
         `;
@@ -1588,9 +1798,9 @@ export function renderAldiRendelesek(container, windowManager) {
         height: 500,
         content: contentHtml
       });
-      
+
       const attachEvents = () => {
-          // No per-row send buttons in this view
+        // No per-row send buttons in this view
       };
 
 
@@ -1603,33 +1813,33 @@ export function renderAldiRendelesek(container, windowManager) {
         const sendBtn = document.getElementById(`send-to-demands-btn-${id}`);
         if (sendBtn) {
           sendBtn.addEventListener('click', async () => {
-             if (!confirm('Biztosan rendelést küldöd rakodásra?')) return;
-             
-             try {
-               const res = await fetch(`/api/v1/aldi-daily-orders/${id}/send-to-rakodas`, {
-                 method: 'PATCH'
-               });
-               if (!res.ok) {
-                 const errData = await res.json().catch(() => ({}));
-                 alert('Hiba történt a rendelés átküldésekor.' + (errData.error ? ' ' + errData.error : ''));
-                 return;
-               }
-             } catch (err) {
-               console.error(err);
-               alert('Hálózati hiba.');
-               return;
-             }
+            if (!confirm('Biztosan rendelést küldöd rakodásra?')) return;
 
-             sendBtn.outerHTML = `<div style="color:#16a34a; font-weight:bold; font-size:13px; padding:6px 18px;">✓ Sikeresen elküldve!</div>`;
+            try {
+              const res = await fetch(`/api/v1/aldi-daily-orders/${id}/send-to-rakodas`, {
+                method: 'PATCH'
+              });
+              if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                alert('Hiba történt a rendelés átküldésekor.' + (errData.error ? ' ' + errData.error : ''));
+                return;
+              }
+            } catch (err) {
+              console.error(err);
+              alert('Hálózati hiba.');
+              return;
+            }
 
-             lines = await fetchLines();
-             const container = document.getElementById(`order-lines-container-${id}`);
-             if (container) {
-                 container.innerHTML = generateTableHtml(lines);
-             }
+            sendBtn.outerHTML = `<div style="color:#16a34a; font-weight:bold; font-size:13px; padding:6px 18px;">✓ Sikeresen elküldve!</div>`;
+
+            lines = await fetchLines();
+            const container = document.getElementById(`order-lines-container-${id}`);
+            if (container) {
+              container.innerHTML = generateTableHtml(lines);
+            }
           });
         }
-        
+
         attachEvents();
       }, 100);
     } else {
@@ -1637,12 +1847,12 @@ export function renderAldiRendelesek(container, windowManager) {
       alert('WindowManager nem elérhető, kérlek frissítsd az oldalt!');
     }
   }
-function doExcelExport(lines, orderNo, dateStr) {
+  function doExcelExport(lines, orderNo, dateStr) {
     if (typeof XLSX === 'undefined') {
       alert('Az Excel generáló modul még töltődik, kérlek próbáld újra pár másodperc múlva!');
       return;
     }
-    
+
     const aoa = [
       ["Szállítási dátum:", dateStr],
       ["Rendelési szám:", orderNo],
@@ -1715,7 +1925,25 @@ function doExcelExport(lines, orderNo, dateStr) {
       </div>
     `;
 
+
     document.body.appendChild(modalOverlay);
+
+    // Fetch origin countries
+    fetch('/api/v1/admin/ref_origin_countries')
+      .then(r => r.json())
+      .then(countries => {
+        const select = modalOverlay.querySelector('#aldi-lbl-origin');
+        select.innerHTML = '<option value="">Válassz...</option>';
+        countries.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.name;
+          opt.textContent = c.name;
+          if (c.name === prod.label_origin) opt.selected = true;
+          select.appendChild(opt);
+        });
+      })
+      .catch(err => console.error('Hiba az országok betöltésekor', err));
+
 
     let selectedFile = null;
     const fileInput = modalOverlay.querySelector('#aldi-file-input');
@@ -1834,7 +2062,25 @@ function doExcelExport(lines, orderNo, dateStr) {
       </div>
     `;
 
+
     document.body.appendChild(modalOverlay);
+
+    // Fetch origin countries
+    fetch('/api/v1/admin/ref_origin_countries')
+      .then(r => r.json())
+      .then(countries => {
+        const select = modalOverlay.querySelector('#aldi-lbl-origin');
+        select.innerHTML = '<option value="">Válassz...</option>';
+        countries.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.name;
+          opt.textContent = c.name;
+          if (c.name === prod.label_origin) opt.selected = true;
+          select.appendChild(opt);
+        });
+      })
+      .catch(err => console.error('Hiba az országok betöltésekor', err));
+
 
     let selectedFile = null;
     const fileInput = modalOverlay.querySelector('#aldi-arak-file-input');
@@ -1879,7 +2125,7 @@ function doExcelExport(lines, orderNo, dateStr) {
       }
 
       const uploadBtn = modalOverlay.querySelector('#aldi-arak-modal-upload-btn');
-      
+
       const performUpload = async (mergeAction = null) => {
         uploadBtn.disabled = true;
         uploadBtn.textContent = '⏳ Feltöltés...';
@@ -1915,7 +2161,7 @@ function doExcelExport(lines, orderNo, dateStr) {
             statusDiv.style.background = '#f0fdf4';
             statusDiv.style.color = '#16a34a';
             statusDiv.textContent = `✅ ${result.message || 'Sikeres feltöltés.'}${result.fileWriteError ? ' (⚠️ Hálózati mentés sikertelen: ' + result.fileWriteError + ')' : ''}`;
-            
+
             if (result.warnings && result.warnings.length > 0) {
               const warnOverlay = document.createElement('div');
               warnOverlay.style.position = 'fixed';
@@ -1928,7 +2174,7 @@ function doExcelExport(lines, orderNo, dateStr) {
               warnOverlay.style.alignItems = 'center';
               warnOverlay.style.justifyContent = 'center';
               warnOverlay.style.zIndex = '11000';
-              
+
               let warnHtml = `
                 <div style="background:#fff; width:600px; max-width:90%; border-radius:12px; padding:24px; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
                   <h3 style="margin-top:0; color:#b45309; border-bottom:1px solid #fef08a; padding-bottom:10px;">⚠️ Figyelmeztetés a feltöltésnél</h3>
@@ -1936,11 +2182,11 @@ function doExcelExport(lines, orderNo, dateStr) {
                   <div style="max-height:300px; overflow-y:auto; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; font-size:12px; color:#334155;">
                     <ul style="margin:0; padding-left:20px;">
               `;
-              
+
               result.warnings.forEach(w => {
-                  warnHtml += `<li style="margin-bottom:6px;"><strong>Sor ${w.row}</strong> (${w.item}): ${w.msg}</li>`;
+                warnHtml += `<li style="margin-bottom:6px;"><strong>Sor ${w.row}</strong> (${w.item}): ${w.msg}</li>`;
               });
-              
+
               warnHtml += `
                     </ul>
                   </div>
@@ -1951,7 +2197,7 @@ function doExcelExport(lines, orderNo, dateStr) {
               `;
               warnOverlay.innerHTML = warnHtml;
               document.body.appendChild(warnOverlay);
-              
+
               warnOverlay.querySelector('#aldi-warn-ok-btn').addEventListener('click', () => {
                 warnOverlay.remove();
                 modalOverlay.remove();
@@ -1988,13 +2234,13 @@ function doExcelExport(lines, orderNo, dateStr) {
                 </div>
               `;
               document.body.appendChild(confirmModal);
-              
+
               confirmModal.querySelector('#conflict-cancel').addEventListener('click', () => {
                 confirmModal.remove();
                 uploadBtn.disabled = false;
                 uploadBtn.textContent = '📤 Újrapróbálkozás';
               });
-              
+
               confirmModal.querySelector('#conflict-overwrite').addEventListener('click', () => {
                 confirmModal.remove();
                 performUpload('overwrite');
@@ -2262,7 +2508,25 @@ function doExcelExport(lines, orderNo, dateStr) {
       </div>
     `;
 
+
     document.body.appendChild(modalOverlay);
+
+    // Fetch origin countries
+    fetch('/api/v1/admin/ref_origin_countries')
+      .then(r => r.json())
+      .then(countries => {
+        const select = modalOverlay.querySelector('#aldi-lbl-origin');
+        select.innerHTML = '<option value="">Válassz...</option>';
+        countries.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.name;
+          opt.textContent = c.name;
+          if (c.name === prod.label_origin) opt.selected = true;
+          select.appendChild(opt);
+        });
+      })
+      .catch(err => console.error('Hiba az országok betöltésekor', err));
+
 
     const closeModal = () => {
       line.currency_periods = [...periods];
@@ -2643,7 +2907,25 @@ function doExcelExport(lines, orderNo, dateStr) {
       </div>
     `;
 
+
     document.body.appendChild(modalOverlay);
+
+    // Fetch origin countries
+    fetch('/api/v1/admin/ref_origin_countries')
+      .then(r => r.json())
+      .then(countries => {
+        const select = modalOverlay.querySelector('#aldi-lbl-origin');
+        select.innerHTML = '<option value="">Válassz...</option>';
+        countries.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.name;
+          opt.textContent = c.name;
+          if (c.name === prod.label_origin) opt.selected = true;
+          select.appendChild(opt);
+        });
+      })
+      .catch(err => console.error('Hiba az országok betöltésekor', err));
+
 
     const close = () => modalOverlay.remove();
     modalOverlay.querySelector('#dp-modal-close').addEventListener('click', close);
@@ -2657,11 +2939,11 @@ function doExcelExport(lines, orderNo, dateStr) {
       if (line.currency_periods && line.currency_periods.length > 0) {
         const minPeriodStart = line.currency_periods.reduce((min, p) => p.period_start && p.period_start < min ? p.period_start : min, '9999-99-99');
         const maxPeriodEnd = line.currency_periods.reduce((max, p) => p.period_end && p.period_end > max ? p.period_end : max, '0000-00-00');
-        
+
         // Sérülés akkor van, ha a deviza periódusok KILÓGNAK az új szállítási időszakból
         // (azaz a deviza periódus korábban kezdődik, mint az új szállítás, vagy később ér véget)
         const isOutside = (newStart && minPeriodStart < newStart) || (newEnd && maxPeriodEnd > newEnd);
-        
+
         if (isOutside) {
           const proceed = confirm('⚠️ Figyelem!\n\nA megadott szűkebb szállítási időszak miatt a rögzített "Deviza időszakok" túllógnak a szállítási tartományon.\n\nHa folytatod, a rendszer automatikusan törli a régi deviza periódusokat, hogy a következő megnyitáskor egy újat hozzon létre.\n\nSzeretnéd folytatni?');
           if (!proceed) return;
@@ -2677,9 +2959,9 @@ function doExcelExport(lines, orderNo, dateStr) {
               }
             }
             line.currency_periods = [];
-          } catch(e) {
-             alert('Hiba történt a régi időszakok törlésekor.');
-             return;
+          } catch (e) {
+            alert('Hiba történt a régi időszakok törlésekor.');
+            return;
           }
         }
       }
@@ -2688,13 +2970,13 @@ function doExcelExport(lines, orderNo, dateStr) {
         const btn = modalOverlay.querySelector('#dp-save-btn');
         btn.disabled = true;
         btn.textContent = '⏳ Mentés...';
-        
+
         const res = await fetch(`/api/v1/aldi-weekly-prices/${state.hetiArakSelectedWeekId}/lines/${lineId}/delivery-period`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ start: newStart, end: newEnd })
         });
-        
+
         if (res.ok) {
           line.delivery_period_start = newStart;
           line.delivery_period_end = newEnd;
@@ -2705,7 +2987,7 @@ function doExcelExport(lines, orderNo, dateStr) {
           alert(`Hiba a mentés során: ${errData.error || 'Ismeretlen hiba'}`);
           btn.disabled = false;
         }
-      } catch(e) {
+      } catch (e) {
         alert('Hálózati hiba mentéskor.');
       }
     });
@@ -2736,11 +3018,11 @@ function doExcelExport(lines, orderNo, dateStr) {
     wrapper.querySelector('#aldi-tab-termekek')?.addEventListener('click', () => { state.activeTab = 'termekek'; renderModule(); });
 
 
-    wrapper.querySelector('#aldi-tab-komissio')?.addEventListener('click', () => { 
-      state.activeTab = 'komissio'; 
+    wrapper.querySelector('#aldi-tab-komissio')?.addEventListener('click', () => {
+      state.activeTab = 'komissio';
       fetchKomissioSummary();
     });
-    
+
     // Komissió summary events
     const komDateInput = wrapper.querySelector('#aldi-komissio-filter-date');
     if (komDateInput) {
@@ -2755,7 +3037,7 @@ function doExcelExport(lines, orderNo, dateStr) {
         fetchKomissioDetail(btn.dataset.id, btn.dataset.truckno);
       });
     });
-    
+
 
 
     // Napi rendelés filterek
@@ -2905,46 +3187,46 @@ function doExcelExport(lines, orderNo, dateStr) {
       });
 
       input.addEventListener('change', async (e) => {
-         const articleNo = e.target.dataset.article || e.target.dataset.pid;
-         const field = e.target.dataset.field;
-         const rawVal = e.target.value.trim();
-         const val = rawVal !== '' && !isNaN(Number(rawVal)) ? Math.round(Number(rawVal)) : rawVal;
-         
-         // 1. Lokális state azonnali frissítése a számításokhoz
-         if (!state.hetiLekotesData) state.hetiLekotesData = {};
-         if (!state.hetiLekotesData.stocks) state.hetiLekotesData.stocks = [];
-         let stockObj = state.hetiLekotesData.stocks.find(s => s.article_number == articleNo);
-         if (!stockObj) {
-           stockObj = { article_number: articleNo, year: state.hetiLekotesYear, week_number: state.hetiLekotesSelectedWeek };
-           state.hetiLekotesData.stocks.push(stockObj);
-         }
-         stockObj[field] = val;
+        const articleNo = e.target.dataset.article || e.target.dataset.pid;
+        const field = e.target.dataset.field;
+        const rawVal = e.target.value.trim();
+        const val = rawVal !== '' && !isNaN(Number(rawVal)) ? Math.round(Number(rawVal)) : rawVal;
 
-         // 2. Újraszámolás és felület frissítése görgetési pozíció megtartásával
-         pendingStockSaves++;
-         renderModule();
+        // 1. Lokális state azonnali frissítése a számításokhoz
+        if (!state.hetiLekotesData) state.hetiLekotesData = {};
+        if (!state.hetiLekotesData.stocks) state.hetiLekotesData.stocks = [];
+        let stockObj = state.hetiLekotesData.stocks.find(s => s.article_number == articleNo);
+        if (!stockObj) {
+          stockObj = { article_number: articleNo, year: state.hetiLekotesYear, week_number: state.hetiLekotesSelectedWeek };
+          state.hetiLekotesData.stocks.push(stockObj);
+        }
+        stockObj[field] = val;
 
-         // 3. Mentés a szerveren háttérben
-         const payload = {
-            article_number: articleNo,
-            year: state.hetiLekotesYear,
-            week_number: state.hetiLekotesSelectedWeek,
-            [field]: val
-         };
-         
-         try {
-           const res = await fetch('/api/v1/aldi-weekly-commitments/stock', {
-             method: 'POST',
-             headers: { 'Content-Type': 'application/json' },
-             body: JSON.stringify(payload)
-           });
-           if (!res.ok) {
-             const errData = await res.json().catch(() => ({}));
-             throw new Error(errData.error || 'HTTP ' + res.status);
-           }
-         } catch (err) {
-           console.error(err); alert('Mentés sikertelen: ' + err.message); await fetchHetiLekotesData();
-         } finally { pendingStockSaves--; }
+        // 2. Újraszámolás és felület frissítése görgetési pozíció megtartásával
+        pendingStockSaves++;
+        renderModule();
+
+        // 3. Mentés a szerveren háttérben
+        const payload = {
+          article_number: articleNo,
+          year: state.hetiLekotesYear,
+          week_number: state.hetiLekotesSelectedWeek,
+          [field]: val
+        };
+
+        try {
+          const res = await fetch('/api/v1/aldi-weekly-commitments/stock', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || 'HTTP ' + res.status);
+          }
+        } catch (err) {
+          console.error(err); alert('Mentés sikertelen: ' + err.message); await fetchHetiLekotesData();
+        } finally { pendingStockSaves--; }
       });
     });
 
@@ -3026,7 +3308,7 @@ function doExcelExport(lines, orderNo, dateStr) {
           row.style.borderTop = '';
           row.style.borderBottom = '1px solid #f1f5f9';
           if (!draggedRow || draggedRow === row) return;
-          
+
           const bounding = row.getBoundingClientRect();
           const offset = bounding.y + (bounding.height / 2);
           if (e.clientY - offset > 0) {
@@ -3034,7 +3316,7 @@ function doExcelExport(lines, orderNo, dateStr) {
           } else {
             row.before(draggedRow);
           }
-          
+
           // Auto-save új sorrend
           const newOrder = [];
           tbody.querySelectorAll('.aldi-arak-row').forEach((tr, index) => {
@@ -3043,7 +3325,7 @@ function doExcelExport(lines, orderNo, dateStr) {
               row_order: index + 1
             });
           });
-          
+
           try {
             await fetch(`/api/v1/aldi-weekly-prices/${state.hetiArakSelectedWeekId}/lines/reorder`, {
               method: 'PUT',
@@ -3060,6 +3342,7 @@ function doExcelExport(lines, orderNo, dateStr) {
       });
     }
 
+
     // Termékek adat tábla
     wrapper.querySelector('#aldi-btn-add-product')?.addEventListener('click', openAddProductModal);
     wrapper.querySelector('#aldi-btn-save-products')?.addEventListener('click', saveProductsToDb);
@@ -3069,38 +3352,157 @@ function doExcelExport(lines, orderNo, dateStr) {
       productSearchInput.addEventListener('input', (e) => { state.productSearch = e.target.value; renderModule(); });
     }
 
-    // Inline field changes
-    wrapper.querySelectorAll('.aldi-prod-field').forEach(input => {
-      input.addEventListener('input', (e) => {
-        const idx = parseInt(e.target.dataset.index, 10);
-        const field = e.target.dataset.field;
-        const val = e.target.value;
-        if (!isNaN(idx) && state.products[idx] && field) {
-          state.products[idx][field] = val;
-          state.hasUnsavedChanges = true;
-          const saveBtn = wrapper.querySelector('#aldi-btn-save-products');
-          if (saveBtn) {
-            saveBtn.style.background = '#16a34a';
-            saveBtn.textContent = '💾 Mentés (Nem mentett adatok!)';
-          }
-        }
+    // Pagináció
+    wrapper.querySelector('#aldi-prod-prev-page')?.addEventListener('click', () => {
+      if (state.productsPage > 1) {
+        state.productsPage--;
+        renderModule();
+      }
+    });
+    wrapper.querySelector('#aldi-prod-next-page')?.addEventListener('click', () => {
+      const q = (state.productSearch || '').toLowerCase().trim();
+      const filteredProducts = state.products.filter(p => !q || (p.name && p.name.toLowerCase().includes(q)) || (p.articleNo && p.articleNo.toLowerCase().includes(q)));
+      const itemsPerPage = 10;
+      const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+      if ((state.productsPage || 1) < totalPages) {
+        state.productsPage = (state.productsPage || 1) + 1;
+        renderModule();
+      }
+    });
+
+    // Row selection
+    wrapper.querySelectorAll('.aldi-prod-row').forEach(row => {
+      row.addEventListener('click', (e) => {
+        // Ne válassza ki ha a törlés gombra kattintott
+        if (e.target.closest('.aldi-prod-delete-btn')) return;
+        state.selectedProductId = row.dataset.id;
+        state.editingBlock = null;
+        renderModule();
       });
     });
 
     // Delete product row
     wrapper.querySelectorAll('.aldi-prod-delete-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const idx = parseInt(btn.dataset.index, 10);
-        if (!isNaN(idx) && state.products[idx]) {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.id;
+        const idx = state.products.findIndex(p => p.id == id || p.tempId == id);
+        if (idx !== -1) {
           const pName = state.products[idx].name || 'terméket';
           if (confirm(`Biztosan törölni szeretnéd a(z) "${pName}" sort? (A végleges törléshez kattints a Mentés gombra)`)) {
             state.products.splice(idx, 1);
+            if (state.selectedProductId == id) state.selectedProductId = null;
             state.hasUnsavedChanges = true;
             renderModule();
           }
         }
       });
     });
+
+
+    // Inline edit triggers
+    wrapper.querySelector('.inline-edit-base-btn')?.addEventListener('click', () => { state.editingBlock = 'base'; renderModule(); });
+    wrapper.querySelector('.inline-edit-carton-btn')?.addEventListener('click', () => { state.editingBlock = 'carton'; renderModule(); });
+    wrapper.querySelector('.inline-edit-unit-btn')?.addEventListener('click', () => { state.editingBlock = 'unit'; renderModule(); });
+
+    wrapper.querySelectorAll('.inline-cancel-btn').forEach(b => b.addEventListener('click', () => { state.editingBlock = null; renderModule(); }));
+
+    // Download triggers
+
+    wrapper.querySelector('.inline-dl-btn')?.addEventListener('click', (e) => {
+      const id = e.target.dataset.id;
+      window.open(`/api/v1/chain-products/${id}/label`, '_blank');
+    });
+
+    wrapper.querySelector('.inline-dl-unit-btn')?.addEventListener('click', (e) => {
+      const id = e.target.dataset.id;
+      window.open(`/api/v1/chain-products/${id}/label?type=unit`, '_blank');
+    });
+
+    // Populate country dropdowns if they exist
+    const originSelect = wrapper.querySelector('#aldi-inline-origin') || wrapper.querySelector('#aldi-inline-origin-u');
+    if (originSelect && !originSelect.dataset.loaded) {
+      fetch('/api/v1/admin/ref_origin_countries')
+        .then(r => r.json())
+        .then(countries => {
+          const currentVal = originSelect.value;
+          originSelect.innerHTML = '<option value="">Válassz...</option>';
+          countries.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.name;
+            opt.textContent = c.name;
+            if (c.name === currentVal) opt.selected = true;
+            originSelect.appendChild(opt);
+          });
+          originSelect.dataset.loaded = 'true';
+        }).catch(e => console.error(e));
+    }
+
+    // Save Base
+    wrapper.querySelector('.inline-save-base-btn')?.addEventListener('click', async () => {
+      const prod = state.products.find(p => p.id == state.selectedProductId || p.tempId == state.selectedProductId);
+      if (!prod) return;
+      prod.name = wrapper.querySelector('#aldi-inline-name').value.trim();
+      prod.articleNo = wrapper.querySelector('#aldi-inline-articleno').value.trim();
+      prod.gtin = wrapper.querySelector('#aldi-inline-gtin').value.trim();
+      prod.ean = wrapper.querySelector('#aldi-inline-ean').value.trim();
+
+      if (!prod.name || !prod.articleNo) { alert('A név és cikkszám kötelező!'); return; }
+
+      if (String(prod.id).startsWith('tmp-')) {
+        state.hasUnsavedChanges = true;
+      } else {
+        try {
+          await fetch('/api/v1/chain-products/' + prod.id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ product_name: prod.name, article_number: prod.articleNo, gtin: prod.gtin, ean: prod.ean })
+          });
+        } catch (e) { alert('Hiba mentéskor!'); return; }
+      }
+      state.editingBlock = null;
+      renderModule();
+    });
+
+    // Save Label
+    const saveLabelFn = async (isUnit) => {
+      const prod = state.products.find(p => p.id == state.selectedProductId || p.tempId == state.selectedProductId);
+      if (!prod) return;
+      const suff = isUnit ? '-u' : '';
+      prod.label_class = wrapper.querySelector('#aldi-inline-class' + suff).value.trim();
+      prod.label_size = wrapper.querySelector('#aldi-inline-size' + suff).value.trim();
+      prod.label_origin = wrapper.querySelector('#aldi-inline-origin' + suff).value.trim();
+      prod.label_lot = wrapper.querySelector('#aldi-inline-lot' + suff).value.trim();
+      prod.label_gln = wrapper.querySelector('#aldi-inline-gln' + suff).value.trim();
+      if (isUnit) {
+        prod.label_net_weight_unit = wrapper.querySelector('#aldi-inline-weight-u').value.trim();
+        const eanInp = wrapper.querySelector('#aldi-inline-ean-u');
+        if (eanInp) prod.ean = eanInp.value.trim();
+      }
+      else prod.label_net_weight_carton = wrapper.querySelector('#aldi-inline-weight-c').value.trim();
+
+      if (String(prod.id).startsWith('tmp-')) {
+        state.hasUnsavedChanges = true;
+      } else {
+        try {
+          await fetch('/api/v1/chain-products/' + prod.id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ean: prod.ean, label_class: prod.label_class, label_size: prod.label_size, label_origin: prod.label_origin,
+              label_lot: prod.label_lot, label_gln: prod.label_gln,
+              label_net_weight_carton: prod.label_net_weight_carton, label_net_weight_unit: prod.label_net_weight_unit
+            })
+          });
+        } catch (e) { alert('Hiba mentéskor!'); return; }
+      }
+      state.editingBlock = null;
+      renderModule();
+    };
+
+    wrapper.querySelector('.inline-save-label-btn')?.addEventListener('click', () => saveLabelFn(false));
+    wrapper.querySelector('.inline-save-label-u-btn')?.addEventListener('click', () => saveLabelFn(true));
+
   }
 
   // ─── Initial load ─────────────────────────────────────────────────────────────
@@ -3119,4 +3521,6 @@ function doExcelExport(lines, orderNo, dateStr) {
   fetchProductsFromDb();
   fetchKomissioSummary();
   fetchNapiRendelesek();
+
+
 }

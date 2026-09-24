@@ -119,7 +119,10 @@ router.post('/sync', async (req, res) => {
 // POST /api/v1/chain-products
 router.post('/', async (req, res) => {
   try {
-    const { chain = 'ALDI', product_name, name, article_number, articleNo, gtin, ean, label } = req.body;
+    const {
+      chain = 'ALDI', product_name, name, article_number, articleNo, gtin, ean, label,
+      label_class, label_size, label_origin, label_lot, label_gln, label_net_weight_carton, label_net_weight_unit
+    } = req.body;
     const finalName = product_name || name;
 
     if (!finalName) {
@@ -133,6 +136,13 @@ router.post('/', async (req, res) => {
       gtin: gtin || '',
       ean: ean || '',
       label: label || '',
+      label_class: label_class || '',
+      label_size: label_size || '',
+      label_origin: label_origin || '',
+      label_lot: label_lot || '',
+      label_gln: label_gln || '',
+      label_net_weight_carton: label_net_weight_carton || '',
+      label_net_weight_unit: label_net_weight_unit || '',
       is_active: true,
       created_at: new Date(),
       updated_at: new Date()
@@ -161,7 +171,10 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { product_name, name, article_number, articleNo, gtin, ean, label, is_active } = req.body;
+    const {
+      product_name, name, article_number, articleNo, gtin, ean, label, is_active,
+      label_class, label_size, label_origin, label_lot, label_gln, label_net_weight_carton, label_net_weight_unit
+    } = req.body;
 
     const updateData = {
       updated_at: new Date()
@@ -173,6 +186,14 @@ router.put('/:id', async (req, res) => {
     if (ean !== undefined) updateData.ean = ean;
     if (label !== undefined) updateData.label = label;
     if (is_active !== undefined) updateData.is_active = is_active;
+
+    if (label_class !== undefined) updateData.label_class = label_class;
+    if (label_size !== undefined) updateData.label_size = label_size;
+    if (label_origin !== undefined) updateData.label_origin = label_origin;
+    if (label_lot !== undefined) updateData.label_lot = label_lot;
+    if (label_gln !== undefined) updateData.label_gln = label_gln;
+    if (label_net_weight_carton !== undefined) updateData.label_net_weight_carton = label_net_weight_carton;
+    if (label_net_weight_unit !== undefined) updateData.label_net_weight_unit = label_net_weight_unit;
 
     const [updated] = await db('chain_products')
       .where('id', id)
@@ -221,5 +242,70 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({ error: 'Belső szerverhiba' });
   }
 });
+
+
+
+
+const HTMLToDocx = require('html-to-docx');
+
+// GET /api/v1/chain-products/:id/label
+router.get('/:id/label', async (req, res) => {
+    try {
+        const product = await db('chain_products').where('id', req.params.id).first();
+        if (!product) return res.status(404).json({ error: 'Nincs ilyen termék' });
+
+        const html = `
+        <div style="font-family: Arial, sans-serif; font-size: 11pt;">
+            <!-- PIEZA (EGYSÉG) -->
+            <p>pieza:</p>
+            <table style="width: 100%; border: 1pt solid black; border-collapse: collapse; text-align: center;">
+                <tr>
+                    <td style="border: 1px solid black; padding: 12pt;">
+                        <p style="font-size: 14pt; margin-bottom: 12pt;"><strong>${(product.product_name || '').toUpperCase()}</strong></p>
+                        <p style="margin-bottom: 12pt;">${product.label_class || 'I.'} oszt. Méret: ${product.label_size || ''}</p>
+                        <p style="margin-bottom: 12pt;">Származási hely: ${product.label_origin || ''}</p>
+                        <p style="margin-bottom: 4pt;">GAVA-Hungria Kft.</p>
+                        <p style="margin-bottom: 12pt;">H-1239 Budapest, Nagykőrösi út 353.</p>
+                        <p style="margin-bottom: 12pt;">LOT: ${product.label_lot || ''} GLN: ${product.label_gln || ''}</p>
+                        <p style="margin-bottom: 12pt;">Nettó tömeg: ${product.label_net_weight_unit || ''}</p>
+                        <p><strong>EAN 13: ${product.ean || ''}</strong></p>
+                    </td>
+                </tr>
+            </table>
+
+            <br/><br/><br/>
+
+            <!-- CAJA (KARTON) -->
+            <p>CAJA:</p>
+            <table style="width: 100%; border: 1pt solid black; border-collapse: collapse; text-align: center;">
+                <tr>
+                    <td style="border: 1px solid black; padding: 12pt;">
+                        <p style="font-size: 14pt; margin-bottom: 12pt;"><strong>${(product.product_name || '').toUpperCase()}</strong></p>
+                        <p style="margin-bottom: 12pt;">${product.label_class || 'I.'} oszt. Méret: ${product.label_size || ''}</p>
+                        <p style="margin-bottom: 12pt;">Származási hely: ${product.label_origin || ''}</p>
+                        <p style="margin-bottom: 4pt;">GAVA-Hungria Kft.</p>
+                        <p style="margin-bottom: 12pt;">H-1239 Budapest, Nagykőrösi út 353.</p>
+                        <p style="margin-bottom: 12pt;">LOT: ${product.label_lot || ''} GLN: ${product.label_gln || ''}</p>
+                        <p><strong>Nettó tömeg: ${product.label_net_weight_carton || ''}</strong></p>
+                    </td>
+                </tr>
+            </table>
+        </div>`;
+
+        const fileBuffer = await HTMLToDocx(html, null, {
+            table: { row: { cantSplit: true } },
+            footer: false,
+            pageNumber: false
+        });
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+        res.setHeader('Content-Disposition', `attachment; filename="Cimkek_${product.article_number || product.id}.docx"`);
+        res.send(fileBuffer);
+    } catch (error) {
+        console.error('Hiba DOCX generálásakor:', error);
+        res.status(500).json({ error: 'DOCX generálási hiba' });
+    }
+});
+
 
 module.exports = router;
