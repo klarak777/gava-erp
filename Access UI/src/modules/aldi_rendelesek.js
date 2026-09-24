@@ -1380,6 +1380,7 @@ export function renderAldiRendelesek(container, windowManager) {
               <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px;">CIKKSZÁM</th>
               <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px;">GTIN AZONOSÍTÓ</th>
               <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px;">EAN AZONOSÍTÓ</th>
+              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px;">CÍMKE</th>
               
               <th style="padding:10px 10px; text-align:center; font-size:11px; font-weight:800; color:#64748b; letter-spacing:0.5px; width:60px;">MŰVELET</th>
             </tr>
@@ -1450,6 +1451,24 @@ export function renderAldiRendelesek(container, windowManager) {
           `}
         </div>
 
+        <!-- KARTON CÍMKE -->
+        <div style="border:1px solid #cbd5e1; border-radius:8px; padding:16px; background:#fff; position:relative;">
+          <h4 style="margin:0 0 12px 0; color:#1e3a8a; font-size:13px; font-weight:800; letter-spacing:0.5px;">KARTON CÍMKE</h4>
+          ${selectedProd ? (
+        state.editingBlock === 'carton' ? `
+               <div style="text-align:left; font-weight:700; color:#475569; margin-bottom:4px; font-size:12px;">CAJA:</div>
+               <div style="border:1px dashed #cbd5e1; padding:16px; background:#f8fafc; text-align:center; font-size:12px; line-height:2.0; display:flex; flex-direction:column; gap:4px;">
+                 <div style="font-size:14px; font-weight:800; text-transform:uppercase;">${selectedProd.name || 'TERMÉKNÉV'}</div>
+                 <div>
+                   <input type="text" id="aldi-inline-class" value="${selectedProd.label_class || ''}" class="access-control-input" style="width:40px; text-align:center; padding:2px; height:24px;"> oszt. Méret: 
+                   <input type="text" id="aldi-inline-size" value="${selectedProd.label_size || ''}" class="access-control-input" style="width:100px; text-align:center; padding:2px; height:24px;">
+                 </div>
+                 <div style="display:flex; justify-content:center; align-items:center; gap:6px;">
+                   Származási hely: 
+                   <select id="aldi-inline-origin" class="access-control-input" style="width:140px; padding:2px; height:24px;">
+                     <option value="${selectedProd.label_origin || ''}">${selectedProd.label_origin || 'Válassz...'}</option>
+                   </select>
+                 </div>
         <!-- EGYSÉG CÍMKE -->
         <div style="border:1px solid #cbd5e1; border-radius:8px; padding:16px; background:#fff; position:relative;">
           <h4 style="margin:0 0 12px 0; color:#1e3a8a; font-size:13px; font-weight:800; letter-spacing:0.5px;">EGYSÉG CÍMKE</h4>
@@ -1504,24 +1523,7 @@ export function renderAldiRendelesek(container, windowManager) {
           `}
         </div>
         
-        <!-- KARTON CÍMKE -->
-        <div style="border:1px solid #cbd5e1; border-radius:8px; padding:16px; background:#fff; position:relative;">
-          <h4 style="margin:0 0 12px 0; color:#1e3a8a; font-size:13px; font-weight:800; letter-spacing:0.5px;">KARTON CÍMKE</h4>
-          ${selectedProd ? (
-        state.editingBlock === 'carton' ? `
-               <div style="text-align:left; font-weight:700; color:#475569; margin-bottom:4px; font-size:12px;">CAJA:</div>
-               <div style="border:1px dashed #cbd5e1; padding:16px; background:#f8fafc; text-align:center; font-size:12px; line-height:2.0; display:flex; flex-direction:column; gap:4px;">
-                 <div style="font-size:14px; font-weight:800; text-transform:uppercase;">${selectedProd.name || 'TERMÉKNÉV'}</div>
-                 <div>
-                   <input type="text" id="aldi-inline-class" value="${selectedProd.label_class || ''}" class="access-control-input" style="width:40px; text-align:center; padding:2px; height:24px;"> oszt. Méret: 
-                   <input type="text" id="aldi-inline-size" value="${selectedProd.label_size || ''}" class="access-control-input" style="width:100px; text-align:center; padding:2px; height:24px;">
-                 </div>
-                 <div style="display:flex; justify-content:center; align-items:center; gap:6px;">
-                   Származási hely: 
-                   <select id="aldi-inline-origin" class="access-control-input" style="width:140px; padding:2px; height:24px;">
-                     <option value="${selectedProd.label_origin || ''}">${selectedProd.label_origin || 'Válassz...'}</option>
-                   </select>
-                 </div>
+        
                  <div>GAVA-Hungria Kft.<br>H-1239 Budapest, Nagykőrösi út 353.</div>
                  <div>
                    LOT: <input type="text" id="aldi-inline-lot" value="${selectedProd.label_lot || ''}" class="access-control-input" style="width:60px; text-align:center; padding:2px; height:24px;"> &nbsp;&nbsp; 
@@ -1598,7 +1600,7 @@ export function renderAldiRendelesek(container, windowManager) {
         </div>
         <div style="padding:12px 20px; border-top:1px solid #e2e8f0; background:#ffffff; display:flex; justify-content:flex-end; gap:10px;">
           <button id="aldi-prod-modal-cancel" style="padding:6px 18px; border-radius:8px; font-size:13px; font-weight:600; border:1px solid #cbd5e1; background:#ffffff; color:#334155; cursor:pointer;">Mégse</button>
-          <button id="aldi-prod-modal-add-row" style="padding:6px 20px; border-radius:8px; font-size:13px; font-weight:700; border:none; background:#0284c7; color:#ffffff; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 4px rgba(2,132,199,0.2);">➕ Sor hozzáadása</button>
+          <button id="aldi-prod-modal-add-row" style="padding:6px 20px; border-radius:8px; font-size:13px; font-weight:700; border:none; background:#16a34a; color:#ffffff; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 4px rgba(22,163,74,0.2);">💾 Hozzáadás és Mentés</button>
         </div>
       </div>
     `;

@@ -298,8 +298,9 @@ router.get('/:id/label', async (req, res) => {
             pageNumber: false
         });
 
+        const safeFileName = (product.product_name || 'Cimke').replace(/\*/g, 'x').replace(/[^a-zA-Z0-9_\-]/g, '_');
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-        res.setHeader('Content-Disposition', `attachment; filename="Cimkek_${product.article_number || product.id}.docx"`);
+        res.setHeader('Content-Disposition', `attachment; filename="${safeFileName}.docx"`);
         res.send(fileBuffer);
     } catch (error) {
         console.error('Hiba DOCX generálásakor:', error);
