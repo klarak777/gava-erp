@@ -211,7 +211,15 @@ export function renderAldiRendelesek(container, windowManager) {
             articleNo: item.article_number || '',
             gtin: item.gtin || '',
             ean: item.ean || '',
-            label: item.label || ''
+            label: item.label || '',
+            label_class: item.label_class || '',
+            label_size: item.label_size || '',
+            label_origin: item.label_origin || '',
+            label_lot: item.label_lot || '',
+            label_gln: item.label_gln || '',
+            label_net_weight_carton: item.label_net_weight_carton || '',
+            label_net_weight_unit: item.label_net_weight_unit || '',
+            label_custom_texts: item.label_custom_texts || null
           }));
           state.hasUnsavedChanges = false;
         }
@@ -247,7 +255,15 @@ export function renderAldiRendelesek(container, windowManager) {
             articleNo: item.article_number || '',
             gtin: item.gtin || '',
             ean: item.ean || '',
-            label: item.label || ''
+            label: item.label || '',
+            label_class: item.label_class || '',
+            label_size: item.label_size || '',
+            label_origin: item.label_origin || '',
+            label_lot: item.label_lot || '',
+            label_gln: item.label_gln || '',
+            label_net_weight_carton: item.label_net_weight_carton || '',
+            label_net_weight_unit: item.label_net_weight_unit || '',
+            label_custom_texts: item.label_custom_texts || null
           }));
         }
         state.hasUnsavedChanges = false;
