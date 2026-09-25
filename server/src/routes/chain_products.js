@@ -287,7 +287,8 @@ router.get('/:id/label', async (req, res) => {
                         <p style="margin-bottom: 12pt;">${c_origin} ${product.label_origin || ''}</p>
                         <p style="margin-bottom: 4pt;">${c_company}</p>
                         <p style="margin-bottom: 12pt;">${c_address}</p>
-                        <p style="margin-bottom: 12pt;">${c_lot} ${product.label_lot || ''} ${c_gln} ${product.label_gln || ''}</p>
+                        <p style="margin-bottom: 12pt;">${c_lot} ${product.label_lot || ''}</p>
+                        <p style="margin-bottom: 12pt;">${c_gln} ${product.label_gln || ''}</p>
                         <p style="margin-bottom: 12pt;">${c_weight} ${product.label_net_weight_unit || ''}</p>
                         <p><strong>${c_ean} ${product.ean || ''}</strong></p>
                     </td>
@@ -306,7 +307,8 @@ router.get('/:id/label', async (req, res) => {
                         <p style="margin-bottom: 12pt;">${c_origin} ${product.label_origin || ''}</p>
                         <p style="margin-bottom: 4pt;">${c_company}</p>
                         <p style="margin-bottom: 12pt;">${c_address}</p>
-                        <p style="margin-bottom: 12pt;">${c_lot} ${product.label_lot || ''} ${c_gln} ${product.label_gln || ''}</p>
+                        <p style="margin-bottom: 12pt;">${c_lot} ${product.label_lot || ''}</p>
+                        <p style="margin-bottom: 12pt;">${c_gln} ${product.label_gln || ''}</p>
                         <p><strong>${c_weight} ${product.label_net_weight_carton || ''}</strong></p>
                     </td>
                 </tr>
@@ -319,9 +321,9 @@ router.get('/:id/label', async (req, res) => {
             pageNumber: false
         });
 
-        const safeFileName = (product.product_name || 'Cimke').replace(/\*/g, 'x').replace(/[^a-zA-Z0-9_\-]/g, '_');
+        const safeFileName = (product.product_name || 'Cimke').replace(/[/\\?%*:|"<>\]/g, '-');
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-        res.setHeader('Content-Disposition', `attachment; filename="${safeFileName}.docx"`);
+        res.setHeader('Content-Disposition', `attachment; filename="Cimke.docx"; filename*=UTF-8''${encodeURIComponent(safeFileName)}.docx`);
         res.send(fileBuffer);
     } catch (error) {
         console.error('Hiba DOCX generálásakor:', error);
