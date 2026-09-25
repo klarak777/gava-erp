@@ -159,6 +159,12 @@ export function renderDashboard(container) {
       showView('login');
     }
   });
+
+  // hwBack a dashboardon: ne lépjen ki az appból
+  const hwBackHandler = () => { /* szándékosan üres - dashboardon marad */ };
+  if (window._currentHwBack) window.removeEventListener('hwBack', window._currentHwBack);
+  window._currentHwBack = hwBackHandler;
+  window.addEventListener('hwBack', hwBackHandler);
 }
 
 function escHtml(str) {

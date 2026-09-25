@@ -104,9 +104,9 @@ export async function renderScanPallet(container, params = {}) {
   container.querySelector('.pda-nav-back-btn').addEventListener('click', goDashboard);
   container.querySelector('.pda-nav-home-btn').addEventListener('click', goDashboard);
 
-  window.addEventListener('hwBack', () => {
-    goDashboard();
-  });
+    if (window._currentHwBack) window.removeEventListener('hwBack', window._currentHwBack);
+  window._currentHwBack = goDashboard;
+  window.addEventListener('hwBack', window._currentHwBack);
 
   // Process Barcode Logic
   async function processBarcode(code) {
@@ -168,14 +168,17 @@ export async function renderScanPallet(container, params = {}) {
   window.addEventListener('pda-barcode-scanned', handleScan);
   
   // Amikor elhagyjuk a nézetet, takarítsunk le (ez a SPA router miatt hasznos)
-  const oldGoDashboard = goDashboard;
-  goDashboard = () => {
+  const safeGoDashboard = () => {
     window.removeEventListener('pda-barcode-scanned', handleScan);
-    oldGoDashboard();
+    goDashboard();
   };
   
-  const oldHwBack = window._currentHwBack;
-  window.addEventListener('hwBack', () => {
-    window.removeEventListener('pda-barcode-scanned', handleScan);
-  });
+  container.querySelector('.pda-nav-back-btn').removeEventListener('click', goDashboard);
+  container.querySelector('.pda-nav-home-btn').removeEventListener('click', goDashboard);
+  container.querySelector('.pda-nav-back-btn').addEventListener('click', safeGoDashboard);
+  container.querySelector('.pda-nav-home-btn').addEventListener('click', safeGoDashboard);
+  
+  if (window._currentHwBack) window.removeEventListener('hwBack', window._currentHwBack);
+  window._currentHwBack = safeGoDashboard;
+  window.addEventListener('hwBack', window._currentHwBack);
 }

@@ -46,13 +46,35 @@ export const appState = {
 };
 
 // ── Billentyűzet elrejtése szkenneléshez ──────────────────
-window.addEventListener('focusin', (e) => {
-  if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'text') {
-    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Keyboard) {
-      window.Capacitor.Plugins.Keyboard.hide().catch(() => {});
+document.addEventListener('focusin', (e) => {
+  const el = e.target;
+  if (el && el.tagName === 'INPUT' && (el.type === 'text' || el.type === 'search')) {
+    if (!el.hasAttribute('inputmode')) {
+      el.setAttribute('inputmode', 'none');
+    }
+    if (window.Capacitor?.Plugins?.Keyboard) {
+      setTimeout(() => {
+        window.Capacitor.Plugins.Keyboard.hide().catch(() => {});
+      }, 50);
     }
   }
 });
+
+// ── Nézetváltó ────────────────────────────────
+
+// -- Történet kezelés fizikai back gombhoz --
+window.addEventListener('popstate', (e) => {
+  if (window._currentHwBack) {
+    window._currentHwBack();
+    history.pushState({ view: appState.currentView }, '');
+  } else if (appState.currentView !== 'dashboard' && appState.currentView !== 'login') {
+    showView('dashboard');
+  } else {
+    window.history.back();
+  }
+});
+
+let isFirstView = true;
 
 // ── Nézetváltó ────────────────────────────────
 export function showView(viewName, params = {}) {
@@ -60,6 +82,14 @@ export function showView(viewName, params = {}) {
     window.removeEventListener('hwBack', window._currentHwBack);
     window._currentHwBack = null;
   }
+  
+  if (isFirstView) {
+    history.replaceState({ view: viewName }, '');
+    isFirstView = false;
+  } else if (appState.currentView !== viewName) {
+    history.pushState({ view: viewName }, '');
+  }
+  
   root.innerHTML = '';
   appState.currentView = viewName;
 
@@ -137,10 +167,18 @@ window.addEventListener('message', (event) => {
     if (appState.token) {
       showView('dashboard');
     }
-  } else if (event.data && event.data.action === 'hw-back') {
-    const hwBackEvent = new CustomEvent('hwBack');
-    window.dispatchEvent(hwBackEvent);
   }
+});
+
+// ── Fizikai Back gomb kezelése (Capacitor) ──────
+document.addEventListener('ionBackButton', (ev) => {
+  ev.detail.register(10, () => {
+    if (window._currentHwBack) {
+      window._currentHwBack();
+    } else if (appState.currentView !== 'dashboard' && appState.currentView !== 'login') {
+      showView('dashboard');
+    }
+  });
 });
 
 // ── Szám típusú beviteli mezők: léptetés letiltása (csak kézi gépelés engedélyezett) ──
