@@ -1356,7 +1356,7 @@ export function renderAldiRendelesek(container, windowManager) {
     const paginatedProducts = filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
     // Kiválasztott termék
-    const selectedProd = state.selectedProductId ? state.products.find(p => p.id == state.selectedProductId || p.tempId == state.selectedProductId) : null;
+    const selectedProd = state.selectedProductId ? state.products.find(p => String(p.id) === String(state.selectedProductId) || String(p.tempId) === String(state.selectedProductId)) : null;
 
     let customTexts = {};
     if (selectedProd && selectedProd.label_custom_texts) {
@@ -1395,7 +1395,7 @@ export function renderAldiRendelesek(container, windowManager) {
             ${paginatedProducts.length === 0 ? `
               <tr><td colspan="5" style="padding:24px; text-align:center; color:#94a3b8; font-size:13px;">Nincs megjeleníthető termék.</td></tr>
             ` : paginatedProducts.map((p, idx) => `
-              <tr class="aldi-prod-row" data-id="${p.id || p.tempId}" style="border-bottom:1px solid #f1f5f9; cursor:pointer; transition:background 0.2s; ${state.selectedProductId == (p.id || p.tempId) ? 'background:#e0f2fe;' : (idx % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;')}">
+              <tr class="aldi-prod-row" data-pid="${p.id || p.tempId}" style="border-bottom:1px solid #f1f5f9; cursor:pointer; transition:background 0.2s; ${String(state.selectedProductId) === String(p.id || p.tempId) ? 'background:#e0f2fe;' : (idx % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;')}">
                 <td style="padding:6px 14px; color:#1e293b; font-weight:600;">${p.name || ''}</td>
                 <td style="padding:6px 14px; color:#334155;">${p.articleNo || ''}</td>
                 <td style="padding:6px 14px; color:#334155; font-family:monospace;">${p.gtin || ''}</td>
@@ -1481,9 +1481,11 @@ export function renderAldiRendelesek(container, windowManager) {
                    <input type="text" id="aldi-inline-company" value="${customTexts.lbl_company || 'GAVA-Hungria Kft.'}" class="access-control-input" style="width:100%; text-align:center; padding:2px; height:24px; border:none; background:#e2e8f0; border-radius:4px;">
                    <input type="text" id="aldi-inline-address" value="${customTexts.lbl_address || 'H-1239 Budapest, Nagykőrösi út 353.'}" class="access-control-input" style="width:100%; text-align:center; padding:2px; height:24px; border:none; background:#e2e8f0; border-radius:4px;">
                  </div>
-                 <div style="display:flex; justify-content:center; align-items:center; gap:4px;">
+                   <div style="display:flex; justify-content:center; align-items:center; gap:4px; margin-bottom: 4px;">
                    <input type="text" id="aldi-inline-lot-lbl" value="${customTexts.lbl_lot || 'LOT:'}" class="access-control-input" style="width:40px; text-align:right; padding:2px; height:24px; border:none; background:#e2e8f0; border-radius:4px;">
-                   <input type="text" id="aldi-inline-lot" value="${selectedProd.label_lot || ''}" class="access-control-input" style="width:60px; text-align:center; padding:2px; height:24px;">
+                     <input type="text" id="aldi-inline-lot" value="${selectedProd.label_lot || ''}" class="access-control-input" style="width:120px; text-align:center; padding:2px; height:24px;">
+                   </div>
+                   <div style="display:flex; justify-content:center; align-items:center; gap:4px;">
                    <input type="text" id="aldi-inline-gln-lbl" value="${customTexts.lbl_gln || 'GLN:'}" class="access-control-input" style="width:40px; text-align:right; padding:2px; height:24px; border:none; background:#e2e8f0; border-radius:4px;">
                    <input type="text" id="aldi-inline-gln" value="${selectedProd.label_gln || ''}" class="access-control-input" style="width:120px; text-align:center; padding:2px; height:24px;">
                  </div>
@@ -1538,9 +1540,11 @@ export function renderAldiRendelesek(container, windowManager) {
                    <input type="text" id="aldi-inline-company-u" value="${customTexts.lbl_company || 'GAVA-Hungria Kft.'}" class="access-control-input" style="width:100%; text-align:center; padding:2px; height:24px; border:none; background:#e2e8f0; border-radius:4px;">
                    <input type="text" id="aldi-inline-address-u" value="${customTexts.lbl_address || 'H-1239 Budapest, Nagykőrösi út 353.'}" class="access-control-input" style="width:100%; text-align:center; padding:2px; height:24px; border:none; background:#e2e8f0; border-radius:4px;">
                  </div>
-                 <div style="display:flex; justify-content:center; align-items:center; gap:4px;">
+                   <div style="display:flex; justify-content:center; align-items:center; gap:4px; margin-bottom: 4px;">
                    <input type="text" id="aldi-inline-lot-lbl-u" value="${customTexts.lbl_lot || 'LOT:'}" class="access-control-input" style="width:40px; text-align:right; padding:2px; height:24px; border:none; background:#e2e8f0; border-radius:4px;">
-                   <input type="text" id="aldi-inline-lot-u" value="${selectedProd.label_lot || ''}" class="access-control-input" style="width:60px; text-align:center; padding:2px; height:24px;">
+                     <input type="text" id="aldi-inline-lot-u" value="${selectedProd.label_lot || ''}" class="access-control-input" style="width:120px; text-align:center; padding:2px; height:24px;">
+                   </div>
+                   <div style="display:flex; justify-content:center; align-items:center; gap:4px;">
                    <input type="text" id="aldi-inline-gln-lbl-u" value="${customTexts.lbl_gln || 'GLN:'}" class="access-control-input" style="width:40px; text-align:right; padding:2px; height:24px; border:none; background:#e2e8f0; border-radius:4px;">
                    <input type="text" id="aldi-inline-gln-u" value="${selectedProd.label_gln || ''}" class="access-control-input" style="width:120px; text-align:center; padding:2px; height:24px;">
                  </div>
@@ -3402,7 +3406,7 @@ export function renderAldiRendelesek(container, windowManager) {
       row.addEventListener('click', (e) => {
         // Ne válassza ki ha a törlés gombra kattintott
         if (e.target.closest('.aldi-prod-delete-btn')) return;
-        state.selectedProductId = row.dataset.id;
+        state.selectedProductId = row.getAttribute('data-pid');
         state.editingBlock = null;
         renderModule();
       });
@@ -3418,7 +3422,7 @@ export function renderAldiRendelesek(container, windowManager) {
           const pName = state.products[idx].name || 'terméket';
           if (confirm(`Biztosan törölni szeretnéd a(z) "${pName}" sort? (A végleges törléshez kattints a Mentés gombra)`)) {
             state.products.splice(idx, 1);
-            if (state.selectedProductId == id) state.selectedProductId = null;
+            if (String(state.selectedProductId) === String(id)) state.selectedProductId = null;
             state.hasUnsavedChanges = true;
             renderModule();
           }
@@ -3467,7 +3471,7 @@ export function renderAldiRendelesek(container, windowManager) {
 
     // Save Base
     wrapper.querySelector('.inline-save-base-btn')?.addEventListener('click', async () => {
-      const prod = state.products.find(p => p.id == state.selectedProductId || p.tempId == state.selectedProductId);
+      const prod = state.products.find(p => String(p.id) === String(state.selectedProductId) || String(p.tempId) === String(state.selectedProductId));
       if (!prod) return;
       prod.name = wrapper.querySelector('#aldi-inline-name').value.trim();
       prod.articleNo = wrapper.querySelector('#aldi-inline-articleno').value.trim();
@@ -3493,7 +3497,7 @@ export function renderAldiRendelesek(container, windowManager) {
 
     // Save Label
     const saveLabelFn = async (isUnit) => {
-      const prod = state.products.find(p => p.id == state.selectedProductId || p.tempId == state.selectedProductId);
+      const prod = state.products.find(p => String(p.id) === String(state.selectedProductId) || String(p.tempId) === String(state.selectedProductId));
       if (!prod) return;
       const suff = isUnit ? '-u' : '';
       
