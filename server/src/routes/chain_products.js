@@ -121,7 +121,7 @@ router.post('/', async (req, res) => {
   try {
     const {
       chain = 'ALDI', product_name, name, article_number, articleNo, gtin, ean, label,
-      label_class, label_size, label_origin, label_lot, label_gln, label_net_weight_carton, label_net_weight_unit
+      label_class, label_size, label_origin, label_lot, label_gln, label_net_weight_carton, label_net_weight_unit, label_custom_texts
     } = req.body;
     const finalName = product_name || name;
 
@@ -173,7 +173,7 @@ router.put('/:id', async (req, res) => {
     const { id } = req.params;
     const {
       product_name, name, article_number, articleNo, gtin, ean, label, is_active,
-      label_class, label_size, label_origin, label_lot, label_gln, label_net_weight_carton, label_net_weight_unit
+      label_class, label_size, label_origin, label_lot, label_gln, label_net_weight_carton, label_net_weight_unit, label_custom_texts
     } = req.body;
 
     const updateData = {
@@ -194,6 +194,7 @@ router.put('/:id', async (req, res) => {
     if (label_gln !== undefined) updateData.label_gln = label_gln;
     if (label_net_weight_carton !== undefined) updateData.label_net_weight_carton = label_net_weight_carton;
     if (label_net_weight_unit !== undefined) updateData.label_net_weight_unit = label_net_weight_unit;
+    if (label_custom_texts !== undefined) updateData.label_custom_texts = typeof label_custom_texts === "string" ? label_custom_texts : JSON.stringify(label_custom_texts);
 
     const [updated] = await db('chain_products')
       .where('id', id)
@@ -254,21 +255,41 @@ router.get('/:id/label', async (req, res) => {
         const product = await db('chain_products').where('id', req.params.id).first();
         if (!product) return res.status(404).json({ error: 'Nincs ilyen termék' });
 
+        let texts = {};
+        if (product.label_custom_texts) {
+            try {
+                texts = typeof product.label_custom_texts === 'string' ? JSON.parse(product.label_custom_texts) : product.label_custom_texts;
+            } catch(e) {}
+        }
+        
+        const c_pieza = texts.title_pieza || 'pieza:';
+        const c_caja = texts.title_caja || 'CAJA:';
+        const c_class = texts.lbl_class || 'oszt.';
+        const c_size = texts.lbl_size || 'Méret:';
+        const c_origin = texts.lbl_origin || 'Származási hely:';
+        const c_company = texts.lbl_company || 'GAVA-Hungria Kft.';
+        const c_address = texts.lbl_address || 'H-1239 Budapest, Nagykőrösi út 353.';
+        const c_lot = texts.lbl_lot || 'LOT:';
+        const c_gln = texts.lbl_gln || 'GLN:';
+        const c_weight = texts.lbl_weight || 'Nettó tömeg:';
+        const c_ean = texts.lbl_ean || 'EAN 13:';
+        const p_name = texts.product_name || product.product_name || '';
+
         const html = `
         <div style="font-family: Arial, sans-serif; font-size: 11pt;">
             <!-- PIEZA (EGYSÉG) -->
-            <p>pieza:</p>
+            <p>${c_pieza}</p>
             <table style="width: 100%; border: 1pt solid black; border-collapse: collapse; text-align: center;">
                 <tr>
                     <td style="border: 1px solid black; padding: 12pt;">
-                        <p style="font-size: 14pt; margin-bottom: 12pt;"><strong>${(product.product_name || '').toUpperCase()}</strong></p>
-                        <p style="margin-bottom: 12pt;">${product.label_class || 'I.'} oszt. Méret: ${product.label_size || ''}</p>
-                        <p style="margin-bottom: 12pt;">Származási hely: ${product.label_origin || ''}</p>
-                        <p style="margin-bottom: 4pt;">GAVA-Hungria Kft.</p>
-                        <p style="margin-bottom: 12pt;">H-1239 Budapest, Nagykőrösi út 353.</p>
-                        <p style="margin-bottom: 12pt;">LOT: ${product.label_lot || ''} GLN: ${product.label_gln || ''}</p>
-                        <p style="margin-bottom: 12pt;">Nettó tömeg: ${product.label_net_weight_unit || ''}</p>
-                        <p><strong>EAN 13: ${product.ean || ''}</strong></p>
+                        <p style="font-size: 14pt; margin-bottom: 12pt;"><strong>${p_name.toUpperCase()}</strong></p>
+                        <p style="margin-bottom: 12pt;">${product.label_class || 'I.'} ${c_class} ${c_size} ${product.label_size || ''}</p>
+                        <p style="margin-bottom: 12pt;">${c_origin} ${product.label_origin || ''}</p>
+                        <p style="margin-bottom: 4pt;">${c_company}</p>
+                        <p style="margin-bottom: 12pt;">${c_address}</p>
+                        <p style="margin-bottom: 12pt;">${c_lot} ${product.label_lot || ''} ${c_gln} ${product.label_gln || ''}</p>
+                        <p style="margin-bottom: 12pt;">${c_weight} ${product.label_net_weight_unit || ''}</p>
+                        <p><strong>${c_ean} ${product.ean || ''}</strong></p>
                     </td>
                 </tr>
             </table>
@@ -276,17 +297,17 @@ router.get('/:id/label', async (req, res) => {
             <br/><br/><br/>
 
             <!-- CAJA (KARTON) -->
-            <p>CAJA:</p>
+            <p>${c_caja}</p>
             <table style="width: 100%; border: 1pt solid black; border-collapse: collapse; text-align: center;">
                 <tr>
                     <td style="border: 1px solid black; padding: 12pt;">
-                        <p style="font-size: 14pt; margin-bottom: 12pt;"><strong>${(product.product_name || '').toUpperCase()}</strong></p>
-                        <p style="margin-bottom: 12pt;">${product.label_class || 'I.'} oszt. Méret: ${product.label_size || ''}</p>
-                        <p style="margin-bottom: 12pt;">Származási hely: ${product.label_origin || ''}</p>
-                        <p style="margin-bottom: 4pt;">GAVA-Hungria Kft.</p>
-                        <p style="margin-bottom: 12pt;">H-1239 Budapest, Nagykőrösi út 353.</p>
-                        <p style="margin-bottom: 12pt;">LOT: ${product.label_lot || ''} GLN: ${product.label_gln || ''}</p>
-                        <p><strong>Nettó tömeg: ${product.label_net_weight_carton || ''}</strong></p>
+                        <p style="font-size: 14pt; margin-bottom: 12pt;"><strong>${p_name.toUpperCase()}</strong></p>
+                        <p style="margin-bottom: 12pt;">${product.label_class || 'I.'} ${c_class} ${c_size} ${product.label_size || ''}</p>
+                        <p style="margin-bottom: 12pt;">${c_origin} ${product.label_origin || ''}</p>
+                        <p style="margin-bottom: 4pt;">${c_company}</p>
+                        <p style="margin-bottom: 12pt;">${c_address}</p>
+                        <p style="margin-bottom: 12pt;">${c_lot} ${product.label_lot || ''} ${c_gln} ${product.label_gln || ''}</p>
+                        <p><strong>${c_weight} ${product.label_net_weight_carton || ''}</strong></p>
                     </td>
                 </tr>
             </table>
