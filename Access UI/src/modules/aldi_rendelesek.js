@@ -1370,16 +1370,16 @@ export function renderAldiRendelesek(container, windowManager) {
     let defaultCartonContent = '';
     let defaultUnitContent = '';
     if (selectedProd) {
-        if (customTexts.carton_content) {
+        if (customTexts.carton_content !== undefined) {
             defaultCartonContent = customTexts.carton_content;
         } else {
-            defaultCartonContent = `${customTexts.product_name || selectedProd.name || 'TERMÉKNÉV'}\n${selectedProd.label_class || 'I.'} ${customTexts.lbl_class || 'oszt.'} ${customTexts.lbl_size || 'Méret:'} ${selectedProd.label_size || '-'}\n${customTexts.lbl_origin || 'Származási hely:'} ${selectedProd.label_origin || '-'}\n${customTexts.lbl_company || 'GAVA-Hungria Kft.'}\n${customTexts.lbl_address || 'H-1239 Budapest, Nagykőrösi út 353.'}\n${customTexts.lbl_lot || 'LOT:'} ${selectedProd.label_lot || '-'}    ${customTexts.lbl_gln || 'GLN:'} ${selectedProd.label_gln || '-'}\n${customTexts.lbl_weight || 'Nettó tömeg:'} ${selectedProd.label_net_weight_carton || '-'}`;
+            defaultCartonContent = '';
         }
         
-        if (customTexts.unit_content) {
+        if (customTexts.unit_content !== undefined) {
             defaultUnitContent = customTexts.unit_content;
         } else {
-            defaultUnitContent = `${customTexts.product_name || selectedProd.name || 'TERMÉKNÉV'}\n${selectedProd.label_class || 'I.'} ${customTexts.lbl_class || 'oszt.'} ${customTexts.lbl_size || 'Méret:'} ${selectedProd.label_size || '-'}\n${customTexts.lbl_origin || 'Származási hely:'} ${selectedProd.label_origin || '-'}\n${customTexts.lbl_company || 'GAVA-Hungria Kft.'}\n${customTexts.lbl_address || 'H-1239 Budapest, Nagykőrösi út 353.'}\n${customTexts.lbl_lot || 'LOT:'} ${selectedProd.label_lot || '-'}    ${customTexts.lbl_gln || 'GLN:'} ${selectedProd.label_gln || '-'}\n${customTexts.lbl_weight || 'Nettó tömeg:'} ${selectedProd.label_net_weight_unit || '-'}\n${customTexts.lbl_ean || 'EAN kód:'} ${selectedProd.ean || '-'}`;
+            defaultUnitContent = '';
         }
     }
 

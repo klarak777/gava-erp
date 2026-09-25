@@ -266,7 +266,7 @@ router.get('/:id/label', async (req, res) => {
         const c_caja = texts.title_caja || 'CAJA:';
 
         let unitHtml = '';
-        if (texts.unit_content) {
+        if (texts.unit_content !== undefined) {
             unitHtml = texts.unit_content.split('\n').map(line => `<p style="margin-bottom: 8pt;">${line}</p>`).join('');
         } else {
             const p_name = texts.product_name || product.product_name || '';
@@ -284,7 +284,7 @@ router.get('/:id/label', async (req, res) => {
         }
 
         let cartonHtml = '';
-        if (texts.carton_content) {
+        if (texts.carton_content !== undefined) {
             cartonHtml = texts.carton_content.split('\n').map(line => `<p style="margin-bottom: 8pt;">${line}</p>`).join('');
         } else {
             const p_name = texts.product_name || product.product_name || '';
