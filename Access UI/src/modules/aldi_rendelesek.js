@@ -1501,6 +1501,117 @@ export function renderAldiRendelesek(container, windowManager) {
           <h4 style="margin:0 0 12px 0; color:#1e3a8a; font-size:13px; font-weight:800; letter-spacing:0.5px;">EGYSÉG CÍMKE</h4>
           ${selectedProd ? (
         state.editingBlock === 'unit' ? `
+               <div style="display:flex; align-items:center; margin-bottom:4px; font-size:12px;">
+                 <input type="text" id="aldi-inline-title-pieza-u" value="${customTexts.title_pieza || 'PIEZA:'}" class="access-control-input" style="font-weight:700; color:#475569; width:80px; padding:2px; border:none; background:#e2e8f0; border-radius:4px;">
+               </div>
+               <div style="border:1px dashed #cbd5e1; padding:16px; background:#f8fafc; text-align:center; font-size:12px; line-height:2.0; display:flex; flex-direction:column; gap:6px;">
+                 <div><input type="text" id="aldi-inline-product-name-u" value="${customTexts.product_name || selectedProd.name || 'TERMÉKNÉV'}" class="access-control-input" style="font-size:14px; font-weight:800; text-transform:uppercase; text-align:center; width:100%; border:1px solid #cbd5e1; padding:2px; height:24px;"></div>
+                 <div style="display:flex; justify-content:center; align-items:center; gap:4px;">
+                   <input type="text" id="aldi-inline-class-u" value="${selectedProd.label_class || ''}" class="access-control-input" style="width:40px; text-align:center; padding:2px; height:24px;">
+                   <input type="text" id="aldi-inline-class-lbl-u" value="${customTexts.lbl_class || 'oszt.'}" class="access-control-input" style="width:50px; text-align:center; padding:2px; height:24px; border:none; background:#e2e8f0; border-radius:4px;">
+                   <input type="text" id="aldi-inline-size-lbl-u" value="${customTexts.lbl_size || 'Méret:'}" class="access-control-input" style="width:55px; text-align:center; padding:2px; height:24px; border:none; background:#e2e8f0; border-radius:4px;">
+                   <input type="text" id="aldi-inline-size-u" value="${selectedProd.label_size || ''}" class="access-control-input" style="width:100px; text-align:center; padding:2px; height:24px;">
+                 </div>
+                 <div style="display:flex; justify-content:center; align-items:center; gap:6px;">
+                   <input type="text" id="aldi-inline-origin-lbl-u" value="${customTexts.lbl_origin || 'Származási hely:'}" class="access-control-input" style="width:120px; text-align:right; padding:2px; height:24px; border:none; background:#e2e8f0; border-radius:4px;">
+                   <input type="text" id="aldi-inline-origin-u" value="${selectedProd.label_origin || ''}" class="access-control-input" style="width:140px; padding:2px; height:24px;" placeholder="Magyarország">
+                 </div>
+                 <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
+                   <input type="text" id="aldi-inline-company-u" value="${customTexts.lbl_company || 'GAVA-Hungria Kft.'}" class="access-control-input" style="width:100%; text-align:center; padding:2px; height:24px; border:none; background:#e2e8f0; border-radius:4px;">
+                   <input type="text" id="aldi-inline-address-u" value="${customTexts.lbl_address || 'H-1239 Budapest, Nagykőrösi út 353.'}" class="access-control-input" style="width:100%; text-align:center; padding:2px; height:24px; border:none; background:#e2e8f0; border-radius:4px;">
+                 </div>
+                 <div style="display:flex; justify-content:center; align-items:center; gap:4px;">
+                   <input type="text" id="aldi-inline-lot-lbl-u" value="${customTexts.lbl_lot || 'LOT:'}" class="access-control-input" style="width:40px; text-align:right; padding:2px; height:24px; border:none; background:#e2e8f0; border-radius:4px;">
+                   <input type="text" id="aldi-inline-lot-u" value="${selectedProd.label_lot || ''}" class="access-control-input" style="width:60px; text-align:center; padding:2px; height:24px;">
+                   <input type="text" id="aldi-inline-gln-lbl-u" value="${customTexts.lbl_gln || 'GLN:'}" class="access-control-input" style="width:40px; text-align:right; padding:2px; height:24px; border:none; background:#e2e8f0; border-radius:4px;">
+                   <input type="text" id="aldi-inline-gln-u" value="${selectedProd.label_gln || ''}" class="access-control-input" style="width:120px; text-align:center; padding:2px; height:24px;">
+                 </div>
+                 <div style="display:flex; justify-content:center; align-items:center; gap:4px;">
+                   <input type="text" id="aldi-inline-weight-lbl-u" value="${customTexts.lbl_weight || 'Nettó tömeg:'}" class="access-control-input" style="width:90px; text-align:right; padding:2px; height:24px; border:none; background:#e2e8f0; border-radius:4px;">
+                   <input type="text" id="aldi-inline-weight-u" value="${selectedProd.label_net_weight_unit || ''}" class="access-control-input" style="width:80px; text-align:center; padding:2px; height:24px;">
+                 </div>
+                 <div style="display:flex; justify-content:center; align-items:center; gap:4px; font-weight:700;">
+                    <input type="text" id="aldi-inline-ean-lbl-u" value="${customTexts.lbl_ean || 'EAN kód:'}" class="access-control-input" style="width:80px; text-align:right; padding:2px; height:24px; border:none; background:#e2e8f0; border-radius:4px; font-weight:bold;">
+                    <input type="text" id="aldi-inline-ean-u" value="${selectedProd.ean || ''}" class="access-control-input" style="width:130px; text-align:center; padding:2px; height:24px;">
+                  </div>
+               </div>
+               <div style="display:flex; gap:10px; margin-top:12px; justify-content:center;">
+                 <button class="secondary-btn inline-cancel-btn" style="height:28px; padding:0 12px; font-size:11px; font-weight:600;">Mégse</button>
+                 <button class="primary-btn inline-save-label-u-btn" style="height:28px; padding:0 16px; font-size:11px; font-weight:600; background:#16a34a; border:none; color:#fff;">Mentés</button>
+               </div>
+             ` : `
+               <div style="text-align:left; font-weight:700; color:#475569; margin-bottom:4px; font-size:12px;">${customTexts.title_pieza || 'PIEZA:'}</div>
+               <div style="border:1px solid #cbd5e1; padding:16px; background:#f8fafc; text-align:center; font-size:12px; line-height:1.6; display:flex; flex-direction:column; gap:4px;">
+                 <div style="font-size:14px; font-weight:800; text-transform:uppercase;">${customTexts.product_name || selectedProd.name || 'TERMÉKNÉV'}</div>
+                 <div>${selectedProd.label_class || 'I.'} ${customTexts.lbl_class || 'oszt.'} ${customTexts.lbl_size || 'Méret:'} ${selectedProd.label_size || '-'}</div>
+                 <div>${customTexts.lbl_origin || 'Származási hely:'} ${selectedProd.label_origin || '-'}</div>
+                 <div>${customTexts.lbl_company || 'GAVA-Hungria Kft.'}<br>${customTexts.lbl_address || 'H-1239 Budapest, Nagykőrösi út 353.'}</div>
+                 <div>${customTexts.lbl_lot || 'LOT:'} ${selectedProd.label_lot || '-'} &nbsp;&nbsp; ${customTexts.lbl_gln || 'GLN:'} ${selectedProd.label_gln || '-'}</div>
+                 <div>${customTexts.lbl_weight || 'Nettó tömeg:'} ${selectedProd.label_net_weight_unit || '-'}</div>
+                 <div style="font-weight:700;">${customTexts.lbl_ean || 'EAN kód:'} ${selectedProd.ean || '-'}</div>
+               </div>
+               <div style="display:flex; gap:10px; margin-top:12px; justify-content:center;">
+                 <button class="secondary-btn inline-edit-unit-btn" style="height:28px; padding:0 12px; font-size:11px; font-weight:600;">Szerkesztés</button>
+               </div>
+             `
+      ) : `
+            <div style="color:#94a3b8; font-size:13px; text-align:center; padding:20px 0;">Válassz ki egy terméket a táblázatból!</div>
+          `}
+        </div>
+        
+        <!-- KARTON CÍMKE -->
+        <div style="border:1px solid #cbd5e1; border-radius:8px; padding:16px; background:#fff; position:relative;">
+          <h4 style="margin:0 0 12px 0; color:#1e3a8a; font-size:13px; font-weight:800; letter-spacing:0.5px;">KARTON CÍMKE</h4>
+          ${selectedProd ? (
+        state.editingBlock === 'carton' ? `
+               <div style="text-align:left; font-weight:700; color:#475569; margin-bottom:4px; font-size:12px;">CAJA:</div>
+               <div style="border:1px dashed #cbd5e1; padding:16px; background:#f8fafc; text-align:center; font-size:12px; line-height:2.0; display:flex; flex-direction:column; gap:4px;">
+                 <div style="font-size:14px; font-weight:800; text-transform:uppercase;">${selectedProd.name || 'TERMÉKNÉV'}</div>
+                 <div>
+                   <input type="text" id="aldi-inline-class" value="${selectedProd.label_class || ''}" class="access-control-input" style="width:40px; text-align:center; padding:2px; height:24px;"> oszt. Méret: 
+                   <input type="text" id="aldi-inline-size" value="${selectedProd.label_size || ''}" class="access-control-input" style="width:100px; text-align:center; padding:2px; height:24px;">
+                 </div>
+                 <div style="display:flex; justify-content:center; align-items:center; gap:6px;">
+                   Származási hely: 
+                   <select id="aldi-inline-origin" class="access-control-input" style="width:140px; padding:2px; height:24px;">
+                     <option value="${selectedProd.label_origin || ''}">${selectedProd.label_origin || 'Válassz...'}</option>
+                   </select>
+                 </div>
+                 <div>GAVA-Hungria Kft.<br>H-1239 Budapest, Nagykőrösi út 353.</div>
+                 <div>
+                   LOT: <input type="text" id="aldi-inline-lot" value="${selectedProd.label_lot || ''}" class="access-control-input" style="width:60px; text-align:center; padding:2px; height:24px;"> &nbsp;&nbsp; 
+                   GLN: <input type="text" id="aldi-inline-gln" value="${selectedProd.label_gln || ''}" class="access-control-input" style="width:120px; text-align:center; padding:2px; height:24px;">
+                 </div>
+                 <div style="font-weight:700;">
+                   Nettó tömeg: <input type="text" id="aldi-inline-weight-c" value="${selectedProd.label_net_weight_carton || ''}" class="access-control-input" style="width:80px; text-align:center; padding:2px; height:24px;">
+                 </div>
+               </div>
+               <div style="display:flex; gap:10px; margin-top:12px; justify-content:center;">
+                 <button class="secondary-btn inline-cancel-btn" style="height:28px; padding:0 12px; font-size:11px; font-weight:600;">Mégse</button>
+                 <button class="primary-btn inline-save-label-btn" style="height:28px; padding:0 16px; font-size:11px; font-weight:600; background:#16a34a; border:none; color:#fff;">Mentés</button>
+               </div>
+             ` : `
+               <div style="text-align:left; font-weight:700; color:#475569; margin-bottom:4px; font-size:12px;">CAJA:</div>
+               <div style="border:1px solid #cbd5e1; padding:16px; background:#f8fafc; text-align:center; font-size:12px; line-height:1.6; display:flex; flex-direction:column; gap:4px;">
+                 <div style="font-size:14px; font-weight:800; text-transform:uppercase;">${selectedProd.name || 'TERMÉKNÉV'}</div>
+                 <div>${selectedProd.label_class || 'I.'} oszt. Méret: ${selectedProd.label_size || '-'}</div>
+                 <div>Származási hely: ${selectedProd.label_origin || '-'}</div>
+                 <div>GAVA-Hungria Kft.<br>H-1239 Budapest, Nagykőrösi út 353.</div>
+                 <div>LOT: ${selectedProd.label_lot || '-'} &nbsp;&nbsp; GLN: ${selectedProd.label_gln || '-'}</div>
+                 <div style="font-weight:700;">Nettó tömeg: ${selectedProd.label_net_weight_carton || '-'}</div>
+               </div>
+               <div style="display:flex; gap:10px; margin-top:12px; justify-content:center;">
+                 <button class="secondary-btn inline-edit-carton-btn" style="height:28px; padding:0 12px; font-size:11px; font-weight:600;">Szerkesztés</button>
+               </div>
+             `
+      ) : `
+            <div style="color:#94a3b8; font-size:13px; text-align:center; padding:20px 0;">Válassz ki egy terméket a táblázatból!</div>
+          `}
+        </div><!-- EGYSÉG CÍMKE -->
+        <div style="border:1px solid #cbd5e1; border-radius:8px; padding:16px; background:#fff; position:relative;">
+          <h4 style="margin:0 0 12px 0; color:#1e3a8a; font-size:13px; font-weight:800; letter-spacing:0.5px;">EGYSÉG CÍMKE</h4>
+          ${selectedProd ? (
+        state.editingBlock === 'unit' ? `
                <div style="text-align:left; font-weight:700; color:#475569; margin-bottom:4px; font-size:12px;">PIEZA:</div>
                <div style="border:1px dashed #cbd5e1; padding:16px; background:#f8fafc; text-align:center; font-size:12px; line-height:2.0; display:flex; flex-direction:column; gap:4px;">
                  <div style="font-size:14px; font-weight:800; text-transform:uppercase;">${selectedProd.name || 'TERMÉKNÉV'}</div>
@@ -3464,21 +3575,59 @@ export function renderAldiRendelesek(container, windowManager) {
     });
 
     // Save Label
-    const saveLabelFn = async (isUnit) => {
+        const saveLabelFn = async (isUnit) => {
       const prod = state.products.find(p => p.id == state.selectedProductId || p.tempId == state.selectedProductId);
       if (!prod) return;
       const suff = isUnit ? '-u' : '';
-      prod.label_class = wrapper.querySelector('#aldi-inline-class' + suff).value.trim();
-      prod.label_size = wrapper.querySelector('#aldi-inline-size' + suff).value.trim();
-      prod.label_origin = wrapper.querySelector('#aldi-inline-origin' + suff).value.trim();
-      prod.label_lot = wrapper.querySelector('#aldi-inline-lot' + suff).value.trim();
-      prod.label_gln = wrapper.querySelector('#aldi-inline-gln' + suff).value.trim();
+      
+      const tryGetVal = (id) => wrapper.querySelector(id) ? wrapper.querySelector(id).value.trim() : undefined;
+      
+      prod.label_class = tryGetVal('#aldi-inline-class' + suff) || '';
+      prod.label_size = tryGetVal('#aldi-inline-size' + suff) || '';
+      prod.label_origin = tryGetVal('#aldi-inline-origin' + suff) || '';
+      prod.label_lot = tryGetVal('#aldi-inline-lot' + suff) || '';
+      prod.label_gln = tryGetVal('#aldi-inline-gln' + suff) || '';
+      
       if (isUnit) {
-        prod.label_net_weight_unit = wrapper.querySelector('#aldi-inline-weight-u').value.trim();
-        const eanInp = wrapper.querySelector('#aldi-inline-ean-u');
-        if (eanInp) prod.ean = eanInp.value.trim();
+        prod.label_net_weight_unit = tryGetVal('#aldi-inline-weight-u') || '';
+        const eanInp = tryGetVal('#aldi-inline-ean-u');
+        if (eanInp !== undefined) prod.ean = eanInp;
       }
-      else prod.label_net_weight_carton = wrapper.querySelector('#aldi-inline-weight-c').value.trim();
+      else {
+        prod.label_net_weight_carton = tryGetVal('#aldi-inline-weight-c') || '';
+      }
+      
+      let customTexts = {};
+      if (prod.label_custom_texts) {
+          try { customTexts = typeof prod.label_custom_texts === 'string' ? JSON.parse(prod.label_custom_texts) : prod.label_custom_texts; } catch(e) {}
+      }
+      
+      if (isUnit) {
+          customTexts.title_pieza = tryGetVal('#aldi-inline-title-pieza-u');
+          customTexts.product_name = tryGetVal('#aldi-inline-product-name-u');
+          customTexts.lbl_class = tryGetVal('#aldi-inline-class-lbl-u');
+          customTexts.lbl_size = tryGetVal('#aldi-inline-size-lbl-u');
+          customTexts.lbl_origin = tryGetVal('#aldi-inline-origin-lbl-u');
+          customTexts.lbl_company = tryGetVal('#aldi-inline-company-u');
+          customTexts.lbl_address = tryGetVal('#aldi-inline-address-u');
+          customTexts.lbl_lot = tryGetVal('#aldi-inline-lot-lbl-u');
+          customTexts.lbl_gln = tryGetVal('#aldi-inline-gln-lbl-u');
+          customTexts.lbl_weight = tryGetVal('#aldi-inline-weight-lbl-u');
+          customTexts.lbl_ean = tryGetVal('#aldi-inline-ean-lbl-u');
+      } else {
+          customTexts.title_caja = tryGetVal('#aldi-inline-title-caja');
+          customTexts.product_name = tryGetVal('#aldi-inline-product-name');
+          customTexts.lbl_class = tryGetVal('#aldi-inline-class-lbl');
+          customTexts.lbl_size = tryGetVal('#aldi-inline-size-lbl');
+          customTexts.lbl_origin = tryGetVal('#aldi-inline-origin-lbl');
+          customTexts.lbl_company = tryGetVal('#aldi-inline-company');
+          customTexts.lbl_address = tryGetVal('#aldi-inline-address');
+          customTexts.lbl_lot = tryGetVal('#aldi-inline-lot-lbl');
+          customTexts.lbl_gln = tryGetVal('#aldi-inline-gln-lbl');
+          customTexts.lbl_weight = tryGetVal('#aldi-inline-weight-lbl');
+      }
+      
+      prod.label_custom_texts = JSON.stringify(customTexts);
 
       if (String(prod.id).startsWith('tmp-')) {
         state.hasUnsavedChanges = true;
