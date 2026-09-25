@@ -1358,6 +1358,15 @@ export function renderAldiRendelesek(container, windowManager) {
     // Kiválasztott termék
     const selectedProd = state.selectedProductId ? state.products.find(p => p.id == state.selectedProductId || p.tempId == state.selectedProductId) : null;
 
+    let customTexts = {};
+    if (selectedProd && selectedProd.label_custom_texts) {
+      try {
+        customTexts = typeof selectedProd.label_custom_texts === 'string'
+          ? JSON.parse(selectedProd.label_custom_texts)
+          : selectedProd.label_custom_texts;
+      } catch(e) {}
+    }
+
     let html = `
       <div style="display:flex; align-items:center; justify-content:space-between; margin:16px 0 12px 0; max-width:1200px; flex-wrap:wrap; gap:10px;">
         <div style="display:flex; align-items:center; gap:10px;">
