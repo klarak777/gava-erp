@@ -455,7 +455,7 @@ export function renderAldiRendelesek(container, windowManager) {
       const dt = new Date(o.delivery_date);
       const formattedDate = !isNaN(dt) ? dt.toISOString().split('T')[0] : o.delivery_date;
       // A megjelenített rendelési szám: eltávolítjuk a régi "-N" suffixet
-      const displayOrderNumber = o.order_number.replace(/-\d+$/, '');
+      const displayOrderNumber = (o.order_number || '').replace(/-\d+$/, '');
       let orderTypeBadgeBg = '#f1f5f9';
       let orderTypeBadgeColor = '#475569';
       let orderTypeBorder = '1px solid #e2e8f0';
@@ -3442,10 +3442,15 @@ export function renderAldiRendelesek(container, windowManager) {
 
     // Save Label
     const saveLabelFn = async (isUnit) => {
+      console.log('[saveLabelFn] called, isUnit=', isUnit, 'selectedProductId=', state.selectedProductId);
       const prod = state.products.find(p => String(p.id) === String(state.selectedProductId) || String(p.tempId) === String(state.selectedProductId));
-      if (!prod) return;
+      if (!prod) { console.warn('[saveLabelFn] prod not found!'); return; }
       
-      const tryGetVal = (id) => wrapper.querySelector(id) ? wrapper.querySelector(id).value.trim() : undefined;
+      const textareaId = isUnit ? '#aldi-inline-unit-content' : '#aldi-inline-carton-content';
+      const textareaEl = wrapper.querySelector(textareaId);
+      console.log('[saveLabelFn] textareaEl=', textareaEl, 'value=', textareaEl ? textareaEl.value : 'NOT FOUND');
+      
+      const tryGetVal = (id) => wrapper.querySelector(id) ? wrapper.querySelector(id).value : undefined;
       
       let customTexts = {};
       if (prod.label_custom_texts) {
@@ -3455,25 +3460,31 @@ export function renderAldiRendelesek(container, windowManager) {
       if (isUnit) {
           customTexts.title_pieza = tryGetVal('#aldi-inline-title-pieza-u');
           customTexts.unit_content = tryGetVal('#aldi-inline-unit-content');
+          console.log('[saveLabelFn] unit_content to save:', customTexts.unit_content);
       } else {
           customTexts.title_caja = tryGetVal('#aldi-inline-title-caja');
           customTexts.carton_content = tryGetVal('#aldi-inline-carton-content');
+          console.log('[saveLabelFn] carton_content to save:', customTexts.carton_content);
       }
       
       prod.label_custom_texts = JSON.stringify(customTexts);
+      console.log('[saveLabelFn] label_custom_texts JSON:', prod.label_custom_texts);
 
       if (String(prod.id).startsWith('tmp-')) {
         state.hasUnsavedChanges = true;
       } else {
         try {
-          await fetch('/api/v1/chain-products/' + prod.id, {
+          const resp = await fetch('/api/v1/chain-products/' + prod.id, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               label_custom_texts: prod.label_custom_texts
             })
           });
-        } catch (e) { alert('Hiba mentéskor!'); return; }
+          const respJson = await resp.json();
+          console.log('[saveLabelFn] server response:', resp.status, respJson);
+          if (!resp.ok) { alert('Szerver hiba mentéskor: ' + (respJson.error || resp.status)); return; }
+        } catch (e) { console.error('[saveLabelFn] fetch error:', e); alert('Hiba mentéskor!'); return; }
       }
       state.editingBlock = null;
       renderModule();
