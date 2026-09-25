@@ -321,7 +321,7 @@ router.get('/:id/label', async (req, res) => {
             pageNumber: false
         });
 
-        const safeFileName = (product.product_name || 'Cimke').replace(/[/\\?%*:|"<>\]/g, '-');
+        const safeFileName = (product.product_name || 'Cimke').replace(/[/\\\\?%*:|"<>\\]/g, '-');
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
         res.setHeader('Content-Disposition', `attachment; filename="Cimke.docx"; filename*=UTF-8''${encodeURIComponent(safeFileName)}.docx`);
         res.send(fileBuffer);
