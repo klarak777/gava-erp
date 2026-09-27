@@ -37,7 +37,7 @@ export async function renderConsolidation(container, params = {}) {
 
   // ── HTML ──────────────────────────────────────────────────────────
   container.innerHTML = `
-    <!-- PANE 1: Raklapok beolvasása -->
+        <!-- PANE 1: Raklapok beolvasása -->
     <div id="pane-scan-member" class="pda-pane active" style="flex-direction:column; height:100%; background:#f8fafc;">
       <div class="pda-dashboard__header" style="display:flex; align-items:center; padding:8px 14px; background:#f8f9fc; gap:4px;">
         <img src="/logo.ico" alt="Gava Logo" onerror="this.style.display='none'" style="width:32px; height:32px; flex-shrink:0;">
@@ -53,7 +53,12 @@ export async function renderConsolidation(container, params = {}) {
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 28px;">
           <path d="M4 7V4h16v3M9 20h6M12 14v6M4 17v3h16v-3M9 7h6v5H9z"></path>
         </svg>
-        <input type="text" id="member-barcode" readonly placeholder="Várakozás vonalkódra..." style="width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #fff; color: #0f172a;">
+        ${!!(window.Capacitor && window.Capacitor.isNative) ? `
+          <div style="width: 100%; padding: 12px 12px 12px 40px; border: 1px dashed #cbd5e1; border-radius: 8px; font-size: 14px; background: #f8fafc; color: #475569;">Várakozás raklapcímke beolvasására...</div>
+          <input type="hidden" id="member-barcode">
+        ` : `
+          <input type="text" id="member-barcode" readonly placeholder="Várakozás vonalkódra..." style="width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #fff; color: #0f172a;">
+        `}
       </div>
       <div id="member-scan-error" style="display:none; color:#dc2626; font-size:12px; font-weight:600; text-align:center; margin:0 16px 8px;"></div>
 
@@ -63,13 +68,19 @@ export async function renderConsolidation(container, params = {}) {
         </div>
       </div>
 
-      <div class="pda-bottom-nav" style="display:flex; padding:12px 16px; background:#fff; border-top:1px solid #e2e8f0; align-items:center; justify-content:space-between;">
-        <div class="pda-nav-home-btn" style="cursor:pointer; display:flex; flex-direction:column; align-items:center; color:#64748b;">
-          <svg fill="currentColor" viewBox="0 0 24 24" style="width:24px;height:24px;"><path d="M3 13h1v7c0 1.103.897 2 2 2h12c1.103 0 2-.897 2-2v-7h1a1 1 0 00.707-1.707l-9-9a.999.999 0 00-1.414 0l-9 9A1 1 0 003 13zm7 7v-5h4v5h-4z"></path></svg>
-          <span style="font-size:10px; font-weight:600; margin-top:2px;">Főoldal</span>
+      <div class="pda-bottom-nav" style="display:flex; padding:12px 16px; background:#fff; border-top:1px solid #e2e8f0; align-items:center; justify-content:space-between; gap: 16px;">
+        <div style="display: flex; gap: 24px;">
+          <div class="pda-nav-home-btn" style="cursor:pointer; display:flex; flex-direction:column; align-items:center; color:#64748b;">
+            <svg fill="currentColor" viewBox="0 0 24 24" style="width:24px;height:24px;"><path d="M3 13h1v7c0 1.103.897 2 2 2h12c1.103 0 2-.897 2-2v-7h1a1 1 0 00.707-1.707l-9-9a.999.999 0 00-1.414 0l-9 9A1 1 0 003 13zm7 7v-5h4v5h-4z"></path></svg>
+            <span style="font-size:10px; font-weight:600; margin-top:2px;">Főoldal</span>
+          </div>
+          <div class="pda-nav-back-btn" style="cursor:pointer; display:flex; flex-direction:column; align-items:center; color:#64748b;">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"></path></svg>
+            <span style="font-size:10px; font-weight:600; margin-top:2px;">Vissza</span>
+          </div>
         </div>
-        <button id="btn-scan-next" style="cursor:pointer; border:none; display:flex; align-items:center; justify-content:center; background:#4f46e5; color:white; border-radius:8px; padding:0 16px; height:44px; font-size:12px; font-weight:700; opacity:0.5;" disabled>
-          Címke nyomtatása →
+        <button id="btn-scan-next" style="cursor:pointer; border:none; display:flex; align-items:center; justify-content:center; background:#4f46e5; color:white; border-radius:8px; padding:0 16px; height:44px; font-size:12px; font-weight:700; opacity:0.5; flex: 1; max-width: 140px;" disabled>
+          Befejezés
         </button>
       </div>
     </div>
@@ -108,17 +119,6 @@ export async function renderConsolidation(container, params = {}) {
     });
     pane.classList.add('active');
     
-    setTimeout(() => {
-      let focusInput = null;
-      if (pane === paneScanMember) focusInput = container.querySelector('#member-barcode');
-      else if (pane === panePrint) focusInput = container.querySelector('#print-printer-barcode');
-      else if (pane === paneLocation) focusInput = container.querySelector('#dest-vonalkod');
-      else if (pane === paneScan) focusInput = container.querySelector('#sscc-vonalkod');
-      
-      if (focusInput && !focusInput.disabled) {
-        focusInput/* focus removed */;
-      }
-    }, 150);
   };
 
   const isBusy = () => {
@@ -128,25 +128,20 @@ export async function renderConsolidation(container, params = {}) {
     if (paneScan.classList.contains('active') && scanBarcodeInput.disabled) return true;
     return false;
   };
-  const goDashboard = () => { if (!isBusy()) showView('dashboard'); };
+  let goDashboard = () => { if (!isBusy()) showView('dashboard'); };
   const goBack = () => {
     if (isBusy()) return;
     if (paneScan.classList.contains('active')) showPane(paneLocation);
     else if (paneLocation.classList.contains('active')) showPane(panePrint);
     else if (panePrint.classList.contains('active')) showPane(paneScanMember);
-    else goDashboard();
+    else showView('commission');
   };
   
   // ── Globális vonalkód esemény kezelése ──
   const handleScan = (e) => {
     const code = e.detail;
     
-    const paneMember = document.getElementById('pane-scan-member');
-    const panePrint = document.getElementById('pane-print');
-    const paneLocation = document.getElementById('pane-scan-location');
-    const paneScan = document.getElementById('pane-scan');
-
-    if (paneMember && paneMember.classList.contains('active')) {
+    if (paneScanMember.classList.contains('active')) {
       if (!memberBarcode.disabled && !generatingLabel) {
         memberBarcode.value = code;
         if (typeof processMemberBarcode === 'function') processMemberBarcode(code);
@@ -172,18 +167,8 @@ export async function renderConsolidation(container, params = {}) {
     }
   };
   
+  window._currentBarcodeHandler = handleScan;
   window.addEventListener('pda-barcode-scanned', handleScan);
-  
-  const origGoDashboard = goDashboard;
-  goDashboard = () => {
-    window.removeEventListener('pda-barcode-scanned', handleScan);
-    origGoDashboard();
-  };
-  
-  const origHwBack = window._currentHwBack;
-  window.addEventListener('hwBack', () => {
-    window.removeEventListener('pda-barcode-scanned', handleScan);
-  });
   
 container.querySelectorAll('.pda-nav-home-btn').forEach(b => b.addEventListener('click', goDashboard));
   container.querySelectorAll('.pda-nav-back-btn, .pda-nav-labels-back-btn').forEach(b => b.addEventListener('click', goBack));
@@ -224,7 +209,6 @@ container.querySelectorAll('.pda-nav-home-btn').forEach(b => b.addEventListener(
           }
           updateScanNextBtn();
           renderScannedMembers();
-          setTimeout(() => memberBarcode/* focus removed */, 50);
         });
 
         scannedMembersList.appendChild(item);
@@ -289,7 +273,6 @@ container.querySelectorAll('.pda-nav-home-btn').forEach(b => b.addEventListener(
     } finally {
       memberBarcode.disabled = false;
       updateScanNextBtn();
-      setTimeout(() => memberBarcode/* focus removed */, 50);
     }
   }
 
@@ -313,7 +296,6 @@ container.querySelectorAll('.pda-nav-home-btn').forEach(b => b.addEventListener(
         previewLabel = data.label;
         printPrinterInput.value = '';
         showPane(panePrint);
-        setTimeout(() => printPrinterInput/* focus removed */, 150);
       } else {
         alert('Hiba a címke generálása során: ' + ((data && data.error) ? data.error : `HTTP ${res.status}`));
       }
@@ -345,7 +327,6 @@ container.querySelectorAll('.pda-nav-home-btn').forEach(b => b.addEventListener(
     const pBarcode = printPrinterInput.value.trim();
     if (!pBarcode) {
       alert('Olvasd be a nyomtató vonalkódját!');
-      printPrinterInput/* focus removed */;
       return;
     }
 
@@ -392,7 +373,6 @@ container.querySelectorAll('.pda-nav-home-btn').forEach(b => b.addEventListener(
     locBarcode.value = '';
     locError.style.display = 'none';
     showPane(paneLocation);
-    setTimeout(() => locBarcode/* focus removed */, 150);
   }
 
   // ── PANE 4: Lokáció beolvasás ─────────────────────────────────────
@@ -404,7 +384,6 @@ container.querySelectorAll('.pda-nav-home-btn').forEach(b => b.addEventListener(
     if (!val) {
       locError.textContent = 'Olvasd be a cél tárhely vonalkódját!';
       locError.style.display = 'block';
-      locBarcode/* focus removed */;
       return;
     }
     locError.style.display = 'none';
@@ -462,7 +441,6 @@ container.querySelectorAll('.pda-nav-home-btn').forEach(b => b.addEventListener(
     }
 
     showPane(paneScan);
-    setTimeout(() => scanBarcodeInput/* focus removed */, 150);
   }
 
   // ── PANE 5: Összeemelt címke beolvasása és mentés ─────────────────────

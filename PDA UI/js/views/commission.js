@@ -335,13 +335,13 @@ export async function renderCommission(container, params = {}) {
 
       <!-- Alsó navigáció -->
       <div class="pda-bottom-nav">
-        <div class="pda-bottom-nav__item" id="pda-nav-back" style="cursor: pointer;">
-          <svg class="pda-bottom-nav__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"></path></svg>
-          <span class="pda-bottom-nav__label">Vissza</span>
-        </div>
         <div class="pda-bottom-nav__item" id="pda-nav-home" style="cursor: pointer;">
           <svg class="pda-bottom-nav__icon" fill="currentColor" viewBox="0 0 24 24"><path d="M3 13h1v7c0 1.103.897 2 2 2h12c1.103 0 2-.897 2-2v-7h1a1 1 0 00.707-1.707l-9-9a.999.999 0 00-1.414 0l-9 9A1 1 0 003 13zm7 7v-5h4v5h-4z"></path></svg>
           <span class="pda-bottom-nav__label">Főoldal</span>
+        </div>
+        <div class="pda-bottom-nav__item" id="pda-nav-back" style="cursor: pointer;">
+          <svg class="pda-bottom-nav__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"></path></svg>
+          <span class="pda-bottom-nav__label">Vissza</span>
         </div>
       </div>
     </div>
@@ -424,19 +424,23 @@ export async function renderCommission(container, params = {}) {
           <div id="form-raklap-error" style="display:none; color:#ef4444; font-size:11.5px; font-weight:700; margin-top:5px; line-height:1.3;"></div>
         </div>
       </div>
-      <div class="pda-form-footer">
-        <button class="pda-btn pda-btn-primary" id="form-submit">Megadás</button>
-      </div>
-
-      <!-- Alsó navigáció -->
-      <div class="pda-bottom-nav">
-        <div class="pda-bottom-nav__item pda-nav-back-btn" id="pda-form-nav-back" style="cursor: pointer;">
-          <svg class="pda-bottom-nav__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"></path></svg>
-          <span class="pda-bottom-nav__label">Vissza</span>
+      <div class="pda-bottom-nav" style="display:flex; padding:12px 16px; background:#fff; border-top:1px solid #e2e8f0; align-items:center; justify-content:space-between; gap: 8px;">
+        <div style="display: flex; flex: 1; justify-content: flex-start;">
+          <div class="pda-nav-home-btn" id="pda-form-nav-home" style="cursor:pointer; display:flex; flex-direction:column; align-items:center; color:#64748b;">
+            <svg fill="currentColor" viewBox="0 0 24 24" style="width:24px;height:24px;"><path d="M3 13h1v7c0 1.103.897 2 2 2h12c1.103 0 2-.897 2-2v-7h1a1 1 0 00.707-1.707l-9-9a.999.999 0 00-1.414 0l-9 9A1 1 0 003 13zm7 7v-5h4v5h-4z"></path></svg>
+            <span style="font-size:10px; font-weight:600; margin-top:2px;">Főoldal</span>
+          </div>
         </div>
-        <div class="pda-bottom-nav__item pda-nav-home-btn" id="pda-form-nav-home" style="cursor: pointer;">
-          <svg class="pda-bottom-nav__icon" fill="currentColor" viewBox="0 0 24 24"><path d="M3 13h1v7c0 1.103.897 2 2 2h12c1.103 0 2-.897 2-2v-7h1a1 1 0 00.707-1.707l-9-9a.999.999 0 00-1.414 0l-9 9A1 1 0 003 13zm7 7v-5h4v5h-4z"></path></svg>
-          <span class="pda-bottom-nav__label">Főoldal</span>
+        <div style="display: flex; flex: 1; justify-content: center;">
+          <div class="pda-nav-back-btn" id="pda-form-nav-back" style="cursor:pointer; display:flex; flex-direction:column; align-items:center; color:#64748b;">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"></path></svg>
+            <span style="font-size:10px; font-weight:600; margin-top:2px;">Vissza</span>
+          </div>
+        </div>
+        <div style="display: flex; flex: 1; justify-content: flex-end;">
+          <button class="pda-btn pda-btn-primary" id="form-submit" style="cursor:pointer; border:none; display:flex; align-items:center; justify-content:center; background:#4f46e5; color:white; border-radius:8px; padding:0 16px; height:44px; font-size:12px; font-weight:700; width: 100%; max-width: 140px;">
+            Mentés
+          </button>
         </div>
       </div>
     </div>
@@ -467,9 +471,6 @@ export async function renderCommission(container, params = {}) {
     setTimeout(() => {
       let focusInput = null;
       if (paneEl === paneForm) focusInput = container.querySelector('#form-karton');
-      else if (paneEl === panePrint) focusInput = container.querySelector('#print-printer-barcode');
-      else if (paneEl === paneDest) focusInput = container.querySelector('#dest-vonalkod');
-      else if (paneEl === paneSscc) focusInput = container.querySelector('#sscc-vonalkod');
       
       if (focusInput && !focusInput.disabled) {
         focusInput.focus();
@@ -1042,7 +1043,6 @@ export async function renderCommission(container, params = {}) {
         
         container.querySelector('#print-printer-barcode').value = '';
         showPane(panePrint);
-        setTimeout(() => container.querySelector('#print-printer-barcode').focus(), 100);
       } catch (uiErr) {
         alert('Felületi hiba: ' + uiErr.message);
       }
@@ -1068,7 +1068,6 @@ export async function renderCommission(container, params = {}) {
     const printerBarcode = printPrinterInput.value.trim();
     if (!printerBarcode) {
       alert('Kérlek add meg a nyomtató azonosítóját / vonalkódját!');
-      if (printPrinterInput) printPrinterInput.focus();
       return;
     }
 
@@ -1116,44 +1115,11 @@ export async function renderCommission(container, params = {}) {
           destInputEl.value = '';
         }
         showPane(paneDest);
-        setTimeout(() => { if (destInputEl) destInputEl.focus(); }, 100);
       } catch (uiErr) {
         alert('Felületi hiba: ' + uiErr.message);
       }
     }
   };
-
-  let printerDebounceTimer = null;
-  if (printPrinterInput) {
-    printPrinterInput.addEventListener('keydown', async (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        clearTimeout(printerDebounceTimer);
-        await submitPrinterBarcode();
-      }
-    });
-    
-    // Auto-továbbítás: felismeri az IP formátumot vagy szkenneres olvasáskor automatikusan tovább lép
-    printPrinterInput.addEventListener('input', () => {
-      clearTimeout(printerDebounceTimer);
-      const val = printPrinterInput.value.trim();
-      if (!val || printPrinterInput.disabled) return;
-
-      const ipPortRegex = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}([.:]\d{2,5})?$/;
-      if (ipPortRegex.test(val)) {
-        submitPrinterBarcode();
-        return;
-      }
-
-      // Hardver szkenner vagy beírás esetén: amint a szkenner befejezte a bevitelt (300ms szünet), automatikusan tovább lép
-      printerDebounceTimer = setTimeout(() => {
-        const currentVal = printPrinterInput.value.trim();
-        if (currentVal.length >= 2 && !printPrinterInput.disabled) {
-          submitPrinterBarcode();
-        }
-      }, 300);
-    });
-  }
 
   if (printSubmitBtn) {
     printSubmitBtn.addEventListener('click', async (e) => {
@@ -1170,7 +1136,6 @@ export async function renderCommission(container, params = {}) {
     const barcode = destInput ? destInput.value.trim() : '';
     if (!barcode) {
       alert('Kérjük, add meg vagy olvasd be a cél tárhely vonalkódját!');
-      if (destInput) destInput.focus();
       return;
     }
     
@@ -1197,7 +1162,6 @@ export async function renderCommission(container, params = {}) {
         alert(responseData.error || 'Érvénytelen lokáció vagy megtelt tárhely.');
         if (destInput) {
           destInput.value = '';
-          destInput.focus();
         }
       } else {
         isSuccess = true;
@@ -1220,33 +1184,11 @@ export async function renderCommission(container, params = {}) {
         }
 
         showPane(paneSscc);
-        setTimeout(() => {
-          const ssccInput = container.querySelector('#sscc-vonalkod');
-          if (ssccInput) {
-            ssccInput.focus();
-          }
-        }, 100);
       } catch (uiErr) {
         alert('Felületi hiba: ' + uiErr.message);
       }
     }
   };
-
-  if (destInput) {
-    destInput.addEventListener('keydown', async (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        await saveDestination();
-      }
-    });
-
-    destInput.addEventListener('input', async (e) => {
-      const val = destInput.value.trim();
-      if (val.length === 9 && !destInput.disabled) {
-        await saveDestination();
-      }
-    });
-  }
 
   if (destSaveBtn) {
     destSaveBtn.addEventListener('click', async () => {
@@ -1265,7 +1207,6 @@ export async function renderCommission(container, params = {}) {
     if (!normalizedScannedSscc || normalizedScannedSscc !== normalizedExpectedSscc) {
       alert('Hiba: A beszkennelt SSCC nem egyezik a generált címkével!');
       ssccInput.value = '';
-      ssccInput.focus();
       return;
     }
 
@@ -1295,7 +1236,6 @@ export async function renderCommission(container, params = {}) {
       } else {
         alert(responseData.error || 'Hiba a mentéskor.');
         ssccInput.value = '';
-        ssccInput.focus();
       }
     } catch (err) {
       alert('Hálózati hiba a mentéskor.');
@@ -1327,27 +1267,29 @@ export async function renderCommission(container, params = {}) {
   const ssccInput = container.querySelector('#sscc-vonalkod');
   const ssccSaveBtn = container.querySelector('#btn-sscc-save');
   
-  if (ssccInput) {
-    ssccInput.addEventListener('input', async () => {
-      const scannedSscc = ssccInput.value.trim();
-      if (scannedSscc.length === 18 && !ssccInput.disabled) {
-        await saveCommissionFinal();
-      }
-    });
-
-    ssccInput.addEventListener('keydown', async (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        await saveCommissionFinal();
-      }
-    });
-  }
-  
   if (ssccSaveBtn) {
     ssccSaveBtn.addEventListener('click', async () => {
       await saveCommissionFinal();
     });
   }
+
+  const handleScan = (event) => {
+    const code = String(event.detail || '').trim();
+    if (!code) return;
+
+    if (panePrint.classList.contains('active') && !printPrinterInput.disabled) {
+      printPrinterInput.value = code;
+      submitPrinterBarcode();
+    } else if (paneDest.classList.contains('active') && !destInput.disabled) {
+      destInput.value = code;
+      saveDestination();
+    } else if (paneSscc.classList.contains('active') && !ssccInput.disabled) {
+      ssccInput.value = code;
+      saveCommissionFinal();
+    }
+  };
+  window._currentBarcodeHandler = handleScan;
+  window.addEventListener('pda-barcode-scanned', handleScan);
 
   select.addEventListener('change', loadData);
 
