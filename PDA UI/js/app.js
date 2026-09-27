@@ -45,21 +45,6 @@ export const appState = {
   currentView: null,
 };
 
-// ── Billentyűzet elrejtése szkenneléshez ──────────────────
-document.addEventListener('focusin', (e) => {
-  const el = e.target;
-  if (el && el.tagName === 'INPUT' && (el.type === 'text' || el.type === 'search')) {
-    if (!el.hasAttribute('inputmode')) {
-      el.setAttribute('inputmode', 'none');
-    }
-    if (window.Capacitor?.Plugins?.Keyboard) {
-      setTimeout(() => {
-        window.Capacitor.Plugins.Keyboard.hide().catch(() => {});
-      }, 50);
-    }
-  }
-});
-
 // ── Nézetváltó ────────────────────────────────
 
 // -- Történet kezelés fizikai back gombhoz --
@@ -78,6 +63,10 @@ let isFirstView = true;
 
 // ── Nézetváltó ────────────────────────────────
 export function showView(viewName, params = {}) {
+  if (window._currentBarcodeHandler) {
+    window.removeEventListener('pda-barcode-scanned', window._currentBarcodeHandler);
+    window._currentBarcodeHandler = null;
+  }
   if (window._currentHwBack) {
     window.removeEventListener('hwBack', window._currentHwBack);
     window._currentHwBack = null;
@@ -167,6 +156,8 @@ window.addEventListener('message', (event) => {
     if (appState.token) {
       showView('dashboard');
     }
+  } else if (event.data && event.data.action === 'hw-back') {
+    window.dispatchEvent(new CustomEvent('hwBack'));
   }
 });
 

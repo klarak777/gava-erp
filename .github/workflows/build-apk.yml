@@ -36,6 +36,10 @@ jobs:
         working-directory: ./PDA-App
         run: npx cap add android || true
 
+      - name: Prepare Web Assets from PDA UI
+        working-directory: ./PDA-App
+        run: npm run prepare:web
+
       - name: Sync Capacitor Android Project
         working-directory: ./PDA-App
         run: npx cap sync android

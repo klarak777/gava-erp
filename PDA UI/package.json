@@ -7,7 +7,7 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "mocha tests/palletFlow.browser.cjs"
+    "test": "node tests/palletFlow.browser.cjs"
   },
   "keywords": [],
   "author": "",

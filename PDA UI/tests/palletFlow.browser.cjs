@@ -69,11 +69,15 @@ async function run() {
       else if (url.endsWith('/consolidation') || url.endsWith('/pick-and-assign')) json = { success: true };
       else if (url.endsWith('/packaging-types')) json = [{ id: 3, name: 'Doboz', tare_weight_kg: 0.5 }, { id: 4, name: 'EU Raklap', tare_weight_kg: 23 }];
       else if (url.endsWith('/origin-countries')) json = [{ name: 'Magyarország' }];
+      else if (url.includes('/pallet-label/')) json = { truck_number: 'AL02', product_name: 'Nektarin 7kg', sscc };
       else if (url.includes('/commission-lines')) json = [{ id: 5, termek: 'Nektarin 7kg', kartonszam: 100, komissziozott_kartonszam: 0, kamionszam: 'AL02', target_locations: targets, celraktar: 'ALDI', plt: 10 }];
       await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(json) });
     });
 
     const activate = name => page.evaluate(async name => (await import('/js/app.js')).showView(name), name);
+    const scan = code => page.evaluate(code => {
+      window.dispatchEvent(new CustomEvent('pda-barcode-scanned', { detail: code }));
+    }, code);
     const visible = id => page.locator('#' + id).waitFor({ state: 'visible' });
     const commits = () => apiCalls.filter(c => /\/(consolidation|pick-and-assign)$/.test(c.url));
     async function checkLayout(id) {
@@ -103,14 +107,14 @@ async function run() {
     }
     async function consolidationToPrint() {
       await activate('consolidation');
-      await page.locator('#member-barcode').fill('012345678901234563');
+      await scan('012345678901234563');
       await page.waitForFunction(() => document.getElementById('member-scan-error').style.display !== 'none');
       assert.match(await page.locator('#member-scan-error').textContent(), /készletsor/);
       
-      await page.locator('#member-barcode').fill('012345678901234561');
+      await scan('012345678901234561');
       await page.waitForFunction(() => document.querySelectorAll('.remove-member-btn').length === 1);
       
-      await page.locator('#member-barcode').fill('012345678901234562');
+      await scan('012345678901234562');
       await page.waitForFunction(() => document.querySelectorAll('.remove-member-btn').length === 2);
       
       await page.locator('#btn-scan-next').click();
@@ -119,48 +123,43 @@ async function run() {
     await page.goto(base);
     await consolidationToPrint();
     failPrint = true;
-    await page.locator('#print-printer-barcode').fill('PRN-001');
+    await scan('PRN-001');
     // Várjuk meg az automatikus nyomtatás befejezését (300ms timeout + hálózati kérés)
     await page.waitForFunction(() => document.getElementById('print-printer-barcode').disabled === false);
     await visible('pane-print');
     failPrint = false;
     // Újra triggereljük az inputot
-    await page.locator('#print-printer-barcode').fill('PRN-002');
+    await scan('PRN-002');
     await page.waitForFunction(() => document.getElementById('pane-dest').classList.contains('active'));
     await checkLayout('pane-dest');
     assert.match(await page.locator('#allowed-rows-box').textContent(), /AL02.*1\. sor/s);
     assert.equal(commits().length, 0);
     // Test inputmode none assertion removed
     
-    await page.locator('#dest-vonalkod').press('Enter');
-    await page.locator('#dest-error').waitFor({ state: 'visible' });
-    await page.locator('#dest-vonalkod').fill('S02010000');
-    await page.locator('#dest-vonalkod').press('Enter');
+    await scan('S02010000');
     await page.waitForFunction(() => document.getElementById('dest-error').textContent.includes('Nem engedélyezett'));
     await visible('pane-dest');
-    await page.locator('#dest-vonalkod').fill('S01010199');
+    await scan('S01010199');
     await page.waitForFunction(() => document.getElementById('dest-error').textContent.includes('céllokáció megtelt'));
     await visible('pane-dest');
     assert.equal(await page.locator('#pane-sscc').isVisible(), false);
     assert.equal(commits().length, 0);
     assert.deepEqual(apiCalls.filter(c => c.url.endsWith('/consolidation-validate-location')).at(-1).body.labelIds, [1, 2]);
-    await page.locator('#dest-vonalkod').fill('S01010000');
-    await page.locator('#dest-vonalkod').press('Enter');
+    await scan('S01010000');
     await checkLayout('pane-sscc');
     // Test inputmode none assertion removed for hardware scanner compatibility
     assert.match(await page.locator('#test-sscc-hint').textContent(), new RegExp(sscc));
     assert.equal(commits().length, 0);
-    await page.locator('#sscc-vonalkod').fill('999999999999999999');
+    await scan('999999999999999999');
     await page.locator('#scan-error').waitFor({ state: 'visible' });
     assert.equal(commits().length, 0);
     // The actual hardware bridge must move back exactly one screen.
     await page.waitForTimeout(200);
     await page.evaluate(() => window.postMessage({ action: 'hw-back' }, '*'));
     await visible('pane-dest');
-    await page.locator('#dest-vonalkod').fill('S01010000');
+    await scan('S01010000');
     await visible('pane-sscc');
-    await page.locator('#sscc-vonalkod').fill('(00)' + sscc);
-    await page.locator('#sscc-vonalkod').press('Enter');
+    await scan('(00)' + sscc);
     await page.locator('.pda-dashboard').waitFor({ state: 'visible' });
     assert.equal(commits().length, 1);
     assert.deepEqual(commits()[0].body.labelIds, [1, 2]);
@@ -170,11 +169,10 @@ async function run() {
     for (const viewport of [{ width: 320, height: 480 }, { width: 390, height: 810 }]) {
       await page.setViewportSize(viewport);
       await consolidationToPrint();
-      await page.locator('#print-printer-barcode').fill('PRN-001');
-      await page.locator('#print-printer-barcode').press('Enter');
+      await scan('PRN-001');
       await checkLayout('pane-dest');
       await page.screenshot({ path: path.join(require('node:os').tmpdir(), `pda-destination-${viewport.width}.png`) });
-      await page.locator('#dest-vonalkod').fill('S01010000');
+      await scan('S01010000');
       await checkLayout('pane-sscc');
       await page.locator('#pane-sscc .pda-nav-back-btn').click();
       await checkLayout('pane-dest');
@@ -193,13 +191,13 @@ async function run() {
       await page.locator('#form-raklap').selectOption('4');
       await page.locator('#form-submit').click();
       await checkLayout('pane-print');
-      await page.locator('#print-printer-barcode').fill('PRN-001');
+      await scan('PRN-001');
       await page.waitForFunction(() => document.getElementById('pane-dest').classList.contains('active'));
       await checkLayout('pane-dest');
-      await page.locator('#dest-vonalkod').fill('S01010000');
+      await scan('S01010000');
       await checkLayout('pane-sscc');
       const before = commits().length;
-      await page.locator('#sscc-vonalkod').fill(sscc);
+      await scan(sscc);
       await visible('pane-list');
       assert.equal(commits().length, before + 1);
       const commitBody = commits().at(-1).body;
@@ -214,6 +212,13 @@ async function run() {
       assert.deepEqual(commitBody.pallet_types, [4], 'Raklap típus (EU Raklap = id 4) nem egyezik');
       console.log(`PASS mindkét munkafolyamat és konzisztens címkeadatok: ${viewport.width}x${viewport.height}`);
     }
+    await activate('scan-pallet');
+    const scanDisplay = page.locator('#scan-pallet-barcode');
+    await scanDisplay.waitFor({ state: 'visible' });
+    assert.equal(await scanDisplay.evaluate(el => el.tagName), 'DIV');
+    await scan(sscc);
+    await page.waitForFunction(() => document.getElementById('scan-pallet-result').style.display === 'block');
+    assert.ok(apiCalls.some(c => c.url.endsWith('/pallet-label/' + sscc)));
     assert.deepEqual(errors, []);
     console.log('PASS no browser script errors; all APIs mocked');
   } finally { await browser.close(); }

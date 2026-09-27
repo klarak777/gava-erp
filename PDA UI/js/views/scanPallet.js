@@ -150,7 +150,7 @@ export async function renderScanPallet(container, params = {}) {
       errorBox.style.display = 'block';
     } finally {
       barcodeInput.disabled = false;
-      barcodeInput.innerHTML = 'Várakozás beolvasásra...';
+      barcodeInput.textContent = 'Várakozás beolvasásra...';
     }
   }
 
@@ -161,24 +161,10 @@ export async function renderScanPallet(container, params = {}) {
     if (barcodeInput.disabled) return;
     
     const code = e.detail;
-    barcodeInput.innerHTML = `Beolvasva: <strong>${code}</strong>`;
+    barcodeInput.textContent = `Beolvasva: ${code}`;
     processBarcode(code);
   };
-  
+
+  window._currentBarcodeHandler = handleScan;
   window.addEventListener('pda-barcode-scanned', handleScan);
-  
-  // Amikor elhagyjuk a nézetet, takarítsunk le (ez a SPA router miatt hasznos)
-  const safeGoDashboard = () => {
-    window.removeEventListener('pda-barcode-scanned', handleScan);
-    goDashboard();
-  };
-  
-  container.querySelector('.pda-nav-back-btn').removeEventListener('click', goDashboard);
-  container.querySelector('.pda-nav-home-btn').removeEventListener('click', goDashboard);
-  container.querySelector('.pda-nav-back-btn').addEventListener('click', safeGoDashboard);
-  container.querySelector('.pda-nav-home-btn').addEventListener('click', safeGoDashboard);
-  
-  if (window._currentHwBack) window.removeEventListener('hwBack', window._currentHwBack);
-  window._currentHwBack = safeGoDashboard;
-  window.addEventListener('hwBack', window._currentHwBack);
 }
