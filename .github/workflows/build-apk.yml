@@ -32,17 +32,35 @@ jobs:
         working-directory: ./PDA-App
         run: npm install
 
-      - name: Add Android Platform
-        working-directory: ./PDA-App
-        run: npx cap add android || true
-
       - name: Prepare Web Assets from PDA UI
         working-directory: ./PDA-App
         run: npm run prepare:web
 
-      - name: Sync Capacitor Android Project
+      - name: Copy Web Assets to Android (without overwriting native config)
         working-directory: ./PDA-App
-        run: npx cap sync android
+        run: npx cap copy android
+
+      - name: Update Capacitor plugins only
+        working-directory: ./PDA-App
+        run: npx cap update android
+
+      - name: Verify build.gradle was NOT overwritten
+        working-directory: ./PDA-App/android/app
+        run: |
+          echo "=== build.gradle content ==="
+          cat build.gradle
+          echo ""
+          echo "=== variables.gradle content ==="
+          cat ../variables.gradle
+          echo ""
+          echo "=== Checking versionCode ==="
+          grep -n 'versionCode' build.gradle
+          echo "=== Checking targetSdkVersion ==="
+          grep -n 'targetSdkVersion' ../variables.gradle
+          echo "=== Checking signingConfigs ==="
+          grep -n 'signingConfig' build.gradle
+          echo "=== Checking debug.keystore exists ==="
+          ls -la debug.keystore
 
       - name: Build APK (Debug)
         working-directory: ./PDA-App/android
