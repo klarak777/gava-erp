@@ -74,7 +74,7 @@ export function renderLogin(container) {
       </form>
 
       <div class="pda-login__footer" style="margin-top: auto; padding-bottom: 8px;">
-        GAVA WMS PDA<br>Verzió V0.9.7
+        GAVA WMS PDA<br>Verzió V0.9.8
       </div>
     </div>
 
