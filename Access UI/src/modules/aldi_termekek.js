@@ -324,6 +324,19 @@ function renderModule() {
     wrapper.innerHTML = `<div style="padding:20px; color:#334155;">⏳ Betöltés...</div>`;
     return;
   }
+  
+  let selectionStart = null;
+  let selectionEnd = null;
+  let isSearchFocused = false;
+  const activeEl = document.activeElement;
+  if (activeEl && activeEl.id === 'aldi-product-search-input') {
+    isSearchFocused = true;
+    try {
+      selectionStart = activeEl.selectionStart;
+      selectionEnd = activeEl.selectionEnd;
+    } catch(e) {}
+  }
+
   wrapper.innerHTML = renderTermekekHtml();
 
   // Eseménykezelők
@@ -333,8 +346,14 @@ function renderModule() {
   const productSearchInput = wrapper.querySelector('#aldi-product-search-input');
   if (productSearchInput) {
     productSearchInput.addEventListener('input', (e) => { state.productSearch = e.target.value; renderModule(); });
-    // Focus after render if it was focused
-    if (state.productSearch) productSearchInput.focus();
+    if (isSearchFocused) {
+      productSearchInput.focus();
+      try {
+        if (selectionStart !== null) {
+          productSearchInput.setSelectionRange(selectionStart, selectionEnd);
+        }
+      } catch(e) {}
+    }
   }
 
   // Pagináció
