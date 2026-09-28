@@ -34,7 +34,8 @@ export function renderPalletFlow({ userName, title = 'Komissiózás' }) {
 
       <div class="pda-form-title" style="padding: 12px 14px 6px; font-size: 17px; color: #0f172a; text-align: center; font-weight: 800;">Raklap címke nyomtatása</div>
       
-      <div class="pda-form-body" style="padding: 0 12px 14px; background: #fff; overflow        <!-- Zebra Címkenyomtató Beolvasó Doboz -->
+      <div class="pda-form-body" style="padding: 0 12px 14px; background: #fff; overflow-y: auto;">
+        <!-- Zebra Címkenyomtató Beolvasó Doboz -->
         <div class="pda-print-box" style="padding: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px;">
           <div style="font-size: 11.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">Címkenyomtató vonalkód</div>
           <div style="position: relative; display: flex; align-items: center;">
@@ -151,7 +152,7 @@ export function renderPalletFlow({ userName, title = 'Komissiózás' }) {
             ` : `
               <input type="text" id="sscc-vonalkod" readonly placeholder="Vonalkód" style="width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #f8fafc; color: #0f172a;">
             `}
-          </div>size: 14px; background: #f8fafc; color: #0f172a;">
+          </div>
           </div>
           <div id="test-sscc-hint" style="display: none;"></div>
           <div id="scan-error" role="alert" style="display:none; color:#dc2626; font-size:12px; margin-bottom:10px;"></div>
