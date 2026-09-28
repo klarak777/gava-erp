@@ -1272,7 +1272,7 @@ router.post('/consolidation-preview', verifyToken, async (req, res) => {
         is_consolidated_master: true,
         pallets_json: JSON.stringify(orderedLabels.map(label => label.sscc))
       };
-      // Nem inzertáljuk adatbázisba a véglegesítés előtt, csak lefoglaljuk a sequence ID-t
+      await trx('sscc_labels').insert(previewLabel);
     });
     res.json({ success: true, label: previewLabel });
   } catch (err) {
@@ -1370,11 +1370,9 @@ router.post('/consolidation', verifyToken, async (req, res) => {
       const orderedLabels = uniqueIds.map(id => byId.get(id));
       const memberSsccs = orderedLabels.map(label => label.sscc);
 
-      const existing = await trx('sscc_labels').where('sscc', expectedSscc).first();
-      if (existing) throw new Error('Ez az összeemelt SSCC már véglegesítve lett a rendszerben.');
-      
-      const existingById = await trx('sscc_labels').where('id', masterId).first();
-      if (existingById) throw new Error('Címke azonosító ütközés. Kérj új előnézetet!');
+      const existing = await trx('sscc_labels').where('id', masterId).andWhere('sscc', expectedSscc).first();
+      if (!existing) throw new Error('A megadott ideiglenes mestercímke nem található vagy érvénytelen.');
+      if (!existing.is_provisional) throw new Error('Ez az összeemelt SSCC már véglegesítve lett a rendszerben.');
       
       const clientMembers = [];
       try { if (masterLabel.pallets_json) clientMembers.push(...JSON.parse(masterLabel.pallets_json)); } catch (_) {}
@@ -1401,12 +1399,13 @@ router.post('/consolidation', verifyToken, async (req, res) => {
         origin_country: origins.join(', ').substring(0, 255), location_name: loc.name,
         gross_weight: totalGrossWeight > 0 ? totalGrossWeight : null,
         net_weight: totalNetWeight > 0 ? totalNetWeight : null,
-        is_provisional: false, is_consolidated_master: true, pallets_json: JSON.stringify(memberSsccs),
-        id: masterId, sscc: expectedSscc
+        is_provisional: false, is_consolidated_master: true, pallets_json: JSON.stringify(memberSsccs)
       };
       
-      await trx('sscc_labels').insert(masterData);
+      await trx('sscc_labels').where('id', masterId).update(masterData);
       
+      masterData.id = masterId;
+      masterData.sscc = expectedSscc;
       await trx('sscc_labels').whereIn('id', uniqueIds).update({ consolidated_sscc: expectedSscc, location_name: loc.name });
       await trx('aldi_stock_locations').whereIn('id', stockIds).update({ location_id: loc.id });
       resultLabel = masterData;
