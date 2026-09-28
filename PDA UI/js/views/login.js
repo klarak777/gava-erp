@@ -29,9 +29,17 @@ export function renderLogin(container) {
       <form class="pda-login__form" id="pda-login-form" autocomplete="off" style="margin-top: 30px; padding: 0 10px; flex: 1;">
         ${isNative ? `
           <!-- Natív PDA nézet: Nincs beviteli mező és gomb, csak várakozás -->
-          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; background: #f8fafc; border-radius: 12px; border: 2px dashed #cbd5e1; margin-top: 20px;">
-            <svg style="width: 48px; height: 48px; color: #94a3b8; margin-bottom: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
-            <div style="font-size: 16px; font-weight: 700; color: #475569; text-align: center; line-height: 1.4;">Kérjük, olvasd be a dolgozói vonalkódot!</div>
+          <div class="pda-form-group">
+            <label class="pda-form-label" style="font-size: 14px; display: flex; align-items: center; gap: 8px; color: #0f172a; margin-bottom: 8px;">
+              <svg style="width: 20px; height: 20px; color: #6366f1;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+              Dolgozói vonalkód
+            </label>
+            <div style="position: relative; display: flex; align-items: center;">
+              <svg style="position: absolute; left: 16px; width: 22px; height: 22px; color: #94a3b8;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V6a2 2 0 0 1 2-2h2M4 16v2a2 2 0 0 0 2 2h2M16 4h2a2 2 0 0 1 2 2v2M16 20h2a2 2 0 0 0 2 2v-2M4 12h16"></path></svg>
+              <div style="width: 100%; height: 56px; padding: 0 16px 0 48px; font-size: 15px; border: 1px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; color: #475569; display: flex; align-items: center;">
+                Kérjük, olvasd be a vonalkódot!
+              </div>
+            </div>
           </div>
           <input type="hidden" id="pda-username">
         ` : `
