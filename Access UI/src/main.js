@@ -42,6 +42,7 @@ import { renderAldiStock } from './modules/aldi_stock.js';
 import { renderAldiQuality } from './modules/aldi_quality.js';
 import { renderAldiRakodas } from './modules/aldi_rakodas.js';
 import { renderAldiBelfoldiFuvarok } from './modules/aldi_belfoldi_fuvarok.js';
+import { renderAldiTermekAdattabla } from './modules/aldi_termekek.js';
 import { renderPdaEmulator } from './modules/pda_emulator.js?v=3';
 import { NAV_CATEGORIES } from './data/nav-structure.js';
 import { initAiChat } from './modules/ai-chat.js?v=7';
@@ -98,6 +99,7 @@ const modules = {
     aldi_quality: { render: renderAldiQuality, title: 'ALDI – Quality' },
     aldi_rakodas: { render: renderAldiRakodas, title: 'ALDI – Rakodás' },
     aldi_belfoldi_fuvarok: { render: renderAldiBelfoldiFuvarok, title: 'ALDI – Belföldi fuvarok' },
+    aldi_termekek: { render: renderAldiTermekAdattabla, title: 'ALDI – Termék adattábla' },
     pda_emulator: { render: renderPdaEmulator, title: 'PDA Emulátor' }
 };
 

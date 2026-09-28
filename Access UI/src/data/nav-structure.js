@@ -59,6 +59,7 @@ export const NAV_CATEGORIES = [
             { id: 'aldi_quality', title: 'Quality', icon: '✨', moduleId: 'aldi_quality', items: [] },
             { id: 'aldi_rakodas', title: 'Rakodás', icon: '🏗️', moduleId: 'aldi_rakodas', items: [] },
             { id: 'aldi_belfoldi_fuvarok', title: 'Belföldi fuvarok', icon: '🚚', moduleId: 'aldi_belfoldi_fuvarok', items: [] },
+            { id: 'aldi_termekek', title: 'Termék adattábla', icon: '📊', moduleId: 'aldi_termekek', items: [] },
         ],
     },
     {
