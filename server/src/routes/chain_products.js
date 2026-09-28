@@ -54,19 +54,23 @@ router.post('/sync', async (req, res) => {
 
         if (p.id && !String(p.id).startsWith('tmp-') && existingMap.has(Number(p.id))) {
           incomingIds.add(Number(p.id));
+          const updateData = {
+            product_name: pName,
+            article_number: pArticle,
+            gtin: pGtin,
+            ean: pEan,
+            label: pLabel,
+            updated_at: new Date()
+          };
+          if (p.label_custom_texts !== undefined) {
+            updateData.label_custom_texts = typeof p.label_custom_texts === 'string' ? p.label_custom_texts : JSON.stringify(p.label_custom_texts);
+          }
           await trx('chain_products')
             .where('id', p.id)
-            .update({
-              product_name: pName,
-              article_number: pArticle,
-              gtin: pGtin,
-              ean: pEan,
-              label: pLabel,
-              updated_at: new Date()
-            });
+            .update(updateData);
         } else {
           // Insert new
-          const [ins] = await trx('chain_products').insert({
+          const insertData = {
             chain: chainUpper,
             product_name: pName,
             article_number: pArticle,
@@ -76,7 +80,11 @@ router.post('/sync', async (req, res) => {
             is_active: true,
             created_at: new Date(),
             updated_at: new Date()
-          }).returning('id');
+          };
+          if (p.label_custom_texts !== undefined) {
+            insertData.label_custom_texts = typeof p.label_custom_texts === 'string' ? p.label_custom_texts : JSON.stringify(p.label_custom_texts);
+          }
+          const [ins] = await trx('chain_products').insert(insertData).returning('id');
           if (ins) incomingIds.add(ins.id || ins);
         }
       }
