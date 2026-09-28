@@ -120,8 +120,8 @@ export function renderAldiRendelesek(container, windowManager) {
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155; width:160px;">TERMÉK</th>
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">KARTONSZÁM</th>
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">BRUTTÓ KG</th>
-                  <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">Átlag súly (nettó) /#</th>
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">NETTÓ KG</th>
+                  <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">Átlag súly (nettó) /#</th>
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">RAKLAP</th>
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">SZÁRMAZÁSI ORSZÁG</th>
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">KARTON TÍPUS</th>
@@ -136,8 +136,8 @@ export function renderAldiRendelesek(container, windowManager) {
                     <td style="padding:8px; font-weight:600; color:#1e293b;">${l.product_name || '-'}</td>
                     <td style="padding:8px;">${l.cartons || '-'}</td>
                     <td style="padding:8px;">${l.gross_weight || '-'}</td>
-                    <td style="padding:8px;">${(parseFloat(l.net_weight) && parseFloat(l.cartons)) ? (parseFloat(l.net_weight) / parseFloat(l.cartons)).toFixed(2) : '-'}</td>
                     <td style="padding:8px;">${l.net_weight || '-'}</td>
+                    <td style="padding:8px;">${(parseFloat(l.net_weight) && parseFloat(l.cartons)) ? (parseFloat(l.net_weight) / parseFloat(l.cartons)).toFixed(2) : '-'}</td>
                     <td style="padding:8px;">${l.pallets || '-'}</td>
                     <td style="padding:8px;">${l.origin_country || '-'}</td>
                     <td style="padding:8px;">${l.packaging_type || l.carton_type || '-'}</td>
@@ -150,8 +150,8 @@ export function renderAldiRendelesek(container, windowManager) {
                   <td style="padding:10px; text-align:right;">ÖSSZESEN:</td>
                   <td style="padding:10px;" id="k-sum-cartons-${truckId}">0</td>
                   <td style="padding:10px;" id="k-sum-gross-${truckId}">0.00</td>
-                  <td style="padding:10px;" id="k-sum-avg-${truckId}">0.00</td>
                   <td style="padding:10px;" id="k-sum-net-${truckId}">0.00</td>
+                  <td style="padding:10px;" id="k-sum-avg-${truckId}">0.00</td>
                   <td style="padding:10px;" id="k-sum-pallets-${truckId}">0.00</td>
                   <td colspan="5"></td>
                 </tr>
