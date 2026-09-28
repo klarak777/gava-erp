@@ -104,14 +104,6 @@ export function renderAldiRendelesek(container, windowManager) {
       // Az összes kapott sor már egy-egy megkezdett vagy befejezett komissió (raklap)
       const pickedLines = lines;
 
-      let sumCartons = 0, sumGross = 0, sumNet = 0, sumPallets = 0;
-      pickedLines.forEach(l => {
-        sumCartons += (parseFloat(l.cartons) || 0);
-        sumGross += (parseFloat(l.gross_weight) || 0);
-        sumNet += (parseFloat(l.net_weight) || 0);
-        sumPallets += (parseFloat(l.pallets) || 0);
-      });
-
       contentEl.innerHTML = `
         <div style="padding:16px; background:#fff; height:100%; box-sizing:border-box; overflow:auto;">
           <div style="display:flex; gap:16px; margin-bottom:16px; align-items:flex-end;">
@@ -128,6 +120,7 @@ export function renderAldiRendelesek(container, windowManager) {
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155; width:160px;">TERMÉK</th>
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">KARTONSZÁM</th>
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">BRUTTÓ KG</th>
+                  <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">Átlag súly (nettó) /#</th>
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">NETTÓ KG</th>
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">RAKLAP</th>
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">SZÁRMAZÁSI ORSZÁG</th>
@@ -138,11 +131,12 @@ export function renderAldiRendelesek(container, windowManager) {
                 </tr>
               </thead>
               <tbody>
-                ${pickedLines.length === 0 ? '<tr><td colspan="10" style="padding:16px; text-align:center; color:#94a3b8;">Nincsenek még komissiózott tételek.</td></tr>' : pickedLines.map((l, idx) => `
-                  <tr class="komissio-item-row" style="border-bottom:1px solid #f1f5f9; background:${idx % 2 === 1 ? '#fafafa' : '#ffffff'};">
+                ${pickedLines.length === 0 ? '<tr><td colspan="11" style="padding:16px; text-align:center; color:#94a3b8;">Nincsenek még komissiózott tételek.</td></tr>' : pickedLines.map((l, idx) => `
+                  <tr class="komissio-item-row" data-cartons="${l.cartons || 0}" data-gross="${l.gross_weight || 0}" data-net="${l.net_weight || 0}" data-pallets="${l.pallets || 0}" style="border-bottom:1px solid #f1f5f9; background:${idx % 2 === 1 ? '#fafafa' : '#ffffff'};">
                     <td style="padding:8px; font-weight:600; color:#1e293b;">${l.product_name || '-'}</td>
                     <td style="padding:8px;">${l.cartons || '-'}</td>
                     <td style="padding:8px;">${l.gross_weight || '-'}</td>
+                    <td style="padding:8px;">${(parseFloat(l.net_weight) && parseFloat(l.cartons)) ? (parseFloat(l.net_weight) / parseFloat(l.cartons)).toFixed(2) : '-'}</td>
                     <td style="padding:8px;">${l.net_weight || '-'}</td>
                     <td style="padding:8px;">${l.pallets || '-'}</td>
                     <td style="padding:8px;">${l.origin_country || '-'}</td>
@@ -154,10 +148,11 @@ export function renderAldiRendelesek(container, windowManager) {
                 `).join('')}
                 <tr style="background:#e2e8f0; font-weight:700;">
                   <td style="padding:10px; text-align:right;">ÖSSZESEN:</td>
-                  <td style="padding:10px;">${sumCartons}</td>
-                  <td style="padding:10px;">${sumGross.toFixed(2)}</td>
-                  <td style="padding:10px;">${sumNet.toFixed(2)}</td>
-                  <td style="padding:10px;">${sumPallets.toFixed(2)}</td>
+                  <td style="padding:10px;" id="k-sum-cartons-${truckId}">0</td>
+                  <td style="padding:10px;" id="k-sum-gross-${truckId}">0.00</td>
+                  <td style="padding:10px;" id="k-sum-avg-${truckId}">0.00</td>
+                  <td style="padding:10px;" id="k-sum-net-${truckId}">0.00</td>
+                  <td style="padding:10px;" id="k-sum-pallets-${truckId}">0.00</td>
                   <td colspan="5"></td>
                 </tr>
               </tbody>
@@ -165,6 +160,32 @@ export function renderAldiRendelesek(container, windowManager) {
           </div>
         </div>
       `;
+
+      const updateTotals = () => {
+        let sumCartons = 0, sumGross = 0, sumNet = 0, sumPallets = 0;
+        const rows = contentEl.querySelectorAll('.komissio-item-row');
+        rows.forEach(row => {
+          if (row.style.display !== 'none') {
+            sumCartons += parseFloat(row.dataset.cartons || 0) || 0;
+            sumGross += parseFloat(row.dataset.gross || 0) || 0;
+            sumNet += parseFloat(row.dataset.net || 0) || 0;
+            sumPallets += parseFloat(row.dataset.pallets || 0) || 0;
+          }
+        });
+        const avg = sumCartons > 0 ? (sumNet / sumCartons).toFixed(2) : '0.00';
+        
+        const elCartons = contentEl.querySelector('#k-sum-cartons-' + truckId);
+        const elGross = contentEl.querySelector('#k-sum-gross-' + truckId);
+        const elAvg = contentEl.querySelector('#k-sum-avg-' + truckId);
+        const elNet = contentEl.querySelector('#k-sum-net-' + truckId);
+        const elPallets = contentEl.querySelector('#k-sum-pallets-' + truckId);
+        
+        if (elCartons) elCartons.textContent = sumCartons;
+        if (elGross) elGross.textContent = sumGross.toFixed(2);
+        if (elAvg) elAvg.textContent = avg;
+        if (elNet) elNet.textContent = sumNet.toFixed(2);
+        if (elPallets) elPallets.textContent = sumPallets.toFixed(2);
+      };
 
       const searchInput = contentEl.querySelector('#komissio-search-' + truckId);
       if (searchInput) {
@@ -179,8 +200,12 @@ export function renderAldiRendelesek(container, windowManager) {
               row.style.display = 'none';
             }
           });
+          updateTotals();
         });
       }
+      
+      // Kezdeti összesítés
+      updateTotals();
     });
   }
 
