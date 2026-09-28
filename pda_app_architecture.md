@@ -60,11 +60,16 @@ Mivel a PDA alkalmazás felülete (HTML) már nem a GAVA szerveréről töltődi
 
 ## 4. A Fizikai Gombok (Vonalkódolvasó) Működése
 
-A Newland MT93 (és a legtöbb ipari PDA) beépített lézeres vagy kamerás vonalkódolvasója gyárilag úgynevezett **Keyboard Wedge (Billentyűzet ék)** módban működik.
+A használt készülék **Newland MT93, Android 13**, a PDA felület tervezési mérete **390 × 810 px**.
+
+Az MT93 több kimeneti módot támogat. A GAVA PDA alkalmazás előtérben a Newland **Output via API** módját (`EXTRA_SCAN_MODE = 3`) használja, és a `nlscan.action.SCANNER_RESULT` broadcastból olvassa ki a `SCAN_BARCODE1` értéket. Emiatt nincs szükség fókuszált, szerkeszthető szövegmezőre, és a virtuális billentyűzet nem jelenik meg szkenneléskor.
+
+Az alkalmazás háttérbe kerülésekor a szkenner visszaáll **Simulate keystroke** módra (`EXTRA_SCAN_MODE = 2`), hogy más alkalmazásokban továbbra is használható legyen.
+
+A korábbi **Keyboard Wedge (Billentyűzet ék)** feldolgozás tartalékként megmaradt:
 
 **Mit jelent ez a mi alkalmazásunkban?**
 Amikor a raktáros megnyomja az eszköz oldalán lévő sárga gombot a lézer aktiválásához, a készülék leolvassa a vonalkódot, és a beolvasott szöveget **úgy küldi el a mi alkalmazásunknak, mintha egy nagyon gyors gépíró beírta volna azt egy fizikai billentyűzeten**, majd a végén nyomott volna egy `Enter` gombot.
 
-**Mi kell a működéshez a mi részünkről?**
-Semmilyen extra Android programozás nem szükséges!
-Csupán arra van szükség, hogy a PDA webes felületén a kurzor (fókusz) abban a beviteli mezőben villogjon, ahova a kódot várjuk. Amint megtörténik a beolvasás, a mező kitöltődik, az Enter gomb hatására pedig a mi JavaScript kódunk észleli a bevitelt, és azonnal elküldi az adatokat a szervernek.
+**Alkalmazásoldali feldolgozás:**
+A natív Android réteg és a tartalék globális billentyűfigyelő ugyanazt a `pda-barcode-scanned` webes eseményt küldi. Az aktív PDA nézet dolgozza fel a kódot, majd automatikusan továbblép. A vonalkódos mezők csak olvasható megjelenítők, ezért nem indítják el a szoftveres billentyűzetet.

@@ -411,11 +411,6 @@ export function renderAldiRendelesek(container, windowManager) {
           ${state.activeTab === 'komissio' ? '<span style="position:absolute; top:-12px; left:50%; transform:translateX(-50%); color:#0284c7; font-size:10px;">▼</span>' : ''}
           Komissió utasítás
         </button>
-        <button id="aldi-tab-termekek" style="${tabStyle('termekek')}">
-          ${state.activeTab === 'termekek' ? '<span style="position:absolute; top:-12px; left:50%; transform:translateX(-50%); color:#0284c7; font-size:10px;">▼</span>' : ''}
-          Termékek adat tábla
-          ${state.hasUnsavedChanges ? '<span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#ef4444; margin-left:4px; vertical-align:middle;" title="Nem mentett módosítások"></span>' : ''}
-        </button>
       </div>
 
       <!-- Tab Content Area -->
@@ -424,7 +419,7 @@ export function renderAldiRendelesek(container, windowManager) {
         state.activeTab === 'heti' ? renderHetiLekotesHtml() :
           state.activeTab === 'heti_arak' ? renderHetiArakHtml() :
             state.activeTab === 'komissio' ? renderKomissioHtml() :
-              renderTermekekHtml()
+              ''
       }
       </div>
     `;
