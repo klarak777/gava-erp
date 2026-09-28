@@ -130,43 +130,43 @@ function openAddProductModal() {
       wm.close('aldi-add-product-modal');
       renderModule();
     });
-  }, { width: 450, height: 480, x: window.innerWidth/2 - 225, y: 100 });
+  }, { width: 450, height: 480, x: window.innerWidth / 2 - 225, y: 100 });
 }
 
 function renderTermekekHtml() {
-    const q = (state.productSearch || '').toLowerCase().trim();
-    // ABC sorrendbe rendezés name alapján
-    let sortedProducts = [...state.products].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-    const filteredProducts = sortedProducts.filter(p => {
-      if (!q) return true;
-      return (p.name && p.name.toLowerCase().includes(q)) ||
-        (p.articleNo && p.articleNo.toLowerCase().includes(q)) ||
-        (p.gtin && p.gtin.toLowerCase().includes(q)) ||
-        (p.ean && p.ean.toLowerCase().includes(q)) ||
-        (p.label && p.label.toLowerCase().includes(q));
-    });
+  const q = (state.productSearch || '').toLowerCase().trim();
+  // ABC sorrendbe rendezés name alapján
+  let sortedProducts = [...state.products].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const filteredProducts = sortedProducts.filter(p => {
+    if (!q) return true;
+    return (p.name && p.name.toLowerCase().includes(q)) ||
+      (p.articleNo && p.articleNo.toLowerCase().includes(q)) ||
+      (p.gtin && p.gtin.toLowerCase().includes(q)) ||
+      (p.ean && p.ean.toLowerCase().includes(q)) ||
+      (p.label && p.label.toLowerCase().includes(q));
+  });
 
-    const itemsPerPage = 10;
-    const totalPages = Math.ceil(filteredProducts.length / itemsPerPage) || 1;
-    let currentPage = state.productsPage || 1;
-    if (currentPage > totalPages) currentPage = totalPages;
-    const paginatedProducts = filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage) || 1;
+  let currentPage = state.productsPage || 1;
+  if (currentPage > totalPages) currentPage = totalPages;
+  const paginatedProducts = filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-    const selectedProd = state.selectedProductId ? state.products.find(p => String(p.id) === String(state.selectedProductId) || String(p.tempId) === String(state.selectedProductId)) : null;
+  const selectedProd = state.selectedProductId ? state.products.find(p => String(p.id) === String(state.selectedProductId) || String(p.tempId) === String(state.selectedProductId)) : null;
 
-    let customTexts = {};
-    if (selectedProd && selectedProd.label_custom_texts) {
-      try {
-        customTexts = typeof selectedProd.label_custom_texts === 'string'
-          ? JSON.parse(selectedProd.label_custom_texts)
-          : selectedProd.label_custom_texts;
-      } catch(e) {}
-    }
+  let customTexts = {};
+  if (selectedProd && selectedProd.label_custom_texts) {
+    try {
+      customTexts = typeof selectedProd.label_custom_texts === 'string'
+        ? JSON.parse(selectedProd.label_custom_texts)
+        : selectedProd.label_custom_texts;
+    } catch (e) { }
+  }
 
-    let defaultCartonContent = customTexts.carton_content !== undefined ? customTexts.carton_content : '';
-    let defaultUnitContent = customTexts.unit_content !== undefined ? customTexts.unit_content : '';
+  let defaultCartonContent = customTexts.carton_content !== undefined ? customTexts.carton_content : '';
+  let defaultUnitContent = customTexts.unit_content !== undefined ? customTexts.unit_content : '';
 
-    return `
+  return `
       <div style="padding:16px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background:#f8fafc; min-height:100vh;">
         <h2 style="margin:0 0 16px 0; color:#1e293b; font-size:22px; font-weight:800; display:flex; align-items:center; gap:8px;">
           <img src="AldiNord-WorldwideLogo.svg" alt="ALDI" style="height:24px; border-radius:3px;"> Termék adattábla
@@ -176,15 +176,15 @@ function renderTermekekHtml() {
 
       <div style="display:flex; align-items:center; justify-content:space-between; margin:16px 0 12px 0; max-width:1200px; flex-wrap:wrap; gap:10px;">
         <div>
-          <input type="text" id="aldi-product-search-input" class="access-control-input" value="${state.productSearch || ''}" placeholder="Keresés név, cikkszám, GTIN..." style="height:32px; width:220px; font-size:12px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 10px;">
+          <button id="aldi-btn-save-products" class="primary-btn" style="height:34px; padding:0 16px; border-radius:8px; font-size:13px; font-weight:700; border:none; background:#0ea5e9; color:#fff; display:inline-flex; align-items:center; gap:6px; cursor:pointer;" ${!state.hasUnsavedChanges ? 'style="opacity:0.6;" disabled' : ''}>
+            💾 Mentés
+          </button>
         </div>
         <div style="display:flex; align-items:center; gap:10px;">
           <button id="aldi-btn-add-product" class="secondary-btn" style="height:34px; padding:0 16px; border-radius:8px; font-size:13px; font-weight:700; border:1px solid #cbd5e1; background:#ffffff; display:inline-flex; align-items:center; gap:6px; cursor:pointer; color:#0f172a;">
             ➕ Új termék
           </button>
-          <button id="aldi-btn-save-products" class="primary-btn" style="height:34px; padding:0 16px; border-radius:8px; font-size:13px; font-weight:700; border:none; background:#0ea5e9; color:#fff; display:inline-flex; align-items:center; gap:6px; cursor:pointer;" ${!state.hasUnsavedChanges ? 'style="opacity:0.6;" disabled' : ''}>
-            💾 Mentés 
-          </button>
+          <input type="text" id="aldi-product-search-input" class="access-control-input" value="${state.productSearch || ''}" placeholder="Keresés név, cikkszám, GTIN..." style="height:32px; width:220px; font-size:12px; border:1px solid #cbd5e1; border-radius:6px; padding:4px 10px;">
         </div>
       </div>
       <div style="border:1px solid #cbd5e1; border-radius:8px; overflow:hidden; max-width:1200px; box-shadow:0 1px 4px rgba(0,0,0,0.04); background:#ffffff;">
@@ -232,7 +232,7 @@ function renderTermekekHtml() {
         <div style="border:1px solid #cbd5e1; border-radius:8px; padding:16px; background:#fff;">
           <h4 style="margin:0 0 12px 0; color:#1e3a8a; font-size:13px; font-weight:800; letter-spacing:0.5px;">TERMÉK RÉSZLETEI</h4>
           ${selectedProd ? (
-        state.editingBlock === 'base' ? `
+      state.editingBlock === 'base' ? `
                <div style="display:flex; flex-direction:column; gap:8px; font-size:13px; margin-bottom:16px;">
                  <div style="display:grid; grid-template-columns:120px 1fr; align-items:center;"><strong>Termék név *</strong><input type="text" id="aldi-inline-name" value="${selectedProd.name || ''}" class="access-control-input" style="height:28px; padding:2px 8px;"></div>
                  <div style="display:grid; grid-template-columns:120px 1fr; align-items:center;"><strong>Cikkszám *</strong><input type="text" id="aldi-inline-articleno" value="${selectedProd.articleNo || ''}" class="access-control-input" style="height:28px; padding:2px 8px;"></div>
@@ -252,7 +252,7 @@ function renderTermekekHtml() {
                </div>
                <button class="secondary-btn inline-edit-base-btn" style="height:32px; padding:0 12px; font-size:12px; font-weight:600;">Szerkesztés</button>
              `
-      ) : '<div style="color:#94a3b8; font-size:13px;">Válassz ki egy terméket a részletekhez.</div>'}
+    ) : '<div style="color:#94a3b8; font-size:13px;">Válassz ki egy terméket a részletekhez.</div>'}
         </div>
 
         <!-- KARTON CÍMKE -->
@@ -262,7 +262,7 @@ function renderTermekekHtml() {
             ${(selectedProd && !String(selectedProd.id).startsWith('tmp-')) ? `<button class="inline-dl-btn" data-id="${selectedProd.id}" style="background:none; border:none; font-size:16px; cursor:pointer; opacity:0.7;" title="PDF letöltése">📥</button>` : ''}
           </h4>
           ${selectedProd ? (
-        state.editingBlock === 'carton' ? `
+      state.editingBlock === 'carton' ? `
                <div style="display:flex; flex-direction:column; gap:8px; font-size:13px; margin-bottom:16px;">
                  <div style="display:grid; grid-template-columns:120px 1fr; align-items:center;"><strong>Cím Caja (Név)</strong><input type="text" id="aldi-inline-title-caja" value="${customTexts.title_caja || ''}" class="access-control-input" style="height:28px; padding:2px 8px;"></div>
                  <div style="display:flex; flex-direction:column; gap:4px; margin-top:8px;">
@@ -280,7 +280,7 @@ function renderTermekekHtml() {
                </div>
                <button class="secondary-btn inline-edit-carton-btn" style="height:32px; padding:0 12px; font-size:12px; font-weight:600;">Szerkesztés</button>
              `
-      ) : '<div style="color:#94a3b8; font-size:13px;">Válassz ki egy terméket a részletekhez.</div>'}
+    ) : '<div style="color:#94a3b8; font-size:13px;">Válassz ki egy terméket a részletekhez.</div>'}
         </div>
 
         <!-- UNIT CÍMKE -->
@@ -290,7 +290,7 @@ function renderTermekekHtml() {
             ${(selectedProd && !String(selectedProd.id).startsWith('tmp-')) ? `<button class="inline-dl-unit-btn" data-id="${selectedProd.id}" style="background:none; border:none; font-size:16px; cursor:pointer; opacity:0.7;" title="PDF letöltése">📥</button>` : ''}
           </h4>
           ${selectedProd ? (
-        state.editingBlock === 'unit' ? `
+      state.editingBlock === 'unit' ? `
                <div style="display:flex; flex-direction:column; gap:8px; font-size:13px; margin-bottom:16px;">
                  <div style="display:grid; grid-template-columns:120px 1fr; align-items:center;"><strong>Cím Pieza (Név)</strong><input type="text" id="aldi-inline-title-pieza-u" value="${customTexts.title_pieza || ''}" class="access-control-input" style="height:28px; padding:2px 8px;"></div>
                  <div style="display:grid; grid-template-columns:120px 1fr; align-items:center;"><strong>Származás</strong><select id="aldi-inline-origin-u" data-loaded="false" class="access-control-input" style="height:28px; padding:2px 8px;"><option value="${selectedProd.label_origin || ''}">${selectedProd.label_origin || 'Töltés...'}</option></select></div>
@@ -311,13 +311,13 @@ function renderTermekekHtml() {
                </div>
                <button class="secondary-btn inline-edit-unit-btn" style="height:32px; padding:0 12px; font-size:12px; font-weight:600;">Szerkesztés</button>
              `
-      ) : '<div style="color:#94a3b8; font-size:13px;">Válassz ki egy terméket a részletekhez.</div>'}
+    ) : '<div style="color:#94a3b8; font-size:13px;">Válassz ki egy terméket a részletekhez.</div>'}
         </div>
       </div>
       
       </div>
     `;
-  }
+}
 
 function renderModule() {
   if (state.isLoadingProducts) {
@@ -449,23 +449,23 @@ function renderModule() {
   const saveLabelFn = async (isUnit) => {
     const prod = state.products.find(p => String(p.id) === String(state.selectedProductId) || String(p.tempId) === String(state.selectedProductId));
     if (!prod) return;
-    
+
     const textareaId = isUnit ? '#aldi-inline-unit-content' : '#aldi-inline-carton-content';
     const tryGetVal = (id) => wrapper.querySelector(id) ? wrapper.querySelector(id).value : undefined;
-    
+
     let customTexts = {};
     if (prod.label_custom_texts) {
-        try { customTexts = typeof prod.label_custom_texts === 'string' ? JSON.parse(prod.label_custom_texts) : prod.label_custom_texts; } catch(e) {}
+      try { customTexts = typeof prod.label_custom_texts === 'string' ? JSON.parse(prod.label_custom_texts) : prod.label_custom_texts; } catch (e) { }
     }
-    
+
     if (isUnit) {
-        customTexts.title_pieza = tryGetVal('#aldi-inline-title-pieza-u');
-        customTexts.unit_content = tryGetVal('#aldi-inline-unit-content');
+      customTexts.title_pieza = tryGetVal('#aldi-inline-title-pieza-u');
+      customTexts.unit_content = tryGetVal('#aldi-inline-unit-content');
     } else {
-        customTexts.title_caja = tryGetVal('#aldi-inline-title-caja');
-        customTexts.carton_content = tryGetVal('#aldi-inline-carton-content');
+      customTexts.title_caja = tryGetVal('#aldi-inline-title-caja');
+      customTexts.carton_content = tryGetVal('#aldi-inline-carton-content');
     }
-    
+
     prod.label_custom_texts = JSON.stringify(customTexts);
 
     if (String(prod.id).startsWith('tmp-')) {
