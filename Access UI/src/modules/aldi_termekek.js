@@ -305,64 +305,59 @@ function renderTermekekHtml() {
               <div style="color:#94a3b8; font-size:13px; text-align:center; padding:20px 0;">Válassz ki egy terméket a táblázatból!</div>
             `}
           </div>
-  
+
           <!-- KARTON CÍMKE -->
-          <div style="border:1px solid #cbd5e1; border-radius:8px; padding:16px; background:#fff;">
-            <h4 style="margin:0 0 12px 0; color:#1e3a8a; font-size:13px; font-weight:800; letter-spacing:0.5px; display:flex; justify-content:space-between; align-items:center;">
-              <span>KARTON CÍMKE RÉSZLETEI</span>
-              ${(selectedProd && !String(selectedProd.id).startsWith('tmp-')) ? `<button class="inline-dl-btn" data-id="${selectedProd.id}" style="background:none; border:none; font-size:16px; cursor:pointer; opacity:0.7;" title="PDF letöltése">📥</button>` : ''}
-            </h4>
+          <div style="border:1px solid #cbd5e1; border-radius:8px; padding:16px; background:#fff; position:relative;">
+            <h4 style="margin:0 0 12px 0; color:#1e3a8a; font-size:13px; font-weight:800; letter-spacing:0.5px;">KARTON CÍMKE</h4>
             ${selectedProd ? (
-          state.editingBlock === 'carton' ? `
-                 <div style="display:flex; flex-direction:column; gap:8px; font-size:13px; margin-bottom:16px;">
-                   <div style="display:grid; grid-template-columns:120px 1fr; align-items:center;"><strong>Cím Caja (Név)</strong><input type="text" id="aldi-inline-title-caja" value="${customTexts.title_caja || ''}" class="access-control-input" style="height:28px; padding:2px 8px;"></div>
-                   <div style="display:flex; flex-direction:column; gap:4px; margin-top:8px;">
-                      <strong style="color:#64748b;">Címke összetevők leírás (Spanyol):</strong>
-                      <textarea id="aldi-inline-carton-content" class="access-control-input" style="width:100%; min-height:80px; padding:8px; font-size:12px; border:1px solid #cbd5e1; border-radius:6px; resize:vertical;">${defaultCartonContent}</textarea>
-                   </div>
-                 </div>
-                 <div style="display:flex; gap:10px;">
-                   <button class="secondary-btn inline-cancel-btn" style="height:32px; padding:0 12px; font-size:12px; font-weight:600;">Mégse</button>
-                   <button class="primary-btn inline-save-label-btn" style="height:32px; padding:0 16px; font-size:12px; font-weight:600; background:#16a34a; border:none; color:#fff;">Mentés</button>
-                 </div>
-               ` : `
-                 <div style="display:flex; flex-direction:column; gap:6px; font-size:13px; margin-bottom:12px; color:#334155;">
-                   <div style="display:grid; grid-template-columns:120px 1fr;"><strong style="color:#64748b;">Cím Caja (Név):</strong><span style="font-weight:600; color:#0f172a;">${customTexts.title_caja || '-'}</span></div>
-                 </div>
-                 <button class="secondary-btn inline-edit-carton-btn" style="height:32px; padding:0 12px; font-size:12px; font-weight:600;">Szerkesztés</button>
-               `
-        ) : '<div style="color:#94a3b8; font-size:13px;">Válassz ki egy terméket a részletekhez.</div>'}
+              state.editingBlock === 'carton' ? `
+                <div style="display:flex; align-items:center; margin-bottom:4px; font-size:12px;">
+                  <input type="text" id="aldi-inline-title-caja" value="${customTexts.title_caja || 'CAJA:'}" class="access-control-input" style="font-weight:700; color:#475569; width:80px; padding:2px; border:none; background:#e2e8f0; border-radius:4px;">
+                </div>
+                <div style="border:1px dashed #cbd5e1; padding:16px; background:#f8fafc; text-align:center; font-size:12px; line-height:2.0; display:flex; flex-direction:column; gap:6px;">
+                  <textarea id="aldi-inline-carton-content" class="access-control-input" style="width:100%; min-height:180px; padding:8px; border:1px solid #cbd5e1; border-radius:4px; text-align:center; resize:vertical; font-family:inherit;">${defaultCartonContent}</textarea>
+                </div>
+                <div style="display:flex; gap:10px; margin-top:12px; justify-content:center;">
+                  <button class="secondary-btn inline-cancel-btn" style="height:28px; padding:0 12px; font-size:11px; font-weight:600;">Mégse</button>
+                  <button class="primary-btn inline-save-label-btn" style="height:28px; padding:0 16px; font-size:11px; font-weight:600; background:#16a34a; border:none; color:#fff;">Mentés</button>
+                </div>
+              ` : `
+                <div style="text-align:left; font-weight:700; color:#475569; margin-bottom:4px; font-size:12px;">${customTexts.title_caja || 'CAJA:'}</div>
+                <div style="border:1px solid #cbd5e1; padding:16px; background:#f8fafc; text-align:center; font-size:12px; line-height:1.6; display:flex; flex-direction:column; gap:4px; white-space: pre-wrap;">${defaultCartonContent}</div>
+                <div style="display:flex; gap:10px; margin-top:12px; justify-content:center;">
+                  <button class="secondary-btn inline-edit-carton-btn" style="height:28px; padding:0 12px; font-size:11px; font-weight:600;">Szerkesztés</button>
+                </div>
+              `
+            ) : `
+              <div style="color:#94a3b8; font-size:13px; text-align:center; padding:20px 0;">Válassz ki egy terméket a táblázatból!</div>
+            `}
           </div>
-  
+
           <!-- EGYSÉG CÍMKE -->
-          <div style="border:1px solid #cbd5e1; border-radius:8px; padding:16px; background:#fff;">
-            <h4 style="margin:0 0 12px 0; color:#1e3a8a; font-size:13px; font-weight:800; letter-spacing:0.5px; display:flex; justify-content:space-between; align-items:center;">
-              <span>UNIT CÍMKE RÉSZLETEI (TÁLCÁS)</span>
-              ${(selectedProd && !String(selectedProd.id).startsWith('tmp-')) ? `<button class="inline-dl-unit-btn" data-id="${selectedProd.id}" style="background:none; border:none; font-size:16px; cursor:pointer; opacity:0.7;" title="PDF letöltése">📥</button>` : ''}
-            </h4>
+          <div style="border:1px solid #cbd5e1; border-radius:8px; padding:16px; background:#fff; position:relative;">
+            <h4 style="margin:0 0 12px 0; color:#1e3a8a; font-size:13px; font-weight:800; letter-spacing:0.5px;">EGYSÉG CÍMKE</h4>
             ${selectedProd ? (
-          state.editingBlock === 'unit' ? `
-                 <div style="display:flex; flex-direction:column; gap:8px; font-size:13px; margin-bottom:16px;">
-                   <div style="display:grid; grid-template-columns:120px 1fr; align-items:center;"><strong>Cím Pieza (Név)</strong><input type="text" id="aldi-inline-title-pieza-u" value="${customTexts.title_pieza || ''}" class="access-control-input" style="height:28px; padding:2px 8px;"></div>
-                   <div style="display:grid; grid-template-columns:120px 1fr; align-items:center;"><strong>Származás</strong><select id="aldi-inline-origin-u" data-loaded="false" class="access-control-input" style="height:28px; padding:2px 8px;"><option value="${selectedProd.label_origin || ''}">${selectedProd.label_origin || 'Töltés...'}</option></select></div>
-                   
-                   <div style="display:flex; flex-direction:column; gap:4px; margin-top:8px;">
-                      <strong style="color:#64748b;">Tálca összetevők leírás (Spanyol):</strong>
-                      <textarea id="aldi-inline-unit-content" class="access-control-input" style="width:100%; min-height:80px; padding:8px; font-size:12px; border:1px solid #cbd5e1; border-radius:6px; resize:vertical;">${defaultUnitContent}</textarea>
-                   </div>
-                 </div>
-                 <div style="display:flex; gap:10px;">
-                   <button class="secondary-btn inline-cancel-btn" style="height:32px; padding:0 12px; font-size:12px; font-weight:600;">Mégse</button>
-                   <button class="primary-btn inline-save-label-u-btn" style="height:32px; padding:0 16px; font-size:12px; font-weight:600; background:#16a34a; border:none; color:#fff;">Mentés</button>
-                 </div>
-               ` : `
-                 <div style="display:flex; flex-direction:column; gap:6px; font-size:13px; margin-bottom:12px; color:#334155;">
-                   <div style="display:grid; grid-template-columns:120px 1fr;"><strong style="color:#64748b;">Cím Pieza (Név):</strong><span style="font-weight:600; color:#0f172a;">${customTexts.title_pieza || '-'}</span></div>
-                   <div style="display:grid; grid-template-columns:120px 1fr;"><strong style="color:#64748b;">Származás:</strong><span>${selectedProd.label_origin || '-'}</span></div>
-                 </div>
-                 <button class="secondary-btn inline-edit-unit-btn" style="height:32px; padding:0 12px; font-size:12px; font-weight:600;">Szerkesztés</button>
-               `
-        ) : '<div style="color:#94a3b8; font-size:13px;">Válassz ki egy terméket a részletekhez.</div>'}
+              state.editingBlock === 'unit' ? `
+                <div style="display:flex; align-items:center; margin-bottom:4px; font-size:12px;">
+                  <input type="text" id="aldi-inline-title-pieza-u" value="${customTexts.title_pieza || 'PIEZA:'}" class="access-control-input" style="font-weight:700; color:#475569; width:80px; padding:2px; border:none; background:#e2e8f0; border-radius:4px;">
+                </div>
+                <div style="border:1px dashed #cbd5e1; padding:16px; background:#f8fafc; text-align:center; font-size:12px; line-height:2.0; display:flex; flex-direction:column; gap:6px;">
+                  <textarea id="aldi-inline-unit-content" class="access-control-input" style="width:100%; min-height:180px; padding:8px; border:1px solid #cbd5e1; border-radius:4px; text-align:center; resize:vertical; font-family:inherit;">${defaultUnitContent}</textarea>
+                </div>
+                <div style="display:flex; gap:10px; margin-top:12px; justify-content:center;">
+                  <button class="secondary-btn inline-cancel-btn" style="height:28px; padding:0 12px; font-size:11px; font-weight:600;">Mégse</button>
+                  <button class="primary-btn inline-save-label-u-btn" style="height:28px; padding:0 16px; font-size:11px; font-weight:600; background:#16a34a; border:none; color:#fff;">Mentés</button>
+                </div>
+              ` : `
+                <div style="text-align:left; font-weight:700; color:#475569; margin-bottom:4px; font-size:12px;">${customTexts.title_pieza || 'PIEZA:'}</div>
+                <div style="border:1px solid #cbd5e1; padding:16px; background:#f8fafc; text-align:center; font-size:12px; line-height:1.6; display:flex; flex-direction:column; gap:4px; white-space: pre-wrap;">${defaultUnitContent}</div>
+                <div style="display:flex; gap:10px; margin-top:12px; justify-content:center;">
+                  <button class="secondary-btn inline-edit-unit-btn" style="height:28px; padding:0 12px; font-size:11px; font-weight:600;">Szerkesztés</button>
+                </div>
+              `
+            ) : `
+              <div style="color:#94a3b8; font-size:13px; text-align:center; padding:20px 0;">Válassz ki egy terméket a táblázatból!</div>
+            `}
           </div>
 
         </div>
@@ -481,29 +476,6 @@ function renderModule() {
     const id = e.target.dataset.id;
     window.open(`/api/v1/chain-products/${id}/label`, '_blank');
   });
-  wrapper.querySelector('.inline-dl-unit-btn')?.addEventListener('click', (e) => {
-    const id = e.target.dataset.id;
-    window.open(`/api/v1/chain-products/${id}/label?type=unit`, '_blank');
-  });
-
-  // Populate country dropdowns if they exist
-  const originSelect = wrapper.querySelector('#aldi-inline-origin') || wrapper.querySelector('#aldi-inline-origin-u');
-  if (originSelect && !originSelect.dataset.loaded) {
-    fetch('/api/v1/admin/ref_origin_countries')
-      .then(r => r.json())
-      .then(countries => {
-        const currentVal = originSelect.value;
-        originSelect.innerHTML = '<option value="">Válassz...</option>';
-        countries.forEach(c => {
-          const opt = document.createElement('option');
-          opt.value = c.name;
-          opt.textContent = c.name;
-          if (c.name === currentVal) opt.selected = true;
-          originSelect.appendChild(opt);
-        });
-        originSelect.dataset.loaded = 'true';
-      }).catch(e => console.error(e));
-  }
 
   // Alapadatok mentése
   wrapper.querySelector('.inline-save-base-btn')?.addEventListener('click', async () => {
