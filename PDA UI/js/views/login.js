@@ -6,7 +6,7 @@ import { showView, setAuth } from '../app.js';
 
 export function renderLogin(container) {
   // Mobilos nézeten, és ha Capacitor az app, akkor rejtse el a gombokat és a szövegdobozt. A PDA egy Android eszköz, így ez a feltétel tökéletesen biztosítja a natív kinézetet.
-  const isNative = !!window.Capacitor || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 
   container.innerHTML = `
     <div class="pda-view pda-login" style="display: flex; flex-direction: column; min-height: 100vh;">
