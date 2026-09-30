@@ -1,6 +1,7 @@
 import { NAV_CATEGORIES } from '../data/nav-structure.js';
 import { setupCollapsibleSections, collapsibleSectionStyles, createCollapsibleSection } from '../utils/collapsible.js';
 import { openLokaciokWindow } from './lokaciok.js';
+import { renderEmployeesModule } from './employees.js';
 
 export function renderAdmin(container, wm, subModuleId = null) {
     const group = NAV_CATEGORIES.flatMap(c => c.groups).find(g => g.id === 'admin_module');
@@ -8,6 +9,7 @@ export function renderAdmin(container, wm, subModuleId = null) {
 
     const actionMap = {
         'admin-locations': () => openLokaciokWindow(wm),
+        'admin-employees': () => renderEmployeesModule(wm),
         'admin-archived-partners': () => openArchivedPartnersTable(wm),
         'admin-references': () => openAdminTable(wm, 'Reference', 'partners', [
             { field: 'name', label: 'Name' },

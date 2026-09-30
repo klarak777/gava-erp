@@ -34,6 +34,7 @@ export const NAV_CATEGORIES = [
                 moduleId: 'admin',
                 items: [
                     { id: 'admin-locations', label: 'LOKÁCIÓK', icon: '📍', desc: 'Raktári tárhelyek és vonalkódok' },
+                    { id: 'admin-employees', label: 'Dolgozók', icon: '👥', desc: 'Munkatársak, eszközök és jogosultságok kezelése' },
                     { id: 'admin-references', label: 'Reference', icon: '🏢', desc: 'Szállítók / Partnerek' },
                     { id: 'admin-customers', label: 'Customer', icon: '🛒', desc: 'Vevők' },
                     { id: 'admin-transporters', label: 'Fuvarozó cég', icon: '🚚', desc: 'Fuvarozók' },

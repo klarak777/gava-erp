@@ -53,6 +53,7 @@ const aldiWeeklyCommitmentsRouter = require('./src/routes/aldi_weekly_commitment
 const aldiCrossDockingRouter = require('./src/routes/aldi_cross_docking');
 const pdaRouter = require('./src/routes/pda');
 const locationsRouter = require('./src/routes/locations');
+const employeesRouter = require('./src/routes/employees');
 
 // Egyszerű teszt végpont
 app.get('/api/v1/status', (req, res) => {
@@ -86,6 +87,7 @@ app.use('/api/v1/aldi-weekly-commitments', aldiWeeklyCommitmentsRouter);
 app.use('/api/v1/aldi-cross-docking', aldiCrossDockingRouter);
 app.use('/api/v1/pda', pdaRouter);
 app.use('/api/v1/locations', locationsRouter);
+app.use('/api/v1/employees', employeesRouter);
 
 // Szerver indítása
 app.listen(PORT, () => {
