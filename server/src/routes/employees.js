@@ -189,7 +189,7 @@ router.post('/:id/devices', async (req, res) => {
     let newDevice = null;
     await db.transaction(async trx => {
       [newDevice] = await trx('employee_devices').insert({
-        employee_id: id, device_type, identifier, issue_date, notes, status: status || 'Aktív'
+        employee_id: id, device_type, identifier, issue_date: issue_date || null, notes, status: status || 'Aktív'
       }).returning('*');
       
       await trx('employee_history').insert({
@@ -218,7 +218,7 @@ router.put('/:id/devices/:deviceId', async (req, res) => {
     let updatedDevice = null;
     await db.transaction(async trx => {
       [updatedDevice] = await trx('employee_devices').where({ id: deviceId, employee_id: id }).update({
-        device_type, identifier, issue_date, status, notes, updated_at: db.fn.now()
+        device_type, identifier, issue_date: issue_date || null, status, notes, updated_at: db.fn.now()
       }).returning('*');
       
       await trx('employee_history').insert({

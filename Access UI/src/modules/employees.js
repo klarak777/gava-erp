@@ -417,6 +417,10 @@ export function renderEmployeesModule(wm) {
                     <input type="text" id="dev-id" class="emp-search-input">
                 </div>
                 <div class="emp-field">
+                    <label for="dev-issue-date">Kiosztás dátuma</label>
+                    <input type="date" id="dev-issue-date">
+                </div>
+                <div class="emp-field">
                     <label>Státusz</label>
                     <select id="dev-status">
                         <option value="Aktív">Aktív</option>
@@ -709,7 +713,7 @@ export function renderEmployeesModule(wm) {
                 <tr>
                     <td>${icon} ${escapeHtml(d.device_type)}</td>
                     <td>${dispName}</td>
-                    <td>${d.issue_date ? new Date(d.issue_date).toISOString().split('T')[0] : ''}</td>
+                    <td>${d.issue_date ? escapeHtml(String(d.issue_date).slice(0, 10)) : ''}</td>
                     <td><span style="color:${d.status === 'Aktív' ? 'green' : (d.status === 'Visszavont' ? 'red' : 'orange')}">${escapeHtml(d.status)}</span></td>
                     <td>${escapeHtml(d.notes || '')}</td>
                     <td>
@@ -1055,14 +1059,24 @@ export function renderEmployeesModule(wm) {
         const deviceDialog = content.querySelector('#device-dialog');
         const devType = content.querySelector('#dev-type');
         const devId = content.querySelector('#dev-id');
+        const devIssueDate = content.querySelector('#dev-issue-date');
         const devStatus = content.querySelector('#dev-status');
         const devNotes = content.querySelector('#dev-notes');
         let editingDeviceId = null;
+
+        const getTodayDate = () => {
+            const d = new Date();
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
 
         content.querySelector('#btn-assign-device').addEventListener('click', () => {
             if (!currentEmployeeId) { alert('Előbb mentsd el a dolgozót!'); return; }
             editingDeviceId = null;
             devId.value = '';
+            devIssueDate.value = getTodayDate();
             devStatus.value = 'Aktív';
             devType.value = 'Belépő kártya';
             devNotes.value = '';
@@ -1075,6 +1089,7 @@ export function renderEmployeesModule(wm) {
             editingDeviceId = id;
             devType.value = dev.device_type;
             devId.value = dev.identifier;
+            devIssueDate.value = dev.issue_date ? String(dev.issue_date).slice(0, 10) : getTodayDate();
             devStatus.value = dev.status;
             devNotes.value = dev.notes || '';
             deviceDialog.showModal();
@@ -1100,6 +1115,7 @@ export function renderEmployeesModule(wm) {
         content.querySelector('#btn-dev-save').addEventListener('click', async () => {
             const type = devType.value;
             const identifier = devId.value;
+            const issue_date = devIssueDate.value || getTodayDate();
             const status = devStatus.value;
             const notes = devNotes.value;
             if (!identifier) { alert('Kötelező megadni az azonosítót!'); return; }
@@ -1109,12 +1125,12 @@ export function renderEmployeesModule(wm) {
                 if (editingDeviceId) {
                     res = await apiFetch(`/api/v1/employees/${currentEmployeeId}/devices/${editingDeviceId}`, {
                         method: 'PUT',
-                        body: JSON.stringify({ device_type: type, identifier, status, notes })
+                        body: JSON.stringify({ device_type: type, identifier, issue_date, status, notes })
                     });
                 } else {
                     res = await apiFetch(`/api/v1/employees/${currentEmployeeId}/devices`, {
                         method: 'POST',
-                        body: JSON.stringify({ device_type: type, identifier, status, notes, issue_date: new Date().toISOString().split('T')[0] })
+                        body: JSON.stringify({ device_type: type, identifier, issue_date, status, notes })
                     });
                 }
                 if (!res.ok) {
