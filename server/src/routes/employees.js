@@ -36,7 +36,7 @@ router.use(verifyAuth);
 router.get('/', async (req, res) => {
   try {
     const search = req.query.search;
-    let query = db('employees').select('id', 'full_name', 'department', 'site', 'status', 'role').orderBy('id', 'desc');
+    let query = db('employees').select('id', 'full_name', 'join_date', 'department', 'site', 'status', 'role').orderBy('id', 'desc');
     
     if (search) {
       query = query.where('full_name', 'ilike', `%${search}%`)

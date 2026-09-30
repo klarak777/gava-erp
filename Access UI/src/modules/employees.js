@@ -98,9 +98,11 @@ export function renderEmployeesModule(wm) {
                 .emp-title { font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 8px; }
                 .emp-search-container { display: flex; align-items: center; gap: 10px; flex: 1; max-width: 400px; position: relative; }
                 .emp-search-input { width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
-                .emp-search-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #cbd5e1; border-radius: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-height: 250px; overflow-y: auto; display: none; z-index: 100; }
-                .emp-search-dropdown li { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; }
-                .emp-search-dropdown li:hover { background: #f8fafc; }
+                .emp-selection-list { max-height: 160px; overflow-y: auto; padding: 0 20px; background: white; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; }
+                .emp-selection-list .emp-table { margin-bottom: 0; }
+                .emp-selection-list th { position: sticky; top: 0; }
+                .emp-selection-list tr.selected td { background: #eff6ff; }
+                .emp-select-employee { background: none; border: none; padding: 0; color: #2563eb; font: inherit; text-align: left; cursor: pointer; width: 100%; }
                 .emp-btn-new { background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; }
                 .emp-btn-new:hover { background: #1d4ed8; }
                 .emp-btn-save { background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; }
@@ -127,6 +129,16 @@ export function renderEmployeesModule(wm) {
                 .emp-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; background: white; }
                 .emp-table th, .emp-table td { border: 1px solid #e2e8f0; padding: 8px 12px; font-size: 13px; text-align: left; }
                 .emp-table th { background: #f8fafc; font-weight: 600; color: #475569; }
+                #table-devices { table-layout: fixed; }
+                #table-devices th, #table-devices td { padding: 8px 6px; overflow-wrap: anywhere; }
+                #table-devices th:nth-child(1) { width: 16%; }
+                #table-devices th:nth-child(2) { width: 18%; }
+                #table-devices th:nth-child(3) { width: 110px; }
+                #table-devices th:nth-child(4) { width: 85px; }
+                #table-devices th:nth-child(6) { width: 82px; }
+                #table-devices td:nth-child(5) { white-space: pre-wrap; }
+                #table-devices td:nth-child(6) { white-space: nowrap; }
+                #table-devices .emp-btn-small { margin-right: 2px; padding: 4px 6px; }
                 .emp-btn-small { background: #e2e8f0; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 5px; }
                 .emp-btn-small:hover { background: #cbd5e1; }
                 
@@ -146,13 +158,19 @@ export function renderEmployeesModule(wm) {
                     <div class="emp-title">DOLGOZÓ KIVÁLASZTÁSA</div>
                     <div class="emp-search-container">
                         <input type="text" id="emp-search" class="emp-search-input" placeholder="Név, azonosító keresése...">
-                        <ul id="emp-search-results" class="emp-search-dropdown"></ul>
                     </div>
                 </div>
                 <div style="display:flex; gap:10px;">
                     <button id="btn-emp-save" class="emp-btn-save" style="display:none;">Mentés</button>
                     <button id="btn-emp-new" class="emp-btn-new">+ Új dolgozó</button>
                 </div>
+            </div>
+
+            <div class="emp-selection-list">
+                <table class="emp-table" aria-label="Dolgozó kiválasztása">
+                    <thead><tr><th>Név</th><th>Belépés dátuma</th><th>Státusz</th></tr></thead>
+                    <tbody id="emp-search-results"><tr><td colspan="3">Betöltés...</td></tr></tbody>
+                </table>
             </div>
 
             <div class="emp-body">
@@ -394,10 +412,6 @@ export function renderEmployeesModule(wm) {
                         <option value="Egyedi">Egyedi</option>
                     </select>
                 </div>
-                <div class="emp-field" id="dev-custom-name-container" style="display:none;">
-                    <label>Egyedi eszköz neve</label>
-                    <input type="text" id="dev-custom-name" class="emp-search-input">
-                </div>
                 <div class="emp-field">
                     <label>Azonosító</label>
                     <input type="text" id="dev-id" class="emp-search-input">
@@ -410,6 +424,10 @@ export function renderEmployeesModule(wm) {
                         <option value="Lejárt">Lejárt</option>
                         <option value="Visszavont">Visszavont</option>
                     </select>
+                </div>
+                <div class="emp-field">
+                    <label for="dev-notes">Megjegyzés</label>
+                    <textarea id="dev-notes" rows="4"></textarea>
                 </div>
                 <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px;">
                     <button type="button" class="emp-btn-small" id="btn-dev-cancel">Mégse</button>
@@ -569,27 +587,35 @@ export function renderEmployeesModule(wm) {
             updateDeviceCounters([]);
         };
 
+        let employeeSearchRequest = 0;
         const loadEmployees = async (search = '') => {
+            const request = ++employeeSearchRequest;
             try {
                 const res = await apiFetch(`/api/v1/employees?search=${encodeURIComponent(search)}`);
-                employees = await res.json();
+                if (!res.ok) throw new Error('Hiba a dolgozók betöltésekor.');
+                const result = await res.json();
+                if (request !== employeeSearchRequest) return;
+                employees = result;
                 
                 searchResults.innerHTML = '';
                 if (employees.length === 0) {
-                    searchResults.innerHTML = '<li style="color:#94a3b8; text-align:center;">Nincs találat</li>';
+                    searchResults.innerHTML = '<tr><td colspan="3" style="color:#94a3b8; text-align:center;">Nincs találat</td></tr>';
                 } else {
                     employees.forEach(emp => {
-                        const li = document.createElement('li');
-                        li.textContent = `${emp.full_name} (${emp.department || 'Nincs részleg'})`;
-                        li.addEventListener('click', () => {
-                            searchResults.style.display = 'none';
-                            searchInput.value = emp.full_name;
+                        const row = document.createElement('tr');
+                        row.classList.toggle('selected', emp.id === currentEmployeeId);
+                        row.innerHTML = `<td><button type="button" class="emp-select-employee">${escapeHtml(emp.full_name)}</button></td><td>${escapeHtml(emp.join_date ? String(emp.join_date).slice(0, 10) : '-')}</td><td>${escapeHtml(emp.status || '-')}</td>`;
+                        row.addEventListener('click', () => {
+                            searchResults.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
+                            row.classList.add('selected');
                             loadEmployeeProfile(emp.id);
                         });
-                        searchResults.appendChild(li);
+                        searchResults.appendChild(row);
                     });
                 }
             } catch (e) {
+                if (request !== employeeSearchRequest) return;
+                searchResults.innerHTML = '<tr><td colspan="3">Hiba a dolgozók betöltésekor.</td></tr>';
                 console.error(e);
             }
         };
@@ -597,15 +623,8 @@ export function renderEmployeesModule(wm) {
         let searchTimeout;
         searchInput.addEventListener('input', () => {
             clearTimeout(searchTimeout);
-            if (searchInput.value.trim().length > 0) {
-                searchResults.style.display = 'block';
-                searchTimeout = setTimeout(() => loadEmployees(searchInput.value), 300);
-            } else {
-                searchResults.style.display = 'none';
-            }
-        });
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.emp-search-container')) searchResults.style.display = 'none';
+            ++employeeSearchRequest;
+            searchTimeout = setTimeout(() => loadEmployees(searchInput.value.trim()), 300);
         });
 
         let currentProfile = null;
@@ -684,7 +703,7 @@ export function renderEmployeesModule(wm) {
                 else if (d.device_type === 'Szekrény kulcs') icon = '🔑';
                 else if (d.device_type === 'PDA készülék') icon = '📱';
                 
-                const dispName = d.device_type === 'Egyedi' && d.notes ? `${escapeHtml(d.identifier)} (${escapeHtml(d.notes)})` : escapeHtml(d.identifier);
+                const dispName = escapeHtml(d.identifier);
 
                 return `
                 <tr>
@@ -807,6 +826,8 @@ export function renderEmployeesModule(wm) {
             currentEmployeeId = null;
             currentProfile = null;
             searchInput.value = '';
+            clearTimeout(searchTimeout);
+            loadEmployees();
             clearForm();
             setEditing(true);
             tabs[0].click(); // Goto Adatok
@@ -857,6 +878,7 @@ export function renderEmployeesModule(wm) {
                     currentEmployeeId = currentEmployeeId || data.id;
                     alert('Sikeres mentés!');
                     loadEmployeeProfile(currentEmployeeId);
+                    loadEmployees(searchInput.value.trim());
                 } else {
                     const errorData = await res.json();
                     alert(errorData.error || 'Hiba a mentés során.');
@@ -1034,12 +1056,8 @@ export function renderEmployeesModule(wm) {
         const devType = content.querySelector('#dev-type');
         const devId = content.querySelector('#dev-id');
         const devStatus = content.querySelector('#dev-status');
-        const devCustomName = content.querySelector('#dev-custom-name');
+        const devNotes = content.querySelector('#dev-notes');
         let editingDeviceId = null;
-
-        devType.addEventListener('change', () => {
-            content.querySelector('#dev-custom-name-container').style.display = devType.value === 'Egyedi' ? 'block' : 'none';
-        });
 
         content.querySelector('#btn-assign-device').addEventListener('click', () => {
             if (!currentEmployeeId) { alert('Előbb mentsd el a dolgozót!'); return; }
@@ -1047,8 +1065,7 @@ export function renderEmployeesModule(wm) {
             devId.value = '';
             devStatus.value = 'Aktív';
             devType.value = 'Belépő kártya';
-            devCustomName.value = '';
-            devType.dispatchEvent(new Event('change'));
+            devNotes.value = '';
             deviceDialog.showModal();
         });
         
@@ -1059,8 +1076,7 @@ export function renderEmployeesModule(wm) {
             devType.value = dev.device_type;
             devId.value = dev.identifier;
             devStatus.value = dev.status;
-            if (dev.device_type === 'Egyedi') devCustomName.value = dev.notes || '';
-            devType.dispatchEvent(new Event('change'));
+            devNotes.value = dev.notes || '';
             deviceDialog.showModal();
         };
 
@@ -1085,7 +1101,7 @@ export function renderEmployeesModule(wm) {
             const type = devType.value;
             const identifier = devId.value;
             const status = devStatus.value;
-            const notes = type === 'Egyedi' ? devCustomName.value : '';
+            const notes = devNotes.value;
             if (!identifier) { alert('Kötelező megadni az azonosítót!'); return; }
 
             try {
@@ -1111,5 +1127,7 @@ export function renderEmployeesModule(wm) {
                 alert('Hiba kiosztáskor/mentéskor.');
             }
         });
+
+        loadEmployees();
     });
 }
