@@ -120,9 +120,10 @@ export function clearAuth() {
 
 // ── API hívó wrapper ───────────────────────────
 export async function apiFetch(path, options = {}) {
+  const currentToken = appState.token;
   const headers = {
     'Content-Type': 'application/json',
-    ...(appState.token ? { 'Authorization': `Bearer ${appState.token}` } : {}),
+    ...(currentToken ? { 'Authorization': `Bearer ${currentToken}` } : {}),
     ...(options.headers || {}),
   };
   
@@ -132,7 +133,12 @@ export async function apiFetch(path, options = {}) {
   const res = await fetch(fullPath, { ...options, headers });
   
   if (res.status === 401) {
+    if (currentToken && currentToken !== appState.token) {
+      // Ignoráljuk a kései 401-et, ha időközben már új bejelentkezés történt
+      return res;
+    }
     clearAuth();
+    appState.authMessage = 'A munkamenet lejárt vagy más eszközön bejelentkeztek.';
     showView('login');
     throw new Error('A munkamenet lejárt vagy más eszközön bejelentkeztek.');
   }

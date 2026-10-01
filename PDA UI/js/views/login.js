@@ -2,7 +2,7 @@
  * login.js – PDA bejelentkezési képernyő
  * Egyelőre bármilyen felhasználónévvel be lehet lépni (vonalkód nincs még).
  */
-import { showView, setAuth, apiFetch } from '../app.js';
+import { showView, setAuth, apiFetch, appState } from '../app.js';
 
 export function renderLogin(container) {
   // Mobilos nézeten, és ha Capacitor az app, akkor rejtse el a gombokat és a szövegdobozt. A PDA egy Android eszköz, így ez a feltétel tökéletesen biztosítja a natív kinézetet.
@@ -82,7 +82,7 @@ export function renderLogin(container) {
       </form>
 
       <div class="pda-login__footer" style="margin-top: auto; padding-bottom: 8px;">
-        GAVA WMS PDA<br>Verzió V0.9.15
+        GAVA WMS PDA<br>Verzió V0.9.16
       </div>
     </div>
 
@@ -92,6 +92,12 @@ export function renderLogin(container) {
   const errorEl = container.querySelector('#pda-login-error');
   const errDiv = container.querySelector('#pda-login-error');
   const input = container.querySelector('#pda-username');
+
+  if (appState && appState.authMessage) {
+    errDiv.textContent = appState.authMessage;
+    errDiv.style.display = 'block';
+    appState.authMessage = null; // csak egyszer mutatjuk
+  }
 
   const handleScan = (event) => {
     input.value = String(event.detail || '').trim();

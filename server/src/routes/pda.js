@@ -154,8 +154,11 @@ async function verifyToken(req, res, next) {
 // ── POST /logout ───────────────────────────────
 router.post('/logout', verifyToken, async (req, res) => {
   try {
-    if (req.user && req.user.id) {
-      await knex('employees').where('id', req.user.id).update({ pda_session_token: null });
+    if (req.user && req.user.id && req.user.sessionId) {
+      await knex('employees')
+        .where('id', req.user.id)
+        .andWhere('pda_session_token', req.user.sessionId)
+        .update({ pda_session_token: null });
     }
     res.json({ success: true });
   } catch (err) {
