@@ -329,7 +329,7 @@ router.get('/:id/label', async (req, res) => {
             const path = require('path');
             let organicLogoBase64 = '';
             try {
-                const logoPath = path.join(__dirname, '../../../eu-organic-logo-600x400_0.png');
+                const logoPath = path.join(__dirname, '../../assets/eu-organic-logo-600x400_0.png');
                 const logoData = fs.readFileSync(logoPath);
                 organicLogoBase64 = `data:image/png;base64,${logoData.toString('base64')}`;
             } catch (err) {
