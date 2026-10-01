@@ -18,6 +18,7 @@ import { renderFuvarokMainPage } from './modules/fuvarok_main.js';
 import { renderMenedzser } from './modules/menedzser.js';
 import { renderLogisztika } from './modules/logisztika.js';
 import partnerekModule from './modules/partnerek.js';
+import { renderEmployeesModule } from './modules/employees.js';
 
 // Modules with Titles
 import { renderDashboard } from './modules/dashboard.js';
@@ -91,6 +92,7 @@ const modules = {
     menedzser: { render: renderMenedzser, title: 'Menedzser' },
     logisztika: { render: renderLogisztika, title: 'Logisztika' },
     partnerek: { render: (container) => partnerekModule(container), title: 'Partnerek' },
+    employees: { render: renderEmployeesModule, title: 'Dolgozók' },
     penny_stock: { render: renderPennyStock, title: 'PENNY – Stock' },
     penny_belfoldi_fuvarok: { render: renderPennyBelfoldiFuvarok, title: 'PENNY – Belföldi fuvarok' },
     penny_komissios_utasitas: { render: renderPennyKomissiosUtasitas, title: 'PENNY – Komissiós utasítás' },

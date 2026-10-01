@@ -18,87 +18,13 @@ function escapeHtml(unsafe) {
          .replace(/'/g, "&#039;");
 }
 
-export function renderEmployeesModule(wm) {
-    wm.open('admin-employees', 'Dolgozók', (content) => {
-        const winEl = content.closest('.mdi-window');
-        if (winEl) {
-            winEl.style.width = '1100px';
-            winEl.style.height = '800px';
-            winEl.style.maxHeight = '92vh';
-
-            setTimeout(() => {
-                const left = Math.max(20, (window.innerWidth - winEl.offsetWidth) / 2);
-                const top = Math.max(70, (window.innerHeight - winEl.offsetHeight) / 2);
-                winEl.style.left = `${left}px`;
-                winEl.style.top = `${top}px`;
-            }, 10);
-        }
-
-        content.style.display = 'flex';
-        content.style.flexDirection = 'column';
-        content.style.backgroundColor = '#f8fafc';
-        
-        let employees = [];
-        let currentEmployeeId = null;
-        let isEditing = false;
-        
-        // Custom temporary mock stores for education/lang for the session
-        let mockEdu = [];
-        let mockLang = [];
-        let mockDocs = [];
-        let historyPage = 1;
-        let sysHistoryPage = 1;
-        const historyPerPage = 10;
-
-        let permissionsHtml = '';
-        NAV_CATEGORIES.forEach(cat => {
-            if (!cat.groups || cat.groups.length === 0) return;
-            const cleanLabel = cat.label.replace(/<[^>]*>?/gm, '').trim();
-            
-            let catContent = '';
-            cat.groups.forEach(g => {
-                if (g.id === 'pda_emulator') return; // Skip PDA emulator
-
-                if (g.items && g.items.length > 0) {
-                    g.items.forEach(item => {
-                        catContent += `
-                            <div class="emp-module-item" style="margin-bottom:4px; display:flex; align-items:center; gap:8px;">
-                                <input type="checkbox" class="inp-perm-check" data-module="${item.id}" disabled>
-                                <label style="font-size:12px; margin:0; flex:1; padding-left:8px;">${item.label} <span style="color:#94a3b8; font-size:11px;">(${g.title})</span></label>
-                            </div>
-                        `;
-                    });
-                } else {
-                    catContent += `
-                        <div class="emp-module-item" style="margin-bottom:4px; display:flex; align-items:center; gap:8px;">
-                            <input type="checkbox" class="inp-perm-check" data-module="${g.id}" disabled>
-                            <label style="font-size:12px; margin:0; flex:1; padding-left:8px;">${g.title}</label>
-                        </div>
-                    `;
-                }
-            });
-
-            if (catContent) {
-                permissionsHtml += `
-                <div style="margin-bottom:10px; border:1px solid #e2e8f0; border-radius:4px;">
-                    <div style="font-weight:bold; background:#f1f5f9; padding:6px 10px; font-size:13px; display:flex; align-items:center; gap:8px;">
-                        <input type="checkbox" class="inp-perm-master" disabled>
-                        <label style="margin:0; flex:1;">${cleanLabel}</label>
-                    </div>
-                    <div style="padding:10px;">
-                        ${catContent}
-                    </div>
-                </div>`;
-            }
-        });
-
-        content.innerHTML = `
+const EMPLOYEE_STYLES = `
             <style>
                 .emp-top-bar { padding: 15px 20px; background: white; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; }
                 .emp-title { font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 8px; }
                 .emp-search-container { display: flex; align-items: center; gap: 10px; flex: 1; max-width: 400px; position: relative; }
                 .emp-search-input { width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
-                .emp-selection-list { max-height: 160px; overflow-y: auto; padding: 0 20px; background: white; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; }
+                .emp-selection-list { overflow-y: auto; padding: 0 20px; background: white; border-bottom: 1px solid #e2e8f0; }
                 .emp-selection-list .emp-table { margin-bottom: 0; }
                 .emp-selection-list th { position: sticky; top: 0; }
                 .emp-selection-list tr.selected td { background: #eff6ff; }
@@ -147,12 +73,23 @@ export function renderEmployeesModule(wm) {
                 .emp-filter-tab.active { background: #3b82f6; color: white; }
                 
                 .emp-readonly-text { font-size: 13px; font-weight: 600; color: #0f172a; padding: 8px 0; }
+                .emp-permission-toggle { display:flex; align-items:center; justify-content:space-between; flex:1; gap:8px; padding:4px 0; border:none; background:none; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+                .emp-permission-chevron { font-size:10px; color:#64748b; transform:rotate(-90deg); }
+                .emp-permission-toggle[aria-expanded="true"] .emp-permission-chevron { transform:rotate(0deg); }
                 
-                dialog { padding:20px; border-radius:8px; border:1px solid #ccc; max-width:400px; width:100%; }
-                dialog::backdrop { background: rgba(0,0,0,0.5); }
+                .emp-module dialog { padding:20px; border-radius:8px; border:1px solid #ccc; max-width:400px; width:100%; }
+                .emp-module dialog::backdrop { background: rgba(0,0,0,0.5); }
+                .emp-profile-window:not(.maximized) { max-width:calc(100vw - 40px); max-height:92vh; }
+                .emp-profile-window .emp-top-bar { flex-shrink:0; }
                 .pagination-controls { display:flex; gap:10px; align-items:center; justify-content:flex-end; margin-top:10px; }
             </style>
+`;
 
+const employeeEditors = new WeakMap();
+
+export function renderEmployeesModule(content, wm) {
+    content.classList.add('emp-module');
+    content.innerHTML = `${EMPLOYEE_STYLES}
             <div class="emp-top-bar">
                 <div>
                     <div class="emp-title">DOLGOZÓ KIVÁLASZTÁSA</div>
@@ -161,7 +98,6 @@ export function renderEmployeesModule(wm) {
                     </div>
                 </div>
                 <div style="display:flex; gap:10px;">
-                    <button id="btn-emp-save" class="emp-btn-save" style="display:none;">Mentés</button>
                     <button id="btn-emp-new" class="emp-btn-new">+ Új dolgozó</button>
                 </div>
             </div>
@@ -173,6 +109,135 @@ export function renderEmployeesModule(wm) {
                 </table>
             </div>
 
+`;
+    const searchInput = content.querySelector('#emp-search');
+    const searchResults = content.querySelector('#emp-search-results');
+    let employees = [];
+    let currentEmployeeId = null;
+    const refreshList = (id) => {
+        currentEmployeeId = id;
+        if (content.isConnected) loadEmployees(searchInput.value.trim());
+    };
+    let employeeSearchRequest = 0;
+    const loadEmployees = async (search = '') => {
+        const request = ++employeeSearchRequest;
+        try {
+            const res = await apiFetch(`/api/v1/employees?search=${encodeURIComponent(search)}`);
+            if (!res.ok) throw new Error('Hiba a dolgozók betöltésekor.');
+            const result = await res.json();
+            if (request !== employeeSearchRequest || !content.isConnected) return;
+            employees = result;
+
+            searchResults.innerHTML = '';
+            if (employees.length === 0) {
+                searchResults.innerHTML = '<tr><td colspan="3" style="color:#94a3b8; text-align:center;">Nincs találat</td></tr>';
+            } else {
+                employees.forEach(emp => {
+                    const row = document.createElement('tr');
+                    row.classList.toggle('selected', emp.id === currentEmployeeId);
+                    row.innerHTML = `<td><button type="button" class="emp-select-employee">${escapeHtml(emp.full_name)}</button></td><td>${escapeHtml(emp.join_date ? String(emp.join_date).slice(0, 10) : '-')}</td><td>${escapeHtml(emp.status || '-')}</td>`;
+                    row.addEventListener('click', async () => {
+                        if (!await openEmployeeEditor(wm, emp.id, refreshList)) return;
+                        currentEmployeeId = emp.id;
+                        searchResults.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
+                        row.classList.add('selected');
+                    });
+                    searchResults.appendChild(row);
+                });
+            }
+        } catch (e) {
+            if (request !== employeeSearchRequest || !content.isConnected) return;
+            searchResults.innerHTML = '<tr><td colspan="3">Hiba a dolgozók betöltésekor.</td></tr>';
+            console.error(e);
+        }
+    };
+
+    let searchTimeout;
+    searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        ++employeeSearchRequest;
+        searchTimeout = setTimeout(() => loadEmployees(searchInput.value.trim()), 300);
+    });
+
+    content.querySelector('#btn-emp-new').addEventListener('click', () => openEmployeeEditor(wm, null, refreshList));
+    const existingEditor = employeeEditors.get(wm);
+    if (existingEditor) existingEditor.onSaved = refreshList;
+    loadEmployees();
+}
+
+async function openEmployeeEditor(wm, employeeId, onSaved) {
+    const previous = employeeEditors.get(wm);
+    wm.open('employee-profile', 'Dolgozók', (content) => {
+        content.classList.add('emp-module');
+        content.style.cssText = 'display:flex; flex-direction:column; padding:0; background:#f8fafc;';
+        const windowEl = content.closest('.mdi-window');
+        windowEl.classList.add('emp-profile-window');
+        windowEl.style.width = '1100px';
+        windowEl.style.height = '800px';
+
+        let currentEmployeeId = null;
+        let isEditing = false;
+
+        // Custom temporary mock stores for education/lang for the session
+        let mockEdu = [];
+        let mockLang = [];
+        let mockDocs = [];
+        let historyPage = 1;
+        let sysHistoryPage = 1;
+        const historyPerPage = 10;
+
+        let permissionsHtml = '';
+        NAV_CATEGORIES.forEach(cat => {
+            if (!cat.groups || cat.groups.length === 0) return;
+            const cleanLabel = cat.label.replace(/<[^>]*>?/gm, '').trim();
+
+            let catContent = '';
+            cat.groups.forEach(g => {
+                if (g.id === 'pda_emulator') return; // Skip PDA emulator
+
+                if (g.items && g.items.length > 0) {
+                    g.items.forEach(item => {
+                        catContent += `
+                            <div class="emp-module-item" style="margin-bottom:4px; display:flex; align-items:center; gap:8px;">
+                                <input type="checkbox" class="inp-perm-check" data-module="${item.id}" disabled>
+                                <label style="font-size:12px; margin:0; flex:1; padding-left:8px;">${item.label} <span style="color:#94a3b8; font-size:11px;">(${g.title})</span></label>
+                            </div>
+                        `;
+                    });
+                } else {
+                    catContent += `
+                        <div class="emp-module-item" style="margin-bottom:4px; display:flex; align-items:center; gap:8px;">
+                            <input type="checkbox" class="inp-perm-check" data-module="${g.id}" disabled>
+                            <label style="font-size:12px; margin:0; flex:1; padding-left:8px;">${g.title}</label>
+                        </div>
+                    `;
+                }
+            });
+
+            if (catContent) {
+                permissionsHtml += `
+                <div class="emp-permission-group" style="margin-bottom:10px; border:1px solid #e2e8f0; border-radius:4px;">
+                    <div style="font-weight:bold; background:#f1f5f9; padding:6px 10px; font-size:13px; display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" class="inp-perm-master" disabled>
+                        <button type="button" class="emp-permission-toggle" aria-expanded="false" aria-controls="emp-permissions-${cat.id}">
+                            <span>${cleanLabel}</span>
+                            <span class="emp-permission-chevron" aria-hidden="true">▼</span>
+                        </button>
+                    </div>
+                    <div id="emp-permissions-${cat.id}" class="emp-permission-items" style="padding:10px;" hidden>
+                        ${catContent}
+                    </div>
+                </div>`;
+            }
+        });
+
+        content.innerHTML = `${EMPLOYEE_STYLES}
+                <div class="emp-top-bar">
+                    <div id="emp-profile-title" class="emp-title" style="margin-bottom:0;">Dolgozók</div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <button id="btn-emp-save" class="emp-btn-save" style="display:none;">Mentés</button>
+                    </div>
+                </div>
             <div class="emp-body">
                 <div class="emp-tabs">
                     <div class="emp-tab active" data-tab="adatok">ADATOK</div>
@@ -501,10 +566,15 @@ export function renderEmployeesModule(wm) {
         `;
 
         // References
-        const searchInput = content.querySelector('#emp-search');
-        const searchResults = content.querySelector('#emp-search-results');
-        const btnNew = content.querySelector('#btn-emp-new');
         const btnSave = content.querySelector('#btn-emp-save');
+        const profileTitle = content.querySelector('#emp-profile-title');
+        const setProfileTitle = (title) => {
+            profileTitle.textContent = title;
+            const windowTitle = 'Dolgozók – ' + title;
+            windowEl.querySelector('.window-title').textContent = windowTitle;
+            const taskItem = wm.taskbar.querySelector('[data-window-id="' + windowEl.id + '"]');
+            if (taskItem) taskItem.textContent = windowTitle;
+        };
         const tabs = content.querySelectorAll('.emp-tab');
         const tabContents = content.querySelectorAll('.emp-tab-content');
 
@@ -519,6 +589,15 @@ export function renderEmployeesModule(wm) {
                 const container = e.target.closest('div').nextElementSibling;
                 const checks = container.querySelectorAll('.inp-perm-check');
                 checks.forEach(c => c.checked = isChecked);
+            });
+        });
+
+        content.querySelectorAll('.emp-permission-toggle').forEach(toggle => {
+            toggle.addEventListener('click', () => {
+                const items = toggle.closest('.emp-permission-group').querySelector('.emp-permission-items');
+                const expanded = toggle.getAttribute('aria-expanded') !== 'true';
+                toggle.setAttribute('aria-expanded', String(expanded));
+                items.hidden = !expanded;
             });
         });
 
@@ -591,52 +670,16 @@ export function renderEmployeesModule(wm) {
             updateDeviceCounters([]);
         };
 
-        let employeeSearchRequest = 0;
-        const loadEmployees = async (search = '') => {
-            const request = ++employeeSearchRequest;
-            try {
-                const res = await apiFetch(`/api/v1/employees?search=${encodeURIComponent(search)}`);
-                if (!res.ok) throw new Error('Hiba a dolgozók betöltésekor.');
-                const result = await res.json();
-                if (request !== employeeSearchRequest) return;
-                employees = result;
-                
-                searchResults.innerHTML = '';
-                if (employees.length === 0) {
-                    searchResults.innerHTML = '<tr><td colspan="3" style="color:#94a3b8; text-align:center;">Nincs találat</td></tr>';
-                } else {
-                    employees.forEach(emp => {
-                        const row = document.createElement('tr');
-                        row.classList.toggle('selected', emp.id === currentEmployeeId);
-                        row.innerHTML = `<td><button type="button" class="emp-select-employee">${escapeHtml(emp.full_name)}</button></td><td>${escapeHtml(emp.join_date ? String(emp.join_date).slice(0, 10) : '-')}</td><td>${escapeHtml(emp.status || '-')}</td>`;
-                        row.addEventListener('click', () => {
-                            searchResults.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
-                            row.classList.add('selected');
-                            loadEmployeeProfile(emp.id);
-                        });
-                        searchResults.appendChild(row);
-                    });
-                }
-            } catch (e) {
-                if (request !== employeeSearchRequest) return;
-                searchResults.innerHTML = '<tr><td colspan="3">Hiba a dolgozók betöltésekor.</td></tr>';
-                console.error(e);
-            }
-        };
-
-        let searchTimeout;
-        searchInput.addEventListener('input', () => {
-            clearTimeout(searchTimeout);
-            ++employeeSearchRequest;
-            searchTimeout = setTimeout(() => loadEmployees(searchInput.value.trim()), 300);
-        });
-
         let currentProfile = null;
+        let employeeProfileRequest = 0;
 
         const loadEmployeeProfile = async (id) => {
+            const request = ++employeeProfileRequest;
             try {
                 const res = await apiFetch(`/api/v1/employees/${id}`);
+                if (!res.ok) throw new Error('Hiba a dolgozó betöltésekor.');
                 const emp = await res.json();
+                if (request !== employeeProfileRequest || !content.isConnected) return false;
                 currentProfile = emp;
                 currentEmployeeId = id;
                 setEditing(true);
@@ -677,9 +720,13 @@ export function renderEmployeesModule(wm) {
                 renderLang();
                 renderDevices();
                 renderHistory();
+                setProfileTitle(emp.full_name);
+                return true;
 
             } catch (e) {
+                if (request !== employeeProfileRequest || !content.isConnected) return false;
                 alert('Hiba a dolgozó betöltésekor: ' + e.message);
+                return false;
             }
         };
 
@@ -826,16 +873,15 @@ export function renderEmployeesModule(wm) {
         window.empDelDoc = (idx) => { mockDocs.splice(idx, 1); renderDocs(); };
 
         // New employee
-        btnNew.addEventListener('click', () => {
+        const startNewEmployee = () => {
+            ++employeeProfileRequest;
             currentEmployeeId = null;
             currentProfile = null;
-            searchInput.value = '';
-            clearTimeout(searchTimeout);
-            loadEmployees();
             clearForm();
             setEditing(true);
             tabs[0].click(); // Goto Adatok
-        });
+            setProfileTitle('+ Új dolgozó');
+        };
 
         // Save
         btnSave.addEventListener('click', async () => {
@@ -882,7 +928,7 @@ export function renderEmployeesModule(wm) {
                     currentEmployeeId = currentEmployeeId || data.id;
                     alert('Sikeres mentés!');
                     loadEmployeeProfile(currentEmployeeId);
-                    loadEmployees(searchInput.value.trim());
+                    editorState.onSaved?.(currentEmployeeId);
                 } else {
                     const errorData = await res.json();
                     alert(errorData.error || 'Hiba a mentés során.');
@@ -1144,6 +1190,29 @@ export function renderEmployeesModule(wm) {
             }
         });
 
-        loadEmployees();
+        const editorState = {
+            onSaved,
+            get employeeId() { return currentEmployeeId; },
+            async select(id) {
+                if (id == null) {
+                    startNewEmployee();
+                    return true;
+                }
+                clearForm();
+                setEditing(false);
+                return loadEmployeeProfile(id);
+            }
+        };
+        employeeEditors.set(wm, editorState);
+        wm.registerBeforeClose(windowEl.id, () => {
+            ++employeeProfileRequest;
+            content.querySelectorAll('dialog[open]').forEach(dialog => dialog.close());
+            employeeEditors.delete(wm);
+            return true;
+        });
     });
+    const editor = employeeEditors.get(wm);
+    editor.onSaved = onSaved;
+    if (previous === editor && employeeId != null && editor.employeeId === employeeId) return true;
+    return editor.select(employeeId);
 }

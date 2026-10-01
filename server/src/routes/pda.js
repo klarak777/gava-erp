@@ -93,44 +93,75 @@ async function findAldiLocation(input, trx = knex) {
 }
 
 // ── POST /login ────────────────────────────────
-// Egyelőre bármilyen azonosítóval be lehet lépni (fejlesztési fázis).
-// Visszaad egy JWT tokent és a felhasználó nevét.
-router.post('/login', (req, res) => {
+// Csak vonalkóddal lehet belépni, amely szerepel a dolgozók között.
+// Nem lehet ugyanazzal a vonalkóddal kétszer bejelentkezni.
+router.post('/login', async (req, res) => {
   const { username } = req.body;
   if (!username || !String(username).trim()) {
-    return res.status(400).json({ error: 'Az azonosító megadása kötelező.' });
+    return res.status(400).json({ error: 'A dolgozói vonalkód megadása kötelező.' });
   }
 
-  const name = String(username).trim();
-  const payload = { name, role: 'pda_user', sub: name };
-  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '12h' });
+  const barcode = String(username).trim();
 
-  res.json({
-    token,
-    user: { name, role: 'pda_user' },
-  });
+  try {
+    const employee = await knex('employees').where('pda_identifier', barcode).first();
+    if (!employee) {
+      return res.status(403).json({ error: 'Nincs ilyen vonalkóddal regisztrált dolgozó!' });
+    }
+
+    const sessionId = require('crypto').randomUUID();
+    await knex('employees').where('id', employee.id).update({
+      pda_session_token: sessionId
+    });
+
+    const payload = { id: employee.id, name: employee.full_name, role: 'pda_user', sub: employee.pda_identifier, sessionId };
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '12h' });
+
+    res.json({
+      token,
+      user: { name: employee.full_name, role: 'pda_user' },
+    });
+  } catch (err) {
+    console.error('PDA login error:', err);
+    res.status(500).json({ error: 'Szerver hiba bejelentkezéskor.' });
+  }
 });
 
 // ── Middleware: JWT ellenőrzés ────────────────
-function verifyToken(req, res, next) {
+async function verifyToken(req, res, next) {
   const auth = req.headers.authorization || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
 
-  // Teszt mód / emulátor / hiányzó vagy mock token esetén automatikus engedélyezés
-  if (!token || token.startsWith('pda-mock-token') || token === 'null' || token === 'undefined') {
-    req.user = { name: 'Teszt Felhasználó', role: 'pda_user' };
-    return next();
+  if (!token) {
+    return res.status(401).json({ error: 'Hiányzó token' });
   }
 
   try {
-    req.user = jwt.verify(token, JWT_SECRET);
+    const payload = jwt.verify(token, JWT_SECRET);
+    const employee = await knex('employees').where('id', payload.id).first();
+    
+    if (!employee || employee.pda_session_token !== payload.sessionId) {
+      return res.status(401).json({ error: 'Másik eszközön bejelentkeztek, vagy a munkamenet lejárt!' });
+    }
+    
+    req.user = payload;
     return next();
   } catch (e) {
-    // Lejárt vagy eltérő secret esetén sem blokkoljuk az emulátort / tesztet
-    req.user = { name: 'Teszt Felhasználó', role: 'pda_user' };
-    return next();
+    return res.status(401).json({ error: 'Érvénytelen vagy lejárt token' });
   }
 }
+
+// ── POST /logout ───────────────────────────────
+router.post('/logout', verifyToken, async (req, res) => {
+  try {
+    if (req.user && req.user.id) {
+      await knex('employees').where('id', req.user.id).update({ pda_session_token: null });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Hiba kijelentkezéskor.' });
+  }
+});
 
 // ── GET /commission-tasks ─────────────────────
 // Visszaadja az ALDI kamionokat, amelyeket PDA-ra jelöltek (sent_to_pda = true)

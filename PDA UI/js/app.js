@@ -130,6 +130,13 @@ export async function apiFetch(path, options = {}) {
   const fullPath = baseUrl ? `${baseUrl}${path}` : path;
   
   const res = await fetch(fullPath, { ...options, headers });
+  
+  if (res.status === 401) {
+    clearAuth();
+    showView('login');
+    throw new Error('A munkamenet lejárt vagy más eszközön bejelentkeztek.');
+  }
+  
   return res;
 }
 

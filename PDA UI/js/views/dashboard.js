@@ -1,7 +1,7 @@
 /**
  * dashboard.js – PDA főmenü képernyő
  */
-import { showView, clearAuth, appState } from '../app.js';
+import { showView, clearAuth, appState, apiFetch } from '../app.js';
 
 const MENU_ITEMS = [
   {
@@ -153,8 +153,11 @@ export function renderDashboard(container) {
   });
 
   // Kijelentkezés
-  container.querySelector('#pda-logout-btn')?.addEventListener('click', () => {
+  container.querySelector('#pda-logout-btn')?.addEventListener('click', async () => {
     if (confirm('Biztosan kijelentkezel?')) {
+      try {
+        await apiFetch('/api/v1/pda/logout', { method: 'POST' });
+      } catch(e) {}
       clearAuth();
       showView('login');
     }

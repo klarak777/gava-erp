@@ -2,7 +2,7 @@
  * login.js – PDA bejelentkezési képernyő
  * Egyelőre bármilyen felhasználónévvel be lehet lépni (vonalkód nincs még).
  */
-import { showView, setAuth } from '../app.js';
+import { showView, setAuth, apiFetch } from '../app.js';
 
 export function renderLogin(container) {
   // Mobilos nézeten, és ha Capacitor az app, akkor rejtse el a gombokat és a szövegdobozt. A PDA egy Android eszköz, így ez a feltétel tökéletesen biztosítja a natív kinézetet.
@@ -114,8 +114,19 @@ export function renderLogin(container) {
 
 
 
-    // Teszt mód: bármilyen névvel be lehet lépni, API nélkül
-    setAuth('pda-mock-token-' + Date.now(), { name: username });
-    showView('dashboard');
+    try {
+      const res = await apiFetch('/api/v1/pda/login', {
+        method: 'POST',
+        body: JSON.stringify({ username })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Hiba a bejelentkezés során');
+      
+      setAuth(data.token, data.user);
+      showView('dashboard');
+    } catch (err) {
+      errDiv.textContent = err.message;
+      errDiv.style.display = 'block';
+    }
   });
 }
