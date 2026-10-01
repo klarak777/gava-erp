@@ -153,13 +153,29 @@ export function renderDashboard(container) {
   });
 
   // Kijelentkezés
+  let isLoggingOut = false;
   container.querySelector('#pda-logout-btn')?.addEventListener('click', async () => {
+    if (isLoggingOut) return;
     if (confirm('Biztosan kijelentkezel?')) {
-      try {
-        await apiFetch('/api/v1/pda/logout', { method: 'POST' });
-      } catch(e) {}
+      isLoggingOut = true;
+      const tokenToLogout = appState.token;
+
+      // Azonnal töröljük a helyi munkamenetet és visszalépünk a bejelentkező képernyőre
       clearAuth();
       showView('login');
+
+      // A háttérben értesítjük a szervert a korábbi tokennel, anélkül hogy befolyásolná az új állapotot
+      if (tokenToLogout) {
+        const baseUrl = appState.apiBaseUrl ? appState.apiBaseUrl.replace(/\/+$/, '') : '';
+        const fullUrl = baseUrl ? `${baseUrl}/api/v1/pda/logout` : '/api/v1/pda/logout';
+        fetch(fullUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${tokenToLogout}`
+          }
+        }).catch(() => {});
+      }
     }
   });
 

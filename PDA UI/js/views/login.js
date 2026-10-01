@@ -99,7 +99,11 @@ export function renderLogin(container) {
     appState.authMessage = null; // csak egyszer mutatjuk
   }
 
+  let isLoggingIn = false;
+  let currentLoginRequestId = 0;
+
   const handleScan = (event) => {
+    if (isLoggingIn) return; // Folyamatban lévő belépéskor ignoráljuk az újabb szkennelést
     input.value = String(event.detail || '').trim();
     if (input.value) form.requestSubmit();
   };
@@ -108,6 +112,8 @@ export function renderLogin(container) {
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (isLoggingIn) return;
+
     errDiv.style.display = 'none';
 
     const rawVal = input.value.trim();
@@ -118,7 +124,13 @@ export function renderLogin(container) {
       return;
     }
 
-
+    isLoggingIn = true;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.style.opacity = '0.6';
+    }
+    const thisRequestId = ++currentLoginRequestId;
 
     try {
       const res = await apiFetch('/api/v1/pda/login', {
@@ -126,13 +138,27 @@ export function renderLogin(container) {
         body: JSON.stringify({ username })
       });
       const data = await res.json();
+
+      // Ha időközben újabb kérés indult, a korábbi kérés válaszát elvetjük
+      if (thisRequestId !== currentLoginRequestId) return;
+
       if (!res.ok) throw new Error(data.error || 'Hiba a bejelentkezés során');
       
       setAuth(data.token, data.user);
       showView('dashboard');
     } catch (err) {
-      errDiv.textContent = err.message;
-      errDiv.style.display = 'block';
+      if (thisRequestId === currentLoginRequestId) {
+        errDiv.textContent = err.message;
+        errDiv.style.display = 'block';
+      }
+    } finally {
+      if (thisRequestId === currentLoginRequestId) {
+        isLoggingIn = false;
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.style.opacity = '1';
+        }
+      }
     }
   });
 }
