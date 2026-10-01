@@ -1,0 +1,1 @@
+exports.up = function(knex) { return knex.schema.alterTable('chain_products', function(table) { table.boolean('is_bio').defaultTo(false); table.string('bio_certifier'); }); }; exports.down = function(knex) { return knex.schema.alterTable('chain_products', function(table) { table.dropColumn('is_bio'); table.dropColumn('bio_certifier'); }); };

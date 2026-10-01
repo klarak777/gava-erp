@@ -10,6 +10,10 @@ let state = {
 
 let wrapper;
 
+function escapeBioCertifier(value) {
+  return String(value || '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+}
+
 export function renderAldiTermekAdattabla(container) {
   wrapper = container;
   wrapper.innerHTML = `<div style="padding:20px; color:#334155;">⏳ Betöltés...</div>`;
@@ -37,7 +41,9 @@ async function fetchProductsFromDb() {
           label_gln: item.label_gln || '',
           label_net_weight_carton: item.label_net_weight_carton || '',
           label_net_weight_unit: item.label_net_weight_unit || '',
-          label_custom_texts: item.label_custom_texts || null
+          label_custom_texts: item.label_custom_texts || null,
+          is_bio: item.is_bio ? true : false,
+          bio_certifier: item.bio_certifier || ''
         }));
         state.hasUnsavedChanges = false;
       }
@@ -81,7 +87,9 @@ async function saveProductsToDb() {
           label_gln: item.label_gln || '',
           label_net_weight_carton: item.label_net_weight_carton || '',
           label_net_weight_unit: item.label_net_weight_unit || '',
-          label_custom_texts: item.label_custom_texts || null
+          label_custom_texts: item.label_custom_texts || null,
+          is_bio: item.is_bio ? true : false,
+          bio_certifier: item.bio_certifier || ''
         }));
         state.hasUnsavedChanges = false;
         alert('✅ Termékek sikeresen elmentve!');
@@ -284,6 +292,8 @@ function renderTermekekHtml() {
                   <div style="display:grid; grid-template-columns:120px 1fr; align-items:center;"><strong>Cikkszám *</strong><input type="text" id="aldi-inline-articleno" value="${selectedProd.articleNo || ''}" class="access-control-input" style="height:28px; padding:2px 8px;"></div>
                   <div style="display:grid; grid-template-columns:120px 1fr; align-items:center;"><strong>GTIN</strong><input type="text" id="aldi-inline-gtin" value="${selectedProd.gtin || ''}" class="access-control-input" style="height:28px; padding:2px 8px;"></div>
                   <div style="display:grid; grid-template-columns:120px 1fr; align-items:center;"><strong>EAN</strong><input type="text" id="aldi-inline-ean" value="${selectedProd.ean || ''}" class="access-control-input" style="height:28px; padding:2px 8px;"></div>
+                  <div style="display:grid; grid-template-columns:120px 1fr; align-items:center;"><strong>Bio termék</strong><input type="checkbox" id="aldi-inline-bio" ${selectedProd.is_bio ? 'checked' : ''} style="width: 16px; height: 16px; margin: 0; cursor: pointer;"></div>
+                  <div id="aldi-bio-cert-wrapper" style="display:${selectedProd.is_bio ? 'grid' : 'none'}; grid-template-columns:120px 1fr; align-items:center;"><strong>Tanúsító szervezet neve</strong><input type="text" id="aldi-inline-biocert" value="${escapeBioCertifier(selectedProd.bio_certifier)}" class="access-control-input" style="height:28px; padding:2px 8px;" placeholder="Pl. HU-ÖKO-002"></div>
                 </div>
                 <div style="display:flex; gap:10px;">
                   <button class="secondary-btn inline-cancel-btn" style="height:32px; padding:0 12px; font-size:12px; font-weight:600;">Mégse</button>
@@ -295,6 +305,8 @@ function renderTermekekHtml() {
                   <div style="display:grid; grid-template-columns:120px 1fr;"><strong>Cikkszám</strong><span>${selectedProd.articleNo || ''}</span></div>
                   <div style="display:grid; grid-template-columns:120px 1fr;"><strong>GTIN azonosító</strong><span>${selectedProd.gtin || ''}</span></div>
                   <div style="display:grid; grid-template-columns:120px 1fr;"><strong>EAN azonosító</strong><span>${selectedProd.ean || ''}</span></div>
+                  <div style="display:grid; grid-template-columns:120px 1fr;"><strong>Bio termék</strong><span>${selectedProd.is_bio ? 'Igen' : 'Nem'}</span></div>
+                  ${selectedProd.is_bio ? `<div style="display:grid; grid-template-columns:120px 1fr;"><strong>Tanúsító szervezet neve</strong><span>${escapeBioCertifier(selectedProd.bio_certifier)}</span></div>` : ''}
                 </div>
                 <div style="display:flex; gap:10px;">
                   <button class="secondary-btn inline-edit-base-btn" style="height:32px; padding:0 16px; font-size:12px; font-weight:600;">Szerkesztés</button>
@@ -466,6 +478,13 @@ function renderModule() {
     renderModule(); 
   });
 
+  wrapper.querySelector('#aldi-inline-bio')?.addEventListener('change', (e) => {
+    const certWrapper = wrapper.querySelector('#aldi-bio-cert-wrapper');
+    if (certWrapper) {
+      certWrapper.style.display = e.target.checked ? 'grid' : 'none';
+    }
+  });
+
   wrapper.querySelectorAll('.inline-cancel-btn').forEach(b => b.addEventListener('click', () => { 
     state.editingBlock = null; 
     renderModule(); 
@@ -485,6 +504,10 @@ function renderModule() {
     prod.articleNo = wrapper.querySelector('#aldi-inline-articleno').value.trim();
     prod.gtin = wrapper.querySelector('#aldi-inline-gtin').value.trim();
     prod.ean = wrapper.querySelector('#aldi-inline-ean').value.trim();
+    const bioCheckbox = wrapper.querySelector('#aldi-inline-bio');
+    prod.is_bio = bioCheckbox ? bioCheckbox.checked : false;
+    const certInput = wrapper.querySelector('#aldi-inline-biocert');
+    prod.bio_certifier = certInput ? certInput.value.trim() : '';
 
     if (!prod.name || !prod.articleNo) { alert('A név és cikkszám kötelező!'); return; }
 
@@ -495,7 +518,7 @@ function renderModule() {
         await fetch('/api/v1/chain-products/' + prod.id, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ product_name: prod.name, article_number: prod.articleNo, gtin: prod.gtin, ean: prod.ean })
+          body: JSON.stringify({ product_name: prod.name, article_number: prod.articleNo, gtin: prod.gtin, ean: prod.ean, is_bio: prod.is_bio, bio_certifier: prod.bio_certifier })
         });
       } catch (e) { alert('Hiba mentéskor!'); return; }
     }

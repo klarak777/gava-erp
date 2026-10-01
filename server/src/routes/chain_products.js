@@ -49,6 +49,8 @@ router.post('/sync', async (req, res) => {
         const pGtin = p.gtin || '';
         const pEan = p.ean || '';
         const pLabel = p.label || '';
+        const pIsBio = p.is_bio ? true : false;
+        const pBioCertifier = p.bio_certifier || null;
 
         if (!pName && !pArticle) continue; // Skip empty rows
 
@@ -60,6 +62,8 @@ router.post('/sync', async (req, res) => {
             gtin: pGtin,
             ean: pEan,
             label: pLabel,
+            is_bio: pIsBio,
+            bio_certifier: pBioCertifier,
             updated_at: new Date()
           };
           if (p.label_custom_texts !== undefined) {
@@ -77,6 +81,8 @@ router.post('/sync', async (req, res) => {
             gtin: pGtin,
             ean: pEan,
             label: pLabel,
+            is_bio: pIsBio,
+            bio_certifier: pBioCertifier,
             is_active: true,
             created_at: new Date(),
             updated_at: new Date()
@@ -129,7 +135,8 @@ router.post('/', async (req, res) => {
   try {
     const {
       chain = 'ALDI', product_name, name, article_number, articleNo, gtin, ean, label,
-      label_class, label_size, label_origin, label_lot, label_gln, label_net_weight_carton, label_net_weight_unit, label_custom_texts
+      label_class, label_size, label_origin, label_lot, label_gln, label_net_weight_carton, label_net_weight_unit, label_custom_texts,
+      is_bio, bio_certifier
     } = req.body;
     const finalName = product_name || name;
 
@@ -151,6 +158,8 @@ router.post('/', async (req, res) => {
       label_gln: label_gln || '',
       label_net_weight_carton: label_net_weight_carton || '',
       label_net_weight_unit: label_net_weight_unit || '',
+      is_bio: is_bio ? true : false,
+      bio_certifier: bio_certifier || null,
       is_active: true,
       created_at: new Date(),
       updated_at: new Date()
@@ -181,7 +190,8 @@ router.put('/:id', async (req, res) => {
     const { id } = req.params;
     const {
       product_name, name, article_number, articleNo, gtin, ean, label, is_active,
-      label_class, label_size, label_origin, label_lot, label_gln, label_net_weight_carton, label_net_weight_unit, label_custom_texts
+      label_class, label_size, label_origin, label_lot, label_gln, label_net_weight_carton, label_net_weight_unit, label_custom_texts,
+      is_bio, bio_certifier
     } = req.body;
 
     const updateData = {
@@ -194,6 +204,8 @@ router.put('/:id', async (req, res) => {
     if (ean !== undefined) updateData.ean = ean;
     if (label !== undefined) updateData.label = label;
     if (is_active !== undefined) updateData.is_active = is_active;
+    if (is_bio !== undefined) updateData.is_bio = is_bio;
+    if (bio_certifier !== undefined) updateData.bio_certifier = bio_certifier;
 
     if (label_class !== undefined) updateData.label_class = label_class;
     if (label_size !== undefined) updateData.label_size = label_size;
@@ -256,6 +268,7 @@ router.delete('/:id', async (req, res) => {
 
 
 const HTMLToDocx = require('html-to-docx');
+const { formatProductLabelTables } = require('../services/productLabelLayout');
 
 // GET /api/v1/chain-products/:id/label
 router.get('/:id/label', async (req, res) => {
@@ -308,29 +321,68 @@ router.get('/:id/label', async (req, res) => {
             `;
         }
 
+        const bioCertifier = String(product.bio_certifier || '').trim();
+        const hasBioLabel = Boolean(product.is_bio && bioCertifier);
+        let bioRightColumn = '';
+        if (hasBioLabel) {
+            const fs = require('fs');
+            const path = require('path');
+            let organicLogoBase64 = '';
+            try {
+                const logoPath = path.join(__dirname, '../../../eu-organic-logo-600x400_0.png');
+                const logoData = fs.readFileSync(logoPath);
+                organicLogoBase64 = `data:image/png;base64,${logoData.toString('base64')}`;
+            } catch (err) {
+                console.warn('Bio logo not found:', err.message);
+            }
+
+            const escapedCertifier = bioCertifier.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+            bioRightColumn = `
+            <td style="text-align: center; vertical-align: middle;">
+                <p style="text-align: center; margin-bottom: 2pt;"><img src="${organicLogoBase64}" style="width: 108px; height: 72px;" /></p>
+                <p style="font-size: 9pt; font-weight: bold; margin-top: 5pt; margin-bottom: 2pt;">${escapedCertifier}</p>
+                <p style="font-size: 9pt; font-weight: bold; margin-bottom: 0;">EU mezőgazdaság</p>
+            </td>`;
+        }
+
+        const buildTable = (htmlContent) => {
+            if (bioRightColumn) {
+                return `
+                <table border="0" style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td>
+                        </td>
+                        <td style="text-align: center; vertical-align: top;">
+                            ${htmlContent}
+                        </td>
+                        ${bioRightColumn}
+                    </tr>
+                </table>
+                `;
+            } else {
+                return `
+                <table style="width: 100%; border: 1pt solid black; border-collapse: collapse; text-align: center;">
+                    <tr>
+                        <td style="border: 1px solid black; padding: 12pt;">
+                            ${htmlContent}
+                        </td>
+                    </tr>
+                </table>
+                `;
+            }
+        };
+
         const html = `
         <div style="font-family: Arial, sans-serif; font-size: 11pt;">
             <!-- PIEZA (EGYSÉG) -->
             <p>${c_pieza}</p>
-            <table style="width: 100%; border: 1pt solid black; border-collapse: collapse; text-align: center;">
-                <tr>
-                    <td style="border: 1px solid black; padding: 12pt;">
-                        ${unitHtml}
-                    </td>
-                </tr>
-            </table>
+            ${buildTable(unitHtml)}
 
             <br/><br/><br/>
 
             <!-- CAJA (KARTON) -->
             <p>${c_caja}</p>
-            <table style="width: 100%; border: 1pt solid black; border-collapse: collapse; text-align: center;">
-                <tr>
-                    <td style="border: 1px solid black; padding: 12pt;">
-                        ${cartonHtml}
-                    </td>
-                </tr>
-            </table>
+            ${buildTable(cartonHtml)}
         </div>`;
 
         const fileBuffer = await HTMLToDocx(html, null, {
@@ -342,7 +394,7 @@ router.get('/:id/label', async (req, res) => {
         const safeFileName = (product.product_name || 'Cimke').replace(/[/\\\\?%*:|"<>\\]/g, '-');
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
         res.setHeader('Content-Disposition', `attachment; filename="Cimke.docx"; filename*=UTF-8''${encodeURIComponent(safeFileName)}.docx`);
-        res.send(fileBuffer);
+        res.send(formatProductLabelTables(fileBuffer, hasBioLabel));
     } catch (error) {
         console.error('Hiba DOCX generálásakor:', error);
         res.status(500).json({ error: 'DOCX generálási hiba' });
