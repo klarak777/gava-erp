@@ -11,6 +11,8 @@ const sscc = '012345678901234560';
 const targets = [{ id: 1, name: '1. sor' }];
 const apiCalls = [];
 let failPrint = false;
+let failGenerationOnce = false;
+let declineExpiredLot = false;
 
 const server = http.createServer(async (req, res) => {
   const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
@@ -32,7 +34,7 @@ async function run() {
     page.setDefaultTimeout(6000);
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
-    page.on('dialog', dialog => dialog.accept());
+    page.on('dialog', dialog => declineExpiredLot && dialog.type() === 'confirm' ? dialog.dismiss() : dialog.accept());
     await page.addInitScript(() => {
       localStorage.setItem('pda_token', 'ui-test');
       localStorage.setItem('pda_user', JSON.stringify({ name: 'Teszt Elek' }));
@@ -44,7 +46,13 @@ async function run() {
       apiCalls.push({ url, body, method: req.method() });
       let status = 200;
       let json = [];
-      if (url.endsWith('/trucks-for-consolidation')) json = [{ id: 2, truck_number: 'AL02', target_locations: JSON.stringify(targets) }];
+      if (url.endsWith('/validate-lot')) {
+        if (body.lot_number === '3626') { status = 400; json = { error: 'Invalid LOT' }; }
+        else json = { lot: body.lot_number, lotDate: '2026-09-26', today: '2026-10-02',
+          expired: body.lot_number === '3906', ageDays: body.lot_number === '3906' ? 6 : 0,
+          confirmationToken: body.lot_number === '3906' ? 'confirmed-test-lot' : null };
+      }
+      else if (url.endsWith('/trucks-for-consolidation')) json = [{ id: 2, truck_number: 'AL02', target_locations: JSON.stringify(targets) }];
       else if (url.includes('/consolidation-member')) {
         const urlObj = new URL(req.url());
         const s = urlObj.searchParams.get('sscc') || '';
@@ -55,6 +63,11 @@ async function run() {
         } else {
            status = 404; json = { error: 'Not found' };
         }
+      }
+      else if (url.endsWith('/generate-pallet-label') && failGenerationOnce) {
+        failGenerationOnce = false;
+        await route.abort('failed');
+        return;
       }
       else if (url.endsWith('/consolidation-preview') || url.endsWith('/generate-pallet-label')) json = { success: true, label: { id: 99, sscc } };
       else if (url.endsWith('/print-pallet-label')) { status = failPrint ? 400 : 200; json = failPrint ? { error: 'Ismeretlen nyomtató' } : { success: true }; }
@@ -187,10 +200,19 @@ async function run() {
       await page.locator('#form-brutto').fill('100');
       await page.locator('#form-gongyoleg').selectOption('Doboz');
       await page.locator('#form-orszag').selectOption('Magyarország');
-      await page.locator('#form-lot').fill('123456');
+      await page.locator('#form-lot').fill('4005');
       await page.locator('#form-raklap').selectOption('4');
+      assert.equal((await page.locator('#form-submit').textContent()).trim(), 'Mentés');
+      failGenerationOnce = true;
+      const generationsBefore = apiCalls.filter(c => c.url.endsWith('/generate-pallet-label')).length;
+      await page.locator('#form-submit').click();
+      await page.waitForFunction(() => !document.getElementById('form-submit').disabled);
       await page.locator('#form-submit').click();
       await checkLayout('pane-print');
+      const generationAttempts = apiCalls.filter(c => c.url.endsWith('/generate-pallet-label')).slice(generationsBefore);
+      assert.equal(generationAttempts.length, 2);
+      assert.equal(generationAttempts[0].body.pickSessionId, generationAttempts[1].body.pickSessionId,
+        'Network retry must reuse the original reservation ID');
       await scan('PRN-001');
       await page.waitForFunction(() => document.getElementById('pane-dest').classList.contains('active'));
       await checkLayout('pane-dest');
@@ -208,11 +230,42 @@ async function run() {
       assert.equal(commitBody.picked_cartons, 10, 'Kartonszám nem egyezik');
       assert.equal(commitBody.packaging_type, 'Doboz', 'Göngyöleg (Doboz) nem egyezik');
       assert.equal(commitBody.origin_country, 'Magyarország', 'Származási hely nem egyezik');
-      assert.equal(commitBody.lot_number, '123456', 'LOT szám nem egyezik');
+      assert.equal(commitBody.lot_number, '4005', 'LOT szám nem egyezik');
       assert.deepEqual(commitBody.pallet_types, [4], 'Raklap típus (EU Raklap = id 4) nem egyezik');
       console.log(`PASS mindkét munkafolyamat és konzisztens címkeadatok: ${viewport.width}x${viewport.height}`);
     }
-    await activate('scan-pallet');
+
+    await activate('commission');
+    await page.locator('#pda-comm-tbody tr').first().click();
+    await page.locator('#form-karton').fill('10');
+    await page.locator('#form-brutto').fill('100');
+    await page.locator('#form-gongyoleg').selectOption('Doboz');
+    await page.locator('#form-orszag').selectOption('Magyarorsz\u00e1g');
+    await page.locator('#form-raklap').selectOption('4');
+    await page.locator('#form-lot').fill('3626');
+    let count = apiCalls.filter(c => c.url.endsWith('/generate-pallet-label')).length;
+    await page.locator('#form-submit').click();
+    await page.waitForFunction(() => !document.getElementById('form-submit').disabled);
+    assert.equal(apiCalls.filter(c => c.url.endsWith('/generate-pallet-label')).length, count);
+    await page.locator('#form-lot').fill('3906');
+    declineExpiredLot = true;
+    await page.locator('#form-submit').click();
+    await page.waitForFunction(() => !document.getElementById('form-submit').disabled);
+    assert.equal(apiCalls.filter(c => c.url.endsWith('/generate-pallet-label')).length, count);
+    declineExpiredLot = false;
+    await page.locator('#form-submit').click();
+    await visible('pane-print');
+    const confirmed = apiCalls.filter(c => c.url.endsWith('/generate-pallet-label')).at(-1).body;
+    assert.equal(confirmed.lotConfirmationToken, 'confirmed-test-lot');
+    await page.locator('#pane-print .pda-nav-back-btn').click();
+    await visible('pane-form');
+    assert.ok(apiCalls.some(c => c.method === 'DELETE' && c.url.endsWith('/provisional-label/99')));
+    await page.locator('#form-submit').click();
+    await visible('pane-print');
+    const newPick = apiCalls.filter(c => c.url.endsWith('/generate-pallet-label')).at(-1).body;
+    assert.notEqual(newPick.pickSessionId, confirmed.pickSessionId);
+    console.log('PASS invalid LOT, expired LOT consent, cancellation and new reservation');
+        await activate('scan-pallet');
     const scanDisplay = page.locator('#scan-pallet-barcode');
     await scanDisplay.waitFor({ state: 'visible' });
     assert.equal(await scanDisplay.evaluate(el => el.tagName), 'DIV');
@@ -221,6 +274,57 @@ async function run() {
     assert.ok(apiCalls.some(c => c.url.endsWith('/pallet-label/' + sscc)));
     assert.deepEqual(errors, []);
     console.log('PASS no browser script errors; all APIs mocked');
+
+    for (const native of [false, true]) {
+      const context = await browser.newContext();
+      await context.addInitScript(native => {
+        localStorage.clear();
+        if (native) window.Capacitor = { isNativePlatform: () => true };
+      }, native);
+      const authPage = await context.newPage();
+      const authCalls = [];
+      let expireToken = false, currentToken = null, logins = 0;
+      await authPage.route('**/api/**', async route => {
+        const req = route.request(), url = new URL(req.url()).pathname;
+        authCalls.push({ url, body: req.postDataJSON() });
+        let status = 200, json = {};
+        if (url.endsWith('/emulator-config')) json = { enabled: true };
+        else if (url.endsWith('/login')) {
+          currentToken = 'fresh-' + (++logins); expireToken = false;
+          json = { token: currentToken, user: { name: 'Emulator', isEmulator: !native } };
+        } else if (url.includes('/auth-probe/')) {
+          if (expireToken || req.headers().authorization !== 'Bearer ' + currentToken) status = 401;
+        }
+        await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(json) });
+      });
+      await authPage.goto(base);
+      if (native) {
+        await authPage.locator('#pda-username').waitFor({ state: 'attached' });
+        assert.equal(logins, 0, 'Native APK must not log in automatically');
+        assert.equal(authCalls.length, 0, 'Native APK must not request emulator configuration');
+        await authPage.evaluate(() => window.dispatchEvent(new CustomEvent('pda-barcode-scanned', { detail: 'WORKER1' })));
+        await authPage.locator('#pda-logout-btn').waitFor({ state: 'visible' });
+        assert.equal(authCalls.find(c => c.url.endsWith('/login')).body.username, 'WORKER1');
+      } else {
+        await authPage.locator('#pda-logout-btn').waitFor({ state: 'visible' });
+        assert.equal(logins, 1);
+        assert.equal(authCalls.find(c => c.url.endsWith('/login')).body.username, 'WEB_EMULATOR_TEST');
+        assert.equal(await authPage.locator('#pda-username').count(), 0);
+      }
+      expireToken = true;
+      const recovered = await authPage.evaluate(async () => {
+        const { apiFetch } = await import('/js/app.js');
+        try {
+          return (await Promise.all([apiFetch('/api/v1/pda/auth-probe/a'), apiFetch('/api/v1/pda/auth-probe/b')])).every(res => res.ok);
+        } catch (_) { return false; }
+      });
+      assert.equal(recovered, !native);
+      assert.equal(logins, native ? 1 : 2, 'Concurrent expired requests must share one web login');
+      if (native) await authPage.locator('#pda-username').waitFor({ state: 'attached' });
+      else assert.equal(await authPage.locator('#pda-username').count(), 0);
+      await context.close();
+    }
+    console.log('PASS web automatic login and token renewal; native barcode login and expiry');
   } finally { await browser.close(); }
 }
 run().catch(e => { console.error(e); process.exitCode = 1; }).finally(() => server.close());

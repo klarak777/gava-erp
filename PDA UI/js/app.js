@@ -9,6 +9,7 @@ import { renderConsolidation } from './views/consolidation.js';
 import { renderScanPallet } from './views/scanPallet.js';
 
 const root = document.getElementById('pda-app-root');
+const isNative = !!window.Capacitor?.isNativePlatform?.();
 
 // ── Global Barcode Listener ──────────────────
 let barcodeBuffer = '';
@@ -41,7 +42,7 @@ document.addEventListener('keydown', (e) => {
 export const appState = {
   token: localStorage.getItem('pda_token') || null,
   user: JSON.parse(localStorage.getItem('pda_user') || 'null'),
-  apiBaseUrl: 'http://138.68.143.223:3001',
+  apiBaseUrl: isNative ? 'http://138.68.143.223:3001' : '',
   currentView: null,
 };
 
@@ -63,6 +64,8 @@ let isFirstView = true;
 
 // ── Nézetváltó ────────────────────────────────
 export function showView(viewName, params = {}) {
+  window._currentViewCleanup?.();
+  window._currentViewCleanup = null;
   if (window._currentBarcodeHandler) {
     window.removeEventListener('pda-barcode-scanned', window._currentBarcodeHandler);
     window._currentBarcodeHandler = null;
@@ -119,7 +122,27 @@ export function clearAuth() {
 }
 
 // ── API hívó wrapper ───────────────────────────
-export async function apiFetch(path, options = {}) {
+let emulatorLoginPromise = null;
+async function signInWebEmulator() {
+  if (isNative) return false;
+  if (!emulatorLoginPromise) {
+    emulatorLoginPromise = (async () => {
+      const configRes = await fetch('/api/v1/pda/emulator-config');
+      if (!configRes.ok || !(await configRes.json()).enabled) return false;
+      const res = await fetch('/api/v1/pda/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: 'WEB_EMULATOR_TEST' })
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      setAuth(data.token, data.user);
+      return true;
+    })().catch(() => false).finally(() => { emulatorLoginPromise = null; });
+  }
+  return emulatorLoginPromise;
+}
+
+export async function apiFetch(path, options = {}, retryEmulator = true) {
   const currentToken = appState.token;
   const headers = {
     'Content-Type': 'application/json',
@@ -135,7 +158,11 @@ export async function apiFetch(path, options = {}) {
   if (res.status === 401) {
     if (currentToken && currentToken !== appState.token) {
       // Ignoráljuk a kései 401-et, ha időközben már új bejelentkezés történt
+      if (!isNative && retryEmulator) return apiFetch(path, options, false);
       return res;
+    }
+    if (!isNative && retryEmulator && path !== '/api/v1/pda/login' && await signInWebEmulator()) {
+      return apiFetch(path, options, false);
     }
     clearAuth();
     appState.authMessage = 'A munkamenet lejárt vagy más eszközön bejelentkeztek.';
@@ -147,10 +174,14 @@ export async function apiFetch(path, options = {}) {
 }
 
 // ── Indítás ────────────────────────────────────
-function init() {
+async function init() {
   const urlParams = new URLSearchParams(window.location.search);
   const startView = urlParams.get('view');
   const truckId = urlParams.get('truck_id');
+
+  if (!isNative && (!appState.token || !appState.user)) {
+    if (!await signInWebEmulator()) { showView('login'); return; }
+  }
 
   if (appState.token && appState.user) {
     if (startView === 'commission' && truckId) {

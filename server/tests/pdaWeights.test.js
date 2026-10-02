@@ -10,15 +10,25 @@ const start = source.indexOf('async function calculateAndValidateWeights(');
 // endpoint. Stop before the ZPL helper so the extracted unit remains stable
 // when additional routes are added.
 const end = source.indexOf('function generateZpl', start);
-const processPick = vm.runInNewContext(source.slice(start, end) + '\nprocessPick', { process });
+const realProcessPick = vm.runInNewContext(source.slice(start, end) + '\nprocessPick', {
+  process, router: { post() {} }, verifyToken() {}, ...require('../src/services/pdaPicking'),
+  normalizeSscc: value => String(value ?? '').replace(/\D/g, '')
+});
+const user = { id: 1, sessionId: 'login-1' };
+async function processPick(trx, id, payload, locationId) {
+  trx.prepareLabel(id, payload);
+  return realProcessPick(trx, id, payload, locationId, user);
+}
 
 function fixture() {
   const line = { id: 1, aldi_truck_id: 1, product_name: 'Nektarin', ordered_cartons: 50, picked_cartons: 0, cartons_per_pallet: 5 };
   const logs = [];
+  let label = null;
   const pallet = { id: 25, name: 'EU', category: 'Raklap', is_active: true, tare_weight_kg: 22 };
   const secondPallet = { id: 26, name: 'Festett EU', category: 'Raklap', is_active: true, tare_weight_kg: 24 };
   const trx = table => ({
     where(...args) { this._whereArgs = args; return this; },
+    andWhere() { return this; },
     forUpdate() { return this; },
     orderBy() { return this; },
     count() { return this; },
@@ -29,6 +39,7 @@ function fixture() {
       if (table === 'aldi_truck_lines') return { ...line };
       if (table === 'ref_packaging_types') return this._whereArgs?.[1] === 26 ? secondPallet : pallet;
       if (table === 'aldi_locations') return { id: 5, capacity: 10 };
+      if (table === 'sscc_labels') return { ...label };
       return null;
     },
     insert(row) { 
@@ -37,8 +48,23 @@ function fixture() {
       logs.push(row); 
       return { returning: async () => [{ id: logs.length, ...row }] };
     },
-    async update(row) { Object.assign(line, row); }
+    update(row) {
+      if (table === 'sscc_labels') Object.assign(label, row);
+      else Object.assign(line, row);
+      return { then(resolve, reject) { return Promise.resolve(1).then(resolve, reject); }, returning: async () => [{ ...label }] };
+    }
   });
+  trx.prepareLabel = (id, payload) => {
+    line.id = id;
+    const ids = payload.pallet_types || [payload.pallet_type];
+    const palletTare = ids.reduce((sum, id) => sum + Number(id === 26 ? secondPallet.tare_weight_kg : pallet.tare_weight_kg), 0);
+    label = { id: 99, aldi_truck_line_id: id, is_provisional: true,
+      pick_session_id: payload.pickSessionId, picker_user_id: user.id, picker_session_id: user.sessionId,
+      reservation_expires_at: new Date(Date.now() + 300000), picked_cartons: payload.picked_cartons,
+      net_weight: payload.gross_weight - payload.picked_cartons * payload.tare_weight - palletTare,
+      pick_payload: require('../src/services/pdaPicking').pickPayload(payload), sscc: '012345678901234560' };
+    payload.labelId = label.id; payload.scannedSscc = label.sscc;
+  };
   trx.raw = async () => ({ rows: [{ next_id: 999 }] });
   return { trx, line, logs, pallet, secondPallet };
 }

@@ -13,6 +13,18 @@ on:
 jobs:
   build-android:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: pda_test
+          POSTGRES_PASSWORD: pda_test
+          POSTGRES_DB: pda_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pda_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -28,9 +40,24 @@ jobs:
           distribution: 'zulu'
           java-version: '21'
 
+      - name: Test PDA server rules and concurrent saves
+        working-directory: ./server
+        env:
+          PDA_TEST_DATABASE_URL: postgresql://pda_test:pda_test@127.0.0.1:5432/pda_test
+        run: |
+          npm ci
+          node --test tests/pdaPicking.test.js tests/pdaWeights.test.js tests/pdaConsolidation.test.js
+
+      - name: Test PDA workflows in Chromium
+        working-directory: ./PDA UI
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npm test
+
       - name: Install dependencies
         working-directory: ./PDA-App
-        run: npm install
+        run: npm ci
 
       - name: Prepare Web Assets from PDA UI
         working-directory: ./PDA-App

@@ -10,6 +10,7 @@ const router = express.Router();
 const knex = require('../db/db');
 const jwt = require('jsonwebtoken');
 const { consolidationStockIssues, assertConsolidationStock, consolidationCapacityError } = require('../services/consolidationStock');
+const { RESERVATION_MS, pickingError, validateLot, assertReservation, pickPayload, assertSamePayload, emulatorEnabled, webEmulatorRequest } = require('../services/pdaPicking');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_for_gava';
 
@@ -95,6 +96,8 @@ async function findAldiLocation(input, trx = knex) {
 // ── POST /login ────────────────────────────────
 // Csak vonalkóddal lehet belépni, amely szerepel a dolgozók között.
 // Nem lehet ugyanazzal a vonalkóddal kétszer bejelentkezni.
+router.get('/emulator-config', (req, res) => res.json({ enabled: emulatorEnabled() }));
+
 router.post('/login', async (req, res) => {
   const { username } = req.body;
   if (!username || !String(username).trim()) {
@@ -108,6 +111,10 @@ router.post('/login', async (req, res) => {
     if (!employee) {
       return res.status(403).json({ error: 'Nincs ilyen vonalkóddal regisztrált dolgozó!' });
     }
+    if ((employee.pda_identifier === 'WEB_EMULATOR_TEST' || employee.role === 'pda_tester') &&
+        (!emulatorEnabled() || !webEmulatorRequest(req))) {
+      return res.status(403).json({ error: 'Az emulátorprofil csak az engedélyezett webes emulátorban használható.' });
+    }
 
     const sessionId = require('crypto').randomUUID();
     await knex('employees').where('id', employee.id).update({
@@ -119,7 +126,7 @@ router.post('/login', async (req, res) => {
 
     res.json({
       token,
-      user: { name: employee.full_name, role: 'pda_user' },
+      user: { name: employee.full_name, role: 'pda_user', isEmulator: employee.pda_identifier === 'WEB_EMULATOR_TEST' || employee.role === 'pda_tester' },
     });
   } catch (err) {
     console.error('PDA login error:', err);
@@ -142,6 +149,10 @@ async function verifyToken(req, res, next) {
     
     if (!employee || employee.pda_session_token !== payload.sessionId) {
       return res.status(401).json({ error: 'Másik eszközön bejelentkeztek, vagy a munkamenet lejárt!' });
+    }
+    if ((employee.pda_identifier === 'WEB_EMULATOR_TEST' || employee.role === 'pda_tester') &&
+        (!emulatorEnabled() || !webEmulatorRequest(req))) {
+      return res.status(403).json({ error: 'Az emulátorprofil ezen a felületen nem használható.' });
     }
     
     req.user = payload;
@@ -200,6 +211,7 @@ router.get('/commission-lines', verifyToken, async (req, res) => {
 
     let query = knex('aldi_truck_lines')
       .join('aldi_trucks', 'aldi_truck_lines.aldi_truck_id', 'aldi_trucks.id')
+      .leftJoin('aldi_daily_order_lines as demand', 'aldi_truck_lines.aldi_daily_order_line_id', 'demand.id')
       .select(
         'aldi_truck_lines.id',
         'aldi_truck_lines.aldi_truck_id',
@@ -209,7 +221,7 @@ router.get('/commission-lines', verifyToken, async (req, res) => {
         'aldi_truck_lines.ordered_cartons as kartonszam',
         knex.raw('COALESCE(aldi_truck_lines.picked_cartons, 0) as komissziozott_kartonszam'),
         'aldi_truck_lines.pallet_type as tipus',
-        'aldi_truck_lines.cartons_per_pallet as plt',
+        knex.raw('CASE WHEN aldi_truck_lines.aldi_daily_order_line_id IS NULL THEN aldi_truck_lines.cartons_per_pallet ELSE demand.cartons_per_pallet END as plt'),
         'aldi_truck_lines.partner',
         'aldi_truck_lines.destination as celraktar',
         'aldi_truck_lines.is_picked'
@@ -351,13 +363,33 @@ async function calculateAndValidateWeights(trx, line, qty, reqGross, reqTare, pa
   return { netWeight, palletsJsonData, primaryPalletTypeName };
 }
 
-// Közös segédfüggvény a komissiózás feldolgozásához
-async function processPick(trx, id, reqData, locationId = null) {
+// ── LOT szám ellenőrző segédfüggvények ─────────────────────
+function lotConfirmationToken(req, check) {
+  return jwt.sign({ purpose: 'pda-lot', employeeId: req.user.id, loginSession: req.user.sessionId,
+    pickSessionId: req.body.pickSessionId, lineId: Number(req.body.lineId), lot: check.lot, checkedDay: check.today },
+  JWT_SECRET, { expiresIn: '24h' });
+}
+function confirmLot(req, check) {
+  if (!check.expired) return false;
+  try {
+    const claim = jwt.verify(req.body.lotConfirmationToken, JWT_SECRET);
+    if (claim.purpose === 'pda-lot' && claim.employeeId === req.user.id &&
+        claim.loginSession === req.user.sessionId && claim.pickSessionId === req.body.pickSessionId &&
+        claim.lineId === Number(req.body.lineId) && claim.lot === check.lot && claim.checkedDay === check.today) return true;
+  } catch (_) {}
+  throw pickingError('LOT_CONFIRMATION_REQUIRED', 'A lejárt LOT folytatásához új megerősítés szükséges.');
+}
+router.post('/validate-lot', verifyToken, (req, res) => {
+  try {
+    if (!req.body.lineId || typeof req.body.pickSessionId !== 'string' ||
+        !req.body.pickSessionId || req.body.pickSessionId.length > 64) throw pickingError('BAD_REQUEST', 'Hiányzó tétel vagy munkamenet.');
+    const check = validateLot(req.body.lot_number);
+    res.json({ ...check, confirmationToken: check.expired ? lotConfirmationToken(req, check) : null });
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+async function processPick(trx, id, reqData, locationId = null, picker = null) {
   const { picked_cartons, gross_weight, packaging_type, tare_weight, origin_country, lot_number, pallet_type, pallet_types, pickSessionId } = reqData;
-  const qty = parseInt(picked_cartons);
-  if (!Number.isInteger(qty) || qty <= 0) {
-    const err = new Error('A komissiózott kartonszám megadása kötelező (pozitív egész szám).'); err.code = 'BAD_REQUEST'; throw err;
-  }
 
   // 1. Tétel lekérése zárolással
   const line = await trx('aldi_truck_lines').where('id', id).forUpdate().first();
@@ -365,16 +397,27 @@ async function processPick(trx, id, reqData, locationId = null) {
     const err = new Error('not_found'); err.code = 'NOT_FOUND'; throw err;
   }
 
-  // Idempotencia ellenőrzés
+  // pickSessionId kötelező
   if (!pickSessionId) {
     const err = new Error('Hiányzó munkamenet-azonosító (pickSessionId). Kérjük, frissítsd a PDA alkalmazást.'); err.code = 'BAD_REQUEST'; throw err;
   }
+
+  // Idempotencia: ha a pick_session_id már véglegesítve van commission_line-ban, visszaadjuk
   const existingPick = await trx('aldi_commission_lines').where('pick_session_id', pickSessionId).first();
   if (existingPick) {
     if (existingPick.aldi_truck_line_id !== parseInt(id)) {
       const err = new Error('Ez a munkamenet egy másik tételhez tartozik.'); err.code = 'BAD_REQUEST'; throw err;
     }
     const existingLabel = await trx('sscc_labels').where('commission_line_id', existingPick.id).orderBy('id', 'desc').first();
+    assertReservation(existingLabel, picker, pickSessionId, id);
+    if (Number(existingLabel.id) !== Number(reqData.labelId)) throw pickingError('BAD_REQUEST', 'Eltérő címkeazonosító.');
+    assertSamePayload(existingLabel, reqData);
+    if (locationId) {
+      const savedStock = await trx('aldi_stock_locations').where('commission_line_id', existingPick.id).first();
+      if (Number(savedStock?.location_id) !== Number(locationId)) {
+        throw pickingError('PICK_CHANGED', 'Az ismételt mentés lokációja eltér a már rögzített lokációtól.');
+      }
+    }
     return {
       isAlreadyProcessed: true,
       orderedCartons: line.ordered_cartons,
@@ -383,6 +426,34 @@ async function processPick(trx, id, reqData, locationId = null) {
       isFullyPicked: line.picked_cartons >= line.ordered_cartons,
       label: existingLabel
     };
+  }
+
+  // Saját ideiglenes sscc_label megkeresése (generate-pallet-label hozta létre)
+  // Ez köti össze a mentési lépést a már jóváhagyott ideiglenes cimkével.
+  const ownProvisionalLabel = await trx('sscc_labels')
+    .where('pick_session_id', pickSessionId)
+    .andWhere('aldi_truck_line_id', id)
+    .andWhere('is_provisional', true)
+    .forUpdate()
+    .first();
+  if (!ownProvisionalLabel) {
+    const err = new Error(
+      'A munkamenet címkéje nem található. Kérlek, kezdd újra a komissiózást a Vissza gombbal!'
+    );
+    err.code = 'LABEL_EXPIRED';
+    throw err;
+  }
+
+  assertReservation(ownProvisionalLabel, picker, pickSessionId, id);
+  if (Number(ownProvisionalLabel.id) !== Number(reqData.labelId)) {
+    throw pickingError('BAD_REQUEST', 'A megadott címke nem egyezik a komissiós munkamenet címkéjével.');
+  }
+  assertSamePayload(ownProvisionalLabel, reqData);
+
+  // A mennyiséget az ideiglenes cimkéből vesszük – ez garantálja a konzisztenciát
+  const qty = parseInt(ownProvisionalLabel.picked_cartons);
+  if (!Number.isInteger(qty) || qty <= 0) {
+    const err = new Error('Érvénytelen kartonszám az ideiglenes cimkében.'); err.code = 'BAD_REQUEST'; throw err;
   }
 
   const orderedCartons = parseInt(line.ordered_cartons) || 0;
@@ -440,6 +511,12 @@ async function processPick(trx, id, reqData, locationId = null) {
   }
 
   const { netWeight: currentPickNet, palletsJsonData, primaryPalletTypeName } = await calculateAndValidateWeights(trx, line, qty, reqGross, reqTare, palletIds);
+  if (Math.abs(Number(ownProvisionalLabel.net_weight) - currentPickNet) > 0.001) {
+    throw pickingError('PICK_CHANGED', 'A raklap táraadata megváltozott a címke létrehozása óta. Generálj új címkét.');
+  }
+  if (normalizeSscc(reqData.scannedSscc) !== normalizeSscc(ownProvisionalLabel.sscc)) {
+    throw pickingError('BAD_REQUEST', 'A beolvasott SSCC nem ehhez a komissióhoz tartozik.');
+  }
 
   // 4. Komissiózás rögzítése
   const [createdCommLine] = await trx('aldi_commission_lines').insert({
@@ -564,7 +641,7 @@ async function processPick(trx, id, reqData, locationId = null) {
 }
 
 // ── SSCC és ZPL segédfüggvények ─────────────────────────────
-async function createSsccLabel(dbClient, lineId, commissionLineId, pickedCartons, originCountryOverride = null, palletsJsonData = null, area = null, explicitGross = null, explicitNet = null, explicitLot = null) {
+async function createSsccLabel(dbClient, lineId, commissionLineId, pickedCartons, originCountryOverride = null, palletsJsonData = null, area = null, explicitGross = null, explicitNet = null, explicitLot = null, explicitPickSessionId = null, explicitPickerUserId = null) {
   const line = await dbClient('aldi_truck_lines').where('id', lineId).first();
   if (!line) throw new Error('A komissiózott tétel nem található.');
 
@@ -645,7 +722,9 @@ async function createSsccLabel(dbClient, lineId, commissionLineId, pickedCartons
     lot_number: lotNumber,
     is_provisional: isProvisional,
     pallets_json: palletsJsonData ? JSON.stringify(palletsJsonData) : null,
-    aldi_truck_line_id: lineId
+    aldi_truck_line_id: lineId,
+    pick_session_id: explicitPickSessionId || null,
+    picker_user_id: explicitPickerUserId || null
   }).returning('*');
 
   return createdLabel;
@@ -864,7 +943,7 @@ router.put('/commission-lines/:id/pick-and-assign', verifyToken, async (req, res
 
     let result = {};
     await knex.transaction(async (trx) => {
-      result = await processPick(trx, req.params.id, { ...req.body, scannedSscc }, location.id);
+      result = await processPick(trx, req.params.id, { ...req.body, scannedSscc }, location.id, req.user);
       if (result.label && !result.isAlreadyProcessed) {
         await trx('sscc_labels').where('id', result.label.id).update({ location_name: location.name });
       }
@@ -890,43 +969,79 @@ router.put('/commission-lines/:id/pick-and-assign', verifyToken, async (req, res
     if (err.code === 'OVER_QTY') return res.status(409).json({ error: err.message });
     if (err.code === 'CAPACITY_EXCEEDED') return res.status(400).json({ error: err.message });
     if (err.code === 'INVALID_WEIGHT') return res.status(400).json({ error: err.message });
+    if (err.code === 'LABEL_EXPIRED') return res.status(410).json({ error: err.message });
+    if (err.code === 'FORBIDDEN') return res.status(403).json({ error: err.message });
+    if (err.code === 'PICK_CHANGED') return res.status(409).json({ error: err.message });
     console.error('[PDA] /commission-lines/:id/pick-and-assign hiba:', err);
     res.status(500).json({ error: 'Hiba a mentéskor.' });
   }
 });
 
 // ── POST /generate-pallet-label ──────────────────────────────
+// Atomi tranzakcióban fut: FOR UPDATE sorzár → effectiveRemaining → idempotencia → zárolás → cimkegenerálás
 router.post('/generate-pallet-label', verifyToken, async (req, res) => {
   try {
-    const { lineId, picked_cartons, origin_country, area, gross_weight, tare_weight, pallet_types, lot_number } = req.body;
-    if (!lineId) return res.status(400).json({ error: 'A tételsor azonosítója kötelező.' });
-    if (!picked_cartons || picked_cartons <= 0 || !Number.isInteger(Number(picked_cartons))) return res.status(400).json({ error: 'A kartonszámnak pozitív egész számnak kell lennie.' });
-    if (!pallet_types || !Array.isArray(pallet_types) || pallet_types.length === 0) return res.status(400).json({ error: 'Legalább egy raklaptípust ki kell választani.' });
-    if (gross_weight == null || tare_weight == null) return res.status(400).json({ error: 'Bruttó súly és göngyölegtára megadása kötelező a címke generálásához.' });
-
-    const line = await knex('aldi_truck_lines').where('id', lineId).first();
-    if (!line) return res.status(404).json({ error: 'A tétel nem található.' });
-
-    let currentPickNet = null;
-    let palletsJsonData = [];
-    
-    const result = await calculateAndValidateWeights(knex, line, picked_cartons, Number(gross_weight), Number(tare_weight), pallet_types);
-    currentPickNet = result.netWeight;
-    palletsJsonData = result.palletsJsonData;
-
-    try {
-      await knex('sscc_labels')
-        .where('is_provisional', true)
-        .andWhere('created_at', '<', knex.raw("NOW() - INTERVAL '2 hours'"))
-        .del();
-    } catch (e) {
-      console.error('[PDA] Ideiglenes címkék törlése sikertelen:', e);
+    const { lineId, pallet_types, pickSessionId } = req.body;
+    const payload = pickPayload(req.body);
+    if (!Number.isInteger(Number(lineId)) || Number(lineId) <= 0 ||
+        !Number.isInteger(payload.picked_cartons) || payload.picked_cartons <= 0 ||
+        !Array.isArray(pallet_types) || !pallet_types.length ||
+        !Number.isFinite(payload.gross_weight) || payload.gross_weight <= 0 ||
+        !Number.isFinite(payload.tare_weight) || payload.tare_weight < 0 ||
+        typeof pickSessionId !== 'string' || !pickSessionId || pickSessionId.length > 64) {
+      throw pickingError('BAD_REQUEST', 'Hiányzó vagy hibás komissiós adat. Frissítsd a PDA alkalmazást.');
     }
-
-    const label = await createSsccLabel(knex, lineId, null, picked_cartons, origin_country, palletsJsonData, area, gross_weight, currentPickNet, lot_number);
+    const check = validateLot(payload.lot_number);
+    let label;
+    await knex.transaction(async trx => {
+      const line = await trx('aldi_truck_lines').where('id', lineId).forUpdate().first();
+      if (!line) throw pickingError('NOT_FOUND', 'A tétel nem található.');
+      const existing = await trx('sscc_labels').where('pick_session_id', pickSessionId).first();
+      if (existing) {
+        assertReservation(existing, req.user, pickSessionId, lineId);
+        assertSamePayload(existing, payload);
+        label = existing;
+        return;
+      }
+      const confirmed = confirmLot(req, check);
+      let plt = Number(line.cartons_per_pallet);
+      if (line.aldi_daily_order_line_id) {
+        const demand = await trx('aldi_daily_order_lines').where('id', line.aldi_daily_order_line_id).forShare().first();
+        plt = Number(demand?.cartons_per_pallet);
+      }
+      if (!Number.isInteger(plt) || plt <= 0) throw pickingError('BAD_REQUEST',
+        'Hiányzó vagy hibás #/PLT érték. Javítsd az ALDI Rakodás áruigényében.');
+      const remaining = Number(line.ordered_cartons) - Number(line.picked_cartons || 0);
+      const active = await trx('sscc_labels').where('aldi_truck_line_id', lineId)
+        .where('is_provisional', true).whereNotNull('pick_session_id').whereNull('reservation_cancelled_at')
+        .where('reservation_expires_at', '>', trx.fn.now()).select('*');
+      const reserved = active.reduce((sum, row) => sum + Number(row.picked_cartons), 0);
+      const available = Math.max(0, remaining - reserved);
+      const other = active.find(row => Number(row.picker_user_id) !== Number(req.user.id));
+      if (other && available <= plt) {
+        const employee = await trx('employees').where('id', other.picker_user_id).first();
+        const err = pickingError('LOCKED', 'A tételt jelenleg ' + (employee?.full_name || 'másik dolgozó') +
+          ' komissiózza; az elérhető maradék legfeljebb egy raklap.');
+        err.pickerName = employee?.full_name || 'Másik dolgozó';
+        throw err;
+      }
+      if (payload.picked_cartons > available) throw pickingError('OVER_QTY',
+        'A kért kartonszám meghaladja az elérhető maradékot (' + available + ' db).');
+      const { netWeight, palletsJsonData } = await calculateAndValidateWeights(
+        trx, line, payload.picked_cartons, payload.gross_weight, payload.tare_weight, payload.pallet_types);
+      label = await createSsccLabel(trx, lineId, null, payload.picked_cartons, payload.origin_country,
+        palletsJsonData, payload.area, payload.gross_weight, netWeight, payload.lot_number, pickSessionId, req.user.id);
+      [label] = await trx('sscc_labels').where('id', label.id).update({
+        picker_session_id: req.user.sessionId, reservation_expires_at: new Date(Date.now() + RESERVATION_MS),
+        pick_payload: JSON.stringify(payload), lot_checked_date: check.today,
+        lot_confirmed_at: confirmed ? trx.fn.now() : null
+      }).returning('*');
+    });
     res.json({ success: true, label });
   } catch (err) {
-    if (err.code === 'INVALID_WEIGHT' || err.code === 'BAD_REQUEST') return res.status(400).json({ error: err.message });
+    const statuses = { LOCKED: 423, NOT_FOUND: 404, OVER_QTY: 409, PICK_CHANGED: 409,
+      LOT_CONFIRMATION_REQUIRED: 409, FORBIDDEN: 403, LABEL_EXPIRED: 410, INVALID_LOT: 400, INVALID_WEIGHT: 400, BAD_REQUEST: 400 };
+    if (statuses[err.code]) return res.status(statuses[err.code]).json({ error: err.message, code: err.code, pickerName: err.pickerName });
     console.error('[PDA] /generate-pallet-label hiba:', err);
     res.status(500).json({ error: 'Hiba a címke generálásakor.' });
   }
@@ -982,6 +1097,9 @@ router.post('/print-pallet-label', verifyToken, async (req, res) => {
 
     if (!label) {
       return res.status(404).json({ error: 'A nyomtatandó raklapcímke nem található.' });
+    }
+    if (label.is_provisional && label.pick_session_id) {
+      assertReservation(label, req.user, label.pick_session_id, label.aldi_truck_line_id);
     }
 
     if (label.is_consolidated_master) {
@@ -1048,28 +1166,49 @@ router.post('/print-pallet-label', verifyToken, async (req, res) => {
 
     res.json({ success: true, message: 'Nyomtatási feladat sikeresen elküldve a címkenyomtatóra.', label });
   } catch (err) {
+    if (err.code === 'FORBIDDEN') return res.status(403).json({ error: err.message });
+    if (err.code === 'LABEL_EXPIRED') return res.status(410).json({ error: err.message });
     console.error('[PDA] /print-pallet-label hiba:', err);
     res.status(500).json({ error: 'Hiba a nyomtatás elindításakor.' });
   }
 });
 
-// ── DELETE /provisional-label/:id ────────────────────────────
-router.delete('/provisional-label/:id', verifyToken, async (req, res) => {
+// Foglalás megújítása és visszavonása: ugyanaz a sorzár, mint generáláskor/véglegesítéskor.
+async function changeReservation(req, res, cancel) {
   try {
-    const deleted = await knex('sscc_labels')
-      .where('id', req.params.id)
-      .andWhere('is_provisional', true)
-      .del();
-    if (deleted) {
-      res.json({ success: true, message: 'Ideiglenes címke törölve.' });
-    } else {
-      res.status(404).json({ error: 'Címke nem található vagy már végleges.' });
+    const pickSessionId = cancel ? req.query.pickSessionId : req.body.pickSessionId;
+    if (typeof pickSessionId !== 'string' || !pickSessionId) throw pickingError('BAD_REQUEST', 'Hiányzó munkamenet.');
+    const initial = req.params.id
+      ? await knex('sscc_labels').where('id', req.params.id).first()
+      : await knex('sscc_labels').where('pick_session_id', pickSessionId).first();
+    if (!initial) {
+      if (cancel) return res.json({ success: true });
+      throw pickingError('LABEL_EXPIRED', 'A címke nem található.');
     }
+    let expiresAt;
+    await knex.transaction(async trx => {
+      await trx('aldi_truck_lines').where('id', initial.aldi_truck_line_id).forUpdate().first();
+      const current = await trx('sscc_labels').where('id', initial.id).forUpdate().first();
+      if (cancel) {
+        if (!current || Number(current.picker_user_id) !== Number(req.user.id) ||
+            current.picker_session_id !== req.user.sessionId || current.pick_session_id !== pickSessionId) {
+          throw pickingError('FORBIDDEN', 'Másik dolgozó munkamenetét nem vonhatod vissza.');
+        }
+      } else assertReservation(current, req.user, pickSessionId, initial.aldi_truck_line_id);
+      if (!current.is_provisional) throw pickingError('BAD_REQUEST', 'A véglegesített címke nem módosítható.');
+      expiresAt = new Date(Date.now() + RESERVATION_MS);
+      await trx('sscc_labels').where('id', current.id).update(cancel
+        ? { reservation_cancelled_at: trx.fn.now() } : { reservation_expires_at: expiresAt });
+    });
+    res.json({ success: true, expiresAt: cancel ? null : expiresAt });
   } catch (err) {
-    console.error('[PDA] /provisional-label törlés hiba:', err);
-    res.status(500).json({ error: 'Hiba a törlés során.' });
+    const status = { FORBIDDEN: 403, LABEL_EXPIRED: 410, BAD_REQUEST: 400 }[err.code] || 500;
+    res.status(status).json({ error: err.message });
   }
-});
+}
+router.post('/provisional-label/:id/renew', verifyToken, (req, res) => changeReservation(req, res, false));
+router.delete('/provisional-label/:id', verifyToken, (req, res) => changeReservation(req, res, true));
+router.delete('/provisional-pick', verifyToken, (req, res) => changeReservation(req, res, true));
 
 // ── GET /pallet-label/:sscc ──────────────────────────────
 router.get('/pallet-label/:sscc', verifyToken, async (req, res) => {

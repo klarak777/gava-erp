@@ -411,7 +411,7 @@ export async function renderCommission(container, params = {}) {
         </div>
         <div class="pda-form-group">
           <label>Lot szám <span style="color:red;">*</span></label>
-          <input type="number" id="form-lot" required />
+          <input type="text" inputmode="numeric" maxlength="4" id="form-lot" required />
         </div>
         <div class="pda-form-group">
           <label>Raklap típus <span style="color:red;">*</span></label>
@@ -480,22 +480,29 @@ export async function renderCommission(container, params = {}) {
 
   // Navigation events
   const deleteProvisionalLabel = async () => {
-    if (currentLabel && currentLabel.id) {
-      try {
-        await apiFetch(`/api/v1/pda/provisional-label/${currentLabel.id}`, { method: 'DELETE' });
-      } catch (e) { console.warn('Hiba az ideiglenes címke törlésekor', e); }
-      currentLabel = null;
+    if (lastPickPayload?.pickSessionId) {
+      const path = currentLabel?.id ? '/provisional-label/' + currentLabel.id : '/provisional-pick';
+      const res = await apiFetch('/api/v1/pda' + path + '?pickSessionId=' + encodeURIComponent(lastPickPayload.pickSessionId), { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || 'A foglalást nem sikerült visszavonni.');
+        throw new Error('Reservation cancellation failed');
+      }
     }
+    currentLabel = null;
+    lastPickPayload = null;
+    activePickSessionId = null;
   };
 
-  const goDashboard = async () => { await deleteProvisionalLabel(); lastPickPayload = null; showView('dashboard'); };
-  const goList = async () => { await deleteProvisionalLabel(); lastPickPayload = null; showPane(paneList); };
+  const goDashboard = async () => { if (submitting) return; await deleteProvisionalLabel(); lastPickPayload = null; showView('dashboard'); };
+  const goList = async () => { if (submitting) return; await deleteProvisionalLabel(); lastPickPayload = null; showPane(paneList); loadData(); };
 
   container.querySelector('#pda-btn-osszeemeles')?.addEventListener('click', () => {
     showView('consolidation');
   });
 
   const hwBackHandler = async () => {
+    if (submitting) return;
     if (paneForm.classList.contains('active')) {
       await goList();
     } else if (paneList.classList.contains('active')) {
@@ -532,6 +539,8 @@ export async function renderCommission(container, params = {}) {
   let currentRowEl = null;
   let lastPickedQuantity = 0;
   let lastPickPayload = {}; // A "Megadás" képernyőn megadott adatok ideiglenes tárolása
+  let activePickSessionId = null;
+  let submitting = false;
   let currentLabel = null; // A generált raklapcimke adatai
   let currentTargetLocations = []; // A kamion fejlécén megadott engedélyezett sorok
   let lines = []; // Az aktuális komissió sorok (a kamionszám kiirásához)
@@ -837,6 +846,8 @@ export async function renderCommission(container, params = {}) {
   }
 
   function openForm(row, rowEl) {
+    activePickSessionId = null;
+    lastPickPayload = null;
     currentLineId = row.id;
     currentDestination = row.celraktar || '';
     currentRemaining = Math.max(0, (row.kartonszam || 0) - (row.komissziozott_kartonszam || 0));
@@ -885,10 +896,10 @@ export async function renderCommission(container, params = {}) {
   }
 
   submitBtn.addEventListener('click', async () => {
-    if (!currentLineId) return;
+    if (!currentLineId || submitting) return;
 
     // 1. Kartonszám ellenőrzése
-    const qty = parseInt(kartonInput.value);
+    const qty = Number(kartonInput.value);
     if (!kartonInput.value || !Number.isInteger(qty) || qty <= 0) {
       alert('Kérlek add meg a komissiózott kartonszámot (pozitív egész szám)!');
       kartonInput.focus();
@@ -998,7 +1009,7 @@ export async function renderCommission(container, params = {}) {
       origin_country: orszagSel.value,
       lot_number: lotInput.value.trim(),
       pallet_types: allPalletIds,           // Tömb: összes raklap ID-ja
-      pickSessionId: Date.now().toString(36) + Math.random().toString(36).substr(2, 5)
+      pickSessionId: activePickSessionId || (activePickSessionId = crypto.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2))
     };
 
     let isSuccess = false;
@@ -1007,30 +1018,46 @@ export async function renderCommission(container, params = {}) {
     lastPickPayload.area = areaVal; // Hozzáadjuk az areát a végső pick-and-assign híváshoz is
 
     try {
+      submitting = true;
       submitBtn.disabled = true;
       submitBtn.style.opacity = '0.5';
+      const lotRes = await apiFetch('/api/v1/pda/validate-lot', {
+        method: 'POST', body: JSON.stringify({ lineId: currentLineId,
+          pickSessionId: lastPickPayload.pickSessionId, lot_number: lastPickPayload.lot_number })
+      });
+      const lotCheck = await lotRes.json();
+      if (!lotRes.ok) { alert(lotCheck.error || 'Hibás LOT.'); lotInput.focus(); return; }
+      if (lotCheck.expired && !confirm('Lejárt LOT szám!\nLOT: ' + lotCheck.lot + ' (' + lotCheck.lotDate +
+          '), kora: ' + lotCheck.ageDays + ' nap.\nBiztosan folytatod?')) return;
+      lastPickPayload.lotConfirmationToken = lotCheck.confirmationToken;
       const res = await apiFetch('/api/v1/pda/generate-pallet-label', {
         method: 'POST',
-        body: JSON.stringify({
-          lineId: currentLineId,
-          picked_cartons: qty,
-          gross_weight: grossValue,
-          tare_weight: Number(taraInput.value),
-          origin_country: orszagSel.value,
-          lot_number: lotInput.value.trim(),
-          pallet_types: allPalletIds,
-          area: areaVal
-        })
+        body: JSON.stringify({ ...lastPickPayload, lineId: currentLineId })
       });
       responseData = await res.json();
-      if (res.ok && responseData.label) {
+      if (res.status === 423) {
+        // Egyidejű komissiózás zárolás
+        alert(
+          `⛔ Ez a tétel jelenleg komissiózás alatt áll!\n\n` +
+          `Komissiózó dolgozó: ${responseData.pickerName || 'Ismeretlen dolgozó'}\n\n` +
+          `Kérlek, várj vagy válassz másik tételt!`
+        );
+      } else if (res.status === 409) {
+        // Mennyiség túllépés
+        alert(responseData.error || 'A megadott kartonszám meghaladja a rendelkezésre álló mennyiséget.');
+      } else if (res.ok && responseData.label) {
         isSuccess = true;
+        // Ha van #/PLT figyelmeztetés, megjelenítjük (de nem blokkolja a folyamatot)
+        if (responseData.warning) {
+          console.warn('[PDA] generate-pallet-label figyelmeztetés:', responseData.warning);
+        }
       } else {
-        alert(responseData.error || 'Hiba a címke generálásakor.');
+        alert(responseData.error || 'Hiba a cimke generálásakor.');
       }
     } catch(err) {
-      alert('Hálózati hiba a címke generálásakor.');
+      alert('Hálózati hiba a cimke generálásakor.');
     } finally {
+      submitting = false;
       submitBtn.disabled = false;
       submitBtn.style.opacity = '1';
     }
@@ -1233,6 +1260,21 @@ export async function renderCommission(container, params = {}) {
 
       if (res.ok) {
         isSuccess = true;
+      } else if (res.status === 410) {
+        // LABEL_EXPIRED: az ideiglenes cimke lejárt (5+ perc), újra kell kezdeni
+        alert(
+          `⏰ Munkamenet lejárt!\n\n` +
+          `${responseData.error}\n\n` +
+          `Visszalépsz a tétellistához – keresd meg újra a tételt és kezdd el újra a komissiózást.`
+        );
+        lastPickPayload = null;
+        currentLabel = null;
+        currentDestBarcode = null;
+        activePickSessionId = null;
+        showPane(paneList);
+        loadData();
+        ssccInput.value = '';
+        return; // Ne fusson tovább
       } else {
         alert(responseData.error || 'Hiba a mentéskor.');
         ssccInput.value = '';
@@ -1255,6 +1297,8 @@ export async function renderCommission(container, params = {}) {
         showPane(paneList);
         loadData();
         lastPickPayload = null;
+        activePickSessionId = null;
+        currentLabel = null;
         currentDestBarcode = null;
       } catch (uiErr) {
         alert('Felületi hiba: ' + uiErr.message);
@@ -1291,6 +1335,22 @@ export async function renderCommission(container, params = {}) {
   window._currentBarcodeHandler = handleScan;
   window.addEventListener('pda-barcode-scanned', handleScan);
 
+
+  const renewTimer = setInterval(async () => {
+    if (!container.isConnected || document.visibilityState !== 'visible' ||
+        !currentLabel?.id || !lastPickPayload?.pickSessionId) return;
+    try {
+      const res = await apiFetch('/api/v1/pda/provisional-label/' + currentLabel.id + '/renew', {
+        method: 'POST', body: JSON.stringify({ pickSessionId: lastPickPayload.pickSessionId })
+      });
+      if (res.status === 410) {
+        alert((await res.json()).error);
+        currentLabel = null; lastPickPayload = null; activePickSessionId = null;
+        showPane(paneList); loadData();
+      }
+    } catch (_) { /* A lejart foglalast a kovetkezo szerverhivas is ellenorzi. */ }
+  }, 60000);
+  window._currentViewCleanup = () => clearInterval(renewTimer);
   select.addEventListener('change', loadData);
 
   await loadDictionaries();
