@@ -9,6 +9,7 @@ import { renderConsolidation } from './views/consolidation.js';
 import { renderScanPallet } from './views/scanPallet.js';
 
 const root = document.getElementById('pda-app-root');
+const isNative = !!window.Capacitor?.isNativePlatform?.();
 
 // ── Global Barcode Listener ──────────────────
 let barcodeBuffer = '';
@@ -41,7 +42,7 @@ document.addEventListener('keydown', (e) => {
 export const appState = {
   token: localStorage.getItem('pda_token') || null,
   user: JSON.parse(localStorage.getItem('pda_user') || 'null'),
-  apiBaseUrl: 'http://138.68.143.223:3001',
+  apiBaseUrl: isNative ? 'http://138.68.143.223:3001' : '',
   currentView: null,
 };
 
@@ -63,6 +64,8 @@ let isFirstView = true;
 
 // ── Nézetváltó ────────────────────────────────
 export function showView(viewName, params = {}) {
+  window._currentViewCleanup?.();
+  window._currentViewCleanup = null;
   if (window._currentBarcodeHandler) {
     window.removeEventListener('pda-barcode-scanned', window._currentBarcodeHandler);
     window._currentBarcodeHandler = null;
@@ -147,10 +150,40 @@ export async function apiFetch(path, options = {}) {
 }
 
 // ── Indítás ────────────────────────────────────
-function init() {
+async function init() {
   const urlParams = new URLSearchParams(window.location.search);
   const startView = urlParams.get('view');
   const truckId = urlParams.get('truck_id');
+
+  if (!isNative && (!appState.token || !appState.user)) {
+    // Webes emulátor: automatikus bejelentkezés a dedikált tesztdolgozóval
+    const config = await apiFetch('/api/v1/pda/emulator-config').then(res => res.json()).catch(() => ({ enabled: false }));
+    if (!config.enabled) { showView('login'); return; }
+    const EMULATOR_BARCODE = 'WEB_EMULATOR_TEST';
+    apiFetch('/api/v1/pda/login', {
+      method: 'POST',
+      body: JSON.stringify({ username: EMULATOR_BARCODE })
+    }).then(async res => {
+      if (res.ok) {
+        const data = await res.json();
+        setAuth(data.token, data.user);
+        if (startView === 'commission' && truckId) {
+          showView('commission', { truckId: truckId });
+        } else {
+          showView('dashboard');
+        }
+      } else {
+        // Ha a tesztdolgozó nem létezik a DB-ben (pl. migration még nem futott),
+        // visszaesik a rendes login oldalra
+        console.warn('[PDA Emulator] WEB_EMULATOR_TEST dolgozó nem található. Futtatd a DB migration-t!');
+        showView('login');
+      }
+    }).catch(() => {
+      console.warn('[PDA Emulator] Hálózati hiba az emulátoros bejelentkezésnél.');
+      showView('login');
+    });
+    return;
+  }
 
   if (appState.token && appState.user) {
     if (startView === 'commission' && truckId) {

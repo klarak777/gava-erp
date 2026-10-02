@@ -65,6 +65,9 @@ test('PostgreSQL: list, pre-print checks, stock movement and transaction rollbac
       }
       await trx.raw('CREATE TEMP SEQUENCE sscc_labels_id_seq START 200');
       await trx.raw('SET LOCAL search_path = pg_temp');
+      // The public database may not have the new PDA migration yet. Only the
+      // temporary fixture needs these fields for createSsccLabel.
+      await trx.raw('ALTER TABLE sscc_labels ADD COLUMN IF NOT EXISTS pick_session_id varchar(64), ADD COLUMN IF NOT EXISTS picker_user_id integer');
       await trx('aldi_trucks').insert({ id: 3, truck_number: 'AL02', delivery_date: '2026-09-21', sent_to_pda: true, is_loaded: false, target_locations: JSON.stringify([{ id: 61, name: '1. sor' }]) });
       await trx('aldi_locations').insert([
         { id: 61, name: '1. sor', barcode: 'ROW1', location_type: 'Szülő', capacity: 10 },
@@ -138,14 +141,14 @@ test('PostgreSQL: list, pre-print checks, stock movement and transaction rollbac
       await trx('aldi_stock_locations').where('id', 2).del();
       const rejected = await request('/consolidation', { body: finalBody });
       assert.equal(rejected.status, 400);
-      assert.equal(await trx('sscc_labels').where('id', master.id).first(), undefined);
+      assert.equal((await trx('sscc_labels').where('id', master.id).first()).is_provisional, true);
       assert.equal((await trx('aldi_stock_locations').where('id', 1).first()).location_id, 100);
       await trx('aldi_stock_locations').insert(removed);
       await trx('aldi_locations').where('id', 101).update({ capacity: 1 });
       const full = await request('/consolidation', { body: finalBody });
       assert.equal(full.status, 400);
       assert.match(full.body.error, /megtelt/);
-      assert.equal(await trx('sscc_labels').where('id', master.id).first(), undefined);
+      assert.equal((await trx('sscc_labels').where('id', master.id).first()).is_provisional, true);
       await trx('aldi_locations').where('id', 101).update({ capacity: 3 });
       // A wrong final SSCC cannot move any inventory either.
       assert.equal((await request('/consolidation', { body: { ...finalBody, scannedSscc: '0' } })).status, 400);

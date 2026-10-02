@@ -16,6 +16,13 @@ module.exports = {
       directory: './src/db/seeds'
     }
   },
+  test: {
+    client: 'pg',
+    connection: process.env.PDA_TEST_DATABASE_URL,
+    pool: { min: 0, max: 10 },
+    migrations: { directory: './src/db/migrations', tableName: 'knex_migrations' },
+    seeds: { directory: './src/db/seeds' }
+  },
   production: {
     client: 'pg',
     connection: process.env.DATABASE_URL,
