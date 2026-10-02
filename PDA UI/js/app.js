@@ -122,7 +122,27 @@ export function clearAuth() {
 }
 
 // ── API hívó wrapper ───────────────────────────
-export async function apiFetch(path, options = {}) {
+let emulatorLoginPromise = null;
+async function signInWebEmulator() {
+  if (isNative) return false;
+  if (!emulatorLoginPromise) {
+    emulatorLoginPromise = (async () => {
+      const configRes = await fetch('/api/v1/pda/emulator-config');
+      if (!configRes.ok || !(await configRes.json()).enabled) return false;
+      const res = await fetch('/api/v1/pda/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: 'WEB_EMULATOR_TEST' })
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      setAuth(data.token, data.user);
+      return true;
+    })().catch(() => false).finally(() => { emulatorLoginPromise = null; });
+  }
+  return emulatorLoginPromise;
+}
+
+export async function apiFetch(path, options = {}, retryEmulator = true) {
   const currentToken = appState.token;
   const headers = {
     'Content-Type': 'application/json',
@@ -138,7 +158,11 @@ export async function apiFetch(path, options = {}) {
   if (res.status === 401) {
     if (currentToken && currentToken !== appState.token) {
       // Ignoráljuk a kései 401-et, ha időközben már új bejelentkezés történt
+      if (!isNative && retryEmulator) return apiFetch(path, options, false);
       return res;
+    }
+    if (!isNative && retryEmulator && path !== '/api/v1/pda/login' && await signInWebEmulator()) {
+      return apiFetch(path, options, false);
     }
     clearAuth();
     appState.authMessage = 'A munkamenet lejárt vagy más eszközön bejelentkeztek.';
@@ -156,33 +180,7 @@ async function init() {
   const truckId = urlParams.get('truck_id');
 
   if (!isNative && (!appState.token || !appState.user)) {
-    // Webes emulátor: automatikus bejelentkezés a dedikált tesztdolgozóval
-    const config = await apiFetch('/api/v1/pda/emulator-config').then(res => res.json()).catch(() => ({ enabled: false }));
-    if (!config.enabled) { showView('login'); return; }
-    const EMULATOR_BARCODE = 'WEB_EMULATOR_TEST';
-    apiFetch('/api/v1/pda/login', {
-      method: 'POST',
-      body: JSON.stringify({ username: EMULATOR_BARCODE })
-    }).then(async res => {
-      if (res.ok) {
-        const data = await res.json();
-        setAuth(data.token, data.user);
-        if (startView === 'commission' && truckId) {
-          showView('commission', { truckId: truckId });
-        } else {
-          showView('dashboard');
-        }
-      } else {
-        // Ha a tesztdolgozó nem létezik a DB-ben (pl. migration még nem futott),
-        // visszaesik a rendes login oldalra
-        console.warn('[PDA Emulator] WEB_EMULATOR_TEST dolgozó nem található. Futtatd a DB migration-t!');
-        showView('login');
-      }
-    }).catch(() => {
-      console.warn('[PDA Emulator] Hálózati hiba az emulátoros bejelentkezésnél.');
-      showView('login');
-    });
-    return;
+    if (!await signInWebEmulator()) { showView('login'); return; }
   }
 
   if (appState.token && appState.user) {

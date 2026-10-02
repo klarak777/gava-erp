@@ -26,6 +26,7 @@ services:
     environment:
       DATABASE_URL: postgresql://gava_admin:adminpassword123@gava_erp_prod_db:5432/gava_erp
       NODE_ENV: production
+      PDA_EMULATOR_ENABLED: 'true'
       PORT: 3000
       NODE_OPTIONS: '--max-old-space-size=512'
       RAKTAR_PATH: /mnt/raktar

@@ -9,7 +9,7 @@ Az Android verziókód 19, a verziónév 0.9.19. A GitHub APK-workflow a `PDA UI
 - A kiválasztást nem tiltjuk. A mentés más dolgozó aktív foglalásánál és legfeljebb egy raklapnyi effektív maradéknál 423 választ és dolgozónevet ad. A #/PLT a kapcsolódó ALDI áruigény aktuális értéke; hiánya látható hibát okoz. Korábban elfogadott foglalások véglegesíthetők.
 - A foglalás öt percig érvényes; az előtérben nyitott folyamat percenként megújítja. A lejárt foglalás nem éleszthető fel. Visszalépéskor a saját foglalás visszavonódik, hálózati válaszvesztés után is. A címkék megmaradnak ellenőrzési célra, az összeemelés címkéit a komissió nem törli.
 - Nyomtatáskor és véglegesítéskor ellenőrizzük a dolgozót és a bejelentkezést. A végleges mentés ellenőrzi a munkamenet, tétel, címke, adatok és SSCC összetartozását. A készlet és a komissió egy tranzakcióban íródik; ismétléskor nem duplázódik.
-- A böngésző saját szerverének API-ját használja. A WEB_EMULATOR_TEST automatikus profil kizárólag `NODE_ENV=test`, `PDA_EMULATOR_ENABLED=true` és külön `PDA_TEST_DATABASE_URL` mellett használható. Az APK normál dolgozói belépést használ.
+- A böngésző saját szerverének API-ját használja. A WEB_EMULATOR_TEST automatikus profil `PDA_EMULATOR_ENABLED=true` mellett éles környezetben is használható. A DO Docker-konfiguráció ezt engedélyezi, a `NODE_ENV` továbbra is `production`. Az emulátor ugyanannak a szervernek az adataival dolgozik, mint az ERP és az APK; nem külön tesztadatbázis. A profil belépését és API-hívásait a saját webkiszolgáló böngészős Origin/Referer értékére korlátozzuk. Ez környezeti ellenőrzés; a bejelentkezés nélküli emulátor nem felhasználói hitelesítés. Az APK normál dolgozói belépést használ, és nem indít automatikus emulátoros belépést.
 
 ## Élesítés sorrendje
 
@@ -19,6 +19,18 @@ Az Android verziókód 19, a verziónév 0.9.19. A GitHub APK-workflow a `PDA UI
 4. Két külön dolgozóval ellenőrizzétek az utolsó raklap mentését, a LOT figyelmeztetés visszautasítását/elfogadását, a nyomtatást, lokációt és SSCC véglegesítést.
 
 Az APK-build nem telepíti a szervert és nem futtat éles migrációt.
+
+### Emulátor automatikus belépésének utólagos javítása
+
+A javítás a webes emulátort, a szervert és a Docker-beállításokat érinti; a 0.9.19 APK cseréje nem szükséges. A webes emulátor lejárt belépési token esetén is automatikusan újra belép, a natív APK-nál ez nem történik meg. A DO-n az ERP gyökérkönyvtárából:
+
+```sh
+git pull origin codex/pda-commission-0.9.19
+docker-compose -f docker-compose.prod.yml up -d --build gava_api
+curl -sS http://127.0.0.1:3001/api/v1/pda/emulator-config
+```
+
+Az utolsó parancs várt válasza: `{"enabled":true}`. Az emulátor lapját ezután újra kell tölteni. A dolgozói PDA-bejelentkezések külön dolgozóhoz tartoznak; az emulátor a saját WEB_EMULATOR_TEST rekordját használja.
 
 ## Ellenőrzés
 

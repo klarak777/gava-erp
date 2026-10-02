@@ -10,7 +10,7 @@ const router = express.Router();
 const knex = require('../db/db');
 const jwt = require('jsonwebtoken');
 const { consolidationStockIssues, assertConsolidationStock, consolidationCapacityError } = require('../services/consolidationStock');
-const { RESERVATION_MS, pickingError, validateLot, assertReservation, pickPayload, assertSamePayload, emulatorEnabled } = require('../services/pdaPicking');
+const { RESERVATION_MS, pickingError, validateLot, assertReservation, pickPayload, assertSamePayload, emulatorEnabled, webEmulatorRequest } = require('../services/pdaPicking');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_for_gava';
 
@@ -111,8 +111,9 @@ router.post('/login', async (req, res) => {
     if (!employee) {
       return res.status(403).json({ error: 'Nincs ilyen vonalkóddal regisztrált dolgozó!' });
     }
-    if ((employee.pda_identifier === 'WEB_EMULATOR_TEST' || employee.role === 'pda_tester') && !emulatorEnabled()) {
-      return res.status(403).json({ error: 'Az emulátoros tesztprofil csak külön tesztadatbázison használható.' });
+    if ((employee.pda_identifier === 'WEB_EMULATOR_TEST' || employee.role === 'pda_tester') &&
+        (!emulatorEnabled() || !webEmulatorRequest(req))) {
+      return res.status(403).json({ error: 'Az emulátorprofil csak az engedélyezett webes emulátorban használható.' });
     }
 
     const sessionId = require('crypto').randomUUID();
@@ -125,7 +126,7 @@ router.post('/login', async (req, res) => {
 
     res.json({
       token,
-      user: { name: employee.full_name, role: 'pda_user' },
+      user: { name: employee.full_name, role: 'pda_user', isEmulator: employee.pda_identifier === 'WEB_EMULATOR_TEST' || employee.role === 'pda_tester' },
     });
   } catch (err) {
     console.error('PDA login error:', err);
@@ -149,8 +150,9 @@ async function verifyToken(req, res, next) {
     if (!employee || employee.pda_session_token !== payload.sessionId) {
       return res.status(401).json({ error: 'Másik eszközön bejelentkeztek, vagy a munkamenet lejárt!' });
     }
-    if ((employee.pda_identifier === 'WEB_EMULATOR_TEST' || employee.role === 'pda_tester') && !emulatorEnabled()) {
-      return res.status(403).json({ error: 'A tesztprofil ezen a szerveren nem használható.' });
+    if ((employee.pda_identifier === 'WEB_EMULATOR_TEST' || employee.role === 'pda_tester') &&
+        (!emulatorEnabled() || !webEmulatorRequest(req))) {
+      return res.status(403).json({ error: 'Az emulátorprofil ezen a felületen nem használható.' });
     }
     
     req.user = payload;

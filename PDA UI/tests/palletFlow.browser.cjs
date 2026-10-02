@@ -274,6 +274,57 @@ async function run() {
     assert.ok(apiCalls.some(c => c.url.endsWith('/pallet-label/' + sscc)));
     assert.deepEqual(errors, []);
     console.log('PASS no browser script errors; all APIs mocked');
+
+    for (const native of [false, true]) {
+      const context = await browser.newContext();
+      await context.addInitScript(native => {
+        localStorage.clear();
+        if (native) window.Capacitor = { isNativePlatform: () => true };
+      }, native);
+      const authPage = await context.newPage();
+      const authCalls = [];
+      let expireToken = false, currentToken = null, logins = 0;
+      await authPage.route('**/api/**', async route => {
+        const req = route.request(), url = new URL(req.url()).pathname;
+        authCalls.push({ url, body: req.postDataJSON() });
+        let status = 200, json = {};
+        if (url.endsWith('/emulator-config')) json = { enabled: true };
+        else if (url.endsWith('/login')) {
+          currentToken = 'fresh-' + (++logins); expireToken = false;
+          json = { token: currentToken, user: { name: 'Emulator', isEmulator: !native } };
+        } else if (url.includes('/auth-probe/')) {
+          if (expireToken || req.headers().authorization !== 'Bearer ' + currentToken) status = 401;
+        }
+        await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(json) });
+      });
+      await authPage.goto(base);
+      if (native) {
+        await authPage.locator('#pda-username').waitFor({ state: 'attached' });
+        assert.equal(logins, 0, 'Native APK must not log in automatically');
+        assert.equal(authCalls.length, 0, 'Native APK must not request emulator configuration');
+        await authPage.evaluate(() => window.dispatchEvent(new CustomEvent('pda-barcode-scanned', { detail: 'WORKER1' })));
+        await authPage.locator('#pda-logout-btn').waitFor({ state: 'visible' });
+        assert.equal(authCalls.find(c => c.url.endsWith('/login')).body.username, 'WORKER1');
+      } else {
+        await authPage.locator('#pda-logout-btn').waitFor({ state: 'visible' });
+        assert.equal(logins, 1);
+        assert.equal(authCalls.find(c => c.url.endsWith('/login')).body.username, 'WEB_EMULATOR_TEST');
+        assert.equal(await authPage.locator('#pda-username').count(), 0);
+      }
+      expireToken = true;
+      const recovered = await authPage.evaluate(async () => {
+        const { apiFetch } = await import('/js/app.js');
+        try {
+          return (await Promise.all([apiFetch('/api/v1/pda/auth-probe/a'), apiFetch('/api/v1/pda/auth-probe/b')])).every(res => res.ok);
+        } catch (_) { return false; }
+      });
+      assert.equal(recovered, !native);
+      assert.equal(logins, native ? 1 : 2, 'Concurrent expired requests must share one web login');
+      if (native) await authPage.locator('#pda-username').waitFor({ state: 'attached' });
+      else assert.equal(await authPage.locator('#pda-username').count(), 0);
+      await context.close();
+    }
+    console.log('PASS web automatic login and token renewal; native barcode login and expiry');
   } finally { await browser.close(); }
 }
 run().catch(e => { console.error(e); process.exitCode = 1; }).finally(() => server.close());

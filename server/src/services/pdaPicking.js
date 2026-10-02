@@ -92,7 +92,18 @@ function assertSamePayload(label, data) {
 }
 
 function emulatorEnabled(env = process.env) {
-  return env.NODE_ENV === 'test' && env.PDA_EMULATOR_ENABLED === 'true' && !!env.PDA_TEST_DATABASE_URL;
+  return env.PDA_EMULATOR_ENABLED === 'true';
 }
 
-module.exports = { RESERVATION_MS, pickingError, validateLot, reservationExpiry, assertReservation, pickPayload, assertSamePayload, emulatorEnabled };
+// A webes emulátor a saját webkiszolgálóján keresztül éri el az API-t.
+// A natív Capacitor origin (https://localhost) nem a DO webkiszolgálója.
+// Az Origin/Referer böngészős környezeti ellenőrzés, nem titkos hitelesítőadat.
+function webEmulatorRequest(req) {
+  try {
+    const source = new URL(req.headers.origin || req.headers.referer);
+    const host = new URL('http://' + req.headers.host);
+    return ['http:', 'https:'].includes(source.protocol) && source.hostname === host.hostname;
+  } catch (_) { return false; }
+}
+
+module.exports = { RESERVATION_MS, pickingError, validateLot, reservationExpiry, assertReservation, pickPayload, assertSamePayload, emulatorEnabled, webEmulatorRequest };

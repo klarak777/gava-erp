@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { createRequire } = require('node:module');
-const { validateLot, assertReservation, assertSamePayload, pickPayload, emulatorEnabled } = require('../src/services/pdaPicking');
+const { validateLot, assertReservation, assertSamePayload, pickPayload, emulatorEnabled, webEmulatorRequest } = require('../src/services/pdaPicking');
 
 test('LOT uses Budapest calendar days, real ISO weeks and the year boundary', () => {
   const now = new Date('2026-10-02T12:00:00Z');
@@ -40,10 +40,17 @@ test('reservation ownership, expiry and immutable label payload are enforced', (
   assert.throws(() => assertSamePayload(stored, { ...payload, picked_cartons: 11 }), { code: 'PICK_CHANGED' });
 });
 
-test('emulator identity requires an explicitly enabled separate test database', () => {
-  assert.equal(emulatorEnabled({ NODE_ENV: 'production', PDA_EMULATOR_ENABLED: 'true', PDA_TEST_DATABASE_URL: 'test' }), false);
-  assert.equal(emulatorEnabled({ NODE_ENV: 'test', PDA_EMULATOR_ENABLED: 'true' }), false);
-  assert.equal(emulatorEnabled({ NODE_ENV: 'test', PDA_EMULATOR_ENABLED: 'true', PDA_TEST_DATABASE_URL: 'test' }), true);
+test('emulator can be enabled in production while native requests cannot use its profile', () => {
+  assert.equal(emulatorEnabled({ NODE_ENV: 'production', PDA_EMULATOR_ENABLED: 'true' }), true);
+  assert.equal(emulatorEnabled({ NODE_ENV: 'production' }), false);
+  assert.equal(emulatorEnabled({ NODE_ENV: 'production', PDA_EMULATOR_ENABLED: 'false' }), false);
+  const req = headers => ({ headers });
+  assert.equal(webEmulatorRequest(req({ host: '138.68.143.223', origin: 'http://138.68.143.223:3001' })), true);
+  assert.equal(webEmulatorRequest(req({ host: '138.68.143.223', referer: 'http://138.68.143.223:3001/pda/' })), true);
+  assert.equal(webEmulatorRequest(req({ host: '138.68.143.223', origin: 'https://localhost' })), false);
+  assert.equal(webEmulatorRequest(req({ host: '138.68.143.223', origin: 'http://different.example' })), false);
+  assert.equal(webEmulatorRequest(req({ host: '138.68.143.223' })), false);
+  assert.equal(webEmulatorRequest(req({ host: '138.68.143.223', origin: 'null' })), false);
 });
 
 test('PostgreSQL: concurrent saves, retries, ownership, expiry, cancellation and final commit',
@@ -52,6 +59,12 @@ test('PostgreSQL: concurrent saves, retries, ownership, expiry, cancellation and
     assert.match(schema, /^pda_review_\d+_\d+$/);
     const factory = require('knex');
     const admin = factory({ client: 'pg', connection: process.env.PDA_TEST_DATABASE_URL });
+    const oldEmulatorFlag = process.env.PDA_EMULATOR_ENABLED;
+    process.env.PDA_EMULATOR_ENABLED = 'true';
+    t.after(() => {
+      if (oldEmulatorFlag === undefined) delete process.env.PDA_EMULATOR_ENABLED;
+      else process.env.PDA_EMULATOR_ENABLED = oldEmulatorFlag;
+    });
     let db;
     try {
       await admin.raw('CREATE SCHEMA ' + schema);
@@ -78,7 +91,8 @@ test('PostgreSQL: concurrent saves, retries, ownership, expiry, cancellation and
           gross_weight numeric, net_weight numeric, lot_number text, is_provisional boolean, pallets_json text,
           aldi_truck_line_id integer, created_at timestamptz DEFAULT now(), location_name text, consolidated_sscc text);
       `);
-      await db('employees').insert([{ id: 1, full_name: 'Dolgozó Egy' }, { id: 2, full_name: 'Dolgozó Kettő' }]);
+      await db('employees').insert([{ id: 1, full_name: 'Dolgozó Egy', pda_identifier: 'WORKER1', pda_session_token: 'login-1' },
+        { id: 2, full_name: 'Dolgozó Kettő', pda_identifier: 'WORKER2', pda_session_token: 'login-2' }]);
       await db.raw("SELECT setval('employees_id_seq', 2)");
       // Exercise the actual migrations against isolated tables, including the FK and unique index.
       await require('../src/db/migrations/20261002180000_add_picker_fields_to_sscc_labels').up(db);
@@ -93,11 +107,17 @@ test('PostgreSQL: concurrent saves, retries, ownership, expiry, cancellation and
         require: name => name === '../db/db' ? db : actualRequire(name), module: mod, exports: mod.exports,
         process, console: { ...console, error() {} }
       }, { filename: routeFile });
-      async function request(route, { body = {}, params = {}, query = {}, employee = 1 } = {}) {
+      async function request(route, { body = {}, params = {}, query = {}, employee = 1, headers = {}, authenticate = false } = {}) {
         const layer = mod.exports.stack.find(layer => layer.route?.path === route);
         const result = { status: 200 };
         const res = { status(code) { result.status = code; return this; }, json(value) { result.body = value; return this; } };
-        await layer.route.stack.at(-1).handle({ body, params, query, user: { id: employee, sessionId: 'login-' + employee } }, res);
+        const req = { body, params, query, headers, user: { id: employee, sessionId: 'login-' + employee } };
+        if (authenticate) {
+          let accepted = false;
+          await layer.route.stack[0].handle(req, res, () => { accepted = true; });
+          if (!accepted) return result;
+        }
+        await layer.route.stack.at(-1).handle(req, res);
         return result;
       }
       let lineId = 0;
@@ -187,6 +207,26 @@ test('PostgreSQL: concurrent saves, retries, ownership, expiry, cancellation and
         await db('aldi_daily_order_lines').where('id', 1).update({ cartons_per_pallet: null });
         assert.equal((await generate(p)).status, 400);
         await db('aldi_daily_order_lines').where('id', 1).update({ cartons_per_pallet: 10 });
+      });
+      await t.test('web emulator login leaves worker sessions intact; native must use a worker barcode', async () => {
+        const host = '138.68.143.223', browser = { host, origin: 'http://138.68.143.223:3001' };
+        const native = { host, origin: 'https://localhost' };
+        assert.equal((await request('/emulator-config')).body.enabled, true);
+        const loggedIn = await request('/login', { body: { username: 'WEB_EMULATOR_TEST' }, headers: browser });
+        assert.equal(loggedIn.status, 200, loggedIn.body.error);
+        assert.equal(loggedIn.body.user.isEmulator, true);
+        assert.equal((await db('employees').where('id', 1).first()).pda_session_token, 'login-1');
+        assert.equal((await db('employees').where('id', 2).first()).pda_session_token, 'login-2');
+        assert.equal((await request('/login', { body: { username: 'WEB_EMULATOR_TEST' }, headers: native })).status, 403);
+        const body = { lineId: 1, lot_number: '4005', pickSessionId: 'auth-check' };
+        const authorization = 'Bearer ' + loggedIn.body.token;
+        assert.equal((await request('/validate-lot', { body, headers: { ...browser, authorization }, authenticate: true })).status, 200);
+        assert.equal((await request('/validate-lot', { body, headers: { ...native, authorization }, authenticate: true })).status, 403);
+        assert.equal((await request('/validate-lot', { body, headers: native, authenticate: true })).status, 401);
+        const worker = await request('/login', { body: { username: 'WORKER1' }, headers: native });
+        assert.equal(worker.status, 200);
+        assert.equal(worker.body.user.isEmulator, false);
+        assert.equal((await request('/validate-lot', { body, headers: { ...native, authorization: 'Bearer ' + worker.body.token }, authenticate: true })).status, 200);
       });
     } finally {
       if (db) await db.destroy();
