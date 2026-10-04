@@ -161,6 +161,19 @@ export async function renderCommission(container, params = {}) {
       .pda-comm-row:active {
         background: #f1f5f9;
       }
+      .pda-comm-row--locked,
+      .pda-comm-row--locked:active {
+        cursor: not-allowed;
+        background: #f1f5f9;
+      }
+      .pda-comm-row--locked td,
+      .pda-comm-row--locked td div {
+        color: #64748b !important;
+      }
+      .pda-comm-row--locked .pda-comm-badge {
+        background: #e2e8f0;
+        color: #64748b;
+      }
       .pda-input-error {
         border: 2px solid #ef4444 !important;
         background: #fef2f2 !important;
@@ -544,6 +557,9 @@ export async function renderCommission(container, params = {}) {
   let currentLabel = null; // A generált raklapcimke adatai
   let currentTargetLocations = []; // A kamion fejlécén megadott engedélyezett sorok
   let lines = []; // Az aktuális komissió sorok (a kamionszám kiirásához)
+  let loadingData = null;
+  let selectingLine = false;
+  let disposed = false;
 
   // Dictionaries
   let packagingTypes = [];
@@ -749,16 +765,22 @@ export async function renderCommission(container, params = {}) {
     });
   }
 
-  async function loadData() {
+  function loadData(silent = false) {
+    if (loadingData) return loadingData;
+    loadingData = fetchData(silent).finally(() => { loadingData = null; });
+    return loadingData;
+  }
+
+  async function fetchData(silent) {
     const area = select.value;
     if (area !== 'aldi' && area !== 'crossdocking') {
       tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px; color: #94a3b8;">Nincs komissiózandó feladat ehhez a területhez.</td></tr>';
       container.querySelector('#hdr-total-items').textContent = '0';
       container.querySelector('#hdr-total-cartons').textContent = '0';
-      return;
+      return false;
     }
 
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color: #64748b;">Adatok betöltése...</td></tr>';
+    if (!silent) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color: #64748b;">Adatok betöltése...</td></tr>';
 
     try {
       let url = '/api/v1/pda/commission-lines';
@@ -767,7 +789,9 @@ export async function renderCommission(container, params = {}) {
       }
       const res = await apiFetch(url);
       if (res.ok) {
-        lines = await res.json();
+        const freshLines = await res.json();
+        if (disposed || !paneList.classList.contains('active')) return false;
+        lines = freshLines;
         if (!lines || lines.length === 0) {
           tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 24px; color: #94a3b8;">Nincs PDA-ra küldött aktív tétel.</td></tr>';
           container.querySelector('#hdr-total-items').textContent = '0';
@@ -802,6 +826,12 @@ export async function renderCommission(container, params = {}) {
             pendingLines.forEach(row => {
               const tr = document.createElement('tr');
               tr.className = 'pda-comm-row';
+              tr.dataset.lineId = row.id;
+              const locked = row.selection_locked === true;
+              if (locked) {
+                tr.classList.add('pda-comm-row--locked');
+                tr.setAttribute('aria-disabled', 'true');
+              }
 
               const ordered = row.kartonszam != null ? parseInt(row.kartonszam) : 0;
               const commissioned = row.komissziozott_kartonszam != null ? parseInt(row.komissziozott_kartonszam) : 0;
@@ -821,6 +851,7 @@ export async function renderCommission(container, params = {}) {
                 <td style="padding-top: 10px; padding-left: 1px; padding-right: 2px;">
                   <div style="font-weight:700; font-size: 11px; color: #0f172a; margin-bottom: 2px; white-space: normal;">${row.termek || '-'}</div>
                   <div style="font-size: 14px; font-weight: 800; color: #0284c7;">${remaining}</div>
+                  ${locked ? `<div style="font-size: 10px; white-space: normal; margin-top: 3px;">Komissiózza: ${escHtml(row.picker_name || 'Másik dolgozó')}<br>Az elérhető maradék legfeljebb 1 raklap (${row.available_cartons} karton).</div>` : ''}
                 </td>
                 <td style="text-align: center; padding-top: 10px; padding-left: 2px; padding-right: 2px;">
                   <div style="font-size: 11px; font-weight: 600; color: #334155; margin-bottom: 2px; white-space: normal; word-break: break-word;">${row.partner || '-'}</div>
@@ -828,24 +859,45 @@ export async function renderCommission(container, params = {}) {
                 </td>
               `;
 
-              tr.addEventListener('click', () => {
-                openForm(row, tr);
-              });
+              if (!locked) tr.addEventListener('click', () => selectLine(row.id));
               tbody.appendChild(tr);
             });
           }
         }
+        return true;
       } else {
         const errData = await res.json().catch(() => ({}));
-        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding: 20px; color: #ef4444;">Hiba a betöltéskor (${res.status}: ${errData.error || res.statusText || 'Ismeretlen hiba'})</td></tr>`;
+        if (!silent && !disposed) tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding: 20px; color: #ef4444;">Hiba a betöltéskor (${res.status}: ${errData.error || res.statusText || 'Ismeretlen hiba'})</td></tr>`;
       }
     } catch (err) {
       console.error('PDA Commission fetch error:', err);
-      tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding: 20px; color: #ef4444;">Hálózati hiba: ${err.message || 'Kapcsolódás sikertelen'}</td></tr>`;
+      if (!silent && !disposed) tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding: 20px; color: #ef4444;">Hálózati hiba: ${err.message || 'Kapcsolódás sikertelen'}</td></tr>`;
+    }
+    return false;
+  }
+
+  async function selectLine(lineId) {
+    if (selectingLine || disposed) return;
+    selectingLine = true;
+    try {
+      // Recheck on tap as another PDA may have reserved the last pallet since
+      // this list was displayed. Saving still uses the transactional guard.
+      const refreshed = await loadData(true);
+      if (disposed || !paneList.classList.contains('active')) return;
+      if (!refreshed) {
+        alert('A tétel elérhetőségét nem sikerült ellenőrizni. Próbáld újra.');
+        return;
+      }
+      const row = lines.find(line => line.id === lineId);
+      if (!row || row.is_picked || row.selection_locked) return;
+      openForm(row, tbody.querySelector(`[data-line-id="${lineId}"]`));
+    } finally {
+      selectingLine = false;
     }
   }
 
   function openForm(row, rowEl) {
+    if (row.selection_locked) return;
     activePickSessionId = null;
     lastPickPayload = null;
     currentLineId = row.id;
@@ -1350,8 +1402,19 @@ export async function renderCommission(container, params = {}) {
       }
     } catch (_) { /* A lejart foglalast a kovetkezo szerverhivas is ellenorzi. */ }
   }, 60000);
-  window._currentViewCleanup = () => clearInterval(renewTimer);
-  select.addEventListener('change', loadData);
+  const refreshList = () => {
+    if (!disposed && container.isConnected && document.visibilityState === 'visible' &&
+        paneList.classList.contains('active') && !selectingLine) loadData(true);
+  };
+  const listTimer = setInterval(refreshList, 15000);
+  document.addEventListener('visibilitychange', refreshList);
+  window._currentViewCleanup = () => {
+    disposed = true;
+    clearInterval(renewTimer);
+    clearInterval(listTimer);
+    document.removeEventListener('visibilitychange', refreshList);
+  };
+  select.addEventListener('change', () => loadData());
 
   await loadDictionaries();
   loadData();

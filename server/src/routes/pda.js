@@ -10,7 +10,7 @@ const router = express.Router();
 const knex = require('../db/db');
 const jwt = require('jsonwebtoken');
 const { consolidationStockIssues, assertConsolidationStock, consolidationCapacityError } = require('../services/consolidationStock');
-const { RESERVATION_MS, pickingError, validateLot, assertReservation, pickPayload, assertSamePayload, emulatorEnabled, webEmulatorRequest } = require('../services/pdaPicking');
+const { RESERVATION_MS, pickingError, validateLot, pickingAvailability, assertReservation, pickPayload, assertSamePayload, emulatorEnabled, webEmulatorRequest } = require('../services/pdaPicking');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_for_gava';
 
@@ -209,10 +209,27 @@ router.get('/commission-lines', verifyToken, async (req, res) => {
   try {
     const { truck_id } = req.query;
 
+    // Aggregate in the same SQL snapshot as the remaining cartons: a final
+    // commit must not be counted both as picked stock and as a reservation.
+    const activePicks = knex('sscc_labels as reservation')
+      .leftJoin('employees as picker', 'reservation.picker_user_id', 'picker.id')
+      .select('reservation.aldi_truck_line_id', knex.raw(`json_agg(json_build_object(
+        'picker_user_id', reservation.picker_user_id,
+        'picked_cartons', reservation.picked_cartons,
+        'picker_name', picker.full_name
+      ) ORDER BY reservation.id) as active_picks`))
+      .where('reservation.is_provisional', true)
+      .whereNotNull('reservation.pick_session_id')
+      .whereNull('reservation.reservation_cancelled_at')
+      .where('reservation.reservation_expires_at', '>', knex.fn.now())
+      .groupBy('reservation.aldi_truck_line_id');
+
     let query = knex('aldi_truck_lines')
       .join('aldi_trucks', 'aldi_truck_lines.aldi_truck_id', 'aldi_trucks.id')
       .leftJoin('aldi_daily_order_lines as demand', 'aldi_truck_lines.aldi_daily_order_line_id', 'demand.id')
+      .leftJoin(activePicks.as('picks'), 'picks.aldi_truck_line_id', 'aldi_truck_lines.id')
       .select(
+        'picks.active_picks',
         'aldi_truck_lines.id',
         'aldi_truck_lines.aldi_truck_id',
         'aldi_trucks.truck_number as kamionszam',
@@ -237,6 +254,14 @@ router.get('/commission-lines', verifyToken, async (req, res) => {
     }
 
     const lines = await query;
+    lines.forEach(line => {
+      Object.assign(line, pickingAvailability({
+        ordered_cartons: line.kartonszam,
+        picked_cartons: line.komissziozott_kartonszam,
+        cartons_per_pallet: line.plt
+      }, line.active_picks || [], req.user.id));
+      delete line.active_picks;
+    });
 
     // Engedélyezett célsorok vonalkódjainak hozzácsatolása (PDA tesztelés és megjelenítés megkönnyítésére)
     try {
@@ -1011,14 +1036,13 @@ router.post('/generate-pallet-label', verifyToken, async (req, res) => {
       }
       if (!Number.isInteger(plt) || plt <= 0) throw pickingError('BAD_REQUEST',
         'Hiányzó vagy hibás #/PLT érték. Javítsd az ALDI Rakodás áruigényében.');
-      const remaining = Number(line.ordered_cartons) - Number(line.picked_cartons || 0);
       const active = await trx('sscc_labels').where('aldi_truck_line_id', lineId)
         .where('is_provisional', true).whereNotNull('pick_session_id').whereNull('reservation_cancelled_at')
         .where('reservation_expires_at', '>', trx.fn.now()).select('*');
-      const reserved = active.reduce((sum, row) => sum + Number(row.picked_cartons), 0);
-      const available = Math.max(0, remaining - reserved);
+      const availability = pickingAvailability({ ...line, cartons_per_pallet: plt }, active, req.user.id);
+      const available = availability.available_cartons;
       const other = active.find(row => Number(row.picker_user_id) !== Number(req.user.id));
-      if (other && available <= plt) {
+      if (availability.selection_locked) {
         const employee = await trx('employees').where('id', other.picker_user_id).first();
         const err = pickingError('LOCKED', 'A tételt jelenleg ' + (employee?.full_name || 'másik dolgozó') +
           ' komissiózza; az elérhető maradék legfeljebb egy raklap.');

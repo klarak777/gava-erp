@@ -4,7 +4,24 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { createRequire } = require('node:module');
-const { validateLot, assertReservation, assertSamePayload, pickPayload, emulatorEnabled, webEmulatorRequest } = require('../src/services/pdaPicking');
+const { validateLot, pickingAvailability, assertReservation, assertSamePayload, pickPayload, emulatorEnabled, webEmulatorRequest } = require('../src/services/pdaPicking');
+
+test('last-pallet selection uses live #/PLT, all reserved cartons and the current employee', () => {
+  const line = { ordered_cartons: 30, picked_cartons: 0, cartons_per_pallet: 10 };
+  const active = [{ picker_user_id: 1, picked_cartons: 10, picker_name: 'Dolgozó Egy' }];
+  assert.equal(pickingAvailability(line, active, 2).selection_locked, false);
+  const partial = { ...line, picked_cartons: 11 };
+  assert.deepEqual(pickingAvailability(partial, active, 2), {
+    reserved_cartons: 10, available_cartons: 9, selection_locked: true, picker_name: 'Dolgozó Egy'
+  });
+  assert.equal(pickingAvailability({ ...line, picked_cartons: 10 }, active, 2).selection_locked, true);
+  assert.equal(pickingAvailability(partial, active, 1).selection_locked, false);
+  assert.equal(pickingAvailability(partial, [], 2).selection_locked, false);
+  assert.equal(pickingAvailability(line, [...active, { picker_user_id: 2, picked_cartons: 11 }], 3).selection_locked, true);
+  assert.equal(pickingAvailability({ ...partial, cartons_per_pallet: 5 }, active, 2).selection_locked, false);
+  assert.equal(pickingAvailability({ ...partial, cartons_per_pallet: null }, active, 2).selection_locked, false);
+  assert.equal(pickingAvailability({ ...line, picked_cartons: 29 }, active, 2).available_cartons, 0);
+});
 
 test('LOT uses Budapest calendar days, real ISO weeks and the year boundary', () => {
   const now = new Date('2026-10-02T12:00:00Z');
@@ -73,12 +90,12 @@ test('PostgreSQL: concurrent saves, retries, ownership, expiry, cancellation and
       await db.raw(`
         CREATE TABLE employees (id serial PRIMARY KEY, full_name text, pda_identifier text, role text, status text,
           pda_session_token text, created_at timestamptz, updated_at timestamptz);
-        CREATE TABLE aldi_trucks (id integer PRIMARY KEY, truck_number text, license_plate_1 text, delivery_date text, target_locations jsonb);
+        CREATE TABLE aldi_trucks (id integer PRIMARY KEY, truck_number text, license_plate_1 text, delivery_date text, target_locations jsonb, sent_to_pda boolean);
         CREATE TABLE aldi_daily_order_lines (id integer PRIMARY KEY, cartons_per_pallet integer);
         CREATE TABLE aldi_truck_lines (id integer PRIMARY KEY, aldi_truck_id integer, aldi_daily_order_line_id integer,
           product_name text, ordered_cartons integer, picked_cartons integer, cartons_per_pallet integer, gross_weight numeric,
           net_weight numeric, delivery_date text, origin_country text, partner text, destination text, lot_number text,
-          is_picked boolean, packaging_type text, pallet_type text, tare_weight numeric);
+          is_picked boolean, packaging_type text, pallet_type text, tare_weight numeric, row_order integer);
         CREATE TABLE ref_packaging_types (id integer PRIMARY KEY, name text, category text, is_active boolean, tare_weight_kg numeric);
         CREATE TABLE aldi_locations (id integer PRIMARY KEY, barcode text, name text, capacity integer, location_type text, parent_id integer);
         CREATE TABLE aldi_commission_lines (id serial PRIMARY KEY, aldi_truck_id integer, aldi_truck_line_id integer, product_name text,
@@ -97,7 +114,7 @@ test('PostgreSQL: concurrent saves, retries, ownership, expiry, cancellation and
       // Exercise the actual migrations against isolated tables, including the FK and unique index.
       await require('../src/db/migrations/20261002180000_add_picker_fields_to_sscc_labels').up(db);
       await require('../src/db/migrations/20261002190000_add_pda_reservation_lifecycle').up(db);
-      await db('aldi_trucks').insert({ id: 1, truck_number: 'TEST', target_locations: JSON.stringify([{ id: 10 }]) });
+      await db('aldi_trucks').insert({ id: 1, truck_number: 'TEST', target_locations: JSON.stringify([{ id: 10 }]), sent_to_pda: true });
       await db('aldi_daily_order_lines').insert({ id: 1, cartons_per_pallet: 10 });
       await db('ref_packaging_types').insert({ id: 25, name: 'EU', category: 'Raklap', is_active: true, tare_weight_kg: 22 });
       await db('aldi_locations').insert({ id: 10, name: 'Test location', barcode: 'TEST-LOC', capacity: 100, location_type: 'Komissió' });
@@ -139,6 +156,50 @@ test('PostgreSQL: concurrent saves, retries, ownership, expiry, cancellation and
       const generate = (body, employee = 1) => request('/generate-pallet-label', { body, employee });
       const finalize = (p, label, employee = 1) => request('/commission-lines/:id/pick-and-assign', {
         params: { id: p.lineId }, employee, body: { ...p, labelId: label.id, scannedSscc: label.sscc, barcode: 'TEST-LOC' } });
+
+      await t.test('list disables another worker at the last pallet and releases cancelled, expired and final picks', async () => {
+        const id = await line(25), p = await payload(id, 'list-lock', 10);
+        const first = await generate(p);
+        assert.equal(first.status, 200, first.body.error);
+        async function listed(employee = 2) {
+          const result = await request('/commission-lines', { employee, query: { truck_id: 1 } });
+          assert.equal(result.status, 200, JSON.stringify(result.body));
+          return result.body.find(row => row.id === id);
+        }
+        assert.equal((await listed()).selection_locked, false); // 15 available, live #/PLT = 10 (line says 999).
+        await db('aldi_truck_lines').where('id', id).update({ ordered_cartons: 19 });
+        assert.equal((await listed()).selection_locked, true);
+        assert.equal((await listed()).available_cartons, 9);
+        assert.equal((await listed()).picker_name, 'Dolgozó Egy');
+        assert.equal((await listed(1)).selection_locked, false);
+        assert.equal('active_picks' in await listed(), false);
+        await db('aldi_truck_lines').where('id', id).update({ ordered_cartons: 20 });
+        assert.equal((await listed()).selection_locked, true); // Equality retains the V4 guard.
+        await db('sscc_labels').where('id', first.body.label.id).update({ reservation_expires_at: new Date(Date.now() - 1000) });
+        assert.equal((await listed()).selection_locked, false);
+        assert.equal((await listed()).reserved_cartons, 0);
+        await db('sscc_labels').where('id', first.body.label.id).update({
+          reservation_expires_at: new Date(Date.now() + 60000), reservation_cancelled_at: new Date()
+        });
+        assert.equal((await listed()).selection_locked, false);
+        await db('sscc_labels').where('id', first.body.label.id).update({ reservation_cancelled_at: null });
+        assert.equal((await finalize(p, first.body.label)).status, 200);
+        assert.equal((await listed()).selection_locked, false);
+        assert.equal((await listed()).available_cartons, 10);
+        // A provisional consolidation label without a pick session is not a commission reservation.
+        await db('sscc_labels').insert({ sscc: 'LIST-MASTER', aldi_truck_line_id: id,
+          is_provisional: true, picked_cartons: 10, picker_user_id: 1,
+          reservation_expires_at: new Date(Date.now() + 60000) });
+        assert.equal((await listed()).reserved_cartons, 0);
+        await db('aldi_daily_order_lines').where('id', 1).update({ cartons_per_pallet: 5 });
+        const next = await generate(await payload(id, 'list-live-plt', 1));
+        assert.equal(next.status, 200);
+        assert.equal((await listed()).selection_locked, false); // 9 > live 5.
+        await db('aldi_daily_order_lines').where('id', 1).update({ cartons_per_pallet: 10 });
+        assert.equal((await listed()).selection_locked, true);
+        assert.equal((await request('/provisional-pick', { query: { pickSessionId: 'list-live-plt' } })).status, 200);
+        assert.equal((await listed()).selection_locked, false);
+      });
 
       await t.test('concurrent last-pallet saves accept one employee and name the other', async () => {
         const id = await line(), a = await payload(id, 'race-a'), b = await payload(id, 'race-b', 5, 2);

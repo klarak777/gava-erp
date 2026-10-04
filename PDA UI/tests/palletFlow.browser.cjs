@@ -13,6 +13,9 @@ const apiCalls = [];
 let failPrint = false;
 let failGenerationOnce = false;
 let declineExpiredLot = false;
+const defaultCommissionLines = [{ id: 5, termek: 'Nektarin 7kg', kartonszam: 100, komissziozott_kartonszam: 0, kamionszam: 'AL02', target_locations: targets, celraktar: 'ALDI', plt: 10 }];
+let commissionLines = defaultCommissionLines;
+let failCommissionList = false;
 
 const server = http.createServer(async (req, res) => {
   const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
@@ -83,7 +86,10 @@ async function run() {
       else if (url.endsWith('/packaging-types')) json = [{ id: 3, name: 'Doboz', tare_weight_kg: 0.5 }, { id: 4, name: 'EU Raklap', tare_weight_kg: 23 }];
       else if (url.endsWith('/origin-countries')) json = [{ name: 'Magyarország' }];
       else if (url.includes('/pallet-label/')) json = { truck_number: 'AL02', product_name: 'Nektarin 7kg', sscc };
-      else if (url.includes('/commission-lines')) json = [{ id: 5, termek: 'Nektarin 7kg', kartonszam: 100, komissziozott_kartonszam: 0, kamionszam: 'AL02', target_locations: targets, celraktar: 'ALDI', plt: 10 }];
+      else if (url.includes('/commission-lines')) {
+        status = failCommissionList ? 503 : 200;
+        json = failCommissionList ? { error: 'A lista nem elérhető.' } : commissionLines;
+      }
       await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(json) });
     });
 
@@ -178,6 +184,49 @@ async function run() {
     assert.deepEqual(commits()[0].body.labelIds, [1, 2]);
     assert.equal(commits()[0].body.locationId, 10);
     console.log('PASS consolidation: print failure, location validation, hardware back, final-only commit');
+
+    for (const viewport of [{ width: 320, height: 480 }, { width: 390, height: 810 }]) {
+      await page.setViewportSize(viewport);
+      commissionLines = [{ ...defaultCommissionLines[0], kartonszam: 19,
+        reserved_cartons: 10, available_cartons: 9, selection_locked: true,
+        picker_name: 'Dolgozó <Egy>' }];
+      await activate('commission');
+      const locked = page.locator('#pda-comm-tbody tr[data-line-id="5"]');
+      await locked.waitFor();
+      assert.equal(await locked.getAttribute('aria-disabled'), 'true');
+      assert.match(await locked.textContent(), /Komissiózza: Dolgozó <Egy>/);
+      assert.match(await locked.textContent(), /9 karton/);
+      assert.equal(await locked.locator('egy').count(), 0, 'Picker names must be escaped');
+      const listCallsBefore = apiCalls.filter(c => c.url.endsWith('/commission-lines')).length;
+      await locked.dispatchEvent('click');
+      assert.equal(await page.locator('#pane-form').isVisible(), false);
+      assert.equal(apiCalls.filter(c => c.url.endsWith('/commission-lines')).length, listCallsBefore);
+      assert.equal(await locked.evaluate(row => getComputedStyle(row).cursor), 'not-allowed');
+
+      // Release while the list is open, then reacquire after the last refresh.
+      commissionLines = [{ ...commissionLines[0], selection_locked: false, reserved_cartons: 0, available_cartons: 19 }];
+      await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+      await page.waitForFunction(() => !document.querySelector('[data-line-id="5"]').hasAttribute('aria-disabled'));
+      commissionLines = [{ ...commissionLines[0], selection_locked: true, reserved_cartons: 10, available_cartons: 9 }];
+      await locked.click();
+      await page.waitForFunction(() => document.querySelector('[data-line-id="5"]').getAttribute('aria-disabled') === 'true');
+      assert.equal(await page.locator('#pane-form').isVisible(), false, 'Freshly acquired reservations must block stale list taps');
+
+      commissionLines = defaultCommissionLines;
+      await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+      await page.waitForFunction(() => !document.querySelector('[data-line-id="5"]').hasAttribute('aria-disabled'));
+      failCommissionList = true;
+      await locked.click();
+      await page.waitForFunction(() => document.querySelector('[data-line-id="5"]') && !document.getElementById('pane-form').classList.contains('active'));
+      // Wait for the failed request and the selection handler to finish.
+      await page.waitForTimeout(100);
+      assert.equal(await page.locator('#pane-form').isVisible(), false, 'Availability check failures must not open the form');
+      failCommissionList = false;
+      await locked.click();
+      await visible('pane-form');
+      console.log(`PASS commission selection: disabled rows, live release, stale taps and failed checks: ${viewport.width}x${viewport.height}`);
+    }
+    commissionLines = defaultCommissionLines;
 
     for (const viewport of [{ width: 320, height: 480 }, { width: 390, height: 810 }]) {
       await page.setViewportSize(viewport);

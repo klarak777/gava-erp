@@ -62,6 +62,22 @@ function reservationExpiry(label) {
     : new Date(new Date(label.created_at).getTime() + RESERVATION_MS);
 }
 
+// Only live, uncancelled provisional picks are passed in by the query.
+// Keep the list and the transactional save on the same last-pallet rule.
+function pickingAvailability(line, active, userId) {
+  const remaining = Math.max(0, Number(line.ordered_cartons) - Number(line.picked_cartons || 0));
+  const reserved = active.reduce((sum, pick) => sum + Number(pick.picked_cartons), 0);
+  const available = Math.max(0, remaining - reserved);
+  const plt = Number(line.cartons_per_pallet);
+  const other = active.find(pick => Number(pick.picker_user_id) !== Number(userId));
+  return {
+    reserved_cartons: reserved,
+    available_cartons: available,
+    selection_locked: Boolean(other && Number.isInteger(plt) && plt > 0 && available <= plt),
+    picker_name: other ? (other.picker_name || 'Másik dolgozó') : null
+  };
+}
+
 function assertReservation(label, user, sessionId, lineId, now = new Date()) {
   if (!label) throw pickingError('LABEL_EXPIRED', 'A komissiós címke nem található. Kezdd újra a tételt.');
   if (!user || Number(label.picker_user_id) !== Number(user.id) ||
@@ -106,4 +122,4 @@ function webEmulatorRequest(req) {
   } catch (_) { return false; }
 }
 
-module.exports = { RESERVATION_MS, pickingError, validateLot, reservationExpiry, assertReservation, pickPayload, assertSamePayload, emulatorEnabled, webEmulatorRequest };
+module.exports = { RESERVATION_MS, pickingError, validateLot, reservationExpiry, pickingAvailability, assertReservation, pickPayload, assertSamePayload, emulatorEnabled, webEmulatorRequest };
