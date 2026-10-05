@@ -67,7 +67,6 @@ export function renderAldiBelfoldiFuvarok(container, windowManager) {
         <label style="font-size:11px; font-weight:600; color:#475569; margin-bottom:4px; display:block;">Fuvarozó cég</label>
         <select id="filter-transporter" class="access-control-input" style="font-size:12px; padding:4px 8px; height:32px; width:100%; box-sizing:border-box;">
           <option value="all" selected>-- Összes --</option>
-          <!-- További opciók dinamikusan jöhetnek -->
         </select>
       </div>
       <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px; min-width:150px;">
@@ -96,14 +95,12 @@ export function renderAldiBelfoldiFuvarok(container, windowManager) {
             </tr>
           </thead>
           <tbody id="belfoldi-fuvarok-tbody">
-            <!-- A renderTable() függvény tölti fel -->
           </tbody>
         </table>
       </div>
       
       <!-- LAPOZÓ (Pagination) -->
       <div id="belfoldi-pagination-container" style="display:none; justify-content:space-between; align-items:center; padding:12px; border-top:1px solid #e2e8f0; margin-top:auto; background:#f8fafc;">
-        <!-- A renderTable() függvény tölti fel -->
       </div>
     </div>
   `;
@@ -114,21 +111,16 @@ export function renderAldiBelfoldiFuvarok(container, windowManager) {
   const paginationContainer = view.querySelector('#belfoldi-pagination-container');
 
   function renderTable() {
-    // 1. Szűrés (később implementálható, jelenleg a state.data alapján működik)
     let filteredData = state.data;
-    
-    // 2. Pagination adatok kiszámítása
     const totalItems = filteredData.length;
     const totalPages = Math.max(1, Math.ceil(totalItems / state.itemsPerPage));
     if (state.currentPage > totalPages) {
       state.currentPage = totalPages;
     }
 
-    // 3. Jelenlegi oldal adatainak kiválasztása
     const startIndex = (state.currentPage - 1) * state.itemsPerPage;
     const currentData = filteredData.slice(startIndex, startIndex + state.itemsPerPage);
 
-    // 4. Táblázat sorok renderelése
     if (currentData.length === 0) {
       tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px; color:#64748b;">Nincsenek megjeleníthető adatok</td></tr>';
     } else {
@@ -146,53 +138,47 @@ export function renderAldiBelfoldiFuvarok(container, windowManager) {
       `).join('');
     }
 
-    // 5. Lapozó renderelése
     if (totalItems > 10) {
       paginationContainer.style.display = 'flex';
       
-      let paginationHtml = \`
-        <span style="font-size:12px; color:#64748b;">Összesen: \${totalItems} tétel</span>
+      let paginationHtml = `
+        <span style="font-size:12px; color:#64748b;">Összesen: ${totalItems} tétel</span>
         <div style="display:flex; gap:4px; font-size:12px; align-items:center;">
-          <button id="btn-page-prev" style="background:#fff; border:1px solid #cbd5e1; border-radius:4px; padding:4px 8px; cursor:pointer; color:#334155;" \${state.currentPage === 1 ? 'disabled style="opacity:0.5"' : ''}>&lt;</button>
-      \`;
+          <button id="btn-page-prev" style="background:#fff; border:1px solid #cbd5e1; border-radius:4px; padding:4px 8px; cursor:pointer; color:#334155;" ${state.currentPage === 1 ? 'disabled style="opacity:0.5"' : ''}>&lt;</button>
+      `;
 
-      // Egyszerűsített lapozó UI logika (pl. 1 2 ... 11)
       if (totalPages <= 5) {
         for (let i = 1; i <= totalPages; i++) {
-          paginationHtml += \`<button class="btn-page-num" data-page="\${i}" style="background:\${state.currentPage === i ? '#0ea5e9' : '#fff'}; border:1px solid \${state.currentPage === i ? '#0ea5e9' : '#cbd5e1'}; border-radius:4px; padding:4px 8px; cursor:pointer; color:\${state.currentPage === i ? '#fff' : '#334155'};">\${i}</button>\`;
+          paginationHtml += `<button class="btn-page-num" data-page="${i}" style="background:${state.currentPage === i ? '#0ea5e9' : '#fff'}; border:1px solid ${state.currentPage === i ? '#0ea5e9' : '#cbd5e1'}; border-radius:4px; padding:4px 8px; cursor:pointer; color:${state.currentPage === i ? '#fff' : '#334155'};">${i}</button>`;
         }
       } else {
-        // Mindig mutatjuk az 1-est
-        paginationHtml += \`<button class="btn-page-num" data-page="1" style="background:\${state.currentPage === 1 ? '#0ea5e9' : '#fff'}; border:1px solid \${state.currentPage === 1 ? '#0ea5e9' : '#cbd5e1'}; border-radius:4px; padding:4px 8px; cursor:pointer; color:\${state.currentPage === 1 ? '#fff' : '#334155'};">1</button>\`;
+        paginationHtml += `<button class="btn-page-num" data-page="1" style="background:${state.currentPage === 1 ? '#0ea5e9' : '#fff'}; border:1px solid ${state.currentPage === 1 ? '#0ea5e9' : '#cbd5e1'}; border-radius:4px; padding:4px 8px; cursor:pointer; color:${state.currentPage === 1 ? '#fff' : '#334155'};">1</button>`;
         
         if (state.currentPage > 3) {
-          paginationHtml += \`<span style="padding:4px; color:#64748b;">...</span>\`;
+          paginationHtml += `<span style="padding:4px; color:#64748b;">...</span>`;
         }
         
-        // Középső oldalak
         let startPage = Math.max(2, state.currentPage - 1);
         let endPage = Math.min(totalPages - 1, state.currentPage + 1);
         
         for (let i = startPage; i <= endPage; i++) {
-          paginationHtml += \`<button class="btn-page-num" data-page="\${i}" style="background:\${state.currentPage === i ? '#0ea5e9' : '#fff'}; border:1px solid \${state.currentPage === i ? '#0ea5e9' : '#cbd5e1'}; border-radius:4px; padding:4px 8px; cursor:pointer; color:\${state.currentPage === i ? '#fff' : '#334155'};">\${i}</button>\`;
+          paginationHtml += `<button class="btn-page-num" data-page="${i}" style="background:${state.currentPage === i ? '#0ea5e9' : '#fff'}; border:1px solid ${state.currentPage === i ? '#0ea5e9' : '#cbd5e1'}; border-radius:4px; padding:4px 8px; cursor:pointer; color:${state.currentPage === i ? '#fff' : '#334155'};">${i}</button>`;
         }
         
         if (state.currentPage < totalPages - 2) {
-          paginationHtml += \`<span style="padding:4px; color:#64748b;">...</span>\`;
+          paginationHtml += `<span style="padding:4px; color:#64748b;">...</span>`;
         }
         
-        // Mindig mutatjuk az utolsót
-        paginationHtml += \`<button class="btn-page-num" data-page="\${totalPages}" style="background:\${state.currentPage === totalPages ? '#0ea5e9' : '#fff'}; border:1px solid \${state.currentPage === totalPages ? '#0ea5e9' : '#cbd5e1'}; border-radius:4px; padding:4px 8px; cursor:pointer; color:\${state.currentPage === totalPages ? '#fff' : '#334155'};">\${totalPages}</button>\`;
+        paginationHtml += `<button class="btn-page-num" data-page="${totalPages}" style="background:${state.currentPage === totalPages ? '#0ea5e9' : '#fff'}; border:1px solid ${state.currentPage === totalPages ? '#0ea5e9' : '#cbd5e1'}; border-radius:4px; padding:4px 8px; cursor:pointer; color:${state.currentPage === totalPages ? '#fff' : '#334155'};">${totalPages}</button>`;
       }
 
-      paginationHtml += \`
-          <button id="btn-page-next" style="background:#fff; border:1px solid #cbd5e1; border-radius:4px; padding:4px 8px; cursor:pointer; color:#334155;" \${state.currentPage === totalPages ? 'disabled style="opacity:0.5"' : ''}>&gt;</button>
+      paginationHtml += `
+          <button id="btn-page-next" style="background:#fff; border:1px solid #cbd5e1; border-radius:4px; padding:4px 8px; cursor:pointer; color:#334155;" ${state.currentPage === totalPages ? 'disabled style="opacity:0.5"' : ''}>&gt;</button>
         </div>
-      \`;
+      `;
       
       paginationContainer.innerHTML = paginationHtml;
 
-      // Eseménykezelők a lapozóhoz
       const prevBtn = paginationContainer.querySelector('#btn-page-prev');
       if (prevBtn) {
         prevBtn.addEventListener('click', () => {
@@ -230,7 +216,6 @@ export function renderAldiBelfoldiFuvarok(container, windowManager) {
     }
   }
 
-  // Eseménykezelők a szűrőkhöz
   const clearBtn = view.querySelector('#btn-clear-filters');
   if (clearBtn) {
     clearBtn.addEventListener('click', () => {
@@ -241,12 +226,10 @@ export function renderAldiBelfoldiFuvarok(container, windowManager) {
       view.querySelector('#filter-transporter').value = 'all';
       view.querySelector('#filter-missing-invoice').checked = false;
       
-      // Visszaállítjuk a state-et alaphelyzetbe
       state.currentPage = 1;
       renderTable();
     });
   }
 
-  // Kezdeti render
   renderTable();
 }
