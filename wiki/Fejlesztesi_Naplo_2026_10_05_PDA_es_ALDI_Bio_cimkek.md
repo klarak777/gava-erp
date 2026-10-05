@@ -2,7 +2,7 @@
 
 **Dátum:** 2026. október 5.  
 **Érintett komponensek:** PDA UI, PDA Android alkalmazás, Access UI / ALDI Termék adattábla, szerveroldali API és DOCX-export.  
-**PDA-verzió:** elkészült APK: 0.9.20 (verziókód: 20); a belépési foglalást tartalmazó, buildre előkészített forrás: 0.9.21 (verziókód: 21).
+**PDA-verzió:** elkészült APK: 0.9.21 (verziókód: 21); a belépési foglalást tartalmazó forrás feltöltve a GitHub `master` ágára.
 
 ## 1. PDA: az utolsó raklap tételkiválasztási védelme
 
@@ -42,7 +42,13 @@ A GitHub-build lefuttatta a PDA szerver- és böngészős tesztjeit. Az APK-buil
 
 ### Új belépési foglalás élesítése: 0.9.21
 
-Az új forrás használatához a szerver és a PDA-felület frissítése, valamint új APK buildelése szükséges. A szerveren futtatni kell a `20261006010000_add_pda_pick_entries.js` migrációt, amely létrehozza a `pda_pick_entries` táblát. A régi APK nem kér belépési foglalást, ezért az új szerveren új címke mentéséhez kliensfrissítés szükséges. A 0.9.21 APK-build és az éles szerver frissítése még nem történt meg.
+Az új forrás használatához a szerver és a PDA-felület frissítése, valamint a 0.9.21-es APK telepítése szükséges. A szerveren futtatni kell a `20261006010000_add_pda_pick_entries.js` migrációt, amely létrehozza a `pda_pick_entries` táblát. A régi APK nem kér belépési foglalást, ezért az új szerveren új címke mentéséhez kliensfrissítés szükséges. Az éles szerver frissítése és a PDA-kra telepítés még nem történt meg.
+
+- Forrás feltöltve a `master` ágra: `54389fa326fdf1325b1f734ae04587bd51b61144`.
+- [Sikeres 0.9.21 GitHub Actions build](https://github.com/klarak777/gava-erp/actions/runs/37332862161); a PDA szerveroldali és böngészős tesztjei is sikeresek.
+- Elkészült és letöltött fájlok: `Gava-PDA-App-0.9.21.apk`, `Gava-PDA-App-0.9.21.zip`.
+- Ellenőrizve: `com.gava.pda`, `0.9.21`, verziókód `21`; a beépített komissiós és alkalmazásindító JavaScript egyezik a forrással, az aláíró tanúsítvány egyezik a 0.9.20-as APK-éval.
+- APK SHA-256: `1ebe6fa3663b566220c71e2d9a655cf7813591c7baac2086bce2e45bf9262aae`.
 
 ## 2. ALDI Termék adattábla: Bio-címkék szabad szöveggel
 

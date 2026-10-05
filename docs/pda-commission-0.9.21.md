@@ -28,7 +28,15 @@ Az Android verziónév 0.9.21, a verziókód 21. A 0.9.20-as APK még csak a Men
 2. Telepítsétek a szerver módosított forrását, és futtassátok az új migrációt a szerver `npm run migrate` parancsával.
 3. Frissítsétek a webes PDA-felületet, és az új forrásból épített APK-t telepítsétek a PDA-kra. A 0.9.20-as APK nem kéri a belépési foglalást, ezért az új szerveren új címke mentéséhez kliensfrissítés szükséges.
 
-A 0.9.21 verzió itt a buildre előkészített forrást jelöli; a korábbi 0.9.20 GitHub-build nem tartalmazza ezt a módosítást. Az éles szerver frissítése és az új APK-build külön művelet.
+A 0.9.21 APK a GitHub `master` ágán található `54389fa326fdf1325b1f734ae04587bd51b61144` commitból elkészült. Az éles szerver frissítése és a PDA-kra telepítés külön művelet; a GitHub-build ezeket nem végezte el.
+
+## Elkészült GitHub APK-build
+
+- [Sikeres GitHub Actions futás](https://github.com/klarak777/gava-erp/actions/runs/37332862161); a PDA szerveroldali és Chromium-tesztjei is sikeresek.
+- APK: `Gava-PDA-App-0.9.21.apk`; a letöltött GitHub artifact: `Gava-PDA-App-0.9.21.zip`.
+- Ellenőrzött csomagazonosító: `com.gava.pda`; verziónév: `0.9.21`; verziókód: `21`.
+- A beépített `commission.js` és `app.js` egyezik a forrással. Az aláíró tanúsítvány egyezik a 0.9.20-as APK-éval.
+- APK SHA-256: `1ebe6fa3663b566220c71e2d9a655cf7813591c7baac2086bce2e45bf9262aae`.
 
 ## Ellenőrzések
 
