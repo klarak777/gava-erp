@@ -45,7 +45,7 @@ function formatProductLabelTables(buffer, hasBioLabel) {
     const rows = children(table, 'tr');
     if (rows.length !== 1) continue;
     const cells = children(rows[0], 'tc');
-    if (cells.length !== (hasBioLabel ? 3 : 1)) continue;
+    if (cells.length !== (hasBioLabel ? 2 : 1)) continue;
 
     const tableProperties = property(doc, table, 'tblPr');
     const tableWidth = property(doc, tableProperties, 'tblW');
@@ -56,11 +56,9 @@ function formatProductLabelTables(buffer, hasBioLabel) {
     property(doc, tableProperties, 'jc', { val: 'center' });
     borders(doc, tableProperties, 'tblBorders', ['top', 'left', 'bottom', 'right']);
 
-    // The requested 25:55:22 weights total 102; preserve their proportions while
-    // keeping the columns within the document's available table width.
-    const leftWidth = Math.round(width * 25 / 102);
-    const rightWidth = Math.round(width * 22 / 102);
-    const widths = hasBioLabel ? [leftWidth, width - leftWidth - rightWidth, rightWidth] : [width];
+    // Label data on the left; logo and editable Bio text on the right.
+    const rightWidth = Math.round(width / 4);
+    const widths = hasBioLabel ? [width - rightWidth, rightWidth] : [width];
     const grid = property(doc, table, 'tblGrid');
     while (grid.firstChild) grid.removeChild(grid.firstChild);
     widths.forEach(cellWidth => {
@@ -76,10 +74,10 @@ function formatProductLabelTables(buffer, hasBioLabel) {
       if (index === 0) visibleSides.push('left');
       if (index === cells.length - 1) visibleSides.push('right');
       borders(doc, cellProperties, 'tcBorders', visibleSides);
-      property(doc, cellProperties, 'vAlign', { val: hasBioLabel && index === 2 ? 'center' : 'top' });
+      property(doc, cellProperties, 'vAlign', { val: 'top' });
 
       const margins = property(doc, cellProperties, 'tcMar');
-      const horizontalMargin = hasBioLabel && index !== 1 ? 60 : 240;
+      const horizontalMargin = hasBioLabel && index === 1 ? 60 : 240;
       for (const side of ['left', 'right', 'top', 'bottom']) {
         property(doc, margins, side, { type: 'dxa', w: ['left', 'right'].includes(side) ? horizontalMargin : 120 });
       }

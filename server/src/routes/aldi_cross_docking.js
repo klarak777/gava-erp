@@ -402,6 +402,16 @@ router.get('/demands', async (req, res) => {
       loadedMap[l.order_item_state_id] = parseFloat(l.total_loaded) || 0;
     });
 
+    // Partner: az adott rendelési tételhez már kamionsorban megadott utolsó partner
+    const partnerRows = await knex('aldi_truck_lines')
+      .select('order_item_state_id', 'partner')
+      .whereNotNull('order_item_state_id')
+      .whereNotNull('partner')
+      .andWhere('partner', '<>', '')
+      .orderBy('id', 'asc');
+    const partnerMap = {};
+    partnerRows.forEach(r => { partnerMap[r.order_item_state_id] = r.partner; });
+
     // We also need product names from chain_products
     const gtins = orderLines.map(l => l.gtin);
     const products = await knex('chain_products').whereIn('gtin', gtins).andWhere('chain', 'ALDI');
@@ -465,6 +475,7 @@ router.get('/demands', async (req, res) => {
                 available_cartons: remaining,                              // Szabadon osztható (sent - loaded)
                 delivery_date: order.delivery_date,
                 order_number: order.order_number,
+                partner: partnerMap[line.order_item_state_id] || '',
                 version_number: order.version_number,
                 requires_reconciliation: !!line.requires_reconciliation,
                 reconciliation_reason: line.reconciliation_reason,
@@ -781,9 +792,27 @@ router.get('/commission-summary', async (req, res) => {
 // GET commission lines for a truck
 router.get('/trucks/:id/commission-lines', async (req, res) => {
   try {
-    const lines = await knex('aldi_commission_lines')
+    const rawLines = await knex('aldi_commission_lines')
       .where('aldi_truck_id', req.params.id)
       .orderBy('id', 'asc');
+
+    // Raklapcímke (SSCC) és komissiózó dolgozó csatolása (legutóbbi címke soronként)
+    const commissionIds = rawLines.map(l => l.id);
+    const labelRows = commissionIds.length === 0 ? [] : await knex('sscc_labels as s')
+      .leftJoin('employees as e', 'e.id', 's.picker_user_id')
+      .whereIn('s.commission_line_id', commissionIds)
+      .select('s.id as label_id', 's.sscc', 's.commission_line_id', 'e.full_name as picker_name')
+      .orderBy('s.id', 'asc');
+    const labelMap = new Map(labelRows.map(r => [Number(r.commission_line_id), r]));
+    const lines = rawLines.map(l => {
+      const lb = labelMap.get(Number(l.id));
+      return {
+        ...l,
+        sscc: lb ? lb.sscc : null,
+        sscc_label_id: lb ? lb.label_id : null,
+        picker_name: lb ? lb.picker_name : null
+      };
+    });
       
     const truckLines = await knex('aldi_truck_lines')
       .where('aldi_truck_id', req.params.id)

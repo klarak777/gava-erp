@@ -1,5 +1,6 @@
 import { budapestToday, estimatedDistribution, dailyBalance, stockAtDate } from '../utils/weeklyCommitments.js?v=rates-20260915';
 import { openCommitmentRatesEditor } from './commitmentRatesEditor.js?v=20260915-settings';
+import { openPalletLabelPreview } from './palletLabelPreview.js';
 /**
  * GAVA ERP – ALDI Rendelések modul
  * v1.4.0 – Heti árak fül hozzáadva: XLSX feltöltés, GTIN alapú termékazonosítás,
@@ -123,15 +124,17 @@ export function renderAldiRendelesek(container, windowManager) {
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">NETTÓ KG</th>
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">Átlag súly (nettó) /#</th>
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">RAKLAP</th>
+                  <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">RAKLAP AZONOSÍTÓ</th>
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">SZÁRMAZÁSI ORSZÁG</th>
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">KARTON TÍPUS</th>
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">TÁRA SÚLY (KG/un)</th>
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">RAKLAP TÍPUS</th>
                   <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">LOT SZÁM</th>
+                  <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">KOMISSIÓZTA</th>
                 </tr>
               </thead>
               <tbody>
-                ${pickedLines.length === 0 ? '<tr><td colspan="11" style="padding:16px; text-align:center; color:#94a3b8;">Nincsenek még komissiózott tételek.</td></tr>' : pickedLines.map((l, idx) => `
+                ${pickedLines.length === 0 ? '<tr><td colspan="13" style="padding:16px; text-align:center; color:#94a3b8;">Nincsenek még komissiózott tételek.</td></tr>' : pickedLines.map((l, idx) => `
                   <tr class="komissio-item-row" data-cartons="${l.cartons || 0}" data-gross="${l.gross_weight || 0}" data-net="${l.net_weight || 0}" data-pallets="${l.pallets || 0}" style="border-bottom:1px solid #f1f5f9; background:${idx % 2 === 1 ? '#fafafa' : '#ffffff'};">
                     <td style="padding:8px; font-weight:600; color:#1e293b;">${l.product_name || '-'}</td>
                     <td style="padding:8px;">${l.cartons || '-'}</td>
@@ -139,11 +142,13 @@ export function renderAldiRendelesek(container, windowManager) {
                     <td style="padding:8px;">${l.net_weight || '-'}</td>
                     <td style="padding:8px;">${(parseFloat(l.net_weight) && parseFloat(l.cartons)) ? (parseFloat(l.net_weight) / parseFloat(l.cartons)).toFixed(2) : '-'}</td>
                     <td style="padding:8px;">${l.pallets || '-'}</td>
+                    <td style="padding:8px;">${l.sscc && l.sscc_label_id ? `<span class="komissio-sscc-link" data-label-id="${l.sscc_label_id}" title="Kattints a raklapcímke megtekintéséhez" style="font-family:monospace; font-weight:800; font-size:11px; color:#0284c7; background:#e0f2fe; padding:2px 6px; border-radius:4px; cursor:pointer; text-decoration:underline;">${l.sscc}</span>` : '-'}</td>
                     <td style="padding:8px;">${l.origin_country || '-'}</td>
                     <td style="padding:8px;">${l.packaging_type || l.carton_type || '-'}</td>
                     <td style="padding:8px;">${l.tare_weight || '-'}</td>
                     <td style="padding:8px;">${l.pallet_type || '-'}</td>
                     <td style="padding:8px;">${l.lot_number || '-'}</td>
+                    <td style="padding:8px; font-weight:600; color:#1e293b;">${l.picker_name || '-'}</td>
                   </tr>
                 `).join('')}
                 <tr style="background:#e2e8f0; font-weight:700;">
@@ -153,7 +158,7 @@ export function renderAldiRendelesek(container, windowManager) {
                   <td style="padding:10px;" id="k-sum-net-${truckId}">0.00</td>
                   <td style="padding:10px;" id="k-sum-avg-${truckId}">0.00</td>
                   <td style="padding:10px;" id="k-sum-pallets-${truckId}">0.00</td>
-                  <td colspan="5"></td>
+                  <td colspan="7"></td>
                 </tr>
               </tbody>
             </table>
@@ -206,6 +211,11 @@ export function renderAldiRendelesek(container, windowManager) {
       
       // Kezdeti összesítés
       updateTotals();
+
+      // Raklap azonosítóra kattintva a raklapcímke megjelenítése
+      contentEl.querySelectorAll('.komissio-sscc-link').forEach(el => {
+        el.addEventListener('click', () => openPalletLabelPreview(el.dataset.labelId));
+      });
     });
   }
 

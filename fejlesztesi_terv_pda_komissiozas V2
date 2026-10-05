@@ -1,0 +1,205 @@
+# PDA Komissiózás – Fejlesztési Terv
+**Verzió:** V0.9.7 (aktuális web UI: V0.9.6.5 → következő: **V0.9.7**)  
+**Dátum:** 2026-10-02  
+**Érintett modulok:** PDA-App (APK forrás) + PDA UI (web emulátor)
+
+---
+
+## ✅ Már kész változtatások
+
+| # | Változtatás | Fájl | Státusz |
+|---|---|---|---|
+| 1 | Gomb: `"Megadás"` → `"Mentés"` (APK) | `PDA-App/www/js/views/commission.js` | ✅ KÉSZ |
+| 2 | LOT lejárat figyelmeztetés (küszöb `>= 6` nap) | mindkét `commission.js` | ✅ KÉSZ |
+| 3 | PDA UI emulator bypass (`?dev_user=` param) | `PDA UI/js/app.js` | ✅ KÉSZ |
+
+---
+
+## Fejlesztés 1 – LOT szám lejárat figyelmeztetés
+
+### Státusz: ✅ IMPLEMENTÁLVA
+
+### LOT szám formátum (pontosítva)
+```
+WWDD  ahol:
+  WW = ISO hétszám (01–53)
+  DD = hét napja (01=hétfő, 07=vasárnap)
+```
+
+**Példák (2026):**
+| LOT | Hét | Nap | Dátum | Ma (okt. 2.) állapota |
+|---|---|---|---|---|
+| `4001` | 40. | hétfő | 2026. szept. 28. | 4 napja → ✅ érvényes |
+| `4005` | 40. | péntek | 2026. okt. 2. | ma → ✅ érvényes |
+| `3907` | 39. | vasárnap | 2026. szept. 27. | 5 napja → ✅ érvényes |
+| `3906` | 39. | szombat | 2026. szept. 26. | **6 napja → ⚠️ LEJÁRT** |
+| `3901` | 39. | hétfő | 2026. szept. 21. | 11 napja → ⚠️ LEJÁRT |
+
+### Küszöbérték: `>= 6 nap` (6. napon is figyelmeztet)
+
+### Működés
+1. Felhasználó kitölti a LOT mezőt és megnyomja a „Mentés" gombot
+2. Kiszámolja a LOT dátumát (ISO hét → konkrét nap)
+3. Ha `ma - lot_dátum >= 6 nap` → `confirm()` figyelmeztetés:
+   > ⚠️ FIGYELEM: Lejárt LOT szám!
+   > A megadott LOT szám (3906) 2026. szeptember 26-i dátumra utal,
+   > ami 6 napja lejárt (>= 6 nap).
+   > Biztosan folytatni szeretnéd ezzel a LOT számmal?
+4. „OK" → folytatja | „Mégsem" → LOT mező fókuszba kerül
+
+### APK újraépítés: **SZÜKSÉGES**
+
+---
+
+## Fejlesztés 2 – Egyidejű komissiózás zárolása
+
+### Státusz: 📋 TERVEZÉSI/IMPLEMENTÁCIÓS FÁZIS
+
+### Üzleti szabály (pontosítva)
+> A tétel megnyitható és kitölthető. **Mentéskor** (a „Mentés" gomb megnyomásakor) a szerver elutasítja a továbblépést, ha:
+> - a hátralévő mennyiség (`remaining`) **≤ 1 raklapnyi** (`cartons_per_pallet`), ÉS
+> - egy **másik dolgozó** már aktívan komissiózza ezt a tételt (aktív `pick_session_id` van nála)
+>
+> Az elutasítás üzenete megnevezi a komissiózó dolgozót.
+
+### Mikor lép életbe?
+**Csak Mentéskor** – nem a form megnyitásakor. Ez azt jelenti:
+- Két felhasználó párhuzamosan megnyithatja ugyanazt a tételt ✅
+- Az első, aki megnyomja a „Mentés"-t → sikeres ✅
+- A második, aki megnyomja a „Mentés"-t → ha már ≤ 1 PLT maradt → ⛔ blokkolva
+
+### Architekturális megoldás: Soft Lock az `aldi_truck_lines` táblán
+
+#### DB Migration (szerver)
+```sql
+ALTER TABLE aldi_truck_lines
+  ADD COLUMN IF NOT EXISTS active_picker_name TEXT DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS active_picker_session TEXT DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS active_picker_at TIMESTAMPTZ DEFAULT NULL;
+```
+
+#### A lock ellenőrzés helye: `processPick()` → `generate-pallet-label` endpoint
+
+A szerveren a `POST /api/v1/pda/generate-pallet-label` hívás (ami a „Mentés" megnyomásakor az **első** szerverhívás) ellenőrzi:
+
+```javascript
+// Ha remaining <= cartons_per_pallet (azaz legfeljebb 1 raklap maradt):
+const remaining = line.ordered_cartons - line.picked_cartons;
+const plt = line.cartons_per_pallet || 0;
+
+if (plt > 0 && remaining <= plt) {
+  // Ellenőrizzük: van-e aktív más picker?
+  const pickerTimeout = 5 * 60 * 1000; // 5 perc
+  const pickerAge = Date.now() - new Date(line.active_picker_at).getTime();
+  
+  if (line.active_picker_session &&               // van aktív session
+      line.active_picker_session !== pickSessionId && // más session
+      pickerAge < pickerTimeout) {                // nem járt le (5 perc)
+    return 423 Locked + { pickerName: line.active_picker_name };
+  }
+  
+  // Ha szabad vagy timeout: felírjuk az aktuális picker adatait
+  await trx('aldi_truck_lines').where('id', line.id).update({
+    active_picker_name: req.user.name,
+    active_picker_session: pickSessionId,
+    active_picker_at: new Date()
+  });
+}
+```
+
+A lock **automatikusan oldódik** amikor:
+- A `pick-and-assign` sikeresen lefut (tranzakció vége)
+- 5 perc elteltével timeout (következő kérés törli)
+
+#### Kliens oldal változtatás (commission.js)
+
+Csak a hibaüzenet kezelése szükséges a `generate-pallet-label` hívás válaszában:
+
+```javascript
+// A generate-pallet-label hívás utáni hibakezelés bővítése:
+if (res.status === 423) {
+  const errData = await res.json();
+  alert(
+    `⛔ Ez a tétel jelenleg komissiózás alatt áll!\n\n` +
+    `Komissiózó dolgozó: ${errData.pickerName || 'Ismeretlen'}\n\n` +
+    `Kérlek, várj vagy válassz másik tételt!`
+  );
+  return; // Nem folytatja
+}
+```
+
+### Adatfolyam diagram
+
+```
+Felhasználó A (1. PLT marad)        Szerver                    Felhasználó B
+        │                              │                              │
+        ├─ generate-pallet-label ──────►                              │
+        │  (remaining <= plt)          │ lock check: szabad           │
+        │                             │ → active_picker = "Kovács J." │
+        │◄───────────────────────────┤ → 200 OK (label generálva)    │
+        │                              │                              │
+        │ (SSCC nyomtatás + Mentés...) │  ├─ generate-pallet-label ───►
+        │                              │  │  (ugyanaz a tétel)        │
+        │                              │  │  lock check: "Kovács J."  │
+        │                              │  │◄──── 423 Locked ──────────┤
+        │                              │         ⛔ Alert: "Kovács J. │
+        │                              │            komissiózza"      │
+        │                              │                              │
+        ├─ pick-and-assign ────────────►                              │
+        │◄───────────────────────────┤ → unlock + save               │
+        │  ✅ Sikeres                  │   active_picker = NULL        │
+```
+
+### Érintett fájlok
+
+| Fájl | Módosítás |
+|---|---|
+| DB migration script | 3 új oszlop: `active_picker_name`, `active_picker_session`, `active_picker_at` |
+| `server/src/routes/pda.js` | Lock check + írás a `generate-pallet-label`-ben; unlock a `processPick()` végén |
+| `PDA-App/www/js/views/commission.js` | 423-as hibakód kezelése alert-tel |
+| `PDA UI/js/views/commission.js` | 423-as hibakód kezelése alert-tel |
+
+### APK újraépítés: **SZÜKSÉGES**
+
+---
+
+## Fejlesztés 3 – PDA UI Emulator bejelentkezés bypass
+
+### Státusz: ✅ IMPLEMENTÁLVA
+
+### Hogyan működik
+Az `app.js` az inicializáláskor ellenőrzi:
+1. Ha **nem Capacitor natív** (tehát webes emulátor) ÉS
+2. Ha nincs tárolt token ÉS
+3. Ha van `?dev_user=<vonalkód>` URL paraméter
+
+→ Automatikusan bejelentkezik a megadott vonalkóddal.
+
+**Példa URL:**
+```
+http://localhost:5173/pda/?dev_user=ABC123
+```
+(ahol `ABC123` egy valódi `pda_identifier` érték az `employees` táblában)
+
+**Az APK-ban ez nem fut le** (Capacitor natív detektálás alapján).
+
+---
+
+## Implementációs sorrend
+
+```
+[1] ✅ Gomb "Mentés"-re egységesítés (KÉSZ)
+[2] ✅ LOT lejárat figyelmeztetés, >= 6 nap küszöb (KÉSZ)
+[3] ✅ PDA UI emulator bypass (KÉSZ)
+[4] 📋 DB migration: 3 oszlop az aldi_truck_lines táblában
+[5] 📋 Szerver: lock check + write a generate-pallet-label-ben
+[6] 📋 Szerver: unlock a processPick() sikeres végén
+[7] 📋 Kliens: 423 hibakód kezelése mindkét commission.js-ben
+[8] 📋 APK újraépítés és telepítés
+```
+
+> [!IMPORTANT]
+> A **[4]-[7]** lépések egymásra épülnek, sorban kell elvégezni őket. A DB migration előtt a szerver módosítás nem végezhető el.
+
+> [!TIP]
+> A PDA UI bypass teszteléshez szükséges egy meglévő dolgozói vonalkód (`pda_identifier`) az `employees` táblából. Melyik tesztelési vonalkódot szeretnéd használni?

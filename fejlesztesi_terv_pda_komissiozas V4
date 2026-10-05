@@ -1,0 +1,223 @@
+# PDA Komissiózás – Fejlesztési Terv (V3)
+**Verzió:** V0.9.7 (aktuális web UI: V0.9.6.5 → következő: **V0.9.7**)  
+**Dátum:** 2026-10-02  
+**Érintett modulok:** PDA-App (APK forrás) + PDA UI (web emulátor) + Szerver (API & DB)
+
+---
+
+## 📌 Vezetői összefoglaló a pontosítások alapján
+
+A V3 terv a felhasználói észrevételek mind a 7 pontját, valamint az emulátor web UI bejelentkezési igényét maradéktalanul beépíti:
+1. **Atomi tranzakció és `FOR UPDATE` sorzár** védi a mentési versenyt a szerveren.
+2. **Hitelesített dolgozói ID (`req.user.id`) + `pickSessionId`** küldése kliensről a `generate-pallet-label` kérésben.
+3. **5 perces zárolási életciklus és feloldás**: visszalépéskor a saját zárolás explicit felszabadítása; véglegesítéskor (`processPick`) ellenőrzés, hogy más nem vette-e át a lejárt tételt.
+4. **≤ 1 raklap alá csökkenés és nyitott komissiók**: a még el nem számolt ideiglenes címkék (`is_provisional`) levonása a virtuális maradékból, így a 3. dolgozó sem férhet hozzá jogosulatlanul.
+5. **Szigorú LOT formátum és évforduló-kezelés**: 4 számjegy, WW (01–53), DD (01–07). Ha az adott héten számolt dátum a jövőbe esne (pl. jan. elején 52. hét), automatikusan az előző évre számol.
+6. **Konzisztens `>= 6 nap` lejárati küszöb**: mind a feltételben, mind a dialógus szövegében egységesítve (pl. 3906 okt. 2-án 6 napos = figyelmeztet).
+7. **Emulátor web UI bejelentkezés nélküli működése**: dedikált emulátoros tesztprofil, ami a böngészőben automatikusan indul, és **nem írja felül** a raktárosok élő PDA munkamenetét (`pda_session_token`).
+
+---
+
+## 1. Kérdés megválaszolása: Emulátor Web UI bejelentkezés nélkül
+
+> **Kérdés:** „Az emulátor web UI ban nem kell a bejelentkezés, csak a telepíthető APK fájlban, ez megoldható?”
+
+### Válasz: IGEN, maradéktalanul megoldható!
+
+#### Mi volt a probléma a korábbi URL-es autologinnal?
+A korábbi megoldás a rendes dolgozói `/login` API-t hívta meg, ami a szerveren az `employees` táblában frissítette a `pda_session_token`-t. Ha egy éles dolgozó vonalkódját adtuk meg, az éles raktári PDA-t azonnal kiléptette a rendszer.
+
+#### A megoldás (V3):
+1. **Környezet detektálása:**
+   ```javascript
+   const isCordovaApp = !!(window.cordova || window.Capacitor?.isNativePlatform?.());
+   ```
+2. **APK-ban (`isCordovaApp === true`):**
+   - Marad a jól megszokott, éles vonalkódos bejelentkező képernyő.
+3. **Webes Emulátorban (`isCordovaApp === false`):**
+   - Nincs bejelentkező képernyő, a felhasználónak nem kell vonalkódot beírnia/beolvasnia.
+   - Induláskor automatikusan egy dedikált teszt identitást használ (`id: 0` vagy egy virtuális emulátor token, pl. „Web Emulátor Tesztelő”).
+   - A szerver a teszt tokenhez nem módosítja a raktári dolgozók `pda_session_token` mezőjét, így a tesztelés **garantáltan nem zavarja a raktári munkát**.
+
+---
+
+## 2. Fejlesztés 1 – LOT szám ellenőrzés (szigorított V3)
+
+### Státusz: 🛠️ JAVÍTÁS ALATT
+
+### Szigorú formátum-ellenőrzés
+```
+Regex: ^([0-9]{2})([0-9]{2})$
+WW (01–53): ISO hetek száma az évben
+DD (01–07): ISO hét napja (01 = hétfő, 02 = kedd, ..., 07 = vasárnap)
+```
+- Ha a beírt adat nem 4 számjegy, vagy `DD > 07`, vagy `WW > 53` (pl. `3626`):  
+  ❌ **Azonnali hibaüzenet:**  
+  *„Érvénytelen LOT szám formátum! A hét napja csak 01 és 07 közötti lehet (pl. 4005 = 40. hét péntek).”*  
+  A mező fókuszban marad, nem enged tovább.
+
+### Évforduló (évváltás) megbízható kezelése
+A LOT nem tartalmaz évszámot, a termék viszont gyártási tétel, így **nem származhat a jövőből**:
+```javascript
+function parseLotDate(lotStr, now = new Date()) {
+  const ww = parseInt(lotStr.substring(0, 2), 10);
+  const dd = parseInt(lotStr.substring(2, 4), 10);
+  
+  if (isNaN(ww) || isNaN(dd) || ww < 1 || ww > 53 || dd < 1 || dd > 7) {
+    return { valid: false, error: 'Érvénytelen LOT formátum (WW: 01-53, DD: 01-07)!' };
+  }
+
+  const currentYear = now.getFullYear();
+  let candidateDate = getIsoDate(currentYear, ww, dd);
+
+  // Ha a kiszámított dátum a jövőbe esne (1 nap tolerancia a műszakkezdések miatt):
+  // pl. 2027. január 4-én az 5201 nem 2027 december, hanem 2026 decembere!
+  const tomorrow = new Date(now);
+  tomorrow.setDate(now.getDate() + 1);
+  if (candidateDate > tomorrow) {
+    candidateDate = getIsoDate(currentYear - 1, ww, dd);
+  }
+
+  return { valid: true, date: candidateDate };
+}
+```
+
+### Lejárati küszöb és figyelmeztetés
+- Szabály: `diffDays >= 6` naptári nap.
+- **Példa (ma: 2026. okt. 2., péntek):**
+  - `4005` (okt. 2.): 0 nap → ✅ Rendben.
+  - `3907` (szept. 27.): 5 nap → ✅ Rendben.
+  - `3906` (szept. 26.): 6 nap → ⚠️ **Figyelmeztetés!**
+- **Dialógus szövege (konzisztens):**
+  > ⚠️ FIGYELEM: Lejárt LOT szám!  
+  > A megadott LOT szám (3906) 2026. szeptember 26-i dátumra utal,  
+  > ami legalább 6 napos (6 nap telt el a gyártás óta).  
+  > Biztosan folytatni szeretnéd ezzel a LOT számmal?
+
+---
+
+## 3. Fejlesztés 2 – Egyidejű komissiózás zárolása (V3)
+
+### Státusz: 📋 IMPLEMENTÁCIÓRA KÉSZ TERV
+
+### Üzleti szabály
+A tételsor zárolása **Mentéskor** indul:
+1. Ha a tételből **maradék ≤ 1 raklap** (`cartons_per_pallet`), VAGY a még elszámolatlan aktív ideiglenes címkékkel együtt már nem maradna 1 teljes raklap,
+2. ÉS a tételt egy **másik dolgozó** (`req.user.id`) már zárolta (és a foglalása nem régebbi 5 percnél),
+3. Akkor a szerver `423 Locked` hibával elutasítja a kérést, megnevezve az aktív dolgozót.
+
+### DB Séma bővítés (`aldi_truck_lines`)
+```sql
+ALTER TABLE aldi_truck_lines
+  ADD COLUMN IF NOT EXISTS active_picker_user_id INTEGER DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS active_picker_name TEXT DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS active_picker_session TEXT DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS active_picker_at TIMESTAMPTZ DEFAULT NULL;
+```
+
+### Szerveroldali Atomi Tranzakció és `FOR UPDATE` sorzár
+
+#### Endpoint: `POST /api/v1/pda/generate-pallet-label`
+A zárolás, a virtuális mennyiség ellenőrzése és a címkegenerálás egyetlen adatbázis tranzakcióban fut:
+
+```javascript
+await knex.transaction(async (trx) => {
+  // 1. Sor zárolása atomi módon
+  const line = await trx('aldi_truck_lines')
+    .where('id', lineId)
+    .forUpdate()
+    .first();
+  if (!line) throw new Error('A tétel nem található.');
+
+  const ordered = parseInt(line.ordered_cartons) || 0;
+  const picked = parseInt(line.picked_cartons) || 0;
+  const plt = parseInt(line.cartons_per_pallet) || 0;
+
+  // 2. Aktív ideiglenes címkék figyelembevétele (virtuális foglalás)
+  const provisional = await trx('sscc_labels')
+    .where('aldi_truck_line_id', lineId)
+    .andWhere('is_provisional', true)
+    .andWhere('created_at', '>=', trx.raw("NOW() - INTERVAL '5 minutes'"))
+    .sum('picked_cartons as sum_provisional')
+    .first();
+  const provisionalQty = parseInt(provisional?.sum_provisional) || 0;
+  const effectiveRemaining = Math.max(0, ordered - picked - provisionalQty);
+
+  // 3. Zárolási feltétel vizsgálata (ha az effektív maradék <= 1 raklap)
+  if (plt > 0 && effectiveRemaining <= plt) {
+    const isOtherUser = line.active_picker_user_id && line.active_picker_user_id !== req.user.id;
+    const isNotExpired = line.active_picker_at && (Date.now() - new Date(line.active_picker_at).getTime() < 5 * 60 * 1000);
+
+    if (isOtherUser && isNotExpired) {
+      const err = new Error(`A tételt jelenleg ${line.active_picker_name || 'másik dolgozó'} komissiózza!`);
+      err.code = 'LOCKED';
+      err.pickerName = line.active_picker_name;
+      throw err;
+    }
+
+    // Zárolás bejegyzése vagy frissítése a mostani dolgozóra
+    await trx('aldi_truck_lines').where('id', lineId).update({
+      active_picker_user_id: req.user.id,
+      active_picker_name: req.user.name,
+      active_picker_session: req.body.pickSessionId,
+      active_picker_at: trx.fn.now()
+    });
+  }
+
+  // 4. Címkegenerálás a tranzakción belül
+  const label = await createSsccLabel(trx, lineId, ...);
+  return label;
+});
+```
+
+### Feloldási életciklus (Unlock)
+
+1. **Visszalépés (Mégse / Vissza gomb):**
+   - Új végpont: `POST /api/v1/pda/commission-lines/:id/unlock-pick`
+   - Kérés tartalma: `{ pickSessionId }`
+   - SQL:
+     ```sql
+     UPDATE aldi_truck_lines 
+     SET active_picker_user_id = NULL,
+         active_picker_name = NULL,
+         active_picker_session = NULL,
+         active_picker_at = NULL
+     WHERE id = :id 
+       AND active_picker_session = :pickSessionId
+       AND active_picker_user_id = :userId;
+     ```
+   - **Garancia:** Csak a **saját** foglalását oldja fel! Ha Anna 5 perce lejárt és Béla már átvette a zárolást, Anna visszalépése nem törölheti Béla foglalását.
+
+2. **Véglegesítéskori védelem (`processPick()`):**
+   - Amikor a dolgozó beolvassa a tárhelyet és beküldi a lezárást (`pick-and-assign`):
+   - A `processPick()` tranzakcióban ellenőrzi:
+     Ha a sor zárolva volt más dolgozó által (`active_picker_user_id !== req.user.id`), és az még aktív:
+     ❌ **409 Conflict:**  
+     *„A munkameneted lejárt és időközben más dolgozó átvette ezt a tételt! A komissiózás nem véglegesíthető.”*
+   - Sikeres mentés esetén a `processPick()` törli a zárolást (`active_picker_* = NULL`).
+
+---
+
+## 4. Kliensoldali Módosítások (`PDA UI/js/views/commission.js`)
+
+1. **`pickSessionId` átadása a `generate-pallet-label` kérésben:**
+   - A `lastPickPayload.pickSessionId` bekerül a `POST /generate-pallet-label` JSON törzsébe.
+2. **423-as kód kezelése:**
+   - Ha `res.status === 423`: felugró figyelmeztetés a zároló dolgozó nevével, a folyamat nem lép tovább a címkenyomtatásra.
+3. **Visszalépés kezelése:**
+   - `goList()` és visszalépés esetén a `deleteProvisionalLabel()` mellett meghívja az `unlock-pick` végpontot a tárolt `pickSessionId`-val.
+
+---
+
+## 5. Implementációs Lépések
+
+```
+[1] ✅ Gomb felirat "Mentés" (KÉSZ)
+[2] 📋 LOT ellenőrzés szigorítása (WW: 01-53, DD: 01-07, évforduló-kezelés, >= 6 nap felirat)
+[3] 📋 Webes Emulátor login bypass: dedikált tesztprofil, nem zavarja a raktárosokat
+[4] 📋 DB Migration: aldi_truck_lines (active_picker_user_id, active_picker_name, active_picker_session, active_picker_at)
+[5] 📋 Szerver: tranzakciós FOR UPDATE zárolás a generate-pallet-label-ben
+[6] 📋 Szerver: unlock-pick végpont és processPick véglegesítéskori ellenőrzés
+[7] 📋 Kliens: pickSessionId küldése, 423 hibakezelés, visszalépéskori unlock
+[8] 📋 Tesztelés és APK build
+```

@@ -28,13 +28,13 @@ export function renderAldiRakodas(container, windowManager) {
     </div>
 
     <!-- KÉT TÁBLA EGYMÁS MELLETT -->
-    <div style="display:flex; gap:12px; align-items:flex-start; overflow-x:auto;">
+    <div style="display:flex; flex-direction:column; gap:12px; align-items:stretch;">
 
       <!-- BAL TÁBLA: Rakodások (Kamionok) -->
-      <div class="access-subform" style="flex:1.22; min-width:550px; margin-top:0;">
+      <div class="access-subform" style="width:100%; margin-top:0;">
         <div class="access-subform-header" style="font-size:12px; padding:6px 12px; display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-weight:700;">Rakodások</span>
-          <button class="primary-btn btn-dense" id="btn-new-aldi-truck" style="font-size:11px; height:26px; padding:0 10px;">+ Új kamion</button>
+          <span style="font-size:13px; font-weight:800; color:#2563eb; text-transform:uppercase;">Rakodások</span>
+          <button class="secondary-btn btn-dense" id="btn-new-aldi-truck" style="font-size:11px; height:26px; padding:0 12px; font-weight:700; color:#2563eb; background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px;">+ Új rakodás</button>
         </div>
         <div style="overflow-x:auto;">
           <table class="access-subform-table" id="aldi-trucks-table" style="font-size:11px; table-layout:auto; width:100%;">
@@ -55,7 +55,9 @@ export function renderAldiRakodas(container, windowManager) {
       </div>
 
       <!-- JOBB TÁBLA ÉS SZŰRŐI -->
-      <div style="flex:1.35; min-width:0; display:flex; flex-direction:column; gap:6px;">
+      <div style="width:100%; min-width:0; display:flex; flex-direction:column; gap:6px;">
+
+        <div style="font-size:13px; font-weight:800; color:#2563eb; text-transform:uppercase; padding:2px 4px;">Áru igény</div>
 
         <!-- Áru igény szűrők -->
         <div class="access-form-view" style="padding:10px 18px; margin-bottom:0; display:flex; flex-wrap:wrap; gap:10px; align-items:end;">
@@ -71,8 +73,8 @@ export function renderAldiRakodas(container, windowManager) {
             <label style="font-size:11px; font-weight:600; display:block; margin-bottom:4px; color:#334155;">Rendelési szám</label>
             <input type="text" id="filter-aldi-order" class="access-control-input" style="font-size:12px; padding:4px 8px; height:28px; width:100%;" placeholder="Rendelés..." autocomplete="off">
           </div>
-          <div style="flex:none; display:flex; gap:6px;">
-            <button class="secondary-btn btn-dense" id="btn-aldi-clear-filters" style="font-size:12px; height:28px; line-height:normal; padding:0 12px; box-sizing:border-box;">Szűrők törlése</button>
+          <div style="flex:none; display:flex; gap:6px; margin-left:auto;">
+            <button class="secondary-btn btn-dense" id="btn-aldi-clear-filters" style="font-size:12px; font-weight:700; color:#2563eb; background:#ffffff; border:1px solid #2563eb; border-radius:8px; height:32px; line-height:normal; padding:0 22px; box-sizing:border-box; cursor:pointer;">Szűrők törlése</button>
           </div>
         </div>
 
@@ -87,6 +89,7 @@ export function renderAldiRakodas(container, windowManager) {
                   <th style="width:44px; max-width:46px; background:rgba(14,165,233,0.1); text-align:right; font-size:9px; padding:4px 2px;" title="Karton / Raklap">#/PLT</th>
                   <th style="width:44px; max-width:46px; background:rgba(14,165,233,0.1); text-align:right; font-size:9px; padding:4px 2px;" title="Kalkulált raklap">RAKLAP</th>
                   <th style="width:58px; max-width:62px; background:rgba(14,165,233,0.1); font-size:9px; padding:4px 2px; text-align:center;" title="Szállítási dátum">SZÁLL. DÁTUM</th>
+                  <th style="min-width:90px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 4px;">PARTNER</th>
                   <th style="min-width:65px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 4px;">RENDELÉSI SZÁM</th>
                   <th style="min-width:55px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 4px;">TÍPUS</th>
                   <th style="min-width:50px; text-align:center; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 4px;">KÜLDÉS</th>
@@ -97,11 +100,11 @@ export function renderAldiRakodas(container, windowManager) {
               <tbody id="aldi-demands-tbody"></tbody>
               <tfoot style="position:sticky; bottom:0; background:#e8f4fd; z-index:2; border-top:2px solid #bde0fa; font-weight:bold; font-size:11px;">
                 <tr>
-                  <td style="padding:6px 4px; color:#334155;">Össz:</td>
+                  <td style="padding:6px 4px; color:#334155; white-space:nowrap;">Össz raklap</td>
                   <td id="aldi-sum-cartons" style="text-align:right; padding:6px 2px; color:#0369a1; font-size:10px;">0</td>
                   <td></td>
                   <td id="aldi-sum-pallets" style="text-align:right; padding:6px 2px; color:#7c3aed; font-size:10px;">0.0</td>
-                  <td colspan="6" id="aldi-sum-trucks" style="text-align:right; padding:6px 14px; color:#ea580c; font-size:11px;">Szükséges kamion: 0.00</td>
+                  <td colspan="7" id="aldi-sum-trucks" style="text-align:left; padding:6px 14px; color:#ea580c; font-size:11px;">Szükséges kamion: 0.00</td>
                 </tr>
               </tfoot>
             </table>
@@ -347,6 +350,7 @@ export function renderAldiRakodas(container, windowManager) {
           </td>
           <td class="aldi-demand-pallets-cell" data-id="${d.id}" style="padding:4px 3px; text-align:right; font-weight:600; color:#2563eb;">${pallets ? pallets.toFixed(2).replace(/\\.00$/, '') : '-'}</td>
           <td style="padding:4px 6px; color:#475569; white-space:nowrap;">${dateStr}</td>
+          <td style="padding:4px 6px; color:#475569; white-space:nowrap;">ALDI</td>
           <td style="padding:4px 6px; color:#475569; white-space:nowrap;">${escHtml(d.order_number || '-')}</td>
           <td style="padding:4px 6px;">
             <span style="background:#f1f5f9; padding:2px 6px; border-radius:4px; border:1px solid #cbd5e1; font-size:9px; color:#475569;">

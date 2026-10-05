@@ -219,6 +219,24 @@ function renderTermekekHtml() {
     }
   }
 
+  const renderLabelContent = (type, content) => {
+    const editing = state.editingBlock === type;
+    const bioText = customTexts[`${type}_bio_certifier`] ?? selectedProd.bio_certifier ?? '';
+    return `
+      <div class="aldi-label-preview" data-label="${type}" style="border:1px ${editing ? 'dashed' : 'solid'} #cbd5e1; padding:12px; background:#f8fafc; font-size:12px; line-height:1.6; ${selectedProd.is_bio ? 'display:grid; grid-template-columns:minmax(0, 2fr) minmax(108px, 1fr); gap:12px; align-items:start;' : ''}">
+        ${editing ? `<textarea id="aldi-inline-${type}-content" class="access-control-input" style="box-sizing:border-box; width:100%; min-width:0; min-height:180px; padding:8px; border:1px solid #cbd5e1; border-radius:4px; text-align:center; resize:vertical; font-family:inherit;">${escapeBioCertifier(content)}</textarea>`
+          : `<div class="aldi-label-content" style="text-align:center; white-space:pre-wrap; overflow-wrap:anywhere;">${escapeBioCertifier(content)}</div>`}
+        ${selectedProd.is_bio ? `
+          <div class="aldi-label-bio" style="text-align:center; min-width:0;">
+            <img src="/api/v1/chain-products/bio-logo" alt="EU Bio-logó" style="display:block; width:108px; max-width:100%; height:auto; margin:0 auto 8px;">
+            ${editing ? `
+              <textarea id="aldi-inline-${type}-biocert" class="access-control-input" aria-label="Címke szabad szövege" style="box-sizing:border-box; width:100%; height:100px; padding:6px; border:1px solid #cbd5e1; border-radius:4px; text-align:center; resize:none; font-family:inherit;">${escapeBioCertifier(bioText)}</textarea>
+            ` : `<div class="aldi-label-certifier" style="font-weight:700; white-space:pre-wrap; overflow-wrap:anywhere;">${escapeBioCertifier(bioText)}</div>`}
+          </div>
+        ` : ''}
+      </div>`;
+  };
+
   return `
       <div style="padding:16px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background:#f8fafc; min-height:100vh;">
         <h2 style="margin:0 0 16px 0; color:#1e293b; font-size:22px; font-weight:800; display:flex; align-items:center; gap:8px;">
@@ -293,7 +311,6 @@ function renderTermekekHtml() {
                   <div style="display:grid; grid-template-columns:120px 1fr; align-items:center;"><strong>GTIN</strong><input type="text" id="aldi-inline-gtin" value="${selectedProd.gtin || ''}" class="access-control-input" style="height:28px; padding:2px 8px;"></div>
                   <div style="display:grid; grid-template-columns:120px 1fr; align-items:center;"><strong>EAN</strong><input type="text" id="aldi-inline-ean" value="${selectedProd.ean || ''}" class="access-control-input" style="height:28px; padding:2px 8px;"></div>
                   <div style="display:grid; grid-template-columns:120px 1fr; align-items:center;"><strong>Bio termék</strong><input type="checkbox" id="aldi-inline-bio" ${selectedProd.is_bio ? 'checked' : ''} style="width: 16px; height: 16px; margin: 0; cursor: pointer;"></div>
-                  <div id="aldi-bio-cert-wrapper" style="display:${selectedProd.is_bio ? 'grid' : 'none'}; grid-template-columns:120px 1fr; align-items:center;"><strong>Tanúsító szervezet neve</strong><input type="text" id="aldi-inline-biocert" value="${escapeBioCertifier(selectedProd.bio_certifier)}" class="access-control-input" style="height:28px; padding:2px 8px;" placeholder="Pl. HU-ÖKO-002"></div>
                 </div>
                 <div style="display:flex; gap:10px;">
                   <button class="secondary-btn inline-cancel-btn" style="height:32px; padding:0 12px; font-size:12px; font-weight:600;">Mégse</button>
@@ -306,7 +323,6 @@ function renderTermekekHtml() {
                   <div style="display:grid; grid-template-columns:120px 1fr;"><strong>GTIN azonosító</strong><span>${selectedProd.gtin || ''}</span></div>
                   <div style="display:grid; grid-template-columns:120px 1fr;"><strong>EAN azonosító</strong><span>${selectedProd.ean || ''}</span></div>
                   <div style="display:grid; grid-template-columns:120px 1fr;"><strong>Bio termék</strong><span>${selectedProd.is_bio ? 'Igen' : 'Nem'}</span></div>
-                  ${selectedProd.is_bio ? `<div style="display:grid; grid-template-columns:120px 1fr;"><strong>Tanúsító szervezet neve</strong><span>${escapeBioCertifier(selectedProd.bio_certifier)}</span></div>` : ''}
                 </div>
                 <div style="display:flex; gap:10px;">
                   <button class="secondary-btn inline-edit-base-btn" style="height:32px; padding:0 16px; font-size:12px; font-weight:600;">Szerkesztés</button>
@@ -326,16 +342,14 @@ function renderTermekekHtml() {
                 <div style="display:flex; align-items:center; margin-bottom:4px; font-size:12px;">
                   <input type="text" id="aldi-inline-title-caja" value="${customTexts.title_caja || 'CAJA:'}" class="access-control-input" style="font-weight:700; color:#475569; width:80px; padding:2px; border:none; background:#e2e8f0; border-radius:4px;">
                 </div>
-                <div style="border:1px dashed #cbd5e1; padding:16px; background:#f8fafc; text-align:center; font-size:12px; line-height:2.0; display:flex; flex-direction:column; gap:6px;">
-                  <textarea id="aldi-inline-carton-content" class="access-control-input" style="width:100%; min-height:180px; padding:8px; border:1px solid #cbd5e1; border-radius:4px; text-align:center; resize:vertical; font-family:inherit;">${defaultCartonContent}</textarea>
-                </div>
+                ${renderLabelContent('carton', defaultCartonContent)}
                 <div style="display:flex; gap:10px; margin-top:12px; justify-content:center;">
                   <button class="secondary-btn inline-cancel-btn" style="height:28px; padding:0 12px; font-size:11px; font-weight:600;">Mégse</button>
                   <button class="primary-btn inline-save-label-btn" style="height:28px; padding:0 16px; font-size:11px; font-weight:600; background:#16a34a; border:none; color:#fff;">Mentés</button>
                 </div>
               ` : `
                 <div style="text-align:left; font-weight:700; color:#475569; margin-bottom:4px; font-size:12px;">${customTexts.title_caja || 'CAJA:'}</div>
-                <div style="border:1px solid #cbd5e1; padding:16px; background:#f8fafc; text-align:center; font-size:12px; line-height:1.6; display:flex; flex-direction:column; gap:4px; white-space: pre-wrap;">${defaultCartonContent}</div>
+                ${renderLabelContent('carton', defaultCartonContent)}
                 <div style="display:flex; gap:10px; margin-top:12px; justify-content:center;">
                   <button class="secondary-btn inline-edit-carton-btn" style="height:28px; padding:0 12px; font-size:11px; font-weight:600;">Szerkesztés</button>
                 </div>
@@ -353,16 +367,14 @@ function renderTermekekHtml() {
                 <div style="display:flex; align-items:center; margin-bottom:4px; font-size:12px;">
                   <input type="text" id="aldi-inline-title-pieza-u" value="${customTexts.title_pieza || 'PIEZA:'}" class="access-control-input" style="font-weight:700; color:#475569; width:80px; padding:2px; border:none; background:#e2e8f0; border-radius:4px;">
                 </div>
-                <div style="border:1px dashed #cbd5e1; padding:16px; background:#f8fafc; text-align:center; font-size:12px; line-height:2.0; display:flex; flex-direction:column; gap:6px;">
-                  <textarea id="aldi-inline-unit-content" class="access-control-input" style="width:100%; min-height:180px; padding:8px; border:1px solid #cbd5e1; border-radius:4px; text-align:center; resize:vertical; font-family:inherit;">${defaultUnitContent}</textarea>
-                </div>
+                ${renderLabelContent('unit', defaultUnitContent)}
                 <div style="display:flex; gap:10px; margin-top:12px; justify-content:center;">
                   <button class="secondary-btn inline-cancel-btn" style="height:28px; padding:0 12px; font-size:11px; font-weight:600;">Mégse</button>
                   <button class="primary-btn inline-save-label-u-btn" style="height:28px; padding:0 16px; font-size:11px; font-weight:600; background:#16a34a; border:none; color:#fff;">Mentés</button>
                 </div>
               ` : `
                 <div style="text-align:left; font-weight:700; color:#475569; margin-bottom:4px; font-size:12px;">${customTexts.title_pieza || 'PIEZA:'}</div>
-                <div style="border:1px solid #cbd5e1; padding:16px; background:#f8fafc; text-align:center; font-size:12px; line-height:1.6; display:flex; flex-direction:column; gap:4px; white-space: pre-wrap;">${defaultUnitContent}</div>
+                ${renderLabelContent('unit', defaultUnitContent)}
                 <div style="display:flex; gap:10px; margin-top:12px; justify-content:center;">
                   <button class="secondary-btn inline-edit-unit-btn" style="height:28px; padding:0 12px; font-size:11px; font-weight:600;">Szerkesztés</button>
                 </div>
@@ -478,13 +490,6 @@ function renderModule() {
     renderModule(); 
   });
 
-  wrapper.querySelector('#aldi-inline-bio')?.addEventListener('change', (e) => {
-    const certWrapper = wrapper.querySelector('#aldi-bio-cert-wrapper');
-    if (certWrapper) {
-      certWrapper.style.display = e.target.checked ? 'grid' : 'none';
-    }
-  });
-
   wrapper.querySelectorAll('.inline-cancel-btn').forEach(b => b.addEventListener('click', () => { 
     state.editingBlock = null; 
     renderModule(); 
@@ -506,8 +511,6 @@ function renderModule() {
     prod.ean = wrapper.querySelector('#aldi-inline-ean').value.trim();
     const bioCheckbox = wrapper.querySelector('#aldi-inline-bio');
     prod.is_bio = bioCheckbox ? bioCheckbox.checked : false;
-    const certInput = wrapper.querySelector('#aldi-inline-biocert');
-    prod.bio_certifier = certInput ? certInput.value.trim() : '';
 
     if (!prod.name || !prod.articleNo) { alert('A név és cikkszám kötelező!'); return; }
 
@@ -518,7 +521,7 @@ function renderModule() {
         await fetch('/api/v1/chain-products/' + prod.id, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ product_name: prod.name, article_number: prod.articleNo, gtin: prod.gtin, ean: prod.ean, is_bio: prod.is_bio, bio_certifier: prod.bio_certifier })
+          body: JSON.stringify({ product_name: prod.name, article_number: prod.articleNo, gtin: prod.gtin, ean: prod.ean, is_bio: prod.is_bio })
         });
       } catch (e) { alert('Hiba mentéskor!'); return; }
     }
@@ -539,7 +542,7 @@ function renderModule() {
     let customTexts = {};
     if (prod.label_custom_texts) {
       try {
-        customTexts = typeof prod.label_custom_texts === 'string' ? JSON.parse(prod.label_custom_texts) : prod.label_custom_texts;
+        customTexts = typeof prod.label_custom_texts === 'string' ? JSON.parse(prod.label_custom_texts) : { ...prod.label_custom_texts };
       } catch (e) {
         customTexts = {};
       }
@@ -557,7 +560,10 @@ function renderModule() {
       if (contentVal !== undefined) customTexts.carton_content = contentVal;
     }
 
-    prod.label_custom_texts = JSON.stringify(customTexts);
+    const type = isUnit ? 'unit' : 'carton';
+    const bioText = tryGetVal(`#aldi-inline-${type}-biocert`);
+    if (bioText !== undefined) customTexts[`${type}_bio_certifier`] = bioText.trim();
+    const labelCustomTexts = JSON.stringify(customTexts);
 
     if (String(prod.id).startsWith('tmp-')) {
       state.hasUnsavedChanges = true;
@@ -567,7 +573,7 @@ function renderModule() {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            label_custom_texts: prod.label_custom_texts
+            label_custom_texts: labelCustomTexts
           })
         });
         const respJson = await resp.json();
@@ -581,6 +587,7 @@ function renderModule() {
         return; 
       }
     }
+    prod.label_custom_texts = labelCustomTexts;
     state.editingBlock = null;
     renderModule();
   };

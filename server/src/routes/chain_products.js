@@ -1,6 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db/db');
+const path = require('node:path');
+
+// The editor and DOCX export use the same original PNG.
+router.get('/bio-logo', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../assets/eu-organic-logo-600x400_0.png'));
+});
 
 // GET /api/v1/chain-products?chain=ALDI
 router.get('/', async (req, res) => {
@@ -269,6 +275,8 @@ router.delete('/:id', async (req, res) => {
 
 const HTMLToDocx = require('html-to-docx');
 const { formatProductLabelTables } = require('../services/productLabelLayout');
+const escapeLabelText = value => String(value ?? '').replace(/[&<>"']/g,
+  char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 
 // GET /api/v1/chain-products/:id/label
 router.get('/:id/label', async (req, res) => {
@@ -288,7 +296,7 @@ router.get('/:id/label', async (req, res) => {
 
         let unitHtml = '';
         if (texts.unit_content !== undefined) {
-            unitHtml = texts.unit_content.split('\n').map(line => `<p style="margin-bottom: 8pt;">${line}</p>`).join('');
+            unitHtml = texts.unit_content.split('\n').map(line => `<p style="margin-bottom: 8pt;">${escapeLabelText(line)}</p>`).join('');
         } else {
             const p_name = texts.product_name || product.product_name || '';
             unitHtml = `
@@ -306,7 +314,7 @@ router.get('/:id/label', async (req, res) => {
 
         let cartonHtml = '';
         if (texts.carton_content !== undefined) {
-            cartonHtml = texts.carton_content.split('\n').map(line => `<p style="margin-bottom: 8pt;">${line}</p>`).join('');
+            cartonHtml = texts.carton_content.split('\n').map(line => `<p style="margin-bottom: 8pt;">${escapeLabelText(line)}</p>`).join('');
         } else {
             const p_name = texts.product_name || product.product_name || '';
             cartonHtml = `
@@ -321,41 +329,35 @@ router.get('/:id/label', async (req, res) => {
             `;
         }
 
-        const bioCertifier = String(product.bio_certifier || '').trim();
-        const hasBioLabel = Boolean(product.is_bio && bioCertifier);
-        let bioRightColumn = '';
+        const hasBioLabel = Boolean(product.is_bio);
+        let organicLogoBase64 = '';
         if (hasBioLabel) {
             const fs = require('fs');
-            const path = require('path');
-            let organicLogoBase64 = '';
-            try {
-                const logoPath = path.join(__dirname, '../../assets/eu-organic-logo-600x400_0.png');
-                const logoData = fs.readFileSync(logoPath);
-                organicLogoBase64 = `data:image/png;base64,${logoData.toString('base64')}`;
-            } catch (err) {
-                console.warn('Bio logo not found:', err.message);
-            }
-
-            const escapedCertifier = bioCertifier.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
-            bioRightColumn = `
+            const logoData = fs.readFileSync(path.join(__dirname, '../../assets/eu-organic-logo-600x400_0.png'));
+            organicLogoBase64 = `data:image/png;base64,${logoData.toString('base64')}`;
+        }
+        const bioRightColumn = type => {
+            // Explicitly blank label text stays blank; legacy products keep
+            // their previously saved text until that label is edited.
+            const bioText = String(texts[`${type}_bio_certifier`] ?? product.bio_certifier ?? '').trim();
+            const bioTextHtml = bioText.split('\n').map(line =>
+                `<p style="font-size: 9pt; font-weight: bold; margin-top: 5pt; margin-bottom: 2pt;">${escapeLabelText(line)}</p>`).join('');
+            return `
             <td style="text-align: center; vertical-align: middle;">
                 <p style="text-align: center; margin-bottom: 2pt;"><img src="${organicLogoBase64}" style="width: 108px; height: 72px;" /></p>
-                <p style="font-size: 9pt; font-weight: bold; margin-top: 5pt; margin-bottom: 2pt;">${escapedCertifier}</p>
-                <p style="font-size: 9pt; font-weight: bold; margin-bottom: 0;">EU mezőgazdaság</p>
+                ${bioTextHtml}
             </td>`;
-        }
+        };
 
-        const buildTable = (htmlContent) => {
-            if (bioRightColumn) {
+        const buildTable = (htmlContent, type) => {
+            if (hasBioLabel) {
                 return `
                 <table border="0" style="width: 100%; border-collapse: collapse;">
                     <tr>
-                        <td>
-                        </td>
                         <td style="text-align: center; vertical-align: top;">
                             ${htmlContent}
                         </td>
-                        ${bioRightColumn}
+                        ${bioRightColumn(type)}
                     </tr>
                 </table>
                 `;
@@ -376,13 +378,13 @@ router.get('/:id/label', async (req, res) => {
         <div style="font-family: Arial, sans-serif; font-size: 11pt;">
             <!-- PIEZA (EGYSÉG) -->
             <p>${c_pieza}</p>
-            ${buildTable(unitHtml)}
+            ${buildTable(unitHtml, 'unit')}
 
             <br/><br/><br/>
 
             <!-- CAJA (KARTON) -->
             <p>${c_caja}</p>
-            ${buildTable(cartonHtml)}
+            ${buildTable(cartonHtml, 'carton')}
         </div>`;
 
         const fileBuffer = await HTMLToDocx(html, null, {
