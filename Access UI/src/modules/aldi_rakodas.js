@@ -34,7 +34,7 @@ export function renderAldiRakodas(container, windowManager) {
       <div class="access-subform" style="width:100%; margin-top:0;">
         <div class="access-subform-header" style="font-size:12px; padding:6px 12px; display:flex; justify-content:space-between; align-items:center;">
           <span style="font-size:13px; font-weight:800; color:#2563eb; text-transform:uppercase;">Rakodások</span>
-          <button class="secondary-btn btn-dense" id="btn-new-aldi-truck" style="font-size:11px; height:26px; padding:0 12px; font-weight:700; color:#2563eb; background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px;">+ Új rakodás</button>
+          <button type="button" class="liquid-btn" id="btn-new-aldi-truck"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg><span>Új rakodás</span></button>
         </div>
         <div style="overflow-x:auto;">
           <table class="access-subform-table" id="aldi-trucks-table" style="font-size:11px; table-layout:auto; width:100%;">
