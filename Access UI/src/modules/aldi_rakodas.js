@@ -350,7 +350,7 @@ export function renderAldiRakodas(container, windowManager) {
           </td>
           <td class="aldi-demand-pallets-cell" data-id="${d.id}" style="padding:4px 3px; text-align:right; font-weight:600; color:#2563eb;">${pallets ? pallets.toFixed(2).replace(/\\.00$/, '') : '-'}</td>
           <td style="padding:4px 6px; color:#475569; white-space:nowrap;">${dateStr}</td>
-          <td style="padding:4px 6px; color:#475569; white-space:nowrap;">ALDI</td>
+          <td style="padding:4px 6px; color:#475569; white-space:nowrap;">Gava Hungria</td>
           <td style="padding:4px 6px; color:#475569; white-space:nowrap;">${escHtml(d.order_number || '-')}</td>
           <td style="padding:4px 6px;">
             <span style="background:#f1f5f9; padding:2px 6px; border-radius:4px; border:1px solid #cbd5e1; font-size:9px; color:#475569;">
