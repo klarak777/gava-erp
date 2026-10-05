@@ -11,6 +11,7 @@ const knex = require('../db/db');
 const jwt = require('jsonwebtoken');
 const { consolidationStockIssues, assertConsolidationStock, consolidationCapacityError } = require('../services/consolidationStock');
 const { RESERVATION_MS, pickingError, validateLot, pickingAvailability, assertReservation, pickPayload, assertSamePayload, emulatorEnabled, webEmulatorRequest } = require('../services/pdaPicking');
+const { activePickingQuery, assertEntryOwner, assertEntry, cartonsPerPallet } = require('../services/pdaPickEntries');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_for_gava';
 
@@ -166,10 +167,16 @@ async function verifyToken(req, res, next) {
 router.post('/logout', verifyToken, async (req, res) => {
   try {
     if (req.user && req.user.id && req.user.sessionId) {
-      await knex('employees')
-        .where('id', req.user.id)
-        .andWhere('pda_session_token', req.user.sessionId)
-        .update({ pda_session_token: null });
+      await knex.transaction(async trx => {
+        await trx('employees').where('id', req.user.id)
+          .andWhere('pda_session_token', req.user.sessionId).update({ pda_session_token: null });
+        await trx('pda_pick_entries').where('picker_user_id', req.user.id)
+          .where('picker_session_id', req.user.sessionId).whereNull('released_at')
+          .update({ released_at: trx.fn.now() });
+        await trx('sscc_labels').where('picker_user_id', req.user.id)
+          .where('picker_session_id', req.user.sessionId).where('is_provisional', true)
+          .whereNotNull('pick_session_id').update({ reservation_cancelled_at: trx.fn.now() });
+      });
     }
     res.json({ success: true });
   } catch (err) {
@@ -211,18 +218,13 @@ router.get('/commission-lines', verifyToken, async (req, res) => {
 
     // Aggregate in the same SQL snapshot as the remaining cartons: a final
     // commit must not be counted both as picked stock and as a reservation.
-    const activePicks = knex('sscc_labels as reservation')
-      .leftJoin('employees as picker', 'reservation.picker_user_id', 'picker.id')
-      .select('reservation.aldi_truck_line_id', knex.raw(`json_agg(json_build_object(
-        'picker_user_id', reservation.picker_user_id,
-        'picked_cartons', reservation.picked_cartons,
+    const activePicks = activePickingQuery(knex)
+      .select('active.aldi_truck_line_id', knex.raw(`json_agg(json_build_object(
+        'picker_user_id', active.picker_user_id,
+        'picked_cartons', active.picked_cartons,
         'picker_name', picker.full_name
-      ) ORDER BY reservation.id) as active_picks`))
-      .where('reservation.is_provisional', true)
-      .whereNotNull('reservation.pick_session_id')
-      .whereNull('reservation.reservation_cancelled_at')
-      .where('reservation.reservation_expires_at', '>', knex.fn.now())
-      .groupBy('reservation.aldi_truck_line_id');
+      ) ORDER BY active.picker_user_id) as active_picks`))
+      .groupBy('active.aldi_truck_line_id');
 
     let query = knex('aldi_truck_lines')
       .join('aldi_trucks', 'aldi_truck_lines.aldi_truck_id', 'aldi_trucks.id')
@@ -299,6 +301,68 @@ router.get('/commission-lines', verifyToken, async (req, res) => {
     res.status(500).json({ error: 'Hiba a komissió tételek betöltésekor.' });
   }
 });
+
+// Entry, renewal and release all serialize on the same truck-line lock as Save.
+async function changePickEntry(req, res, action) {
+  try {
+    const lineId = Number(req.params.id);
+    const sessionId = action === 'release' ? req.query.pickSessionId : req.body.pickSessionId;
+    if (!Number.isInteger(lineId) || lineId <= 0 || typeof sessionId !== 'string' || !sessionId || sessionId.length > 64) {
+      throw pickingError('BAD_REQUEST', 'Hiányzó vagy hibás belépési munkamenet.');
+    }
+    let expiresAt;
+    await knex.transaction(async trx => {
+      const line = await trx('aldi_truck_lines').where('id', lineId).forUpdate().first();
+      if (!line) throw pickingError('NOT_FOUND', 'A tétel nem található.');
+      const entry = await trx('pda_pick_entries').where('pick_session_id', sessionId).first();
+      expiresAt = new Date(Date.now() + RESERVATION_MS);
+      if (action === 'release') {
+        if (entry) assertEntryOwner(entry, req.user, sessionId, lineId);
+        else {
+          // A release arriving before a delayed/lost-response Enter is a
+          // tombstone: that same session must never acquire the line later.
+          await trx('pda_pick_entries').insert({ pick_session_id: sessionId, aldi_truck_line_id: lineId,
+            picker_user_id: req.user.id, picker_session_id: req.user.sessionId,
+            reservation_expires_at: expiresAt, released_at: trx.fn.now() });
+        }
+        await trx('pda_pick_entries').where('pick_session_id', sessionId).update({ released_at: trx.fn.now() });
+        await trx('sscc_labels').where('pick_session_id', sessionId).where('is_provisional', true)
+          .where('picker_user_id', req.user.id).where('picker_session_id', req.user.sessionId)
+          .update({ reservation_cancelled_at: trx.fn.now() });
+        return;
+      }
+      if (entry) assertEntry(entry, req.user, sessionId, lineId);
+      else if (action === 'renew') throw pickingError('ENTRY_EXPIRED', 'A belépési foglalás nem található.');
+      else {
+        const plt = await cartonsPerPallet(trx, line);
+        const active = await activePickingQuery(trx).where('active.aldi_truck_line_id', lineId)
+          .select('active.*', 'picker.full_name as picker_name');
+        const availability = pickingAvailability({ ...line, cartons_per_pallet: plt }, active, req.user.id);
+        if (availability.selection_locked) {
+          const err = pickingError('LOCKED', 'A tételt jelenleg ' + availability.picker_name + ' komissiózza.');
+          err.pickerName = availability.picker_name;
+          throw err;
+        }
+        if (line.is_picked || availability.available_cartons <= 0) throw pickingError('OVER_QTY', 'Nincs elérhető karton a tételből.');
+        await trx('pda_pick_entries').insert({ pick_session_id: sessionId, aldi_truck_line_id: lineId,
+          picker_user_id: req.user.id, picker_session_id: req.user.sessionId, reservation_expires_at: expiresAt });
+      }
+      const label = await trx('sscc_labels').where('pick_session_id', sessionId).first();
+      if (label) assertReservation(label, req.user, sessionId, lineId);
+      await trx('pda_pick_entries').where('pick_session_id', sessionId).update({ reservation_expires_at: expiresAt });
+      if (label?.is_provisional) await trx('sscc_labels').where('id', label.id).update({ reservation_expires_at: expiresAt });
+    });
+    res.json({ success: true, expiresAt: action === 'release' ? null : expiresAt });
+  } catch (err) {
+    const status = { LOCKED: 423, NOT_FOUND: 404, OVER_QTY: 409, BAD_REQUEST: 400,
+      FORBIDDEN: 403, ENTRY_REQUIRED: 400, ENTRY_EXPIRED: 410, LABEL_EXPIRED: 410 }[err.code] || 500;
+    if (status === 500) console.error('[PDA] Belépési foglalás hiba:', err);
+    res.status(status).json({ error: err.message, code: err.code, pickerName: err.pickerName });
+  }
+}
+router.post('/commission-lines/:id/enter', verifyToken, (req, res) => changePickEntry(req, res, 'enter'));
+router.post('/commission-lines/:id/entry/renew', verifyToken, (req, res) => changePickEntry(req, res, 'renew'));
+router.delete('/commission-lines/:id/entry', verifyToken, (req, res) => changePickEntry(req, res, 'release'));
 
 // ── GET /packaging-types ───────────────────────
 router.get('/packaging-types', verifyToken, async (req, res) => {
@@ -654,6 +718,8 @@ async function processPick(trx, id, reqData, locationId = null, picker = null) {
   if (!label) {
     label = await createSsccLabel(trx, id, commissionId, qty, origin_country, palletsJsonData);
   }
+  await trx('pda_pick_entries').where('pick_session_id', pickSessionId)
+    .update({ completed_at: trx.fn.now(), released_at: trx.fn.now() });
 
   return {
     orderedCartons,
@@ -1029,26 +1095,16 @@ router.post('/generate-pallet-label', verifyToken, async (req, res) => {
         return;
       }
       const confirmed = confirmLot(req, check);
-      let plt = Number(line.cartons_per_pallet);
-      if (line.aldi_daily_order_line_id) {
-        const demand = await trx('aldi_daily_order_lines').where('id', line.aldi_daily_order_line_id).forShare().first();
-        plt = Number(demand?.cartons_per_pallet);
-      }
-      if (!Number.isInteger(plt) || plt <= 0) throw pickingError('BAD_REQUEST',
-        'Hiányzó vagy hibás #/PLT érték. Javítsd az ALDI Rakodás áruigényében.');
+      const entry = await trx('pda_pick_entries').where('pick_session_id', pickSessionId).first();
+      assertEntry(entry, req.user, pickSessionId, lineId);
+      const plt = await cartonsPerPallet(trx, line);
       const active = await trx('sscc_labels').where('aldi_truck_line_id', lineId)
         .where('is_provisional', true).whereNotNull('pick_session_id').whereNull('reservation_cancelled_at')
         .where('reservation_expires_at', '>', trx.fn.now()).select('*');
       const availability = pickingAvailability({ ...line, cartons_per_pallet: plt }, active, req.user.id);
       const available = availability.available_cartons;
-      const other = active.find(row => Number(row.picker_user_id) !== Number(req.user.id));
-      if (availability.selection_locked) {
-        const employee = await trx('employees').where('id', other.picker_user_id).first();
-        const err = pickingError('LOCKED', 'A tételt jelenleg ' + (employee?.full_name || 'másik dolgozó') +
-          ' komissiózza; az elérhető maradék legfeljebb egy raklap.');
-        err.pickerName = employee?.full_name || 'Másik dolgozó';
-        throw err;
-      }
+      // Admission was already granted atomically at Enter. Existing workers
+      // may continue after the remainder shrinks; quantities stay guarded.
       if (payload.picked_cartons > available) throw pickingError('OVER_QTY',
         'A kért kartonszám meghaladja az elérhető maradékot (' + available + ' db).');
       const { netWeight, palletsJsonData } = await calculateAndValidateWeights(
@@ -1060,11 +1116,14 @@ router.post('/generate-pallet-label', verifyToken, async (req, res) => {
         pick_payload: JSON.stringify(payload), lot_checked_date: check.today,
         lot_confirmed_at: confirmed ? trx.fn.now() : null
       }).returning('*');
+      await trx('pda_pick_entries').where('pick_session_id', pickSessionId)
+        .update({ reservation_expires_at: label.reservation_expires_at });
     });
     res.json({ success: true, label });
   } catch (err) {
     const statuses = { LOCKED: 423, NOT_FOUND: 404, OVER_QTY: 409, PICK_CHANGED: 409,
-      LOT_CONFIRMATION_REQUIRED: 409, FORBIDDEN: 403, LABEL_EXPIRED: 410, INVALID_LOT: 400, INVALID_WEIGHT: 400, BAD_REQUEST: 400 };
+      LOT_CONFIRMATION_REQUIRED: 409, FORBIDDEN: 403, ENTRY_REQUIRED: 400, ENTRY_EXPIRED: 410,
+      LABEL_EXPIRED: 410, INVALID_LOT: 400, INVALID_WEIGHT: 400, BAD_REQUEST: 400 };
     if (statuses[err.code]) return res.status(statuses[err.code]).json({ error: err.message, code: err.code, pickerName: err.pickerName });
     console.error('[PDA] /generate-pallet-label hiba:', err);
     res.status(500).json({ error: 'Hiba a címke generálásakor.' });
@@ -1223,6 +1282,7 @@ async function changeReservation(req, res, cancel) {
       expiresAt = new Date(Date.now() + RESERVATION_MS);
       await trx('sscc_labels').where('id', current.id).update(cancel
         ? { reservation_cancelled_at: trx.fn.now() } : { reservation_expires_at: expiresAt });
+      if (cancel) await trx('pda_pick_entries').where('pick_session_id', pickSessionId).update({ released_at: trx.fn.now() });
     });
     res.json({ success: true, expiresAt: cancel ? null : expiresAt });
   } catch (err) {

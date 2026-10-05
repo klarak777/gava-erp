@@ -50,7 +50,7 @@ function fixture() {
     },
     update(row) {
       if (table === 'sscc_labels') Object.assign(label, row);
-      else Object.assign(line, row);
+      else if (table === 'aldi_truck_lines') Object.assign(line, row);
       return { then(resolve, reject) { return Promise.resolve(1).then(resolve, reject); }, returning: async () => [{ ...label }] };
     }
   });
@@ -66,6 +66,7 @@ function fixture() {
     payload.labelId = label.id; payload.scannedSscc = label.sscc;
   };
   trx.raw = async () => ({ rows: [{ next_id: 999 }] });
+  trx.fn = { now: () => new Date() };
   return { trx, line, logs, pallet, secondPallet };
 }
 const data = (qty, gross, tare, sid) => ({ picked_cartons: qty, gross_weight: gross, tare_weight: tare, pallet_type: 25, pickSessionId: sid || Math.random().toString() });

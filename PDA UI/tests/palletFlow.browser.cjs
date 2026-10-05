@@ -16,6 +16,8 @@ let declineExpiredLot = false;
 const defaultCommissionLines = [{ id: 5, termek: 'Nektarin 7kg', kartonszam: 100, komissziozott_kartonszam: 0, kamionszam: 'AL02', target_locations: targets, celraktar: 'ALDI', plt: 10 }];
 let commissionLines = defaultCommissionLines;
 let failCommissionList = false;
+let failEntryOnce = false;
+let entryLocked = false;
 
 const server = http.createServer(async (req, res) => {
   const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
@@ -46,10 +48,20 @@ async function run() {
       const req = route.request();
       const url = new URL(req.url()).pathname;
       const body = req.postDataJSON();
-      apiCalls.push({ url, body, method: req.method() });
+      apiCalls.push({ url, body, query: new URL(req.url()).searchParams.toString(), method: req.method() });
       let status = 200;
       let json = [];
-      if (url.endsWith('/validate-lot')) {
+      if (url.endsWith('/enter') && failEntryOnce) {
+        failEntryOnce = false;
+        await route.abort('failed');
+        return;
+      }
+      else if (url.endsWith('/enter')) {
+        status = entryLocked ? 423 : 200;
+        json = entryLocked ? { error: 'Dolgozó Egy már adatot ad meg.', pickerName: 'Dolgozó Egy' } : { success: true };
+      }
+      else if (url.endsWith('/entry/renew') || url.endsWith('/entry')) json = { success: true };
+      else if (url.endsWith('/validate-lot')) {
         if (body.lot_number === '3626') { status = 400; json = { error: 'Invalid LOT' }; }
         else json = { lot: body.lot_number, lotDate: '2026-09-26', today: '2026-10-02',
           expired: body.lot_number === '3906', ageDays: body.lot_number === '3906' ? 6 : 0,
@@ -228,6 +240,35 @@ async function run() {
     }
     commissionLines = defaultCommissionLines;
 
+    await activate('commission');
+    const entryRow = page.locator('[data-line-id="5"]');
+    await entryRow.waitFor();
+    entryLocked = true;
+    const rejectedEntry = page.waitForResponse(response => response.url().endsWith('/enter') && response.status() === 423);
+    await entryRow.click();
+    await rejectedEntry;
+    await page.waitForTimeout(100);
+    assert.equal(await page.locator('#pane-form').isVisible(), false, 'Entry must succeed on the server before form opens');
+    entryLocked = false;
+    failEntryOnce = true;
+    const releaseLostEntry = page.waitForResponse(response => response.request().method() === 'DELETE' && response.url().includes('/entry?'));
+    await entryRow.click();
+    await releaseLostEntry;
+    assert.equal(await page.locator('#pane-form').isVisible(), false);
+    const lostEntry = apiCalls.filter(c => c.url.endsWith('/enter')).at(-1);
+    assert.equal(new URLSearchParams(apiCalls.filter(c => c.method === 'DELETE' && c.url.endsWith('/entry')).at(-1).query).get('pickSessionId'), lostEntry.body.pickSessionId);
+    await entryRow.click();
+    await visible('pane-form');
+    const openedEntry = apiCalls.filter(c => c.url.endsWith('/enter')).at(-1).body.pickSessionId;
+    const renewed = page.waitForResponse(response => response.url().endsWith('/entry/renew'));
+    await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+    await renewed;
+    assert.equal(apiCalls.filter(c => c.url.endsWith('/entry/renew')).at(-1).body.pickSessionId, openedEntry);
+    await page.locator('#pda-form-nav-back').click();
+    await visible('pane-list');
+    assert.equal(new URLSearchParams(apiCalls.filter(c => c.method === 'DELETE' && c.url.endsWith('/entry')).at(-1).query).get('pickSessionId'), openedEntry);
+    console.log('PASS form entry before Save: atomic admission, lost response cancellation, renewal and Back release');
+
     for (const viewport of [{ width: 320, height: 480 }, { width: 390, height: 810 }]) {
       await page.setViewportSize(viewport);
       await consolidationToPrint();
@@ -262,6 +303,8 @@ async function run() {
       assert.equal(generationAttempts.length, 2);
       assert.equal(generationAttempts[0].body.pickSessionId, generationAttempts[1].body.pickSessionId,
         'Network retry must reuse the original reservation ID');
+      assert.equal(generationAttempts[0].body.pickSessionId, apiCalls.filter(c => c.url.endsWith('/enter')).at(-1).body.pickSessionId,
+        'Save must retain the session acquired on the initial tap');
       await scan('PRN-001');
       await page.waitForFunction(() => document.getElementById('pane-dest').classList.contains('active'));
       await checkLayout('pane-dest');
@@ -308,7 +351,7 @@ async function run() {
     assert.equal(confirmed.lotConfirmationToken, 'confirmed-test-lot');
     await page.locator('#pane-print .pda-nav-back-btn').click();
     await visible('pane-form');
-    assert.ok(apiCalls.some(c => c.method === 'DELETE' && c.url.endsWith('/provisional-label/99')));
+    assert.ok(apiCalls.some(c => c.method === 'DELETE' && c.url.endsWith('/commission-lines/5/entry')));
     await page.locator('#form-submit').click();
     await visible('pane-print');
     const newPick = apiCalls.filter(c => c.url.endsWith('/generate-pallet-label')).at(-1).body;

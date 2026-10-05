@@ -493,9 +493,9 @@ export async function renderCommission(container, params = {}) {
 
   // Navigation events
   const deleteProvisionalLabel = async () => {
-    if (lastPickPayload?.pickSessionId) {
-      const path = currentLabel?.id ? '/provisional-label/' + currentLabel.id : '/provisional-pick';
-      const res = await apiFetch('/api/v1/pda' + path + '?pickSessionId=' + encodeURIComponent(lastPickPayload.pickSessionId), { method: 'DELETE' });
+    if (activePickSessionId && currentLineId) {
+      const res = await apiFetch(`/api/v1/pda/commission-lines/${currentLineId}/entry?pickSessionId=` +
+        encodeURIComponent(activePickSessionId), { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json();
         alert(data.error || 'A foglalást nem sikerült visszavonni.');
@@ -522,7 +522,15 @@ export async function renderCommission(container, params = {}) {
       await goDashboard();
     } else if (panePrint.classList.contains('active')) {
       await deleteProvisionalLabel();
-      showPane(paneForm);
+      // A cancelled label's session cannot be reused. Re-enter before
+      // returning to the existing form, retaining its entered values.
+      try {
+        if (await acquireEntry(currentLineId)) showPane(paneForm);
+        else { showPane(paneList); loadData(); }
+      } catch (_) {
+        alert('A belépési foglalást nem sikerült létrehozni.');
+        showPane(paneList); loadData();
+      }
     } else if (paneDest.classList.contains('active')) {
       showPane(panePrint);
     } else if (paneSscc.classList.contains('active')) {
@@ -560,6 +568,7 @@ export async function renderCommission(container, params = {}) {
   let loadingData = null;
   let selectingLine = false;
   let disposed = false;
+  let renewingEntry = false;
 
   // Dictionaries
   let packagingTypes = [];
@@ -890,15 +899,40 @@ export async function renderCommission(container, params = {}) {
       }
       const row = lines.find(line => line.id === lineId);
       if (!row || row.is_picked || row.selection_locked) return;
+      if (!await acquireEntry(lineId)) { loadData(true); return; }
+      if (disposed || !paneList.classList.contains('active')) {
+        await deleteProvisionalLabel();
+        return;
+      }
       openForm(row, tbody.querySelector(`[data-line-id="${lineId}"]`));
+    } catch (err) {
+      alert('A belépési foglalást nem sikerült létrehozni. Próbáld újra.');
+      try { await deleteProvisionalLabel(); } catch (_) { /* Retry release on Back; otherwise the lease expires. */ }
     } finally {
       selectingLine = false;
     }
   }
 
+  async function acquireEntry(lineId) {
+    // Retain the ID before sending so a lost response can still be cancelled.
+    // Release any unresolved prior attempt before creating a new session.
+    if (activePickSessionId) await deleteProvisionalLabel();
+    currentLineId = lineId;
+    activePickSessionId = crypto.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2);
+    const res = await apiFetch(`/api/v1/pda/commission-lines/${lineId}/enter`, {
+      method: 'POST', body: JSON.stringify({ pickSessionId: activePickSessionId })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'A tételt másik dolgozó komissiózza.');
+      await deleteProvisionalLabel();
+      return false;
+    }
+    return true;
+  }
+
   function openForm(row, rowEl) {
     if (row.selection_locked) return;
-    activePickSessionId = null;
     lastPickPayload = null;
     currentLineId = row.id;
     currentDestination = row.celraktar || '';
@@ -1061,7 +1095,7 @@ export async function renderCommission(container, params = {}) {
       origin_country: orszagSel.value,
       lot_number: lotInput.value.trim(),
       pallet_types: allPalletIds,           // Tömb: összes raklap ID-ja
-      pickSessionId: activePickSessionId || (activePickSessionId = crypto.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2))
+      pickSessionId: activePickSessionId
     };
 
     let isSuccess = false;
@@ -1087,7 +1121,11 @@ export async function renderCommission(container, params = {}) {
         body: JSON.stringify({ ...lastPickPayload, lineId: currentLineId })
       });
       responseData = await res.json();
-      if (res.status === 423) {
+      if (res.status === 410) {
+        alert(responseData.error || 'A belépési foglalás lejárt. Nyisd meg újra a tételt.');
+        currentLabel = null; lastPickPayload = null; activePickSessionId = null;
+        showPane(paneList); loadData();
+      } else if (res.status === 423) {
         // Egyidejű komissiózás zárolás
         alert(
           `⛔ Ez a tétel jelenleg komissiózás alatt áll!\n\n` +
@@ -1388,31 +1426,41 @@ export async function renderCommission(container, params = {}) {
   window.addEventListener('pda-barcode-scanned', handleScan);
 
 
-  const renewTimer = setInterval(async () => {
+  const renewEntry = async () => {
     if (!container.isConnected || document.visibilityState !== 'visible' ||
-        !currentLabel?.id || !lastPickPayload?.pickSessionId) return;
+        disposed || renewingEntry || selectingLine || !activePickSessionId || !currentLineId) return;
+    renewingEntry = true;
+    const renewedSession = activePickSessionId;
     try {
-      const res = await apiFetch('/api/v1/pda/provisional-label/' + currentLabel.id + '/renew', {
-        method: 'POST', body: JSON.stringify({ pickSessionId: lastPickPayload.pickSessionId })
+      const res = await apiFetch(`/api/v1/pda/commission-lines/${currentLineId}/entry/renew`, {
+        method: 'POST', body: JSON.stringify({ pickSessionId: renewedSession })
       });
-      if (res.status === 410) {
+      if (!disposed && activePickSessionId === renewedSession && [400, 403, 410].includes(res.status)) {
         alert((await res.json()).error);
         currentLabel = null; lastPickPayload = null; activePickSessionId = null;
         showPane(paneList); loadData();
       }
     } catch (_) { /* A lejart foglalast a kovetkezo szerverhivas is ellenorzi. */ }
-  }, 60000);
+    finally { renewingEntry = false; }
+  };
+  const renewTimer = setInterval(renewEntry, 60000);
   const refreshList = () => {
     if (!disposed && container.isConnected && document.visibilityState === 'visible' &&
         paneList.classList.contains('active') && !selectingLine) loadData(true);
   };
   const listTimer = setInterval(refreshList, 15000);
   document.addEventListener('visibilitychange', refreshList);
+  document.addEventListener('visibilitychange', renewEntry);
   window._currentViewCleanup = () => {
     disposed = true;
+    if (activePickSessionId && currentLineId) {
+      apiFetch(`/api/v1/pda/commission-lines/${currentLineId}/entry?pickSessionId=` +
+        encodeURIComponent(activePickSessionId), { method: 'DELETE', keepalive: true }).catch(() => {});
+    }
     clearInterval(renewTimer);
     clearInterval(listTimer);
     document.removeEventListener('visibilitychange', refreshList);
+    document.removeEventListener('visibilitychange', renewEntry);
   };
   select.addEventListener('change', () => loadData());
 

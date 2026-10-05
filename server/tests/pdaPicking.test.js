@@ -114,6 +114,7 @@ test('PostgreSQL: concurrent saves, retries, ownership, expiry, cancellation and
       // Exercise the actual migrations against isolated tables, including the FK and unique index.
       await require('../src/db/migrations/20261002180000_add_picker_fields_to_sscc_labels').up(db);
       await require('../src/db/migrations/20261002190000_add_pda_reservation_lifecycle').up(db);
+      await require('../src/db/migrations/20261006010000_add_pda_pick_entries').up(db);
       await db('aldi_trucks').insert({ id: 1, truck_number: 'TEST', target_locations: JSON.stringify([{ id: 10 }]), sent_to_pda: true });
       await db('aldi_daily_order_lines').insert({ id: 1, cartons_per_pallet: 10 });
       await db('ref_packaging_types').insert({ id: 25, name: 'EU', category: 'Raklap', is_active: true, tare_weight_kg: 22 });
@@ -153,9 +154,95 @@ test('PostgreSQL: concurrent saves, retries, ownership, expiry, cancellation and
         p.lotConfirmationToken = check.body.confirmationToken;
         return p;
       }
-      const generate = (body, employee = 1) => request('/generate-pallet-label', { body, employee });
+      const enter = (id, sid, employee = 1) => request('/commission-lines/:id/enter', {
+        params: { id }, body: { pickSessionId: sid }, employee });
+      const release = (id, sid, employee = 1) => request('/commission-lines/:id/entry', {
+        params: { id }, query: { pickSessionId: sid }, employee });
+      const renew = (id, sid, employee = 1) => request('/commission-lines/:id/entry/renew', {
+        params: { id }, body: { pickSessionId: sid }, employee });
+      const generate = async (body, employee = 1) => {
+        if (!await db('pda_pick_entries').where('pick_session_id', body.pickSessionId).first()) {
+          const admitted = await enter(body.lineId, body.pickSessionId, employee);
+          if (admitted.status !== 200) return admitted;
+        }
+        return request('/generate-pallet-label', { body, employee });
+      };
       const finalize = (p, label, employee = 1) => request('/commission-lines/:id/pick-and-assign', {
         params: { id: p.lineId }, employee, body: { ...p, labelId: label.id, scannedSscc: label.sscc, barcode: 'TEST-LOC' } });
+
+      await t.test('simultaneous entry at one pallet or less admits only one before any label is saved', async () => {
+        for (const cartons of [10, 9]) {
+          const id = await line(cartons), sid = 'entry-' + id;
+          const results = await Promise.all([enter(id, sid + '-a'), enter(id, sid + '-b', 2)]);
+          assert.deepEqual(results.map(r => r.status).sort(), [200, 423]);
+          const winner = results[0].status === 200 ? 1 : 2, suffix = winner === 1 ? '-a' : '-b';
+          assert.match(results.find(r => r.status === 423).body.pickerName, /Dolgozó/);
+          assert.equal((await db('sscc_labels').where('aldi_truck_line_id', id)).length, 0);
+          const listed = await request('/commission-lines', { employee: winner === 1 ? 2 : 1 });
+          assert.equal(listed.body.find(row => row.id === id).selection_locked, true);
+          assert.equal(listed.body.find(row => row.id === id).available_cartons, cartons);
+          assert.equal((await enter(id, sid + suffix, winner)).status, 200, 'Lost-response retry must reuse entry');
+          assert.equal((await renew(id, sid + suffix, winner === 1 ? 2 : 1)).status, 403);
+          assert.equal((await release(id, sid + suffix, winner === 1 ? 2 : 1)).status, 403);
+          assert.equal((await renew(id, sid + suffix, winner)).status, 200);
+          assert.equal((await release(id, sid + suffix, winner)).status, 200);
+          assert.equal((await enter(id, sid + '-next', winner === 1 ? 2 : 1)).status, 200);
+        }
+      });
+      await t.test('expired and released entries cannot save or revive, and early release defeats delayed entry', async () => {
+        const id = await line(), p = await payload(id, 'entry-expired');
+        assert.equal((await enter(id, p.pickSessionId)).status, 200);
+        await db('pda_pick_entries').where('pick_session_id', p.pickSessionId)
+          .update({ reservation_expires_at: new Date(Date.now() - 1000) });
+        assert.equal((await renew(id, p.pickSessionId)).status, 410);
+        assert.equal((await generate(p)).status, 410);
+        assert.equal((await enter(id, p.pickSessionId)).status, 410);
+        assert.equal((await release(id, 'entry-delayed', 2)).status, 200);
+        assert.equal((await enter(id, 'entry-delayed', 2)).status, 410);
+        assert.equal((await enter(id, 'entry-replacement', 2)).status, 200);
+        const raw = await payload(id, 'no-entry');
+        assert.equal((await request('/generate-pallet-label', { body: raw })).status, 400);
+      });
+      await t.test('a saved label is counted once and entry persists until Back or final commit', async () => {
+        const id = await line(), p = await payload(id, 'entry-to-label');
+        assert.equal((await enter(id, p.pickSessionId)).status, 200);
+        const first = await generate(p);
+        assert.equal(first.status, 200, first.body.error);
+        const listed = await request('/commission-lines', { employee: 2 });
+        assert.equal(listed.body.find(row => row.id === id).reserved_cartons, 5);
+        assert.equal((await enter(id, 'entry-other', 2)).status, 423);
+        assert.equal((await renew(id, p.pickSessionId)).status, 200);
+        assert.equal((await release(id, p.pickSessionId)).status, 200);
+        assert.equal((await finalize(p, first.body.label)).status, 410);
+        const replacement = await payload(id, 'entry-final', 5, 2), saved = await generate(replacement, 2);
+        assert.equal(saved.status, 200);
+        assert.equal((await finalize(replacement, saved.body.label, 2)).status, 200);
+        assert.ok((await db('pda_pick_entries').where('pick_session_id', replacement.pickSessionId).first()).completed_at);
+        assert.equal((await enter(id, 'entry-after-final')).status, 200);
+      });
+      await t.test('workers admitted above one pallet can finish when the remainder subsequently shrinks', async () => {
+        const id = await line(20);
+        assert.equal((await enter(id, 'entry-large-a')).status, 200);
+        assert.equal((await enter(id, 'entry-large-b', 2)).status, 200);
+        await db('aldi_truck_lines').where('id', id).update({ ordered_cartons: 10 });
+        assert.equal((await enter(id, 'entry-large-new')).status, 423);
+        const a = await payload(id, 'entry-large-a'), b = await payload(id, 'entry-large-b', 5, 2);
+        const first = await generate(a), second = await generate(b, 2);
+        assert.equal(first.status, 200);
+        assert.equal(second.status, 200);
+        assert.equal((await finalize(a, first.body.label)).status, 200);
+        assert.equal((await finalize(b, second.body.label, 2)).status, 200);
+        assert.equal((await db('aldi_truck_lines').where('id', id).first()).picked_cartons, 10);
+      });
+      await t.test('logout releases only the current worker login, including unsaved forms', async () => {
+        const id = await line();
+        assert.equal((await enter(id, 'entry-logout')).status, 200);
+        assert.equal((await request('/logout')).status, 200);
+        assert.ok((await db('pda_pick_entries').where('pick_session_id', 'entry-logout').first()).released_at);
+        assert.equal((await enter(id, 'entry-logout-next', 2)).status, 200);
+        await release(id, 'entry-logout-next', 2);
+        await db('employees').where('id', 1).update({ pda_session_token: 'login-1' });
+      });
 
       await t.test('list disables another worker at the last pallet and releases cancelled, expired and final picks', async () => {
         const id = await line(25), p = await payload(id, 'list-lock', 10);
@@ -176,6 +263,7 @@ test('PostgreSQL: concurrent saves, retries, ownership, expiry, cancellation and
         await db('aldi_truck_lines').where('id', id).update({ ordered_cartons: 20 });
         assert.equal((await listed()).selection_locked, true); // Equality retains the V4 guard.
         await db('sscc_labels').where('id', first.body.label.id).update({ reservation_expires_at: new Date(Date.now() - 1000) });
+        await db('pda_pick_entries').where('pick_session_id', p.pickSessionId).update({ reservation_expires_at: new Date(Date.now() - 1000) });
         assert.equal((await listed()).selection_locked, false);
         assert.equal((await listed()).reserved_cartons, 0);
         await db('sscc_labels').where('id', first.body.label.id).update({
@@ -245,6 +333,7 @@ test('PostgreSQL: concurrent saves, retries, ownership, expiry, cancellation and
         const id = await line(), p = await payload(id, 'expiry');
         const first = await generate(p);
         await db('sscc_labels').where('id', first.body.label.id).update({ reservation_expires_at: new Date(Date.now() - 1000) });
+        await db('pda_pick_entries').where('pick_session_id', p.pickSessionId).update({ reservation_expires_at: new Date(Date.now() - 1000) });
         assert.equal((await finalize(p, first.body.label)).status, 410);
         assert.equal((await request('/provisional-label/:id/renew', { params: { id: first.body.label.id }, body: { pickSessionId: p.pickSessionId } })).status, 410);
         const [consolidation] = await db('sscc_labels').insert({ sscc: 'TEST-MASTER', is_provisional: true,

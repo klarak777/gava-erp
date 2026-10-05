@@ -62,8 +62,8 @@ function reservationExpiry(label) {
     : new Date(new Date(label.created_at).getTime() + RESERVATION_MS);
 }
 
-// Only live, uncancelled provisional picks are passed in by the query.
-// Keep the list and the transactional save on the same last-pallet rule.
+// Live provisional labels and active form entries are passed in by the query.
+// Entries contribute zero cartons until Save creates a quantity reservation.
 function pickingAvailability(line, active, userId) {
   const remaining = Math.max(0, Number(line.ordered_cartons) - Number(line.picked_cartons || 0));
   const reserved = active.reduce((sum, pick) => sum + Number(pick.picked_cartons), 0);
