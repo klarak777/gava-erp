@@ -261,8 +261,21 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'Nem találtunk feldolgozható adatsorokat a fájlban.' });
     }
 
-    // Dátumok és hét meghatározása az első szerdát tartalmazó, vagy első érvényes "Szállítási időszak" alapján
+    // Dátumok és hét meghatározása a leggyakoribb "Szállítási időszak" alapján
     let foundWeek = null;
+    const weekCounts = {};
+    
+    // Először megpróbáljuk a fejléc feletti sorokból kiolvasni a hetet, ha egyértelmű
+    let explicitWeek = null;
+    for (let r = 0; r < headerRowIdx; r++) {
+      const rowText = sheetData[r].join(' ');
+      const match = rowText.match(/(\d{1,2})\.\s*(?:hét|het|heti|KW|kw)/i) || rowText.match(/(?:KW|kw)\s*(\d{1,2})/i);
+      if (match) {
+        explicitWeek = parseInt(match[1], 10);
+        break;
+      }
+    }
+
     for (const row of dataRows) {
       const deliveryStr = colMap['Szállítási időszak'] !== undefined ? String(row[colMap['Szállítási időszak']]) : '';
       const { start: rawStart, end: rawEnd } = parseDeliveryPeriod(deliveryStr);
@@ -270,10 +283,26 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         const firstWed = findFirstWednesday(rawStart, rawEnd);
         const wInfo = getAldiWeekFromDate(firstWed);
         if (wInfo) {
-          foundWeek = wInfo;
-          break;
+          const key = `${wInfo.year}-${wInfo.weekNumber}`;
+          if (!weekCounts[key]) {
+            weekCounts[key] = { year: wInfo.year, weekNumber: wInfo.weekNumber, count: 0 };
+          }
+          weekCounts[key].count++;
         }
       }
+    }
+
+    let maxCount = 0;
+    for (const key in weekCounts) {
+      if (weekCounts[key].count > maxCount) {
+        maxCount = weekCounts[key].count;
+        foundWeek = { year: weekCounts[key].year, weekNumber: weekCounts[key].weekNumber };
+      }
+    }
+    
+    // Ha találtunk explicit hetet a fejlécben, és a kiszámolt évhez illik, használjuk azt
+    if (explicitWeek && foundWeek) {
+      foundWeek.weekNumber = explicitWeek;
     }
 
     if (!foundWeek) {
