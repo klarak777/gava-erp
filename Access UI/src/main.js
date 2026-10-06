@@ -38,14 +38,15 @@ import { renderAdmin } from './modules/admin.js';
 import { renderPennyStock } from './modules/penny_stock.js';
 import { renderPennyBelfoldiFuvarok } from './modules/penny_belfoldi_fuvarok.js';
 import { renderPennyKomissiosUtasitas } from './modules/penny_komissios_utasitas.js';
-import { renderAldiRendelesek } from './modules/aldi_rendelesek.js?v=0.9.0-weekly-price-merge-20260917';
+import { renderAldiRendelesek } from './modules/aldi_rendelesek.js?v=20261006-windows';
+import { ALDI_ORDER_VIEWS } from './data/aldi-order-views.js';
 import { renderAldiStock } from './modules/aldi_stock.js';
 import { renderAldiQuality } from './modules/aldi_quality.js';
 import { renderAldiRakodas } from './modules/aldi_rakodas.js';
 import { renderAldiBelfoldiFuvarok } from './modules/aldi_belfoldi_fuvarok.js';
 import { renderAldiTermekAdattabla } from './modules/aldi_termekek.js';
 import { renderPdaEmulator } from './modules/pda_emulator.js?v=3';
-import { NAV_CATEGORIES } from './data/nav-structure.js';
+import { NAV_CATEGORIES } from './data/nav-structure.js?v=20261006-aldi-flyout';
 import { initAiChat } from './modules/ai-chat.js?v=10';
 
 const mainNav = document.getElementById('main-nav');
@@ -97,6 +98,12 @@ const modules = {
     penny_belfoldi_fuvarok: { render: renderPennyBelfoldiFuvarok, title: 'PENNY – Belföldi fuvarok' },
     penny_komissios_utasitas: { render: renderPennyKomissiosUtasitas, title: 'PENNY – Komissiós utasítás' },
     aldi_rendelesek: { render: renderAldiRendelesek, title: 'ALDI – Rendelések' },
+    ...Object.fromEntries(ALDI_ORDER_VIEWS.map(view => [view.id, {
+        title: `ALDI – ${view.title}`,
+        opensWindow: true,
+        render: (_container, manager) => manager.open(view.id, `ALDI – ${view.title}`,
+            content => renderAldiRendelesek(content, manager, view.tab))
+    }])),
     aldi_stock: { render: renderAldiStock, title: 'ALDI – Stock' },
     aldi_quality: { render: renderAldiQuality, title: 'ALDI – Quality' },
     aldi_rakodas: { render: renderAldiRakodas, title: 'ALDI – Rakodás' },
@@ -108,6 +115,10 @@ const modules = {
 function navigateTo(moduleId, subModuleId = null) {
     const module = modules[moduleId];
     if (module) {
+        if (module.opensWindow) {
+            module.render(contentView, windowManager);
+            return;
+        }
         console.log(`Navigating to ${moduleId}${subModuleId ? ' / ' + subModuleId : ''}...`);
 
         // All modules now render directly in content-view as a workspace launcher
@@ -154,7 +165,23 @@ function renderNavCategories() {
             </button>
             <div class="nav-category-items">
                 ${(category.groups && category.groups.length)
-            ? category.groups.map(group => `
+            ? category.groups.map(group => group.menuItems?.length ? `
+                        <div class="nav-group-flyout">
+                            <button class="nav-group-button nav-submenu-toggle" type="button" data-group-id="${group.id}" aria-expanded="false" aria-controls="nav-submenu-${group.id}">
+                                <span class="nav-icon">${group.icon || '📁'}</span>
+                                <span class="nav-label">${group.title}</span>
+                                <span class="nav-submenu-arrow" aria-hidden="true">▶</span>
+                            </button>
+                            <div class="nav-group-submenu" id="nav-submenu-${group.id}" aria-label="${group.title} almenü">
+                                ${group.menuItems.map(item => `
+                                    <button class="nav-group-button" type="button" data-module="${item.moduleId}">
+                                        <span class="nav-icon">${item.icon || '📁'}</span>
+                                        <span class="nav-label">${item.title}</span>
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : `
                         <button class="nav-group-button" type="button" data-group-id="${group.id}" data-module="${group.moduleId}">
                             <span class="nav-icon">${group.icon || '📁'}</span>
                             <span class="nav-label">${group.title}</span>
@@ -167,7 +194,42 @@ function renderNavCategories() {
     `).join('');
 }
 
+function setNavFlyoutOpen(flyout, open) {
+    flyout.classList.toggle('expanded', open);
+    flyout.querySelector('.nav-submenu-toggle').setAttribute('aria-expanded', String(open));
+    if (!open) delete flyout.dataset.pinned;
+}
+
+function closeNavFlyouts(except = null) {
+    navCategoriesContainer?.querySelectorAll('.nav-group-flyout').forEach(flyout => {
+        if (flyout !== except) setNavFlyoutOpen(flyout, false);
+    });
+}
+
+mainNav.addEventListener('pointerover', e => {
+    const flyout = e.target.closest('.nav-group-flyout');
+    if (flyout && !flyout.contains(e.relatedTarget)) {
+        closeNavFlyouts(flyout);
+        setNavFlyoutOpen(flyout, true);
+    }
+});
+
+mainNav.addEventListener('pointerout', e => {
+    const flyout = e.target.closest('.nav-group-flyout');
+    if (flyout && !flyout.contains(e.relatedTarget) && !flyout.dataset.pinned) setNavFlyoutOpen(flyout, false);
+});
+
 mainNav.addEventListener('click', (e) => {
+    const submenuToggle = e.target.closest('.nav-submenu-toggle');
+    if (submenuToggle) {
+        e.preventDefault();
+        const flyout = submenuToggle.closest('.nav-group-flyout');
+        closeNavFlyouts(flyout);
+        flyout.dataset.pinned = 'true';
+        setNavFlyoutOpen(flyout, true);
+        return;
+    }
+
     const navItem = e.target.closest('.nav-item');
     if (navItem) {
         e.preventDefault();
@@ -183,7 +245,6 @@ mainNav.addEventListener('click', (e) => {
     const groupItem = e.target.closest('.nav-group-button');
     if (groupItem) {
         e.preventDefault();
-        const groupId = groupItem.dataset.groupId;
         const moduleId = groupItem.dataset.module;
         setGroupActive(groupItem);
         setSidebarActive(null);
@@ -194,11 +255,17 @@ mainNav.addEventListener('click', (e) => {
             if (header) header.setAttribute('aria-expanded', 'true');
         }
         navigateTo(moduleId || 'dashboard');
+        closeNavFlyouts();
+        if (groupItem.closest('.nav-group-submenu') && categoryEl) {
+            categoryEl.classList.remove('expanded');
+            categoryEl.querySelector('.nav-category-header').setAttribute('aria-expanded', 'false');
+        }
     }
 
     const categoryHeader = e.target.closest('.nav-category-header');
     if (categoryHeader) {
         e.preventDefault();
+        closeNavFlyouts();
         const categoryId = categoryHeader.dataset.categoryId;
         const categoryEl = navCategoriesContainer?.querySelector(`.nav-category[data-category-id="${categoryId}"]`);
         if (categoryEl) {
@@ -220,11 +287,23 @@ mainNav.addEventListener('click', (e) => {
 // Close all category dropdowns when clicking outside the navigation
 document.addEventListener('click', (e) => {
     if (!e.target.closest('#nav-categories') && !e.target.closest('.nav-category-header')) {
+        closeNavFlyouts();
         document.querySelectorAll('.nav-category').forEach(cat => {
             cat.classList.remove('expanded');
             const header = cat.querySelector('.nav-category-header');
             if (header) header.setAttribute('aria-expanded', 'false');
         });
+    }
+});
+
+document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    const flyout = navCategoriesContainer?.querySelector('.nav-group-flyout.expanded');
+    if (flyout) {
+        const toggle = flyout.querySelector('.nav-submenu-toggle');
+        closeNavFlyouts();
+        toggle.focus();
+        e.preventDefault();
     }
 });
 

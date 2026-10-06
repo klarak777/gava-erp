@@ -8,7 +8,11 @@ import { openPalletLabelPreview } from './palletLabelPreview.js';
  * Kézi "💾 Mentés" gombbal vezérelt mentés a PostgreSQL adatbázisba.
  */
 
-export function renderAldiRendelesek(container, windowManager) {
+export function renderAldiRendelesek(container, windowManager, standaloneTab = null) {
+  const standaloneTabButton = {
+    napi: '#aldi-tab-napi', heti: '#aldi-tab-heti',
+    heti_arak: '#aldi-tab-heti-arak', komissio: '#aldi-tab-komissio'
+  }[standaloneTab];
   container.style.overflow = 'auto';
   container.style.padding = '0';
   container.style.display = 'flex';
@@ -404,7 +408,7 @@ export function renderAldiRendelesek(container, windowManager) {
 
     wrapper.innerHTML = `
       <!-- Header with Tabs -->
-      <div style="display:flex; align-items:center; gap:28px; border-bottom:1px solid #e2e8f0; padding-bottom:4px;">
+      <div style="display:${standaloneTabButton ? 'none' : 'flex'}; align-items:center; gap:28px; border-bottom:1px solid #e2e8f0; padding-bottom:4px;">
         <button id="aldi-tab-napi" style="${tabStyle('napi')}">
           ${state.activeTab === 'napi' ? '<span style="position:absolute; top:-12px; left:50%; transform:translateX(-50%); color:#0284c7; font-size:10px;">▼</span>' : ''}
           Napi rendelés
@@ -3573,6 +3577,12 @@ export function renderAldiRendelesek(container, windowManager) {
     refreshingCommitments = true;
     try { await fetchHetiLekotesData(true); } finally { refreshingCommitments = false; }
   }, 5000);
+
+  // Az önálló ablak ugyanazzal a fülkattintással indul, mint a korábbi felület.
+  if (standaloneTabButton) {
+    renderModule();
+    wrapper.querySelector(standaloneTabButton).click();
+  }
 
   fetchProductsFromDb();
   fetchKomissioSummary();

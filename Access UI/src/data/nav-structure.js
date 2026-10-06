@@ -1,3 +1,5 @@
+import { ALDI_ORDER_VIEWS } from './aldi-order-views.js';
+
 export const NAV_CATEGORIES = [
     {
         id: 'iroda',
@@ -55,7 +57,10 @@ export const NAV_CATEGORIES = [
         id: 'aldi',
         label: '<img src="AldiNord-WorldwideLogo.svg" alt="ALDI" style="height:16px; margin-right:5px; vertical-align:-3px; border-radius: 2px;"> ALDI',
         groups: [
-            { id: 'aldi_rendelesek', title: 'Rendelések', icon: '📝', moduleId: 'aldi_rendelesek', items: [] },
+            {
+                id: 'aldi_rendelesek', title: 'Rendelések', icon: '📝', moduleId: 'aldi_rendelesek', items: [],
+                menuItems: ALDI_ORDER_VIEWS.map(view => ({ title: view.title, icon: view.icon, moduleId: view.id }))
+            },
             { id: 'aldi_stock', title: 'Stock', icon: '📊', moduleId: 'aldi_stock', items: [] },
             { id: 'aldi_quality', title: 'Quality', icon: '✨', moduleId: 'aldi_quality', items: [] },
             { id: 'aldi_rakodas', title: 'Rakodás', icon: '🏗️', moduleId: 'aldi_rakodas', items: [] },
