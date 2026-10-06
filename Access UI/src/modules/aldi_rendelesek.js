@@ -1180,10 +1180,12 @@ export function renderAldiRendelesek(container, windowManager) {
           <p style="margin:0; font-size:13px; color:#64748b;">Kattints a <strong>📤 Heti árak feltöltése</strong> gombra az XLSX fájl feltöltéséhez.</p>
         </div>
       ` : `
+        ${lines.some(l => !l.is_gtin_matched) ? `
         <div style="margin-bottom: 8px; font-size: 12px; color: #dc2626; display: flex; align-items: center; gap: 6px; font-weight: 500; background: #fef2f2; padding: 6px 10px; border-radius: 6px; border: 1px solid #fca5a5; max-width: 900px;">
           <span>⚠️</span>
           A pirossal kiemelt tételek nem találhatók az ERP rendszerben (nincs egyező GTIN azonosító), ezért azok csak az ALDI Excel fájlban szereplő nevükkel jelennek meg.
         </div>
+        ` : ''}
         <div style="border:1px solid #cbd5e1; border-radius:8px; overflow:auto; max-width:1200px; box-shadow:0 1px 4px rgba(0,0,0,0.04); background:#ffffff;">
           <table style="width:100%; border-collapse:collapse; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size:12px; min-width:900px;">
             <thead>
