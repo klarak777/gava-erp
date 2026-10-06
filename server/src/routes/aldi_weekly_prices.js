@@ -196,7 +196,7 @@ router.get('/:id/lines', async (req, res) => {
 // ─── POST /api/v1/aldi-weekly-prices/upload ──────────────────────────────────
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
-    const { merge_action } = req.body;
+    const { merge_action, manual_week } = req.body;
 
     if (!req.file) {
       return res.status(400).json({ error: 'Nincs feltöltött fájl.' });
@@ -273,16 +273,37 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     // Először megpróbáljuk a fejléc feletti sorokból kiolvasni a hetet és esetleg az évet is
     let explicitYear = null;
     let explicitWeek = null;
-    for (let r = 0; r < headerRowIdx; r++) {
-      const rowText = sheetData[r].join(' ');
-      const match = rowText.match(/(?:(20\d{2})[\s\.\-]*)?(?:(\d{1,2})\.\s*(?:hét|het|heti|KW|kw)|(?:KW|kw)\s*(\d{1,2}))/i);
+    
+    const parseExplicitHeader = (text) => {
+      const match = text.match(/(?:(20\d{2})[\s\.\-]*)?(?:(\d{1,2})\.\s*(?:hét|het|heti|KW|kw)|(?:KW|kw)\s*(\d{1,2}))/i);
       if (match) {
         const wk = parseInt(match[2] || match[3], 10);
         if (wk >= 1 && wk <= 53) {
           explicitWeek = wk;
           if (match[1]) explicitYear = parseInt(match[1], 10);
-          break;
+          return true;
         }
+      }
+      const matchNum = text.match(/^(\d{1,2})$/);
+      if (matchNum) {
+        const wk = parseInt(matchNum[1], 10);
+        if (wk >= 1 && wk <= 53) {
+          explicitWeek = wk;
+          return true;
+        }
+      }
+      return false;
+    };
+
+    let headerFound = false;
+    if (manual_week) {
+       headerFound = parseExplicitHeader(String(manual_week));
+    }
+    
+    if (!headerFound) {
+      for (let r = 0; r < headerRowIdx; r++) {
+        const rowText = sheetData[r].join(' ');
+        if (parseExplicitHeader(rowText)) break;
       }
     }
 
@@ -364,7 +385,10 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     }
 
     if (!foundWeek) {
-      return res.status(400).json({ error: 'Nem található egyértelmű Szállítási időszak vagy heti azonosító a fájlban. (Lehet, hogy a megadott hét érvénytelen a dátumokhoz képest, vagy több hét is azonos gyakorisággal szerepel)' });
+      return res.status(400).json({ 
+        error: 'Nem lehet megállapítani a feldolgozott adatokból, melyik üzleti hétre vonatkozik a feltöltött táblázat.',
+        require_manual_week: true 
+      });
     }
 
     const parsedYear = foundWeek.year;

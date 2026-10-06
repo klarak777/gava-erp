@@ -2148,7 +2148,7 @@ export function renderAldiRendelesek(container, windowManager) {
 
       const uploadBtn = modalOverlay.querySelector('#aldi-arak-modal-upload-btn');
 
-      const performUpload = async (mergeAction = null) => {
+      const performUpload = async (mergeAction = null, manualWeek = null) => {
         uploadBtn.disabled = true;
         uploadBtn.textContent = '⏳ Feltöltés...';
         statusDiv.style.display = 'block';
@@ -2161,6 +2161,9 @@ export function renderAldiRendelesek(container, windowManager) {
           formData.append('file', selectedFile);
           if (mergeAction) {
             formData.append('merge_action', mergeAction);
+          }
+          if (manualWeek) {
+            formData.append('manual_week', manualWeek);
           }
 
           const res = await fetch('/api/v1/aldi-weekly-prices/upload', {
@@ -2273,11 +2276,26 @@ export function renderAldiRendelesek(container, windowManager) {
               });
             }
           } else {
-            statusDiv.style.background = '#fef2f2';
-            statusDiv.style.color = '#dc2626';
-            statusDiv.textContent = `❌ Hiba: ${result.error || 'Ismeretlen hiba'}`;
-            uploadBtn.disabled = false;
-            uploadBtn.textContent = '📤 Feltöltés';
+            if (result.require_manual_week) {
+               statusDiv.style.display = 'none';
+               const userWeek = prompt(`${result.error}\n\nKérem adja meg a hetet (pl. 41 vagy 2026 KW41):`);
+               if (userWeek && userWeek.trim() !== '') {
+                 performUpload(mergeAction, userWeek.trim());
+               } else {
+                 statusDiv.style.display = 'block';
+                 statusDiv.style.background = '#fef2f2';
+                 statusDiv.style.color = '#dc2626';
+                 statusDiv.textContent = `❌ Feltöltés megszakítva. Hét megadása kötelező.`;
+                 uploadBtn.disabled = false;
+                 uploadBtn.textContent = '📤 Újrapróbálkozás';
+               }
+            } else {
+               statusDiv.style.background = '#fef2f2';
+               statusDiv.style.color = '#dc2626';
+               statusDiv.textContent = `❌ Hiba: ${result.error || 'Ismeretlen hiba'}`;
+               uploadBtn.disabled = false;
+               uploadBtn.textContent = '📤 Feltöltés';
+            }
           }
         } catch (e) {
           console.error('Upload hiba:', e);
