@@ -261,26 +261,43 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'Nem találtunk feldolgozható adatsorokat a fájlban.' });
     }
 
-    // Dátumok és hét meghatározása a leggyakoribb "Szállítási időszak" alapján
-    let foundWeek = null;
-    const weekCounts = {};
+    const isValidDate = (dStr) => {
+      if (!dStr) return false;
+      const d = new Date(dStr);
+      return !isNaN(d.getTime()) && d.toISOString().split('T')[0] === dStr;
+    };
+
+    const validStarts = [];
+    const validEnds = [];
     
-    // Először megpróbáljuk a fejléc feletti sorokból kiolvasni a hetet, ha egyértelmű
+    // Először megpróbáljuk a fejléc feletti sorokból kiolvasni a hetet és esetleg az évet is
+    let explicitYear = null;
     let explicitWeek = null;
     for (let r = 0; r < headerRowIdx; r++) {
       const rowText = sheetData[r].join(' ');
-      const match = rowText.match(/(\d{1,2})\.\s*(?:hét|het|heti|KW|kw)/i) || rowText.match(/(?:KW|kw)\s*(\d{1,2})/i);
+      const match = rowText.match(/(?:(20\d{2})[\s\.\-]*)?(?:(\d{1,2})\.\s*(?:hét|het|heti|KW|kw)|(?:KW|kw)\s*(\d{1,2}))/i);
       if (match) {
-        explicitWeek = parseInt(match[1], 10);
-        break;
+        const wk = parseInt(match[2] || match[3], 10);
+        if (wk >= 1 && wk <= 53) {
+          explicitWeek = wk;
+          if (match[1]) explicitYear = parseInt(match[1], 10);
+          break;
+        }
       }
     }
 
+    const weekCounts = {};
     for (const row of dataRows) {
       const deliveryStr = colMap['Szállítási időszak'] !== undefined ? String(row[colMap['Szállítási időszak']]) : '';
       const { start: rawStart, end: rawEnd } = parseDeliveryPeriod(deliveryStr);
-      if (rawStart) {
-        const firstWed = findFirstWednesday(rawStart, rawEnd);
+      
+      let vStart = isValidDate(rawStart) ? rawStart : null;
+      let vEnd = isValidDate(rawEnd) ? rawEnd : null;
+      
+      if (vStart) {
+        validStarts.push(vStart);
+        validEnds.push(vEnd || vStart);
+        const firstWed = findFirstWednesday(vStart, vEnd || vStart);
         const wInfo = getAldiWeekFromDate(firstWed);
         if (wInfo) {
           const key = `${wInfo.year}-${wInfo.weekNumber}`;
@@ -292,21 +309,62 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       }
     }
 
-    let maxCount = 0;
-    for (const key in weekCounts) {
-      if (weekCounts[key].count > maxCount) {
-        maxCount = weekCounts[key].count;
-        foundWeek = { year: weekCounts[key].year, weekNumber: weekCounts[key].weekNumber };
+    let foundWeek = null;
+
+    // Ha van explicit hét, ellenőrizzük, hogy értelmes-e a dátumokkal
+    if (explicitWeek && validStarts.length > 0) {
+      let bestYear = explicitYear;
+      let maxValid = -1;
+      
+      const yearsToTest = explicitYear ? [explicitYear] : (() => {
+         const y = new Date(validStarts[0]).getFullYear();
+         return [y - 1, y, y + 1];
+      })();
+
+      for (const y of yearsToTest) {
+        let validCount = 0;
+        for (let i = 0; i < validStarts.length; i++) {
+           const s = validStarts[i];
+           const e = validEnds[i];
+           const v = validateAldiPeriod(s, e, y, explicitWeek);
+           if (v.status !== 'invalid_outside' && v.status !== 'invalid_format' && v.status !== 'invalid_reversed') {
+              validCount++;
+           }
+        }
+        if (validCount > maxValid) {
+           maxValid = validCount;
+           bestYear = y;
+        }
+      }
+
+      // Csak akkor fogadjuk el az explicit hetet, ha a sorok legalább kis részével átfedésben van
+      if (bestYear !== null && maxValid > 0) {
+         foundWeek = { year: bestYear, weekNumber: explicitWeek };
       }
     }
-    
-    // Ha találtunk explicit hetet a fejlécben, és a kiszámolt évhez illik, használjuk azt
-    if (explicitWeek && foundWeek) {
-      foundWeek.weekNumber = explicitWeek;
+
+    // Ha nincs explicit, vagy érvénytelen volt a dátumokhoz képest, jöhet a gyakoriság (módusz)
+    if (!foundWeek) {
+      let maxCount = 0;
+      let isTie = false;
+      for (const key in weekCounts) {
+        if (weekCounts[key].count > maxCount) {
+          maxCount = weekCounts[key].count;
+          foundWeek = { year: weekCounts[key].year, weekNumber: weekCounts[key].weekNumber };
+          isTie = false;
+        } else if (weekCounts[key].count === maxCount && maxCount > 0) {
+          isTie = true; // Döntetlen
+        }
+      }
+      
+      // Döntetlen esetén elutasítjuk, hacsak nem volt egyértelmű fejléc
+      if (isTie) {
+         foundWeek = null;
+      }
     }
 
     if (!foundWeek) {
-      return res.status(400).json({ error: 'Nem található érvényes Szállítási időszak a fájlban, a hét azonosítása sikertelen.' });
+      return res.status(400).json({ error: 'Nem található egyértelmű Szállítási időszak vagy heti azonosító a fájlban. (Lehet, hogy a megadott hét érvénytelen a dátumokhoz képest, vagy több hét is azonos gyakorisággal szerepel)' });
     }
 
     const parsedYear = foundWeek.year;
@@ -483,6 +541,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             if (val.status === 'clamped') {
                 finalStart = val.start;
                 finalEnd = val.end;
+                pStatus = 'valid'; // Ne emelje ki sárgával a csonkolt időszakot
                 warnings.push({ row: sourceIndex + 1, item: xlsxName, msg: `Időszak csonkolva a heti határokra: ${val.start} - ${val.end}` });
             } else if (val.status !== 'valid') {
                 finalStart = null;
