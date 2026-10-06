@@ -159,6 +159,10 @@ test('browser: clickable all/selected worksheets, cancellation, processing error
       if (url.pathname === '/src/modules/ai-chat.js') {
         res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8' }); res.end(source); return;
       }
+      if (url.pathname === '/src/modules/ai-pdf-export.js') {
+        res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8' });
+        res.end(fs.readFileSync(path.join(__dirname, '../../Access UI/src/modules/ai-pdf-export.js'))); return;
+      }
       if (req.url === '/api/v1/ai/upload') {
         const chunks = [];
         for await (const chunk of req) chunks.push(chunk);

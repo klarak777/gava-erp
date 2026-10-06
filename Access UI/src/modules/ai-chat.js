@@ -1,3 +1,5 @@
+import { exportAiReport } from './ai-pdf-export.js?v=1';
+
 const AI_CHAT_HTML = `
 <div id="ai-chat-modal" class="ai-modal-overlay" style="display: none;">
     <div class="ai-modal-content premium-glass">
@@ -6,7 +8,7 @@ const AI_CHAT_HTML = `
                 <span class="ai-icon">✨</span> GAVA MI Asszisztens
             </div>
             <div class="ai-header-actions" style="display: flex; gap: 8px; align-items: center;">
-                <button id="ai-export-btn" class="icon-btn-sm" style="color: white; font-size: 14px; background: transparent; border: none; cursor: pointer;" title="Teljes beszélgetés mentése PDF-be">💾</button>
+                <button id="ai-export-btn" class="icon-btn-sm" style="color: white; font-size: 14px; background: transparent; border: none; cursor: pointer;" title="Legutóbbi elemzés mentése PDF-be">💾</button>
                 <button id="ai-minimize-btn" class="icon-btn-sm" style="color: white; font-size: 14px; background: transparent; border: none; cursor: pointer;" title="Letétel a tálcára">🗕</button>
                 <button id="ai-fullscreen-btn" class="icon-btn-sm" style="color: white; font-size: 14px; background: transparent; border: none; cursor: pointer;" title="Teljes képernyő">🗖</button>
                 <button id="ai-close-btn" class="icon-btn-sm" style="color: white; font-size: 14px; background: transparent; border: none; cursor: pointer;">✕</button>
@@ -511,92 +513,28 @@ export function initAiChat() {
         }
     });
 
-    exportBtn.addEventListener('click', () => {
+    exportBtn.addEventListener('click', async () => {
         if (typeof html2pdf === 'undefined') {
             alert('A PDF exportáló modul még töltődik, vagy nem érhető el.');
             return;
         }
 
-        // Kikeressük az összes üzenetet
-        const messages = Array.from(chatHistory.querySelectorAll('.ai-message'));
-
-        // Kiszűrjük az üdvözlő és a folyamatjelző üzeneteket
-        const validMessages = messages.filter(m =>
-            !m.textContent.includes('Üdvözlöm! Miben segíthetek?') &&
-            !m.textContent.includes('Gondolkodom...') &&
-            !m.textContent.includes('PDF generálása folyamatban...') &&
-            !m.textContent.includes('Sajnos nem érkezett válasz')
-        );
-
-        if (validMessages.length === 0) {
+        const answers = chatHistory.querySelectorAll('.ai-message[data-ai-answer="true"]');
+        if (!answers.length) {
             alert('Még nincs exportálható elemzés vagy válasz a beszélgetésben.');
             return;
         }
 
-        // Kiválasztjuk az UTOLSÓ generált választ
-        const lastAnswer = validMessages[validMessages.length - 1];
-
-        // Átmeneti konténer a letisztult PDF exportáláshoz
-        const printContainer = document.createElement('div');
-        printContainer.style.padding = '25px';
-        printContainer.style.background = '#ffffff';
-        printContainer.style.color = '#1f2937';
-        printContainer.style.fontFamily = 'Outfit, sans-serif';
-        printContainer.style.lineHeight = '1.6';
-
-        // Fejléc információk
-        const title = document.createElement('h2');
-        title.textContent = 'GAVA MI Asszisztens - Elemzési Riport';
-        title.style.color = '#4f46e5';
-        title.style.borderBottom = '2px solid #6366f1';
-        title.style.paddingBottom = '10px';
-        title.style.marginBottom = '12px';
-        printContainer.appendChild(title);
-
-        if (activeDocName && activeDocName.textContent) {
-            const docInfo = document.createElement('div');
-            docInfo.style.fontSize = '12px';
-            docInfo.style.color = '#6b7280';
-            docInfo.style.marginBottom = '15px';
-            docInfo.textContent = activeDocName.textContent;
-            printContainer.appendChild(docInfo);
-        }
-
-        // Tartalmi doboz az utolsó generált válasznak
-        const contentBox = document.createElement('div');
-        contentBox.style.background = '#ffffff';
-        contentBox.style.border = '1px solid #e5e7eb';
-        contentBox.style.borderRadius = '8px';
-        contentBox.style.padding = '18px';
-        contentBox.style.fontSize = '12px';
-        contentBox.style.color = '#111827';
-        contentBox.innerHTML = lastAnswer.innerHTML;
-
-        // Copy canvas content from original chart canvases to printed ones
-        const originalCanvases = lastAnswer.querySelectorAll('canvas');
-        const printedCanvases = contentBox.querySelectorAll('canvas');
-        printedCanvases.forEach((canvas, index) => {
-            const original = originalCanvases[index];
-            if (original) {
-                canvas.width = original.width;
-                canvas.height = original.height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(original, 0, 0);
-            }
-        });
-
-        printContainer.appendChild(contentBox);
-
-        const opt = {
-            margin: 12,
-            filename: 'Gava_MI_Elemzes.pdf',
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
-
-        addMessage('⏳ Legutóbbi válasz exportálása PDF-be...', 'system');
-        html2pdf().from(printContainer).set(opt).save();
+        exportBtn.disabled = true;
+        const progress = addMessage('⏳ PDF generálása folyamatban...', 'system');
+        try {
+            await exportAiReport(answers[answers.length - 1], activeDocName.textContent, (page, total) => {
+                progress.textContent = `⏳ PDF generálása folyamatban: ${page} / ${total} oldal`;
+            });
+            progress.textContent = '✅ Az elemzés PDF-exportja elkészült.';
+        } catch (error) {
+            progress.textContent = `❌ A PDF-export nem sikerült: ${error.message}`;
+        } finally { exportBtn.disabled = false; }
     });
 
     // File upload
@@ -1011,6 +949,7 @@ export function initAiChat() {
                 answerDiv.innerHTML = renderMarkdown('Sajnos nem érkezett válasz a szervertől.');
             } else {
                 answerDiv.innerHTML = renderMarkdown(fullAnswer);
+                answerDiv.dataset.aiAnswer = 'true';
             }
             conversationHistory.push({ role: 'assistant', content: fullAnswer });
             
