@@ -1,7 +1,7 @@
 const { OpenAI } = require('openai');
 const db = require('../db/db');
 const pdfParse = require('pdf-parse');
-const xlsx = require('xlsx');
+const { isWorkbook, readWorkbook } = require('../utils/aiWorkbook');
 const mammoth = require('mammoth');
 const AgentManager = require('./agents/AgentManager');
 
@@ -65,9 +65,10 @@ async function parsePdfText(buffer) {
 /**
  * Process a document, vectorize it, and store in the DB
  */
-async function processDocument(filename, buffer, mimetype) {
+async function processDocument(filename, buffer, mimetype, options = {}) {
   let text = '';
   let category = 'general';
+  let workbook = null;
 
   if (mimetype === 'application/pdf' || filename.endsWith('.pdf')) {
     category = 'legal';
@@ -79,18 +80,10 @@ async function processDocument(filename, buffer, mimetype) {
     category = 'legal';
     const result = await mammoth.extractRawText({ buffer });
     text = result.value;
-  } else if (
-    mimetype === 'text/csv' ||
-    mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-    filename.endsWith('.csv') ||
-    filename.endsWith('.xlsx')
-  ) {
+  } else if (isWorkbook(filename, mimetype)) {
     category = 'finance';
-    const workbook = xlsx.read(buffer, { type: 'buffer' });
-    const firstSheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[firstSheetName];
-    // Convert to CSV string for easy chunking
-    text = xlsx.utils.sheet_to_csv(worksheet);
+    workbook = readWorkbook(buffer, options);
+    if (workbook.selectionRequired) return { ...workbook, category };
   } else {
     // Treat as raw text
     text = buffer.toString('utf-8');
@@ -98,6 +91,17 @@ async function processDocument(filename, buffer, mimetype) {
 
   // Remove null bytes (\u0000) for PostgreSQL UTF-8 compatibility
   text = text.replace(/\0/g, '').replace(/\u0000/g, '');
+
+  // Include the sheet name in every chunk, even for large worksheets.
+  const chunks = workbook
+    ? workbook.sections.flatMap(section => chunkText(section.text.replace(/\0/g, ''), 2200)
+      .map(chunk => `Munkalap: ${section.name}\n${chunk}`))
+    : chunkText(text, 2500);
+  if (!chunks.length) {
+    const error = new Error('A kiválasztott dokumentum vagy munkalapok nem tartalmaznak feldolgozható adatot.');
+    error.statusCode = 400;
+    throw error;
+  }
 
   // 1. Create document record
   const [doc] = await db('ai_documents').insert({
@@ -108,9 +112,6 @@ async function processDocument(filename, buffer, mimetype) {
   }).returning('id');
 
   const documentId = doc.id;
-
-  // 2. Chunk text
-  const chunks = chunkText(text, 2500);
 
   // 3. Generate embeddings and store – nagyobb kötegekben (BATCH_SIZE = 100),
   // hogy felgyorsítsuk a feldolgozást és elkerüljük az 1 perces hálózati időkorlátot.
@@ -138,7 +139,7 @@ async function processDocument(filename, buffer, mimetype) {
     await db('ai_vectors').insert(vectorRecords);
   }
 
-  return { documentId, category };
+  return { documentId, category, ...(workbook ? { worksheets: workbook.worksheets } : {}) };
 }
 
 /**

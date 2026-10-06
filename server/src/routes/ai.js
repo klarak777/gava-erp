@@ -18,19 +18,37 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     }
 
     const { originalname, buffer, mimetype } = req.file;
-    const result = await aiService.processDocument(originalname, buffer, mimetype);
+    const options = {};
+    if (req.body?.worksheets !== undefined) {
+      try { options.worksheets = JSON.parse(req.body.worksheets); }
+      catch (_) { return res.status(400).json({ error: 'Érvénytelen munkalap-kiválasztás.' }); }
+    }
+    if (req.body?.allWorksheets !== undefined) {
+      if (!['true', 'false'].includes(req.body.allWorksheets)) {
+        return res.status(400).json({ error: 'Érvénytelen munkalap-kiválasztás.' });
+      }
+      options.allWorksheets = req.body.allWorksheets === 'true';
+    }
+    const result = await aiService.processDocument(originalname, buffer, mimetype, options);
+    if (result.selectionRequired) {
+      return res.json({ success: false, selectionRequired: true, worksheets: result.worksheets,
+        error: 'Ez az Excel több fület tartalmaz. Frissítse az alkalmazás oldalát a fülek kiválasztásához.',
+        message: 'A fájl több munkalapot tartalmaz. Melyik füleket dolgozzuk fel?' });
+    }
 
     res.json({
       success: true,
       message: 'Fájl sikeresen feldolgozva.',
       documentId: result.documentId,
-      category: result.category
+      category: result.category,
+      ...(result.worksheets ? { worksheets: result.worksheets } : {})
     });
   } catch (error) {
     console.error('AI Upload Error:', error);
     if (error.code === 'LIMIT_FILE_SIZE') {
       return res.status(413).json({ error: 'A fájl túl nagy (maximum 25 MB).' });
     }
+    if (error.statusCode === 400) return res.status(400).json({ error: error.message });
     res.status(500).json({ error: 'Hiba a fájl feldolgozása során.', details: error.message });
   }
 });

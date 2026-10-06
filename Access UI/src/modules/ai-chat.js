@@ -18,7 +18,7 @@ const AI_CHAT_HTML = `
         </div>
 
         <div id="ai-document-section" class="ai-document-section">
-            <input type="file" id="ai-file-input" style="display: none;" accept=".pdf,.docx,.csv,.xlsx">
+            <input type="file" id="ai-file-input" style="display: none;" accept=".pdf,.docx,.csv,.xlsx,.xls">
             <button id="ai-upload-btn" class="secondary-btn" style="width: 100%; border: 1px dashed var(--border);">📄 Dokumentum feltöltése</button>
             <div id="ai-active-doc" style="display: none; margin-top: 10px; font-size: 12px; color: var(--primary);">
                 <span id="ai-active-doc-name"></span>
@@ -134,6 +134,7 @@ const AI_CHAT_HTML = `
 
 .ai-chat-history {
     flex-grow: 1;
+    min-height: 0;
     padding: 20px;
     overflow-y: auto;
     display: flex;
@@ -199,6 +200,31 @@ const AI_CHAT_HTML = `
 .ai-option-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+.ai-worksheet-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.ai-worksheet-actions[hidden] {
+    display: none;
+}
+
+.ai-worksheet-list {
+    max-height: 150px;
+    overflow-y: auto;
+    margin: 10px 0;
+}
+
+.ai-worksheet-list label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    cursor: pointer;
 }
 
 .ai-quick-analysis {
@@ -576,21 +602,100 @@ export function initAiChat() {
     // File upload
     uploadBtn.addEventListener('click', () => fileInput.click());
 
+    function chooseWorksheets(names) {
+        return new Promise(resolve => {
+            const card = document.createElement('div');
+            card.className = 'ai-message system ai-worksheet-choice';
+            card.setAttribute('role', 'group');
+            card.setAttribute('aria-label', 'Excel munkalapok kiválasztása');
+            const question = document.createElement('div');
+            question.textContent = `Az Excel-fájl ${names.length} fület tartalmaz. Az összes fület dolgozzuk fel, vagy kiválasztja, melyiket?`;
+            card.appendChild(question);
+            const actions = document.createElement('div');
+            actions.className = 'ai-worksheet-actions';
+            card.appendChild(actions);
+            const list = document.createElement('div');
+            list.className = 'ai-worksheet-list';
+            list.hidden = true;
+            const checkboxes = names.map(name => {
+                const label = document.createElement('label');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = name;
+                const text = document.createElement('span');
+                text.textContent = name;
+                label.append(checkbox, text);
+                list.appendChild(label);
+                return checkbox;
+            });
+            card.appendChild(list);
+            const selectionActions = document.createElement('div');
+            selectionActions.className = 'ai-worksheet-actions';
+            selectionActions.hidden = true;
+            card.appendChild(selectionActions);
+            const finish = choice => {
+                card.remove();
+                resolve(choice);
+            };
+            const button = (text, parent, onClick) => {
+                const element = document.createElement('button');
+                element.type = 'button';
+                element.className = 'ai-option-btn';
+                element.textContent = text;
+                element.addEventListener('click', onClick);
+                parent.appendChild(element);
+                return element;
+            };
+            const allButton = button('Összes fül feldolgozása', actions, () => finish({ allWorksheets: true }));
+            button('Fülek kiválasztása', actions, () => {
+                list.hidden = false;
+                selectionActions.hidden = false;
+                checkboxes[0]?.focus();
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+            });
+            button('Mégse', actions, () => finish(null));
+            const selectedButton = button('Kijelölt fülek feldolgozása', selectionActions, () =>
+                finish({ worksheets: checkboxes.filter(input => input.checked).map(input => input.value) }));
+            selectedButton.disabled = true;
+            list.addEventListener('change', () => {
+                selectedButton.disabled = !checkboxes.some(input => input.checked);
+            });
+            chatHistory.appendChild(card);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+            allButton.focus();
+        });
+    }
+
     fileInput.addEventListener('change', async (e) => {
         const file = e.target.files[0];
-        if (!file) return;
+        if (!file || uploadBtn.disabled) return;
 
         addMessage(`⏳ ${file.name} feltöltése és feldolgozása...`, 'system');
         uploadBtn.disabled = true;
 
-        const formData = new FormData();
-        formData.append('file', file);
-
         try {
-            const res = await fetch('/api/v1/ai/upload', {
-                method: 'POST',
-                body: formData
-            });
+            const submit = choice => {
+                const formData = new FormData();
+                formData.append('file', file);
+                if (choice?.allWorksheets) formData.append('allWorksheets', 'true');
+                if (choice?.worksheets) formData.append('worksheets', JSON.stringify(choice.worksheets));
+                return fetch('/api/v1/ai/upload', { method: 'POST', body: formData });
+            };
+            let res = await submit();
+            let data;
+            if (res.ok) {
+                data = await res.json();
+                if (data.selectionRequired) {
+                    const choice = await chooseWorksheets(data.worksheets);
+                    if (!choice) {
+                        addMessage('📄 A fájl feldolgozása megszakítva.', 'system');
+                        return;
+                    }
+                    addMessage('⏳ A kiválasztott fülek feldolgozása...', 'system');
+                    res = await submit(choice);
+                    data = res.ok ? await res.json() : null;
+                }
+            }
             if (!res.ok) {
                 let errorDetails = `HTTP ${res.status} (${res.statusText || 'Hiba'})`;
                 try {
@@ -605,16 +710,22 @@ export function initAiChat() {
                 return;
             }
 
-            const data = await res.json();
-
             if (data.success) {
                 currentDocumentId = data.documentId;
-                activeDocName.textContent = `Aktív dokumentum: ${file.name} (${data.category})`;
+                const sheetSummary = data.worksheets ? ` – Fülek: ${data.worksheets.join(', ')}` : '';
+                activeDocName.textContent = `Aktív dokumentum: ${file.name} (${data.category})${sheetSummary}`;
                 activeDocDiv.style.display = 'block';
                 addMessage(`✅ ${file.name} sikeresen feldolgozva! Válasszon egy opciót vagy tegye fel a kérdését.`, 'system');
+                if (data.worksheets) {
+                    const summary = document.createElement('div');
+                    summary.className = 'ai-message system';
+                    summary.textContent = `Feldolgozott fülek: ${data.worksheets.join(', ')}`;
+                    chatHistory.appendChild(summary);
+                    chatHistory.scrollTop = chatHistory.scrollHeight;
+                }
                 loadOptions(currentDocumentId);
             } else {
-                addMessage(`❌ Hiba a feltöltés során: ${data.error || 'Ismeretlen hiba'}`, 'system');
+                addMessage(`❌ Hiba a feltöltés során: ${data.error || data.message || 'A szerver nem adott feldolgozási eredményt.'}`, 'system');
             }
         } catch (err) {
             console.error('AI upload error:', err);

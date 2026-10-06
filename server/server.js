@@ -12,8 +12,8 @@ app.use(express.json());
 // Szolgáljuk ki a statikus frontend fájlokat
 const path = require('path');
   app.use((req, res, next) => {
-    // JS/CSS file cache disable
-    if (req.path.endsWith('.js') || req.path.endsWith('.css')) {
+    // Refresh the entry page too, so its module version changes reach clients.
+    if (req.path === '/' || req.path.endsWith('.html') || req.path.endsWith('.js') || req.path.endsWith('.css')) {
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
