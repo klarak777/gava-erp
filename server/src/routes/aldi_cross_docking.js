@@ -61,24 +61,74 @@ router.post('/trucks', async (req, res) => {
 router.put('/trucks/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { truck_number, delivery_date, transporter, license_plate_1, license_plate_2, sent_to_pda, preparation_status, is_loaded, target_locations } = req.body;
+    const { 
+      truck_number, delivery_date, transporter, license_plate_1, license_plate_2, 
+      sent_to_pda, preparation_status, is_loaded, target_locations,
+      crossdock_pallets, truck_comment, invoice_number
+    } = req.body;
     
     const updateData = {
-      truck_number,
-      delivery_date,
-      transporter,
-      license_plate_1,
-      license_plate_2,
-      sent_to_pda,
-      preparation_status,
-      is_loaded,
       updated_at: knex.fn.now()
     };
+    if (truck_number !== undefined) updateData.truck_number = truck_number;
+    if (delivery_date !== undefined) updateData.delivery_date = delivery_date;
+    if (transporter !== undefined) updateData.transporter = transporter;
+    if (license_plate_1 !== undefined) updateData.license_plate_1 = license_plate_1;
+    if (license_plate_2 !== undefined) updateData.license_plate_2 = license_plate_2;
+    if (sent_to_pda !== undefined) updateData.sent_to_pda = sent_to_pda;
+    if (preparation_status !== undefined) updateData.preparation_status = preparation_status;
+    if (is_loaded !== undefined) updateData.is_loaded = is_loaded;
+    if (crossdock_pallets !== undefined) updateData.crossdock_pallets = crossdock_pallets;
+    if (truck_comment !== undefined) updateData.truck_comment = truck_comment;
+    if (invoice_number !== undefined) updateData.invoice_number = invoice_number;
+
     if (target_locations !== undefined) {
       updateData.target_locations = JSON.stringify(target_locations);
     }
     
-    await knex('aldi_trucks').where('id', id).update(updateData);
+    await knex.transaction(async trx => {
+      const truck = await trx('aldi_trucks').where('id', id).first().forUpdate();
+      if (!truck) throw new Error('Nem található kamion.');
+      
+      const wasLoaded = truck.is_loaded;
+      await trx('aldi_trucks').where('id', id).update(updateData);
+      
+      if (is_loaded === true && !wasLoaded) {
+          const commissionLines = await trx('aldi_commission_lines').where('aldi_truck_id', id);
+          for (let cl of commissionLines) {
+              let truckLine = cl.aldi_truck_line_id ? await trx('aldi_truck_lines').where('id', cl.aldi_truck_line_id).first() : await trx('aldi_truck_lines').where({ aldi_truck_id: id, product_name: cl.product_name }).first();
+              if (truckLine && truckLine.aldi_daily_order_line_id) {
+                  const cartons = parseFloat(cl.cartons) || 0;
+                  if (cartons > 0) {
+                      await trx('aldi_daily_order_lines').where('id', truckLine.aldi_daily_order_line_id).increment('fulfilled_cartons', cartons);
+                  }
+              }
+          }
+          const commissionLineIds = commissionLines.map(cl => cl.id);
+          const truckLines = await trx('aldi_truck_lines').where('aldi_truck_id', id);
+          const truckLineIds = truckLines.map(tl => tl.id);
+          
+          if (commissionLineIds.length > 0 || truckLineIds.length > 0) {
+              await trx('aldi_stock_locations')
+                .where(function() {
+                    if (commissionLineIds.length > 0) this.orWhereIn('commission_line_id', commissionLineIds);
+                    if (truckLineIds.length > 0) this.orWhereIn('truck_line_id', truckLineIds);
+                })
+                .del();
+          }
+      } else if (is_loaded === false && wasLoaded) {
+          const commissionLines = await trx('aldi_commission_lines').where('aldi_truck_id', id);
+          for (let cl of commissionLines) {
+              let truckLine = cl.aldi_truck_line_id ? await trx('aldi_truck_lines').where('id', cl.aldi_truck_line_id).first() : await trx('aldi_truck_lines').where({ aldi_truck_id: id, product_name: cl.product_name }).first();
+              if (truckLine && truckLine.aldi_daily_order_line_id) {
+                  const cartons = parseFloat(cl.cartons) || 0;
+                  if (cartons > 0) {
+                      await trx('aldi_daily_order_lines').where('id', truckLine.aldi_daily_order_line_id).decrement('fulfilled_cartons', cartons);
+                  }
+              }
+          }
+      }
+    });
     
     const updatedTruck = await knex('aldi_trucks').where('id', id).first();
     res.json(updatedTruck);

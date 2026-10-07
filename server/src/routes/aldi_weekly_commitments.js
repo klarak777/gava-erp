@@ -7,6 +7,7 @@ const xlsx = require('xlsx');
 const db = require('../db/db');
 const { RATE_PROFILES, defaultRates, validateRates } = require('../utils/commitmentRates');
 const { getAldiWeekBoundaries } = require('../utils/aldiWeeklyDates');
+const { planForecast, manualOverrides } = require('../utils/weeklyCommitmentExcel');
 
 // Konfiguráció
 const IS_WINDOWS = process.platform === 'win32';
@@ -37,7 +38,9 @@ function getISOWeekOfWednesday(d) {
     if (target.getDay() !== 4) {
         target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
     }
-    return 1 + Math.ceil((firstThursday - target) / 604800000);
+    const week = 1 + Math.ceil((firstThursday - target) / 604800000);
+    const year = new Date(firstThursday).getFullYear();
+    return { week, year };
 }
 
 function parseDatesAndWeek(filename) {
@@ -80,7 +83,9 @@ function parseDatesAndWeek(filename) {
             if (d.getDay() === 3) break;
             d.setDate(d.getDate() - 1);
         }
-        week_number = getISOWeekOfWednesday(d);
+        const iso = getISOWeekOfWednesday(d);
+        week_number = iso.week;
+        year = iso.year;
     }
 
     return { year, week_number, type };
@@ -115,9 +120,9 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         let headerDateStr = null;
         for (let h of headers) {
             if (typeof h === 'string' && h.toLowerCase().includes('előrejelzés')) {
-                let m = h.match(/(\d{2})\.(\d{2})\.(?:\d{4})?\s*-\s*(\d{2})\.(\d{2})\.(?:\d{4})?/);
+                let m = h.match(/(\d{2})\.(\d{2})\.(?:(\d{4}))?\s*[-–]\s*(\d{2})\.(\d{2})\.(?:(\d{4}))?/);
                 if (m) {
-                    let y = year || new Date().getFullYear();
+                    let y = m[3] || m[6] || year || new Date().getFullYear();
                     headerDateStr = `${y}-${m[2]}-${m[1]}`; // YYYY-MM-DD
                     break;
                 }
@@ -136,8 +141,9 @@ router.post('/upload', upload.single('file'), async (req, res) => {
                 if (d.getDay() === 3) break;
                 d.setDate(d.getDate() - 1);
             }
-            week_number = getISOWeekOfWednesday(d);
-            year = d.getFullYear();
+            const iso = getISOWeekOfWednesday(d);
+            week_number = iso.week;
+            year = iso.year;
         }
 
         trx = await db.transaction();
@@ -220,7 +226,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
                     dailyValues[key] = v;
                     total += v;
                 }
-                qty = total;
+                qty = planForecast(headers, row, total);
             }
 
             itemsToInsert.push({
@@ -231,7 +237,10 @@ router.post('/upload', upload.single('file'), async (req, res) => {
                 xlsx_product_name: xlsxName,
                 action_period: actionPeriodStr,
                 total_forecast_cartons: qty,
-                daily_values: dailyValues ? JSON.stringify(dailyValues) : null
+                daily_values: dailyValues ? JSON.stringify(dailyValues) : null,
+                manual_action_demand: null,
+                manual_normal_demand: null,
+                action_days_json: null
             });
         }
 
@@ -383,7 +392,7 @@ router.get('/:year/:week_number', async (req, res) => {
             .join('aldi_daily_orders as o', 'o.id', 'l.daily_order_id')
             .where('o.version_status', 'current')
             .whereBetween('o.delivery_date', [startDate, endDate])
-            .select('o.delivery_date', 'l.gtin', 'l.ordered_cartons');
+            .select('o.delivery_date', 'l.gtin', 'l.ordered_cartons', 'l.fulfilled_cartons');
         const cpRows = await db('chain_products').where('chain', 'ALDI').select('gtin', 'article_number');
         const articleByGtin = new Map();
         for (const cp of cpRows) {
@@ -402,9 +411,12 @@ router.get('/:year/:week_number', async (req, res) => {
 
             const key = `${d}_${o.article_number}`;
             if (!ordersByDateAndItem[key]) {
-                ordersByDateAndItem[key] = { date: d, article_number: o.article_number, total: 0 };
+                ordersByDateAndItem[key] = { date: d, article_number: o.article_number, total: 0, fulfilled: null };
             }
             ordersByDateAndItem[key].total += (parseFloat(o.ordered_cartons) || 0);
+            if (o.fulfilled_cartons != null) {
+                ordersByDateAndItem[key].fulfilled = (ordersByDateAndItem[key].fulfilled ?? 0) + (parseFloat(o.fulfilled_cartons) || 0);
+            }
         }
 
         res.json({
@@ -479,7 +491,7 @@ router.post('/stock', async (req, res) => {
     }
 });
 
-// --- Visszamenőleges újrafeldolgozás: meglévő action Excel-ekből daily_values pótlása ---
+// Re-read original forecasts and daily bases, preserving saved manual overrides.
 router.post('/reprocess', async (req, res) => {
     const ACTION_DAY_COLS = [
         { col: 5, key: 'thu' }, // F = Csütörtök
@@ -493,9 +505,15 @@ router.post('/reprocess', async (req, res) => {
 
     try {
         // 1. Lekérjük az összes commitment-et amelyhez action fájl van feltöltve
-        const commitments = await db('aldi_weekly_commitments')
+        let commitmentsQuery = db('aldi_weekly_commitments')
             .whereNotNull('action_file_path')
             .select('id', 'year', 'week_number', 'action_file_path');
+        if (req.body?.year !== undefined || req.body?.week_number !== undefined) {
+            const year = Number(req.body.year), week = Number(req.body.week_number);
+            if (!getAldiWeekBoundaries(year, week)) return res.status(400).json({ error: 'Érvénytelen év vagy hét.' });
+            commitmentsQuery = commitmentsQuery.where({ year, week_number: week });
+        }
+        const commitments = await commitmentsQuery;
 
         let totalUpdated = 0;
         let totalSkipped = 0;
@@ -536,8 +554,8 @@ router.post('/reprocess', async (req, res) => {
             const displayIdx = headers.findIndex(h => typeof h === 'string' && h.toLowerCase().includes('display'));
             const actionPeriodIdx = headers.findIndex(h => typeof h === 'string' && h.toLowerCase().includes('akciós időszak'));
 
-            // 4. Soronként napi értékek kiszámítása és DB frissítés
-            let weekUpdated = 0;
+            // Re-read the original forecast and daily bases; leave manual edits untouched.
+            const sourceGroups = new Map();
             for (let i = headerRowIdx + 1; i < jsonData.length; i++) {
                 const row = jsonData[i];
                 const displayStr = row[displayIdx] ? row[displayIdx].toString().trim() : '';
@@ -552,32 +570,47 @@ router.post('/reprocess', async (req, res) => {
                     if (v < 0) v = 0;
                     dailyValues[key] = v;
                 }
-                const total = Object.values(dailyValues).reduce((s, v) => s + v, 0);
+                const dailyTotal = Object.values(dailyValues).reduce((s, v) => s + v, 0);
+                const total = planForecast(headers, row, dailyTotal);
 
                 const actionPeriodStr = actionPeriodIdx !== -1 && row[actionPeriodIdx]
                     ? row[actionPeriodIdx].toString().trim() : null;
 
-                // Csak azokat frissítjük ahol daily_values NULL volt, ÉS az action_period egyezik
-                let query = db('aldi_weekly_commitment_items')
-                    .where({ commitment_id: commitment.id, type: 'action', display_name: displayStr })
-                    .whereNull('daily_values');
-
-                if (actionPeriodStr) {
-                    query = query.where('action_period', actionPeriodStr);
-                } else {
-                    query = query.whereNull('action_period');
-                }
-
-                const updated = await query.update({
-                    daily_values: JSON.stringify(dailyValues),
-                    total_forecast_cartons: total,
-                    ...(actionPeriodStr ? { action_period: actionPeriodStr } : {})
-                });
-                weekUpdated += updated;
+                const key = JSON.stringify([displayStr, actionPeriodStr]);
+                if (!sourceGroups.has(key)) sourceGroups.set(key, { displayStr, actionPeriodStr, rows: [] });
+                sourceGroups.get(key).rows.push({ daily_values: dailyValues, total_forecast_cartons: total });
             }
 
+            let skippedGroups = 0;
+            const weekUpdated = await db.transaction(async trx => {
+                let count = 0;
+                for (const group of sourceGroups.values()) {
+                    let query = trx('aldi_weekly_commitment_items')
+                        .where({ commitment_id: commitment.id, type: 'action', display_name: group.displayStr });
+                    query = group.actionPeriodStr ? query.where('action_period', group.actionPeriodStr) : query.whereNull('action_period');
+                    const existing = await query.orderBy('id', 'asc').forUpdate();
+                    let rows = group.rows;
+                    if (existing.length === 1 && rows.length > 1) {
+                        rows = [{
+                            total_forecast_cartons: rows.reduce((sum, row) => sum + row.total_forecast_cartons, 0),
+                            daily_values: Object.fromEntries(ACTION_DAY_COLS.map(({key}) => [key, rows.reduce((sum, row) => sum + row.daily_values[key], 0)]))
+                        }];
+                    }
+                    if (existing.length !== rows.length) { skippedGroups++; continue; }
+                    for (let i = 0; i < existing.length; i++) {
+                        count += await trx('aldi_weekly_commitment_items').where({ id: existing[i].id }).update({
+                            daily_values: JSON.stringify(rows[i].daily_values),
+                            total_forecast_cartons: rows[i].total_forecast_cartons
+                        });
+                    }
+                }
+                return count;
+            });
+
             totalUpdated += weekUpdated;
-            results.push({ week: commitment.week_number, year: commitment.year, status: 'ok', updated_rows: weekUpdated });
+            totalSkipped += skippedGroups;
+            results.push({ week: commitment.week_number, year: commitment.year,
+                status: skippedGroups ? `${skippedGroups} tételcsoport kihagyva: eltérő Excel/adatbázis sorszám` : 'ok', updated_rows: weekUpdated });
         }
 
         res.json({
@@ -589,6 +622,32 @@ router.post('/reprocess', async (req, res) => {
         });
     } catch (err) {
         console.error('Reprocess error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Update manual demand on a specific article in a week
+router.put('/weeks/:year/:week_number/article/:article_number', async (req, res) => {
+    try {
+        const { year, week_number, article_number } = req.params;
+        let values;
+        try { values = manualOverrides(req.body); }
+        catch (error) { return res.status(400).json({ error: error.message }); }
+
+        const commitment = await db('aldi_weekly_commitments').where({ year, week_number }).first();
+        if (!commitment) return res.status(404).json({ error: 'Commitment not found' });
+
+        const updated = await db('aldi_weekly_commitment_items')
+            .where({ commitment_id: commitment.id, display_name: article_number })
+            .update({
+                ...values,
+                updated_at: db.fn.now()
+            });
+        if (!updated) return res.status(404).json({ error: 'A termék nem található ezen a héten.' });
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Update item error:', err);
         res.status(500).json({ error: err.message });
     }
 });

@@ -265,7 +265,13 @@ router.post('/upload', upload.single('file'), async (req, res) => {
                     change_type: changeType,
                     is_virtual_removed: !incomingMap.has(gtin) || explicitlyDeleted,
                     action_code: actionMap.get(gtin) || null
-                });
+                }).returning('*');
+
+                const oldLine = previousOrder ? previousLines.find(l => l.gtin === gtin) : null;
+                if (oldLine) {
+                    await trx('aldi_daily_order_lines').where({ id: newLine.id }).update({ fulfilled_cartons: oldLine.fulfilled_cartons });
+                    await trx('aldi_truck_lines').where({ aldi_daily_order_line_id: oldLine.id }).update({ aldi_daily_order_line_id: newLine.id });
+                }
             }
 
             const anySent = await trx('aldi_daily_order_lines as l')

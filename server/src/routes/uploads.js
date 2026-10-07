@@ -169,6 +169,128 @@ router.post('/invoice', upload.array('files', 10), async (req, res) => {
     }
 });
 
+/**
+ * POST /api/v1/uploads/aldi-invoice
+ * ALDI Belföldi Fuvarok számla feltöltése
+ */
+router.post('/aldi-invoice', upload.array('files', 10), async (req, res) => {
+    try {
+        const { truckNumber, invoiceNumber, truckId } = req.body;
+
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ error: 'Nincs feltöltött fájl.' });
+        }
+        if (!truckId) {
+            return res.status(400).json({ error: 'A truckId mező kötelező.' });
+        }
+
+        // Adatbázis ellenőrzése
+        const initialCheck = await db('aldi_trucks').where('id', truckId).first();
+        if (!initialCheck) {
+            return res.status(404).json({ error: 'A megadott kamion nem található az adatbázisban.' });
+        }
+
+        const safeTruckNum = path.basename((initialCheck.truck_number || String(truckId)).replace(/[<>:"/\\|?*]/g, '_').trim());
+        if (!safeTruckNum || safeTruckNum === '.' || safeTruckNum === '..') {
+            return res.status(400).json({ error: 'Érvénytelen kamionszám.' });
+        }
+
+        const ALDI_FUVARSZAMLAK_PATH = path.join(RAKTAR_BASE, 'MI Teszt', 'ERP ALDI', 'Fuvarszámlák');
+        const targetDir = path.resolve(path.join(ALDI_FUVARSZAMLAK_PATH, safeTruckNum));
+
+        if (!targetDir.startsWith(path.resolve(ALDI_FUVARSZAMLAK_PATH))) {
+            return res.status(400).json({ error: 'Érvénytelen útvonal.' });
+        }
+
+        try {
+            fs.mkdirSync(targetDir, { recursive: true });
+        } catch (mkdirErr) {
+            console.error('[uploads] ALDI Számla mappa létrehozási hiba:', mkdirErr);
+            return res.status(500).json({ error: `Nem sikerült létrehozni a mappát.`, detail: mkdirErr.message });
+        }
+
+        const uploadedFiles = [];
+        const newDbEntries = [];
+
+        try {
+            for (const file of req.files) {
+                const originalnameUtf8 = Buffer.from(file.originalname, 'latin1').toString('utf8');
+                const ext = path.extname(originalnameUtf8);
+                const baseName = path.basename(originalnameUtf8, ext).replace(/[<>:"/\\|?*]/g, '_');
+                const timestamp = Date.now();
+                const safeFileName = `${baseName}_${timestamp}${ext}`;
+                const targetFilePath = path.join(targetDir, safeFileName);
+                fs.writeFileSync(targetFilePath, file.buffer);
+                uploadedFiles.push(safeFileName);
+                newDbEntries.push({
+                    fileName: safeFileName,
+                    filePath: targetFilePath
+                });
+            }
+        } catch (writeErr) {
+            console.error('[uploads] ALDI Számla fájl írási hiba:', writeErr);
+            return res.status(500).json({ error: `Nem sikerült a fájlokat elmenteni.`, detail: writeErr.message });
+        }
+
+        await db.transaction(async trx => {
+            const currentTruck = await trx('aldi_trucks').where('id', truckId).first().forUpdate();
+            let currentFiles = [];
+            if (currentTruck && currentTruck.invoice_files) {
+                currentFiles = typeof currentTruck.invoice_files === 'string' ? JSON.parse(currentTruck.invoice_files) : currentTruck.invoice_files;
+            }
+            if (!Array.isArray(currentFiles)) currentFiles = [];
+            
+            currentFiles.push(...newDbEntries);
+            
+            const updateData = { invoice_files: JSON.stringify(currentFiles) };
+            if (invoiceNumber !== undefined && invoiceNumber.trim() !== '') {
+                updateData.invoice_number = invoiceNumber.trim();
+            }
+
+            await trx('aldi_trucks').where('id', truckId).update(updateData);
+        });
+
+        console.log(`[uploads] ALDI Számlák feltöltve és adatbázisba mentve: ${uploadedFiles.join(', ')}`);
+
+        res.json({
+            success: true,
+            files: currentFiles,
+            message: `${uploadedFiles.length} fájl sikeresen feltöltve.`
+        });
+
+    } catch (err) {
+        console.error('[uploads] Általános hiba ALDI számla feltöltéskor:', err);
+        res.status(500).json({ error: 'Szerver hiba a feltöltés során.', detail: err.message });
+    }
+});
+
+router.get('/aldi-invoice/file', async (req, res) => {
+    try {
+        const { truckId, fileName } = req.query;
+        if (!truckId || !fileName) return res.status(400).send('Hiányzó paraméterek');
+
+        const truck = await db('aldi_trucks').where('id', truckId).first();
+        if (!truck || !truck.invoice_files) return res.status(404).send('Nem található a kamion vagy nincs fuvarszámla.');
+
+        let files = typeof truck.invoice_files === 'string' ? JSON.parse(truck.invoice_files) : truck.invoice_files;
+        if (!Array.isArray(files)) return res.status(404).send('Érvénytelen fuvarszámla formátum.');
+
+        const fileRecord = files.find(f => f.fileName === fileName);
+        if (!fileRecord) return res.status(404).send('A fájl nem található a nyilvántartásban.');
+
+        const filePath = fileRecord.filePath;
+        const ALDI_FUVARSZAMLAK_PATH = path.join(RAKTAR_BASE, 'MI Teszt', 'ERP ALDI', 'Fuvarszámlák');
+
+        if (!filePath.startsWith(ALDI_FUVARSZAMLAK_PATH)) return res.status(403).send('Érvénytelen útvonal.');
+
+        if (!fs.existsSync(filePath)) return res.status(404).send('A fájl fizikailag nem található.');
+
+        res.download(filePath, fileName);
+    } catch (err) {
+        console.error('[uploads] Letöltési hiba:', err);
+        res.status(500).send('Szerver hiba letöltéskor.');
+    }
+});
 
 /**
  * GET /api/v1/uploads/delivery-note/:season/:orderNumber/:customerOrderNo/check

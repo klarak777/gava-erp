@@ -38,11 +38,12 @@ import { renderAdmin } from './modules/admin.js';
 import { renderPennyStock } from './modules/penny_stock.js';
 import { renderPennyBelfoldiFuvarok } from './modules/penny_belfoldi_fuvarok.js';
 import { renderPennyKomissiosUtasitas } from './modules/penny_komissios_utasitas.js';
-import { renderAldiRendelesek } from './modules/aldi_rendelesek.js?v=20261006-windows';
+import { renderAldiRendelesek } from './modules/aldi_rendelesek.js?v=20261007-stock-fulfilled';
 import { ALDI_ORDER_VIEWS } from './data/aldi-order-views.js';
 import { renderAldiStock } from './modules/aldi_stock.js';
 import { renderAldiQuality } from './modules/aldi_quality.js';
 import { renderAldiRakodas } from './modules/aldi_rakodas.js';
+import { renderAldiFuvarokOsszesito } from './modules/aldi_fuvarok_osszesito.js';
 import { renderAldiBelfoldiFuvarok } from './modules/aldi_belfoldi_fuvarok.js';
 import { renderAldiTermekAdattabla } from './modules/aldi_termekek.js';
 import { renderPdaEmulator } from './modules/pda_emulator.js?v=3';
@@ -107,6 +108,7 @@ const modules = {
     aldi_stock: { render: renderAldiStock, title: 'ALDI – Stock' },
     aldi_quality: { render: renderAldiQuality, title: 'ALDI – Quality' },
     aldi_rakodas: { render: renderAldiRakodas, title: 'ALDI – Rakodás' },
+    aldi_fuvarok_osszesito: { render: renderAldiFuvarokOsszesito, title: 'ALDI – Fuvarok összesítő' },
     aldi_belfoldi_fuvarok: { render: renderAldiBelfoldiFuvarok, title: 'ALDI – Belföldi fuvarok' },
     aldi_termekek: { render: renderAldiTermekAdattabla, title: 'ALDI – Termék adattábla' },
     pda_emulator: { render: renderPdaEmulator, title: 'PDA Emulátor' }

@@ -58,7 +58,7 @@ test('ALDI Orders flyout opens on hover or click and launches four independent w
     await submenu.locator(`[data-module="${id}"]`).click();
   };
   assert.deepEqual(await category.locator('.nav-category-items > .nav-group-button .nav-label, .nav-submenu-toggle .nav-label').allTextContents(), [
-    'Rendelések', 'Stock', 'Quality', 'Rakodás', 'Belföldi fuvarok', 'Termék adattábla'
+    'Rendelések', 'Stock', 'Quality', 'Rakodás', 'Fuvarok összesítő', 'Belföldi fuvarok', 'Termék adattábla'
   ]);
   assert.deepEqual(await submenu.locator('.nav-label').allTextContents(), [
     'Napi rendelés', 'Heti lekötés', 'Heti árak', 'Komissió utasítás'

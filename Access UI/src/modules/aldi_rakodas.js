@@ -192,12 +192,14 @@ export function renderAldiRakodas(container, windowManager) {
 
   // Renderelés: Bal oldali táblázat (Kamionok)
   function renderTrucks() {
-    if (!state.trucks || state.trucks.length === 0) {
+    const trucksToShow = state.trucks.filter(t => !t.is_loaded);
+    
+    if (!trucksToShow || trucksToShow.length === 0) {
       trucksTbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#94a3b8; font-size:11px;">– Nincs rögzített kamion –</td></tr>';
       return;
     }
 
-    trucksTbody.innerHTML = state.trucks.map(t => {
+    trucksTbody.innerHTML = trucksToShow.map(t => {
       const isSelected = t.id === state.selectedTruckId;
       const bg = isSelected ? '#dbeafe' : 'transparent';
       const dateStr = t.delivery_date ? String(t.delivery_date).substring(0, 10) : '-';
@@ -269,16 +271,31 @@ export function renderAldiRakodas(container, windowManager) {
         const id = parseInt(e.target.getAttribute('data-id'));
         const isLoaded = e.target.checked;
         const truck = state.trucks.find(t => t.id === id);
+        
+        if (isLoaded && truck) {
+          const name = truck.truck_number || id;
+          if (!confirm(`Biztosan rakodottra állítod a(z) ${name} kamiont? Ez áthelyezi a kamiont a Fuvarok összesítőbe és a Belföldi fuvarok modulba.`)) {
+            e.target.checked = false;
+            return;
+          }
+        }
+
         if (truck) {
           truck.is_loaded = isLoaded;
+          renderTrucks(); // <--- IMMEDIATELY RE-RENDER SO IT DISAPPEARS
           try {
-            await fetch(`/api/v1/aldi-cross-docking/trucks/${id}`, {
+            const res = await fetch(`/api/v1/aldi-cross-docking/trucks/${id}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(truck)
             });
+            if (!res.ok) throw new Error('HTTP hiba: ' + res.status);
           } catch (err) {
             console.error('Rakodva státusz hiba:', err);
+            alert('Hiba történt a mentés során: ' + err.message);
+            // On error, revert
+            truck.is_loaded = !isLoaded;
+            renderTrucks();
           }
         }
       });

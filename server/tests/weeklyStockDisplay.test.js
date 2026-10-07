@@ -14,6 +14,54 @@ test('stock snapshot uses weekly closing for the entire week', async () => {
   assert.equal(stockAtDate(1000,[],[]),1000);
 });
 
+test('stock consumption uses fulfilled, then ordered, then estimated, including explicit zeros', async () => {
+  const { dailyBalance } = await helpers;
+  assert.equal(dailyBalance(1000,100,null,170).closing,930);
+  assert.equal(dailyBalance(1000,100,120,170).closing,980);
+  assert.equal(dailyBalance(1000,100,120,170,80).closing,1020);
+  assert.equal(dailyBalance(1000,100,120,170,0).closing,1100);
+  assert.equal(dailyBalance(1000,100,0,170,null).closing,1100);
+  assert.equal(dailyBalance(1000,100,null,170,null).closing,930);
+  assert.equal(dailyBalance(100,0,80,170,120).shortage,20);
+  assert.equal(dailyBalance(100,0,80,170,0).shortage,0);
+});
+
+test('table fulfillment changes stock and subsequent shortage while estimates and KW remain intact', async () => {
+  const util = await helpers;
+  const ui = fs.readFileSync(path.join(__dirname, '../../Access UI/src/modules/aldi_rendelesek.js'), 'utf8');
+  const start = ui.indexOf('  function renderHetiLekotesHtml()');
+  const end = ui.indexOf('  async function fetchHetiLekotesWeeks()',start);
+  const state = {
+    hetiLekotesYear:2026, hetiLekotesSelectedWeek:37, hetiLekotesWeeks:[37],
+    hetiLekotesData:{
+      items:[{type:'normal',display_name:'530766',product_name:'Korte',total_forecast_cartons:1000}],
+      stocks:[{article_number:'530766',initial_stock:1000}],daily_orders:[],week_dates:dates
+    }
+  };
+  const render = vm.runInNewContext(ui.slice(start,end)+'\nrenderHetiLekotesHtml', {
+    ...util,state,budapestToday:()=>dates[0],buildYearOptions:()=>''
+  });
+  const closing = html => Number(html.match(/class="lekotes-current-stock"[^>]*>(-?\d+)</)[1]);
+  assert.equal(closing(render()),0);
+  const order = {date:dates[0],article_number:'530766',total:120,fulfilled:null};
+  state.hetiLekotesData.daily_orders.push(order);
+  assert.equal(closing(render()),50);
+  order.fulfilled=80;
+  assert.equal(closing(render()),90);
+  order.fulfilled=0;
+  assert.equal(closing(render()),170);
+  order.fulfilled=null;
+  assert.equal(closing(render()),50);
+  order.fulfilled=200;
+  const html=render();
+  assert.equal(closing(html),-30);
+  assert.match(html,/>\s*-30\s*</);
+  assert.match(html,/<span>1000<\/span>/);
+  assert.match(html,/>170<\/td>/);
+  assert.match(html,/>200<\/td>/);
+  assert.equal(closing(render()),-30); // Rendering again does not deduct fulfillment twice.
+});
+
 test('actual stock cell changes with estimates, actual orders, zero and arrivals; opening remains editable', async () => {
   const util = await helpers;
   const ui = fs.readFileSync(path.join(__dirname, '../../Access UI/src/modules/aldi_rendelesek.js'), 'utf8');

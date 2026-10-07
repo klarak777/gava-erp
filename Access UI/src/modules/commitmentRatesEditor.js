@@ -37,15 +37,15 @@ export async function openCommitmentRatesEditor({ year, week, onSaved }) {
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;';
   overlay.innerHTML = `<div role="dialog" aria-modal="true" aria-labelledby="rates-title" style="background:white;border-radius:12px;width:1150px;max-width:100%;max-height:90vh;display:flex;flex-direction:column;">
     <div style="padding:16px 20px;border-bottom:1px solid #e2e8f0;"><h2 id="rates-title" style="margin:0;font-size:18px;">⚙ Beállítás – ${year} / KW${week}</h2>
-      <p style="font-size:13px;margin-bottom:0;">A beállítás csak erre a hétre vonatkozik. Minden időszak összege külön 100% legyen. Mentés után a becslés és a készlet újraszámolódik; a tényleges rendelés nem változik.</p></div>
+      <p style="font-size:13px;margin-bottom:0;">A beállítás ettől a héttől érvényes, a múltbéli adatokon nem módosít. Minden időszak összege külön 100% legyen. Mentés után a becslés és a készlet újraszámolódik; a tényleges rendelés nem változik.</p></div>
     <div data-body style="padding:0 20px;overflow:auto;">Betöltés…</div>
     <div style="padding:16px 20px;border-top:1px solid #e2e8f0;"><div data-error role="alert" style="color:#b91c1c;margin-bottom:10px;"></div>
-      <div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" data-reset disabled>Alapértékek visszaállítása</button><button type="button" data-cancel>Mégse</button><button type="button" data-save disabled style="background:#0284c7;color:white;border:0;border-radius:6px;padding:9px 16px;">Mentés és újraszámítás</button></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" data-cancel>Mégse</button><button type="button" data-save disabled style="background:#0284c7;color:white;border:0;border-radius:6px;padding:9px 16px;">Mentés és újraszámítás</button></div>
     </div></div>`;
   document.body.appendChild(overlay);
   const previousFocus = document.activeElement;
   const body = overlay.querySelector('[data-body]'), errorBox = overlay.querySelector('[data-error]');
-  const save = overlay.querySelector('[data-save]'), reset = overlay.querySelector('[data-reset]'), cancel = overlay.querySelector('[data-cancel]');
+  const save = overlay.querySelector('[data-save]'), cancel = overlay.querySelector('[data-cancel]');
   let saving = false;
   const close = () => { if (!saving) { overlay.remove(); previousFocus?.focus(); } };
   cancel.addEventListener('click', close);
@@ -88,11 +88,6 @@ export async function openCommitmentRatesEditor({ year, week, onSaved }) {
     }
     body.innerHTML = renderRateTables(profiles, data.rates);
     body.addEventListener('input', validate);
-    reset.disabled = false;
-    reset.addEventListener('click', () => {
-      body.innerHTML = renderRateTables(profiles, {});
-      validate();
-    });
     validate();
     body.querySelector('input')?.focus();
     save.addEventListener('click', async () => {
