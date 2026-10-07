@@ -31,7 +31,9 @@ A 30%–30%–22%–18% akciós profil a **2549** kartonra vonatkozik. A normál
 
 ## 3. KW szerkesztő és import
 
-- A szerkesztőben előre megjelenik a kiszámolt Normál és Akciós kartonszám, az eredeti akciós napok pedig be vannak pipálva.
+- Akciós időszakkal megjelölt sornál **Akciós időszak** és **Akciós időszakon kívüli** mező jelenik meg a kiszámolt részösszegekkel, az eredeti akciós napok pedig be vannak pipálva. A példában ezek 2549 és 138 karton.
+- Akciós időszak nélküli sornál csak egy **Normál** mező jelenik meg, akciós mező és napválasztó nélkül. Mentése csak a normál mennyiséget küldi; nem írja át a nem szerkesztett akciós mezőket.
+- A korábban Normál kartonszámnak nevezett mező az akciós soroknál az akción kívüli részt jelentette. Az új címke ezt egyértelműsíti; a számítási szabály és az adatbázis-mezők elnevezése megmarad.
 - A megnyitás, a Mégsem és a változatlan mentés nem hoz létre kézi felülírást. Csak a ténylegesen módosított mező lesz kézi érték.
 - A mentett kézi akciós összeg a teljes akciós alapot helyettesíti; a keresleti többletet nem adjuk hozzá újra.
 - A kézi nulla érvényes. Az üres mennyiségmező visszaállítja az Excelből számolt alapot. Hibás/negatív mennyiséget és érvénytelen naplistát a szerver elutasít.
@@ -89,6 +91,7 @@ A RAKODVA vizsgálat során az alkalmazáskódot és a tényleges készletadatok
 ## 7. Ellenőrzések és állapot
 
 - A Heti lekötés és a készletelsőbbség módosítása után teljes `server/npm.cmd test`: **84 teszt, 82 sikeres, 0 hibás, 2 kihagyott PostgreSQL-integrációs teszt**.
+- A szerkesztő mezőinek későbbi módosítása után **20 célzott teszt sikeres, 0 hibás**. A valódi Chromium-próba ellenőrzi a két időszak külön mezőit, a Normál egymezős szerkesztést, a mentést, újranyitást, nullát és Excel-alapra visszaállítást. A DO tesztszerver frissítése ebben a munkában nem történt meg.
 - A RAKODVA ellenőrzés külön, valódi PostgreSQL-en, kizárólag az adott kapcsolathoz tartozó ideiglenes táblákkal történt. A lokációs és fuvarösszesítő végpontokat is a tényleges route-kóddal hívtam. Normál törlés, más kamion készletének megőrzése, ismételt mentés és kikényszerített tranzakciós hiba egyaránt ellenőrizve.
 - Az AL02 készletállapotának ellenőrzése csak olvasási lekérdezés volt. Tényleges kamion RAKODVA állapotát, üzemi készletet vagy éles adatbázisszekvenciát nem változtattam.
 - A Belföldi fuvarok rakodottállapot-szűrését forráskódból ellenőriztem; ebben a célzott próbában külön böngészős megjelenítését nem teszteltem.

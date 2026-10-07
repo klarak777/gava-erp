@@ -74,13 +74,18 @@ A táblázat és a szerkesztő ugyanazt a korrigált alapot használja: **Normá
 
 ## Szerkesztés
 
-- A Normál és Akciós kartonszám mezőben a táblázattal azonos, kiszámolt mennyiségek jelennek meg. Az eredeti akciós napok előre be vannak pipálva.
+- Akciós időszakkal megjelölt sornál két szerkeszthető mező jelenik meg: **Akciós időszak** és **Akciós időszakon kívüli**. Ezek a táblázattal azonos, kiszámolt részösszegeket tartalmazzák. Az eredeti akciós napok előre be vannak pipálva.
+- Akciós időszak nélküli sornál csak a **Normál** mező jelenik meg; nincs akciós mennyiségmező vagy akciós napválasztó.
+- Az akciós sor korábbi „Normál kartonszám” mezője az akciós időszakon kívüli részösszeget jelentette. Az új elnevezés ezt egyértelműsíti. Az API-mező neve továbbra is `manual_normal_demand`; az akciós mennyiségé `manual_action_demand`.
+- A mezők megjelenését a sorban megjelölt akciós időszak határozza meg, nem a kartonszám nullától eltérése. Másik hétre eső, de megjelölt akciónál is két mező jelenik meg; az adott hét akciós mennyisége ilyenkor lehet 0.
 - A szerkesztő megnyitása, a Mégsem és a változatlan értékek mentése nem ír adatot az API-ba.
 - Csak a megváltoztatott érték lesz kézi felülírás. A változatlan, Excelből származó másik mennyiség nem válik tartós kézi értékké.
 - A kézi mennyiség vagy naplista módosítása után is a Beállítások százalékprofiljai érvényesülnek. Az akción kívüli rész továbbra is számolódik.
 - A kézi nulla érvényes érték. Az üres mennyiségmező visszaállítja az adott mennyiség Excelből számolt alapját.
 - A negatív vagy nem számként értelmezhető mennyiséget, illetve hibás naplistát a szerver elutasítja. Akciós mennyiséghez a felület legalább egy kiválasztott napot kér.
 - Új hét importja nem örökli automatikusan a korábbi hét kézi mennyiségeit és napjait. A korábban mentett kézi értékeket ez a javítás nem törli.
+
+A mezőmegjelenítés módosítása után **20 célzott teszt sikeres, 0 hibás**. Chromiumban ellenőrizve: a két időszak helyes neve és részösszege, az egymezős Normál szerkesztés, mentés és újranyitás, nulla, üres mezővel visszaállítás, valamint másik hétre eső akció. A DO tesztszerver ebben a munkában nem frissült; a feliratmódosítás önmagában nem pótolja a hiányzó napi Excel-adatokat.
 
 ## Készlet lista: a Teljesített mennyiség elsőbbsége
 

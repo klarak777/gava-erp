@@ -11,16 +11,20 @@ test('weekly editor shows Excel quantities and original days; only edits persist
   const item = {type:'action',display_name:'530766',product_name:'Körte',action_period:'03.09.-06.09.',total_forecast_cartons:1706,
     daily_values:{thu:500,fri:500,sat:300,sun:268,mon:40,tue:40,wed:58},manual_action_demand:null,manual_normal_demand:null,action_days_json:null};
   const demand = {type:'normal',display_name:'530766',total_forecast_cartons:2687};
+  const normalItem = {type:'normal',display_name:'3301',product_name:'Normál termék',total_forecast_cartons:1000};
+  const outsideItem = {...item,display_name:'3302',product_name:'Másik hét akciója',action_period:'13.08.-16.08.',total_forecast_cartons:1706};
+  const items = [item,demand,normalItem,outsideItem];
   const server = http.createServer(async (req,res) => {
     const url = new URL(req.url,'http://localhost');
     if (url.pathname.startsWith('/api/')) {
       let data = [];
       if (req.method === 'PUT') {
         const chunks=[];for await(const chunk of req) chunks.push(chunk);
-        const body=JSON.parse(Buffer.concat(chunks).toString()); puts.push(body); Object.assign(item,body); data={success:true};
+        const body=JSON.parse(Buffer.concat(chunks).toString()); puts.push(body);
+        Object.assign(items.find(row=>row.display_name===decodeURIComponent(url.pathname.split('/').at(-1))),body); data={success:true};
       } else if (/\/aldi-weekly-commitments\/weeks\//.test(url.pathname)) data=[36];
       else if (/\/aldi-weekly-commitments\/\d+\/36$/.test(url.pathname)) data={
-        items:[item,demand],stocks:[],daily_orders:[],week_dates:['2026-09-02','2026-09-03','2026-09-04','2026-09-05','2026-09-06','2026-09-07','2026-09-08']
+        items,stocks:[],daily_orders:[],week_dates:['2026-09-02','2026-09-03','2026-09-04','2026-09-05','2026-09-06','2026-09-07','2026-09-08']
       };
       res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify(data));return;
     }
@@ -41,9 +45,13 @@ test('weekly editor shows Excel quantities and original days; only edits persist
   await edit().waitFor();
   const checkDays=async expected=>assert.deepEqual(await page.locator('.aldi-edit-day-cb:checked').evaluateAll(nodes=>nodes.map(n=>n.value).sort()),[...expected].sort());
   const kw=()=>edit().locator('..').locator('span').innerText();
-  const estimates=()=>page.locator('#target table').first().locator('tbody tr').first().locator('td').evaluateAll(cells=>[5,8,11,14,17,20,23].map(index=>Number(cells[index].textContent.trim())));
+  const estimates=()=>edit().locator('xpath=ancestor::tr').locator('td').evaluateAll(cells=>[5,8,11,14,17,20,23].map(index=>Number(cells[index].textContent.trim())));
   assert.deepEqual(await estimates(),[765,765,561,459,28,41,69]);
   await edit().click();
+  assert.equal(await page.getByLabel('Akciós időszak',{exact:true}).inputValue(),'2549');
+  assert.equal(await page.getByLabel('Akciós időszakon kívüli',{exact:true}).inputValue(),'138');
+  assert.equal(await page.getByLabel('Normál',{exact:true}).count(),0);
+  assert.equal(await page.locator('#aldi-lekotes-edit-modal input[type="number"]').count(),2);
   assert.equal(await page.locator('#aldi-edit-normal').inputValue(),'138');
   assert.equal(await page.locator('#aldi-edit-action').inputValue(),'2549');
   await checkDays(['wed','thu','fri','sat']);
@@ -52,21 +60,50 @@ test('weekly editor shows Excel quantities and original days; only edits persist
   assert.equal(puts.length,0);assert.equal(await kw(),'2687');
 
   await edit().click();await page.locator('#aldi-edit-normal').fill('400');await page.locator('#aldi-edit-modal-save').click();
-  await page.waitForFunction(()=>document.querySelector('.lekotes-edit-btn')?.parentElement.querySelector('span').textContent==='2949');
+  await page.waitForFunction(()=>document.querySelector('.lekotes-edit-btn[data-article="530766"]')?.parentElement.querySelector('span').textContent==='2949');
   assert.deepEqual(puts.at(-1),{manual_action_demand:null,manual_normal_demand:400,action_days_json:null});
   await edit().click();assert.equal(await page.locator('#aldi-edit-normal').inputValue(),'400');
   assert.equal(await page.locator('#aldi-edit-action').inputValue(),'2549');await checkDays(['wed','thu','fri','sat']);
   await page.locator('#aldi-edit-action').fill('1000');await page.locator('#aldi-edit-modal-save').click();
-  await page.waitForFunction(()=>document.querySelector('.lekotes-edit-btn')?.parentElement.querySelector('span').textContent==='1400');
+  await page.waitForFunction(()=>document.querySelector('.lekotes-edit-btn[data-article="530766"]')?.parentElement.querySelector('span').textContent==='1400');
   assert.deepEqual(puts.at(-1),{manual_action_demand:1000,manual_normal_demand:400,action_days_json:null});
   assert.deepEqual(await estimates(),[300,300,220,180,80,120,200]);
 
   await edit().click();await page.locator('.aldi-edit-day-cb[value="wed"]').uncheck();await page.locator('.aldi-edit-day-cb[value="thu"]').uncheck();
   await page.locator('#aldi-edit-modal-save').click();
-  await page.waitForFunction(()=>document.querySelector('#aldi-lekotes-edit-modal')===null && document.querySelector('#target table tbody tr td:nth-child(12)')?.textContent.trim()==='700');
+  await page.waitForFunction(()=>document.querySelector('#aldi-lekotes-edit-modal')===null && document.querySelector('.lekotes-edit-btn[data-article="530766"]')?.closest('tr').querySelector('td:nth-child(12)')?.textContent.trim()==='700');
   assert.deepEqual(puts.at(-1),{manual_action_demand:1000,manual_normal_demand:400,action_days_json:['fri','sat']});
   assert.deepEqual(await estimates(),[100,100,700,300,60,60,80]);
   await edit().click();await checkDays(['fri','sat']);
   const count=puts.length;await page.locator('#aldi-edit-modal-save').click();assert.equal(puts.length,count);
+
+  const normalEdit=()=>page.locator('.lekotes-edit-btn[data-article="3301"]');
+  const normalKw=()=>normalEdit().locator('..').locator('span').innerText();
+  await normalEdit().click();
+  assert.equal(await page.getByLabel('Normál',{exact:true}).inputValue(),'1000');
+  assert.equal(await page.locator('#aldi-lekotes-edit-modal input[type="number"]').count(),1);
+  assert.equal(await page.locator('#aldi-edit-action').count(),0);
+  assert.equal(await page.locator('.aldi-edit-day-cb').count(),0);
+  await page.locator('#aldi-edit-modal-save').click();assert.equal(puts.length,count);
+  await normalEdit().click();await page.getByLabel('Normál',{exact:true}).fill('500');
+  await page.locator('#aldi-edit-modal-save').click();
+  await page.waitForFunction(()=>document.querySelector('.lekotes-edit-btn[data-article="3301"]')?.parentElement.querySelector('span').textContent==='500');
+  assert.deepEqual(puts.at(-1),{manual_normal_demand:500});
+  assert.equal(await normalKw(),'500');
+  assert.deepEqual(await normalEdit().locator('xpath=ancestor::tr').locator('td').evaluateAll(cells=>[5,8,11,14,17,20,23].map(index=>Number(cells[index].textContent.trim()))),[85,85,85,65,70,55,55]);
+  await normalEdit().click();assert.equal(await page.getByLabel('Normál',{exact:true}).inputValue(),'500');
+  await page.getByLabel('Normál',{exact:true}).fill('0');await page.locator('#aldi-edit-modal-save').click();
+  await page.waitForFunction(()=>document.querySelector('.lekotes-edit-btn[data-article="3301"]')?.parentElement.querySelector('span').textContent==='0');
+  assert.deepEqual(puts.at(-1),{manual_normal_demand:0});
+  await normalEdit().click();await page.getByLabel('Normál',{exact:true}).fill('');await page.locator('#aldi-edit-modal-save').click();
+  await page.waitForFunction(()=>document.querySelector('.lekotes-edit-btn[data-article="3301"]')?.parentElement.querySelector('span').textContent==='1000');
+  assert.deepEqual(puts.at(-1),{manual_normal_demand:null});
+
+  // Field names follow the marked period, even when it belongs to another week.
+  await page.locator('.lekotes-edit-btn[data-article="3302"]').click();
+  assert.equal(await page.getByLabel('Akciós időszak',{exact:true}).inputValue(),'0');
+  assert.equal(await page.getByLabel('Akciós időszakon kívüli',{exact:true}).inputValue(),'1706');
+  assert.equal(await page.getByLabel('Normál',{exact:true}).count(),0);
+  await page.locator('#aldi-edit-modal-cancel').click();
   assert.deepEqual(errors,[]);
 });

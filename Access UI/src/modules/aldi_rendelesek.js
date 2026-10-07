@@ -1064,6 +1064,7 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
   }
 
   function openHetiLekotesEditModal(articleNumber, termekNev, currentNormal, currentAction, currentActionDays, overrides = {}) {
+    const hasActionPeriod = Boolean(String(overrides.action_period || '').trim());
     const modalOverlay = document.createElement('div');
     modalOverlay.id = 'aldi-lekotes-edit-modal';
     modalOverlay.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.4); z-index:9999; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);';
@@ -1089,6 +1090,16 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
       `;
     });
 
+    const quantityField = (id, label, value) => `
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <label for="${id}" style="font-size:12px; font-weight:700; color:#334155;">${label}</label>
+        <input type="number" id="${id}" value="${value ?? ''}" style="padding:8px 12px; border-radius:6px; border:1px solid #cbd5e1; font-size:13px; outline:none;" placeholder="Üres mező = Excel adat marad">
+      </div>
+    `;
+    const quantityFields = hasActionPeriod
+      ? quantityField('aldi-edit-action', 'Akciós időszak', currentAction) + quantityField('aldi-edit-normal', 'Akciós időszakon kívüli', currentNormal)
+      : quantityField('aldi-edit-normal', 'Normál', currentNormal);
+
     modalOverlay.innerHTML = `
       <div style="background:#ffffff; width:92%; max-width:400px; border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,0.25); overflow:hidden; border:1px solid #cbd5e1; display:flex; flex-direction:column;">
         <div style="padding:14px 20px; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; justify-content:space-between; background:#0f172a;">
@@ -1096,20 +1107,13 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
           <button id="aldi-edit-modal-close" style="background:none; border:none; font-size:16px; cursor:pointer; color:#94a3b8; font-weight:700;">✕</button>
         </div>
         <div style="padding:18px 22px; display:flex; flex-direction:column; gap:16px;">
-          <div style="display:flex; flex-direction:column; gap:6px;">
-            <label style="font-size:12px; font-weight:700; color:#334155;">Normál kartonszám</label>
-            <input type="number" id="aldi-edit-normal" value="${currentNormal !== null && currentNormal !== undefined ? currentNormal : ''}" style="padding:8px 12px; border-radius:6px; border:1px solid #cbd5e1; font-size:13px; outline:none;" placeholder="Üres mező = Excel adat marad">
-          </div>
-          <div style="display:flex; flex-direction:column; gap:6px;">
-            <label style="font-size:12px; font-weight:700; color:#334155;">Akciós kartonszám</label>
-            <input type="number" id="aldi-edit-action" value="${currentAction !== null && currentAction !== undefined ? currentAction : ''}" style="padding:8px 12px; border-radius:6px; border:1px solid #cbd5e1; font-size:13px; outline:none;" placeholder="Üres mező = Excel adat marad">
-          </div>
-          <div style="display:flex; flex-direction:column; gap:6px;">
+          ${quantityFields}
+          ${hasActionPeriod ? `<div style="display:flex; flex-direction:column; gap:6px;">
             <label style="font-size:12px; font-weight:700; color:#334155;">Akciós napok módosítása</label>
             <div style="display:flex; gap:12px; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0; justify-content:space-around;">
               ${daysHtml}
             </div>
-          </div>
+          </div>` : ''}
         </div>
         <div style="padding:14px 22px; border-top:1px solid #e2e8f0; background:#f8fafc; display:flex; justify-content:flex-end; gap:10px;">
           <button id="aldi-edit-modal-cancel" style="padding:7px 22px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid #cbd5e1; background:#ffffff; color:#334155; cursor:pointer;">Mégsem</button>
@@ -1129,7 +1133,7 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
       btn.disabled = true;
 
       const norm = modalOverlay.querySelector('#aldi-edit-normal').value;
-      const act = modalOverlay.querySelector('#aldi-edit-action').value;
+      const act = modalOverlay.querySelector('#aldi-edit-action')?.value;
 
       const selectedDays = Array.from(modalOverlay.querySelectorAll('.aldi-edit-day-cb:checked')).map(cb => cb.value);
       const daysToSend = selectedDays.length > 0 ? selectedDays : null;
@@ -1141,23 +1145,24 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
           if (!Number.isFinite(number) || number < 0) throw new Error('A kartonszám nemnegatív szám lehet.');
           return number;
         };
-        const normal = parseQuantity(norm), action = parseQuantity(act);
-        const sameDays = JSON.stringify([...selectedDays].sort()) === JSON.stringify([...(currentActionDays || [])].sort());
+        const normal = parseQuantity(norm), action = hasActionPeriod ? parseQuantity(act) : currentAction;
+        const sameDays = !hasActionPeriod || JSON.stringify([...selectedDays].sort()) === JSON.stringify([...(currentActionDays || [])].sort());
         const normalChanged = normal !== Number(currentNormal);
-        const actionChanged = action !== Number(currentAction);
+        const actionChanged = hasActionPeriod && action !== Number(currentAction);
         if (!normalChanged && !actionChanged && sameDays) {
           modalOverlay.remove();
           return;
         }
-        if (action > 0 && !selectedDays.length) throw new Error('Akciós kartonszámhoz válassz legalább egy akciós napot.');
+        if (hasActionPeriod && action > 0 && !selectedDays.length) throw new Error('Akciós kartonszámhoz válassz legalább egy akciós napot.');
+        const updates = { manual_normal_demand: normalChanged ? normal : (overrides.manualNormal ?? null) };
+        if (hasActionPeriod) Object.assign(updates, {
+          manual_action_demand: actionChanged ? action : (overrides.manualAction ?? null),
+          action_days_json: sameDays ? (overrides.manualDays ?? null) : daysToSend
+        });
         const res = await fetch(`/api/v1/aldi-weekly-commitments/weeks/${state.hetiLekotesYear}/${state.hetiLekotesSelectedWeek}/article/${encodeURIComponent(articleNumber)}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            manual_action_demand: actionChanged ? action : (overrides.manualAction ?? null),
-            manual_normal_demand: normalChanged ? normal : (overrides.manualNormal ?? null),
-            action_days_json: sameDays ? (overrides.manualDays ?? null) : daysToSend
-          })
+          body: JSON.stringify(updates)
         });
 
         if (!res.ok) {
