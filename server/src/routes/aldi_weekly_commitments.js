@@ -7,7 +7,7 @@ const xlsx = require('xlsx');
 const db = require('../db/db');
 const { RATE_PROFILES, defaultRates, validateRates } = require('../utils/commitmentRates');
 const { getAldiWeekBoundaries } = require('../utils/aldiWeeklyDates');
-const { planForecast, manualOverrides } = require('../utils/weeklyCommitmentExcel');
+const { planForecast, manualOverrides, hasDailyPlan, restoreArchivedDailyPlans } = require('../utils/weeklyCommitmentExcel');
 
 // Konfiguráció
 const IS_WINDOWS = process.platform === 'win32';
@@ -367,15 +367,32 @@ router.put('/:year/:week_number/rates', async (req, res) => {
 router.get('/:year/:week_number', async (req, res) => {
     try {
         const { year, week_number } = req.params;
+        const dates = getDatesOfISOWeek(parseInt(year, 10), parseInt(week_number, 10));
         const commitment = await db('aldi_weekly_commitments').where({ year, week_number }).first();
 
         let items = [];
         let stocks = [];
         let daily_orders = [];
+        let dailyDataRestored = 0;
+        const warnings = [];
 
         if (commitment) {
             // Join chain_products to get the exact ALDI product_name
             items = await db('aldi_weekly_commitment_items').where({ commitment_id: commitment.id });
+            if (items.some(item => item.type === 'action' && !hasDailyPlan(item))) {
+                try {
+                    if (!commitment.action_file_path) throw new Error('Nincs archivált Rendelési terv.');
+                    const archive = path.join(ALDI_BASE_PATH, String(commitment.year), commitment.action_file_path);
+                    const restored = restoreArchivedDailyPlans(items, fs.readFileSync(archive), dates);
+                    items = restored.items;
+                    dailyDataRestored = restored.restored;
+                } catch (error) {
+                    warnings.push('A napi tervadatok nem pótolhatók az archivált Excelből. Töltsd fel a megfelelő heti Rendelési tervet, vagy indíts újrafeldolgozást.');
+                }
+                if (items.some(item => item.type === 'action' && !hasDailyPlan(item)) && !warnings.length) {
+                    warnings.push('Egyes napi tervadatok nem egyeztethetők az archivált Excellel. A pontos akciós és akción kívüli bontáshoz töltsd fel a megfelelő heti tervet.');
+                }
+            }
             const products = await db('chain_products').where('chain', 'ALDI');
             const byArticle = new Map(products.map(p => [String(p.article_number).trim(), p.product_name]));
             items = items.map(item => ({ ...item, product_name: byArticle.get(item.display_name) || item.xlsx_product_name }));
@@ -384,7 +401,6 @@ router.get('/:year/:week_number', async (req, res) => {
         }
 
         // Tényleges rendelések lekérése
-        const dates = getDatesOfISOWeek(parseInt(year, 10), parseInt(week_number, 10));
         const startDate = dates[0];
         const endDate = dates[6];
 
@@ -425,6 +441,8 @@ router.get('/:year/:week_number', async (req, res) => {
             rates: commitment?.distribution_rates || defaultRates(),
             rates_version: Number(commitment?.rates_version || 0),
             items,
+            daily_data_restored: dailyDataRestored,
+            warnings,
             stocks,
             daily_orders: Object.values(ordersByDateAndItem),
             week_dates: dates

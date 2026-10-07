@@ -201,8 +201,12 @@ export function buildWeeklyProducts(items, dates, rateConfig = null) {
       continue;
     }
     const period = item.action_period || '';
-    const plan = group.plans[period] ||= { total: 0, daily: null };
+    const plan = group.plans[period] ||= { total: 0, daily: null, incompleteDaily: false };
     const daily = json(item.daily_values);
+    const validDaily = daily && !Array.isArray(daily) && dayKeys.every(day =>
+      daily[day] != null && Number.isFinite(Number(daily[day])) && Number(daily[day]) >= 0
+    ) && (Number(item.total_forecast_cartons) === 0 || dayKeys.some(day => Number(daily[day]) > 0));
+    if (!validDaily && quantity(item.total_forecast_cartons) > 0) plan.incompleteDaily = true;
     plan.total += quantity(item.total_forecast_cartons ?? (daily && Object.values(daily).reduce((sum, value) => sum + quantity(value), 0)));
     if (daily && typeof daily === 'object' && !Array.isArray(daily)) {
       plan.daily ||= Object.fromEntries(dayKeys.map(day => [day, 0]));
@@ -213,7 +217,7 @@ export function buildWeeklyProducts(items, dates, rateConfig = null) {
     const actionValues = Object.fromEntries(dayKeys.map(day => [day, 0]));
     const normalValues = { ...actionValues };
     const originalDays = new Set();
-    let planTotal = 0, originalAction = 0;
+    let planTotal = 0, originalAction = 0, missingDaily = false;
     const add = (values, total, fractions) => {
       for (const [day, fraction] of Object.entries(fractions)) values[day] += total * fraction;
     };
@@ -229,9 +233,8 @@ export function buildWeeklyProducts(items, dates, rateConfig = null) {
       planTotal += plan.total;
       const daily = plan.daily || Object.fromEntries(dayKeys.map(day => [day, 0]));
       const split = estimatedDistribution(plan.total, 0, period || null, dates, daily, rateConfig);
-      // Old imports may have no daily values: retain a usable promotion forecast.
+      if (split.actionDays.length && plan.incompleteDaily) missingDaily = true;
       let action = split.actionTotal ?? (split.actionDays.length ? plan.total : 0);
-      if (!Object.values(daily).some(value => value > 0) && split.actionDays.length) action = plan.total;
       action = Math.min(plan.total, action);
       originalAction += action;
       split.actionDays.forEach(day => originalDays.add(day));
@@ -257,10 +260,13 @@ export function buildWeeklyProducts(items, dates, rateConfig = null) {
     const effectiveNormal = group.manualDays
       ? Object.fromEntries(dayKeys.map(day => [day, normalTotal * (getNormalRatesForContext(actionDays, rateConfig)[day] || 0)]))
       : scale(normalValues, normalTotal, defaultNormal, getNormalRatesForContext(actionDays, rateConfig));
+    const splitComplete = !missingDaily || (group.manualNormal != null && group.manualAction != null);
     Object.assign(group, {
       action_period: Object.keys(group.plans).filter(Boolean).join(', '),
-      defaultNormal, defaultAction, defaultDays,
-      normalTotal, actionTotal, actionDays, weeklyTotal: normalTotal + actionTotal,
+      defaultNormal: missingDaily ? null : defaultNormal, defaultAction: missingDaily ? null : defaultAction, defaultDays,
+      normalTotal: splitComplete ? normalTotal : group.manualNormal,
+      actionTotal: splitComplete ? actionTotal : group.manualAction,
+      actionDays, splitComplete, weeklyTotal: splitComplete ? normalTotal + actionTotal : defaultWeekly,
       distribution: Object.fromEntries(dayKeys.map(day => [day, Math.round(effectiveAction[day] + effectiveNormal[day])]))
     });
   }

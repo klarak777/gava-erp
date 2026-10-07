@@ -74,6 +74,22 @@ A táblázat és a szerkesztő ugyanazt a korrigált alapot használja: **Normá
 
 ## Szerkesztés
 
+### A teljes heti mennyiség akciós mezőbe kerülésének javítása
+
+A felhasználó a DO teszten **Akciós időszak = 2994**, **Akciós időszakon kívüli = 0** értéket jelzett. A kódban megtalált, reprodukált hiba: hiányzó vagy teljesen üres napi bontásnál az egész tervmennyiséget akciós alapnak vettük, majd ehhez adtuk a keresleti többletet. Ettől az akción kívüli rész nulla lett, még akkor is, ha az eredeti Excelben szerepeltek akción kívüli mennyiségek. A mezőnevek módosítása ezt az adatproblémát nem oldotta meg.
+
+Az új javítás:
+
+- A heti adatok GET végpontja a régi importok hiányzó napi bontását automatikusan kiolvassa az adott heti archivált Rendelési tervből. Az olvasás nem módosít adatbázissort vagy kézi értéket.
+- Az archívum termék-, akciós időszak-, mennyiség- és (ha dátumos a fejléc) heti megfelelőségét ellenőrzi. Másik heti fájlt vagy eltérő előrejelzésű forrást nem használ a hiányzó adatok pótlására.
+- Több raktári forrássort összesít, ha a tárolt tétel már összevont; eltérő, nem egyértelmű sorszámnál nem talál ki bontást.
+- Megszűnt az „egész mennyiség akciós” tartalékszabály. Ha a pontos napi alap nem állítható helyre, a szerkesztőben az ismeretlen részösszeg üres, a napi becslés `—`, és a felület jelzi, hogy a helyes heti terv feltöltése vagy újrafeldolgozása szükséges. A hiányzó becsléstől függő készlet és hiány is `—`; meglévő Rendelt/Teljesített adatok továbbra is felhasználhatók.
+- A megadott kézi 0 megmarad érvényes értéknek. A szerkesztő jelzi, ha kézi felülírás van érvényben; ha a forrás ismert, külön kiírja az Excel szerinti két alapot is. Üres mező mentésével a kézi felülírás törölhető.
+
+Reprodukciós tesztadat: terv **2686**, eredeti akciós alap **2458**, kereslet **2994**. A javított eredmény **2766 akciós + 228 akción kívüli = 2994**. Ez ellenőrzési példa; a DO-n jelzett konkrét termék helyes két értékének igazolásához a termék/cikkszám, a KW-hét és a tényleges API-/Excel-adatok szükségesek.
+
+A javítás helyben készült el, a DO tesztszerveren nem telepítettem. A szerveroldali archívumolvasáshoz a backend frissítése is szükséges. A fejlécében másik hetet tartalmazó minta nem használható automatikus helyreállításra.
+
 - Akciós időszakkal megjelölt sornál két szerkeszthető mező jelenik meg: **Akciós időszak** és **Akciós időszakon kívüli**. Ezek a táblázattal azonos, kiszámolt részösszegeket tartalmazzák. Az eredeti akciós napok előre be vannak pipálva.
 - Akciós időszak nélküli sornál csak a **Normál** mező jelenik meg; nincs akciós mennyiségmező vagy akciós napválasztó.
 - Az akciós sor korábbi „Normál kartonszám” mezője az akciós időszakon kívüli részösszeget jelentette. Az új elnevezés ezt egyértelműsíti. Az API-mező neve továbbra is `manual_normal_demand`; az akciós mennyiségé `manual_action_demand`.
@@ -129,6 +145,6 @@ A frissítés termék és akciós időszak szerint történik. Több raktári fo
 
 Új tesztek: `weeklyPromotionSplit.test.js`, `weeklyPromotionEditor.browser.test.js`, `weeklyCommitmentEditingApi.test.js`. Vizsgált esetek: eredeti százalékok, nagyobb/kisebb keresleti mennyiség, eltérő napi összeg és előrejelzésoszlop, mindkét időszak számítása, előre kitöltött szerkesztő és pipák, változatlan mentés, kézi nulla, napmódosítás, tényleges rendelés elsőbbsége, több raktári sor/időszak, újrafeldolgozás és mentett kézi adatok megőrzése.
 
-Teljes `server/npm.cmd test`: **84 teszt, 82 sikeres, 0 hibás, 2 kihagyott PostgreSQL-integrációs teszt**. A kézi szerkesztő és az ALDI önálló ablakai tényleges Chromium-böngészőteszten is sikeresek. A route-tesztek szimulált adatbázist és fájlrendszert használnak. A Készlet lista Teljesített → Rendelt → Becsült elsőbbségét külön számítási, táblázatmegjelenítési és API-tesztek ellenőrzik.
+Teljes `server/npm.cmd test`: **87 teszt, 85 sikeres, 0 hibás, 2 kihagyott PostgreSQL-integrációs teszt**. A végső heti archívumellenőrzés és felületi szövegpontosítás után a kapcsolódó **9 API- és Chromium-teszt szintén sikeres**. A kézi szerkesztő és az ALDI önálló ablakai tényleges Chromium-böngészőteszten is sikeresek. A route-tesztek szimulált adatbázist és fájlrendszert használnak. A Készlet lista Teljesített → Rendelt → Becsült elsőbbségét külön számítási, táblázatmegjelenítési és API-tesztek ellenőrzik.
 
 A javítás a munkakönyvtárban készült el. A frontend és a backend frissítése szükséges a futó rendszerben való használathoz; GitHub-feltöltés vagy éles telepítés ebben a munkában nem történt.

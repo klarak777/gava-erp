@@ -58,6 +58,61 @@ test('weekly API distinguishes missing fulfillment from zero and adds current-ve
   ]);
 });
 
+test('weekly GET restores legacy daily data from its archive: 2994 is split, manual values and stored rows remain untouched',async()=>{
+  const original={id:21,commitment_id:1,type:'action',display_name:'530766',action_period:'03.09.-06.09.',
+    total_forecast_cartons:2686,daily_values:null,manual_action_demand:null,manual_normal_demand:null};
+  const demand={id:10,commitment_id:1,type:'normal',display_name:'530766',total_forecast_cartons:2994};
+  const tables={aldi_weekly_commitments:[{...commitment}],aldi_weekly_commitment_items:[original,demand]};
+  const before=JSON.stringify(tables);
+  const {handlers}=load(tables);
+  const response=await invoke(handlers['get /:year/:week_number'],{params:{year:'2026',week_number:'36'}});
+  assert.equal(response.code,200);assert.equal(response.data.daily_data_restored,1);
+  assert.deepEqual(JSON.parse(JSON.stringify(response.data.items[0].daily_values)),daily);
+  assert.equal(JSON.stringify(tables),before);
+  const source=fs.readFileSync(path.resolve(__dirname,'../../Access UI/src/utils/weeklyCommitments.js'),'utf8');
+  const {buildWeeklyProducts}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+  const product=buildWeeklyProducts(response.data.items,response.data.week_dates,response.data.rates)['530766'];
+  assert.equal(product.weeklyTotal,2994);assert.equal(product.actionTotal,2766);assert.equal(product.normalTotal,228);
+  assert.equal(product.splitComplete,true);
+  assert.deepEqual(product.distribution,{wed:830,thu:830,fri:609,sat:498,sun:46,mon:68,tue:114});
+  original.manual_action_demand=2994;original.manual_normal_demand=0;
+  const manualResponse=await invoke(handlers['get /:year/:week_number'],{params:{year:'2026',week_number:'36'}});
+  const manualProduct=buildWeeklyProducts(manualResponse.data.items,manualResponse.data.week_dates,manualResponse.data.rates)['530766'];
+  assert.equal(manualProduct.actionTotal,2994);assert.equal(manualProduct.normalTotal,0);
+  assert.equal(manualProduct.defaultAction,2766);assert.equal(manualProduct.defaultNormal,228);
+});
+
+test('unavailable or unmatched archive leaves unknown split explicit, not a full promotion and false zero',async()=>{
+  const original={id:21,commitment_id:1,type:'action',display_name:'530766',action_period:'03.09.-06.09.',total_forecast_cartons:2994,daily_values:null};
+  const tables={aldi_weekly_commitments:[{...commitment}],aldi_weekly_commitment_items:[original]};
+  const {handlers}=load(tables);
+  const response=await invoke(handlers['get /:year/:week_number'],{params:{year:'2026',week_number:'36'}});
+  assert.equal(response.code,200);assert.equal(response.data.daily_data_restored,0);assert.equal(response.data.warnings.length,1);
+  const source=fs.readFileSync(path.resolve(__dirname,'../../Access UI/src/utils/weeklyCommitments.js'),'utf8');
+  const {buildWeeklyProducts}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+  const product=buildWeeklyProducts(response.data.items,response.data.week_dates)['530766'];
+  assert.equal(product.weeklyTotal,2994);assert.equal(product.actionTotal,null);assert.equal(product.normalTotal,null);assert.equal(product.splitComplete,false);
+  tables.aldi_weekly_commitments[0].action_file_path=null;
+  const missing=await invoke(handlers['get /:year/:week_number'],{params:{year:'2026',week_number:'36'}});
+  assert.equal(missing.code,200);assert.equal(missing.data.warnings.length,1);
+});
+
+test('archive restoration aggregates warehouses, preserves valid daily data and rejects incomplete archives',()=>{
+  const {restoreArchivedDailyPlans}=require('../src/utils/weeklyCommitmentExcel');
+  const original={id:21,type:'action',display_name:'530766',action_period:'03.09.-06.09.',total_forecast_cartons:5372,daily_values:null};
+  const restored=restoreArchivedDailyPlans([original],workbook(2));
+  assert.equal(restored.restored,1);
+  assert.deepEqual(restored.items[0].daily_values,Object.fromEntries(Object.entries(daily).map(([key,value])=>[key,value*2])));
+  const populated={...original,daily_values:restored.items[0].daily_values};
+  assert.equal(restoreArchivedDailyPlans([populated],workbook(2)).items[0],populated);
+  const ambiguous=restoreArchivedDailyPlans([{...original,id:1},{...original,id:2}],workbook());
+  assert.equal(ambiguous.restored,0);
+  const book=xlsx.utils.book_new();xlsx.utils.book_append_sheet(book,xlsx.utils.aoa_to_sheet([['Display','Akciós időszak'],['530766','03.09.-06.09.']]),'Sheet1');
+  assert.throws(()=>restoreArchivedDailyPlans([original],xlsx.write(book,{type:'buffer',bookType:'xlsx'})),/napi oszlopai hiányosak/);
+  const wrongWeek=['2026-08-12','2026-08-13','2026-08-14','2026-08-15','2026-08-16','2026-08-17','2026-08-18'];
+  assert.throws(()=>restoreArchivedDailyPlans([original],workbook(2),wrongWeek),/másik hétre vonatkozik/);
+});
+
 test('actual upload saves forecast column, daily bases and week-local defaults',async()=>{
   const tables={aldi_weekly_commitments:[{...commitment}],aldi_weekly_commitment_items:[]};
   const {handlers,writes}=load(tables);const buffer=workbook();

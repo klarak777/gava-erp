@@ -57,6 +57,14 @@ Az API termékenként és naponként összeadja az aktuális rendelésverziók t
 
 ## 5. Hibás minta Excel
 
+### Későbbi 2994 / 0 hibajelzés
+
+A hiányzó napi tervadatokat kezelő ág korábban az egész heti mennyiséget akciósnak tekintette. Ezt javítottam: a heti API betöltéskor megkísérli az adott heti archívumból visszaállítani a napi bontást, kézi értékek és adatbázissorok módosítása nélkül. Ellenőrzi a terméket, időszakot, mennyiséget és a dátumos fejléc hetét. Így a táblázat és a szerkesztő az eredeti két alapból számolhat.
+
+Ha a napi alap nem állítható helyre, ismeretlen részösszeg és napi becslés jelenik meg, tájékoztatással a megfelelő terv feldolgozásáról. A kézi felülírást a szerkesztő külön jelzi, és az elérhető Excel-alapértékeket is kiírja. Megadott kézi 0 továbbra is érvényes.
+
+Ellenőrzési példa: 2686 terv, 2458 eredeti akciós alap és 2994 kereslet → **2766 akciós + 228 akción kívüli**. A konkrét DO-tétel adatai még nincsenek ellenőrizve; a javítás ehhez backend- és frontend-frissítést igényel. Részletek a számítási jegyzetben.
+
 A projektben lévő Rendelési terv fejlécében **13.08. – 19.08.** szerepel, miközben több terméksor szeptemberi akciós időszakot tartalmaz. A felhasználó megerősítette, hogy a minta hibás. Az eltérő heti időszak miatt a teljes mennyiség a Normál mezőben jelenhet meg, ha az akció nem esik a vizsgált hétre.
 
 A helyi adatbázis régi tervsoraiból a napi bontás (`daily_values`) is hiányzott. A pontos eredeti akciós–normál szétbontáshoz a helyes napi forrás szükséges. A vizsgálat során ezeket az adatbázissorokat nem módosítottam.
@@ -92,6 +100,7 @@ A RAKODVA vizsgálat során az alkalmazáskódot és a tényleges készletadatok
 
 - A Heti lekötés és a készletelsőbbség módosítása után teljes `server/npm.cmd test`: **84 teszt, 82 sikeres, 0 hibás, 2 kihagyott PostgreSQL-integrációs teszt**.
 - A szerkesztő mezőinek későbbi módosítása után **20 célzott teszt sikeres, 0 hibás**. A valódi Chromium-próba ellenőrzi a két időszak külön mezőit, a Normál egymezős szerkesztést, a mentést, újranyitást, nullát és Excel-alapra visszaállítást. A DO tesztszerver frissítése ebben a munkában nem történt meg.
+- A hiányzó napi bontás automatikus pótlásának módosítása után teljes tesztfutás: **87 teszt, 85 sikeres, 0 hibás, 2 kihagyott**; a végső pontosítások utáni 9 kapcsolódó API-/böngészőteszt is sikeres.
 - A RAKODVA ellenőrzés külön, valódi PostgreSQL-en, kizárólag az adott kapcsolathoz tartozó ideiglenes táblákkal történt. A lokációs és fuvarösszesítő végpontokat is a tényleges route-kóddal hívtam. Normál törlés, más kamion készletének megőrzése, ismételt mentés és kikényszerített tranzakciós hiba egyaránt ellenőrizve.
 - Az AL02 készletállapotának ellenőrzése csak olvasási lekérdezés volt. Tényleges kamion RAKODVA állapotát, üzemi készletet vagy éles adatbázisszekvenciát nem változtattam.
 - A Belföldi fuvarok rakodottállapot-szűrését forráskódból ellenőriztem; ebben a célzott próbában külön böngészős megjelenítését nem teszteltem.

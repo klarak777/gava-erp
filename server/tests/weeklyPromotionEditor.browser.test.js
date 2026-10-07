@@ -13,7 +13,8 @@ test('weekly editor shows Excel quantities and original days; only edits persist
   const demand = {type:'normal',display_name:'530766',total_forecast_cartons:2687};
   const normalItem = {type:'normal',display_name:'3301',product_name:'Normál termék',total_forecast_cartons:1000};
   const outsideItem = {...item,display_name:'3302',product_name:'Másik hét akciója',action_period:'13.08.-16.08.',total_forecast_cartons:1706};
-  const items = [item,demand,normalItem,outsideItem];
+  const incompleteItem = {...item,display_name:'3303',product_name:'Hiányzó napi terv',total_forecast_cartons:2994,daily_values:null};
+  const items = [item,demand,normalItem,outsideItem,incompleteItem];
   const server = http.createServer(async (req,res) => {
     const url = new URL(req.url,'http://localhost');
     if (url.pathname.startsWith('/api/')) {
@@ -105,5 +106,27 @@ test('weekly editor shows Excel quantities and original days; only edits persist
   assert.equal(await page.getByLabel('Akciós időszakon kívüli',{exact:true}).inputValue(),'1706');
   assert.equal(await page.getByLabel('Normál',{exact:true}).count(),0);
   await page.locator('#aldi-edit-modal-cancel').click();
+
+  await edit().click();
+  assert.match(await page.locator('#aldi-lekotes-edit-modal').innerText(),/Kézi felülírás van érvényben/);
+  assert.match(await page.locator('#aldi-lekotes-edit-modal').innerText(),/akciós 2549, akción kívüli 138/);
+  await page.getByLabel('Akciós időszak',{exact:true}).fill('');
+  await page.getByLabel('Akciós időszakon kívüli',{exact:true}).fill('');
+  await page.locator('#aldi-edit-modal-save').click();
+  await page.waitForFunction(()=>document.querySelector('.lekotes-edit-btn[data-article="530766"]')?.parentElement.querySelector('span').textContent==='2687');
+  assert.deepEqual(puts.at(-1),{manual_normal_demand:null,manual_action_demand:null,action_days_json:['fri','sat']});
+  await edit().click();
+  assert.equal(await page.getByLabel('Akciós időszak',{exact:true}).inputValue(),'2549');
+  assert.equal(await page.getByLabel('Akciós időszakon kívüli',{exact:true}).inputValue(),'138');
+  await page.locator('#aldi-edit-modal-cancel').click();
+
+  await page.locator('.lekotes-edit-btn[data-article="3303"]').click();
+  assert.equal(await page.getByLabel('Akciós időszak',{exact:true}).inputValue(),'');
+  assert.equal(await page.getByLabel('Akciós időszakon kívüli',{exact:true}).inputValue(),'');
+  assert.match(await page.locator('#aldi-lekotes-edit-modal [role="alert"]').innerText(),/Hiányoznak a napi tervadatok/);
+  const beforeIncompleteSave=puts.length;
+  await page.locator('#aldi-edit-modal-save').click();assert.equal(puts.length,beforeIncompleteSave);
+  assert.equal(await page.locator('.lekotes-edit-btn[data-article="3303"]').locator('..').locator('span').innerText(),'2994');
+  assert.deepEqual(await page.locator('.lekotes-edit-btn[data-article="3303"]').locator('xpath=ancestor::tr').locator('td').evaluateAll(cells=>[5,8,11,14,17,20,23].map(index=>cells[index].textContent.trim())),Array(7).fill('—'));
   assert.deepEqual(errors,[]);
 });
