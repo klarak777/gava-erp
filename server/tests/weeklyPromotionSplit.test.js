@@ -22,7 +22,7 @@ test('original promotion and off-period quantities, percentages and shifted days
   assert.deepEqual(product.distribution,{wed:737,thu:737,fri:541,sat:442,sun:45,mon:68,tue:114});
 });
 
-test('weekly total uses the greater Excel forecast; excess demand increases the promotion base', async () => {
+test('weekly total uses the greater Excel forecast; excess demand increases only the off-period base', async () => {
   const {buildWeeklyProducts} = await helpers;
   for (const total of [0,2000,2685]) {
     const product = buildWeeklyProducts([plan,demand(total)],dates)['530766'];
@@ -31,38 +31,54 @@ test('weekly total uses the greater Excel forecast; excess demand increases the 
   }
   const higher = buildWeeklyProducts([plan,demand(3000)],dates)['530766'];
   assert.equal(higher.weeklyTotal,3000);
-  assert.equal(higher.actionTotal,2773);
-  assert.equal(higher.defaultAction,2773);
-  assert.equal(higher.normalTotal,227);
-  assert.deepEqual(higher.distribution,{wed:832,thu:832,fri:610,sat:499,sun:45,mon:68,tue:114});
+  assert.equal(higher.actionTotal,2458);
+  assert.equal(higher.defaultAction,2458);
+  assert.equal(higher.normalTotal,542);
+  assert.deepEqual(higher.distribution,{wed:737,thu:737,fri:541,sat:442,sun:108,mon:163,tue:271});
   const forecastColumn = buildWeeklyProducts([{...plan,total_forecast_cartons:2686}],dates)['530766'];
   assert.equal(forecastColumn.weeklyTotal,2686);
   assert.equal(forecastColumn.normalTotal,228);
 });
 
-test('2687 demand minus 1706 plan adds 981 to the 1568 promotion and keeps normal 138', async () => {
+test('2687 demand minus 1706 plan adds 981 to normal 138 and keeps promotion 1568', async () => {
   const {buildWeeklyProducts} = await helpers;
   const example = {...plan,total_forecast_cartons:1706,daily_values:{thu:500,fri:500,sat:300,sun:268,mon:40,tue:40,wed:58}};
   const product = buildWeeklyProducts([example,demand(2687)],dates)['530766'];
   assert.equal(product.weeklyTotal,2687);
-  assert.equal(product.actionTotal,2549);
-  assert.equal(product.defaultAction,2549);
-  assert.equal(product.normalTotal,138);
-  assert.equal(product.defaultNormal,138);
-  assert.deepEqual(product.distribution,{wed:765,thu:765,fri:561,sat:459,sun:28,mon:41,tue:69});
+  assert.equal(product.actionTotal,1568);
+  assert.equal(product.defaultAction,1568);
+  assert.equal(product.normalTotal,1119);
+  assert.equal(product.defaultNormal,1119);
+  assert.deepEqual(product.distribution,{wed:470,thu:470,fri:345,sat:282,sun:224,mon:336,tue:560});
   const rates = defaultRates();
   rates.action_four = {wed:40,thu:20,fri:20,sat:20};
   const changed = buildWeeklyProducts([example,demand(2687)],dates,rates)['530766'];
-  assert.deepEqual(changed.distribution,{wed:1020,thu:510,fri:510,sat:510,sun:28,mon:41,tue:69});
+  assert.deepEqual(changed.distribution,{wed:627,thu:314,fri:314,sat:314,sun:224,mon:336,tue:560});
   const manual = buildWeeklyProducts([{...example,manual_action_demand:1000},demand(2687)],dates)['530766'];
   assert.equal(manual.actionTotal,1000); // A manual total already represents the complete promotion base.
-  assert.equal(manual.normalTotal,138);
-  assert.equal(manual.weeklyTotal,1138);
+  assert.equal(manual.normalTotal,1119);
+  assert.equal(manual.weeklyTotal,2119);
   const zeroPromotion = {...example,daily_values:{thu:0,fri:0,sat:0,sun:0,mon:500,tue:500,wed:706}};
   const excessOnly = buildWeeklyProducts([zeroPromotion,demand(2687)],dates)['530766'];
-  assert.equal(excessOnly.actionTotal,981);
-  assert.equal(excessOnly.normalTotal,1706);
-  assert.deepEqual(['wed','thu','fri','sat'].map(day=>excessOnly.distribution[day]),[294,294,216,177]);
+  assert.equal(excessOnly.actionTotal,0);
+  assert.equal(excessOnly.normalTotal,2687);
+  assert.deepEqual(['wed','thu','fri','sat'].map(day=>excessOnly.distribution[day]),[0,0,0,0]);
+});
+
+test('zero original off-period base still receives excess demand using saved off-period rates', async () => {
+  const {buildWeeklyProducts} = await helpers;
+  const rates = defaultRates();
+  rates.off_five = {wed:10,thu:20,sun:30,mon:20,tue:20};
+  const example = {...plan,action_period:'05.09.-06.09.',total_forecast_cartons:2321,
+    daily_values:{thu:0,fri:0,sat:1382,sun:939,mon:0,tue:0,wed:0}};
+  const product = buildWeeklyProducts([example,demand(2994)],dates,rates)['530766'];
+  assert.equal(product.actionTotal,2321);
+  assert.equal(product.normalTotal,673);
+  assert.equal(product.weeklyTotal,2994);
+  assert.deepEqual(product.distribution,{wed:67,thu:135,fri:1625,sat:696,sun:202,mon:135,tue:135});
+  const manual = buildWeeklyProducts([{...example,manual_normal_demand:0},demand(2994)],dates,rates)['530766'];
+  assert.equal(manual.normalTotal,0);
+  assert.equal(manual.weeklyTotal,2321);
 });
 
 test('saved percentages apply to both original and manually edited quantities and selected days', async () => {
@@ -107,9 +123,20 @@ test('normal-only, no promotion in this week, explicit years and multiple period
   const higherForward = buildWeeklyProducts([plan,second,demand(3000)],dates)['530766'];
   const higherReversed = buildWeeklyProducts([second,plan,demand(3000)],dates)['530766'];
   assert.deepEqual(higherForward.distribution,higherReversed.distribution);
-  assert.equal(higherForward.actionTotal,2773);
-  assert.equal(higherForward.normalTotal,227);
+  assert.equal(higherForward.actionTotal,2658);
+  assert.equal(higherForward.normalTotal,342);
   assert.equal(higherForward.weeklyTotal,3000);
+});
+
+test('an empty manual day list converts an original promotion to normal and overrides survive reprocessing',async()=>{
+  const {buildWeeklyProducts}=await helpers;
+  const converted={...plan,manual_action_demand:0,manual_normal_demand:3000,action_days_json:'[]'};
+  for(const daily_values of [daily,null,{thu:800,fri:800,sat:800,sun:200,mon:40,tue:30,wed:15}]){
+    const product=buildWeeklyProducts([{...converted,daily_values},demand(3000)],dates)['530766'];
+    assert.equal(product.splitComplete,true);assert.equal(product.weeklyTotal,3000);
+    assert.equal(product.actionTotal,0);assert.deepEqual(product.actionDays,[]);
+    assert.deepEqual(product.distribution,{wed:510,thu:510,fri:510,sat:390,sun:420,mon:330,tue:330});
+  }
 });
 
 test('same-period warehouse rows are added without modifying imported data', async () => {
@@ -134,9 +161,9 @@ test('real table uses both period estimates, correct KW total and actual-order p
   const render = vm.runInNewContext(ui.slice(start,end)+'\nrenderHetiLekotesHtml',{...util,state,budapestToday:()=>dates[1],buildYearOptions:()=>''});
   const html = render();
   assert.match(html,/<span>3000<\/span>/);
-  assert.match(html,/>832<\/td>/);
-  assert.match(html,/>45<\/td>/);
-  assert.equal(Number(html.match(/class="lekotes-current-stock"[^>]*>(-?\d+)</)[1]),2832); // Actual zero replaces Wednesday's increased promotion estimate.
+  assert.match(html,/>737<\/td>/);
+  assert.match(html,/>108<\/td>/);
+  assert.equal(Number(html.match(/class="lekotes-current-stock"[^>]*>(-?\d+)</)[1]),2738); // Actual zero replaces Wednesday's unchanged promotion estimate; daily rounding remains.
 });
 
 test('plan import reads the forecast column even when rounded daily cells have a different sum', () => {

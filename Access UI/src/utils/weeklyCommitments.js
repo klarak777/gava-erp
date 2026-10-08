@@ -195,7 +195,7 @@ export function buildWeeklyProducts(items, dates, rateConfig = null) {
     if (item.manual_normal_demand != null) group.manualNormal = quantity(item.manual_normal_demand);
     if (item.manual_action_demand != null) group.manualAction = quantity(item.manual_action_demand);
     const selectedDays = json(item.action_days_json);
-    if (Array.isArray(selectedDays) && selectedDays.length) group.manualDays = dayKeys.filter(day => selectedDays.includes(day));
+    if (Array.isArray(selectedDays)) group.manualDays = dayKeys.filter(day => selectedDays.includes(day));
     if (item.type !== 'action') {
       group.demandTotal += quantity(item.total_forecast_cartons);
       continue;
@@ -244,10 +244,11 @@ export function buildWeeklyProducts(items, dates, rateConfig = null) {
     const defaultDays = dayKeys.filter(day => originalDays.has(day));
     const defaultWeekly = Math.max(planTotal, group.demandTotal);
     const excessDemand = defaultWeekly - planTotal;
-    // Higher demand increases the promotion base; its off-period forecast stays intact.
-    const defaultAction = originalAction + (defaultDays.length ? excessDemand : 0);
-    const defaultNormal = defaultWeekly - defaultAction;
-    if (!defaultDays.length) add(normalValues, excessDemand, getNormalRatesForContext(defaultDays, rateConfig));
+    // Higher demand increases only the off-period base; the promotion stays intact.
+    const normalOverride = Array.isArray(group.manualDays) && group.manualDays.length === 0;
+    const defaultAction = normalOverride ? 0 : originalAction;
+    const originalNormal = planTotal - originalAction;
+    const defaultNormal = normalOverride ? defaultWeekly : originalNormal + excessDemand;
     const actionDays = group.manualDays || defaultDays;
     const actionTotal = group.manualAction ?? defaultAction;
     const normalTotal = group.manualNormal ?? defaultNormal;
@@ -259,8 +260,8 @@ export function buildWeeklyProducts(items, dates, rateConfig = null) {
       : scale(actionValues, actionTotal, originalAction, actionFractions(actionDays));
     const effectiveNormal = group.manualDays
       ? Object.fromEntries(dayKeys.map(day => [day, normalTotal * (getNormalRatesForContext(actionDays, rateConfig)[day] || 0)]))
-      : scale(normalValues, normalTotal, defaultNormal, getNormalRatesForContext(actionDays, rateConfig));
-    const splitComplete = !missingDaily || (group.manualNormal != null && group.manualAction != null);
+      : scale(normalValues, normalTotal, originalNormal, getNormalRatesForContext(actionDays, rateConfig));
+    const splitComplete = normalOverride || !missingDaily || (group.manualNormal != null && group.manualAction != null);
     Object.assign(group, {
       action_period: Object.keys(group.plans).filter(Boolean).join(', '),
       defaultNormal: missingDaily ? null : defaultNormal, defaultAction: missingDaily ? null : defaultAction, defaultDays,

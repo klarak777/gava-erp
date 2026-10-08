@@ -123,6 +123,8 @@ Az ellenőrzés lefedi a mennyiségek elsőbbségét, mindkét tényleges mező 
 
 ## Régebben feltöltött adatok
 
+**Későbbi tényleges DO- és Excel-ellenőrzés:** a KW41 / 751005 termék 2994 / 0 értékpárjának oka igazolt: az eredeti Excelben az öt akción kívüli napi cella üres. A két akciós napi érték 1382 + 939 = 2321; a 2994-es keresleti mennyiség 673 kartonos többlete csak az akciós részhez kerül. Így ebből a forrásból 2994 akciós és 0 akción kívüli számolható. A lentebb szereplő hiányzó napi adatos reprodukció nem ennek a konkrét sornak a hibaoka. Részletes ellenőrzés: [DO-bontás ellenőrzése](Heti_lekotes_DO_bontas_ellenorzes_20261007.md).
+
 ### A mintafájl ellenőrzése
 
 A későbbi hibajelzés vizsgálatakor a felhasználó megerősítette, hogy a minta Excel hibás. A projektben található `Rendelési terv Gava Hungria Kft.xlsx` előrejelzésoszlopának fejléce **13.08. – 19.08.**, miközben több terméksor akciós időszaka **03.09. – 06.09.**, **05.09. – 06.09.** vagy **07.09. – 09.09.**. A heti fejléc és a vizsgált sorok időszaka így nem egyezik meg.

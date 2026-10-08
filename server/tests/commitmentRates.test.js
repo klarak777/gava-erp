@@ -140,7 +140,7 @@ test('rates API saves only selected week, rejects invalid totals and detects con
   };
   trx.fn={now:()=> 'now'};
   const multer=()=>({single:()=>()=>{}});multer.memoryStorage=()=>({});
-  const mocks={express:{Router:()=>({get(){},post(){},put(url,...handlers){routes[url]=handlers.at(-1);}})},multer,'../db/db':{transaction:fn=>fn(trx)}};
+  const mocks={express:{Router:()=>({get(){},post(){},delete(){},put(url,...handlers){routes[url]=handlers.at(-1);}})},multer,'../db/db':{transaction:fn=>fn(trx)}};
   vm.runInNewContext(read('../src/routes/aldi_weekly_commitments.js'),{
     require:name=>mocks[name]||require(name.startsWith('../')?path.join(__dirname,'../src/routes',name):name),
     process,module:{},console

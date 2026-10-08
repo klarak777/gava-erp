@@ -9,7 +9,7 @@ function workbook(count=1){
   return xlsx.write(book,{type:'buffer',bookType:'xlsx'});
 }
 function load(tables,buffer=workbook()){
-  const handlers={},writes=[];
+  const handlers={},writes=[],reads=[];
   function db(table){
     let filters=[],first=false;
     const rows=()=> (tables[table]||[]).filter(row=>filters.every(fn=>fn(row)));
@@ -21,16 +21,17 @@ function load(tables,buffer=workbook()){
       orderBy(){return this;},first(){first=true;return this;},forUpdate(){return this;},
       async update(data){const found=rows();found.forEach(row=>Object.assign(row,data));return found.length;},
       async insert(data){const list=Array.isArray(data)?data:[data];tables[table] ||= [];tables[table].push(...list.map(row=>({...row})));return list.length;},
+      async del(){const removed=new Set(rows());tables[table]=(tables[table]||[]).filter(row=>!removed.has(row));return removed.size;},
       then(resolve,reject){return Promise.resolve(first?rows()[0]:rows()).then(resolve,reject);}
     };return query;
   }
   db.fn={now:()=> 'now'};db.raw=async()=>{};db.commit=async()=>{};db.rollback=async()=>{};db.transaction=async cb=>cb?cb(db):db;
   const multer=()=>({single:()=>()=>{}});multer.memoryStorage=()=>({});
-  const mocks={express:{Router:()=>Object.fromEntries(['get','post','put'].map(method=>[method,(url,...callbacks)=>{handlers[method+' '+url]=callbacks.at(-1);}]))},
-    multer,'../db/db':db,fs:{existsSync:()=>true,readFileSync:()=>buffer,mkdirSync(){},writeFileSync(file){writes.push(file);}}};
+  const mocks={express:{Router:()=>Object.fromEntries(['get','post','put','delete'].map(method=>[method,(url,...callbacks)=>{handlers[method+' '+url]=callbacks.at(-1);}]))},
+    multer,'../db/db':db,fs:{existsSync:()=>true,readFileSync(file){reads.push(file);return buffer;},mkdirSync(){},writeFileSync(file){writes.push(file);}}};
   const file=path.resolve(__dirname,'../src/routes/aldi_weekly_commitments.js');
   vm.runInNewContext(fs.readFileSync(file,'utf8'),{require:name=>mocks[name]||require(name.startsWith('.')?path.resolve(path.dirname(file),name):name),module:{},process,console:{error(){},log(){}}});
-  return {handlers,writes};
+  return {handlers,writes,reads};
 }
 async function invoke(fn,req){const res={code:200,status(code){this.code=code;return this;},json(data){this.data=data;}};await fn(req,res);return res;}
 const commitment={id:1,year:2026,week_number:36,action_file_path:'Rendelési terv KW36.xlsx'};
@@ -58,43 +59,47 @@ test('weekly API distinguishes missing fulfillment from zero and adds current-ve
   ]);
 });
 
-test('weekly GET restores legacy daily data from its archive: 2994 is split, manual values and stored rows remain untouched',async()=>{
+test('weekly GET uses persisted daily data and manual values without opening the Excel archive',async()=>{
   const original={id:21,commitment_id:1,type:'action',display_name:'530766',action_period:'03.09.-06.09.',
-    total_forecast_cartons:2686,daily_values:null,manual_action_demand:null,manual_normal_demand:null};
+    total_forecast_cartons:2686,daily_values:JSON.stringify(daily),manual_action_demand:null,manual_normal_demand:null};
   const demand={id:10,commitment_id:1,type:'normal',display_name:'530766',total_forecast_cartons:2994};
   const tables={aldi_weekly_commitments:[{...commitment}],aldi_weekly_commitment_items:[original,demand]};
   const before=JSON.stringify(tables);
-  const {handlers}=load(tables);
+  const {handlers,reads}=load(tables);
   const response=await invoke(handlers['get /:year/:week_number'],{params:{year:'2026',week_number:'36'}});
-  assert.equal(response.code,200);assert.equal(response.data.daily_data_restored,1);
-  assert.deepEqual(JSON.parse(JSON.stringify(response.data.items[0].daily_values)),daily);
+  assert.equal(response.code,200);assert.equal(response.data.daily_data_restored,0);
+  assert.deepEqual(JSON.parse(response.data.items[0].daily_values),daily);
+  assert.equal(reads.length,0);
   assert.equal(JSON.stringify(tables),before);
   const source=fs.readFileSync(path.resolve(__dirname,'../../Access UI/src/utils/weeklyCommitments.js'),'utf8');
   const {buildWeeklyProducts}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
   const product=buildWeeklyProducts(response.data.items,response.data.week_dates,response.data.rates)['530766'];
-  assert.equal(product.weeklyTotal,2994);assert.equal(product.actionTotal,2766);assert.equal(product.normalTotal,228);
+  assert.equal(product.weeklyTotal,2994);assert.equal(product.actionTotal,2458);assert.equal(product.normalTotal,536);
   assert.equal(product.splitComplete,true);
-  assert.deepEqual(product.distribution,{wed:830,thu:830,fri:609,sat:498,sun:46,mon:68,tue:114});
+  assert.deepEqual(product.distribution,{wed:737,thu:737,fri:541,sat:442,sun:107,mon:161,tue:268});
   original.manual_action_demand=2994;original.manual_normal_demand=0;
   const manualResponse=await invoke(handlers['get /:year/:week_number'],{params:{year:'2026',week_number:'36'}});
   const manualProduct=buildWeeklyProducts(manualResponse.data.items,manualResponse.data.week_dates,manualResponse.data.rates)['530766'];
   assert.equal(manualProduct.actionTotal,2994);assert.equal(manualProduct.normalTotal,0);
-  assert.equal(manualProduct.defaultAction,2766);assert.equal(manualProduct.defaultNormal,228);
+  assert.equal(manualProduct.defaultAction,2458);assert.equal(manualProduct.defaultNormal,536);
+  assert.equal(reads.length,0);
 });
 
-test('unavailable or unmatched archive leaves unknown split explicit, not a full promotion and false zero',async()=>{
+test('repeated weekly GET with missing daily data never accesses an available or absent Excel archive',async()=>{
   const original={id:21,commitment_id:1,type:'action',display_name:'530766',action_period:'03.09.-06.09.',total_forecast_cartons:2994,daily_values:null};
   const tables={aldi_weekly_commitments:[{...commitment}],aldi_weekly_commitment_items:[original]};
-  const {handlers}=load(tables);
+  const {handlers,reads}=load(tables);
   const response=await invoke(handlers['get /:year/:week_number'],{params:{year:'2026',week_number:'36'}});
-  assert.equal(response.code,200);assert.equal(response.data.daily_data_restored,0);assert.equal(response.data.warnings.length,1);
+  assert.equal(response.code,200);assert.equal(response.data.daily_data_restored,0);assert.equal(response.data.warnings.length,0);
+  assert.equal(response.data.items[0].daily_values,null);assert.equal(reads.length,0);
   const source=fs.readFileSync(path.resolve(__dirname,'../../Access UI/src/utils/weeklyCommitments.js'),'utf8');
   const {buildWeeklyProducts}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
   const product=buildWeeklyProducts(response.data.items,response.data.week_dates)['530766'];
   assert.equal(product.weeklyTotal,2994);assert.equal(product.actionTotal,null);assert.equal(product.normalTotal,null);assert.equal(product.splitComplete,false);
   tables.aldi_weekly_commitments[0].action_file_path=null;
   const missing=await invoke(handlers['get /:year/:week_number'],{params:{year:'2026',week_number:'36'}});
-  assert.equal(missing.code,200);assert.equal(missing.data.warnings.length,1);
+  assert.equal(missing.code,200);assert.equal(missing.data.warnings.length,0);
+  assert.equal(missing.data.items[0].daily_values,null);assert.equal(reads.length,0);
 });
 
 test('archive restoration aggregates warehouses, preserves valid daily data and rejects incomplete archives',()=>{
@@ -136,10 +141,38 @@ test('manual API rejects bad quantities or days and partial changes preserve oth
   assert.equal(item.manual_action_demand,0);assert.equal(item.manual_normal_demand,null);assert.deepEqual(JSON.parse(item.action_days_json),['fri','sat']);
 });
 
+test('promotion can be saved as normal without erasing the original Excel period',async()=>{
+  const item={commitment_id:1,display_name:'530766',action_period:'03.09.-06.09.'};
+  const {handlers}=load({aldi_weekly_commitments:[{...commitment}],aldi_weekly_commitment_items:[item]});
+  const result=await invoke(handlers['put /weeks/:year/:week_number/article/:article_number'],{
+    params,body:{manual_normal_demand:2687,manual_action_demand:0,action_days_json:[]}
+  });
+  assert.equal(result.code,200);assert.equal(item.action_days_json,'[]');
+  assert.equal(item.action_period,'03.09.-06.09.');assert.equal(item.manual_action_demand,0);
+});
+
+test('delete removes all grouped product items only in the selected week, preserving other records',async()=>{
+  const target={commitment_id:1,display_name:'530766'};
+  const keep=[{commitment_id:1,display_name:'OTHER'},{commitment_id:2,display_name:'530766'}];
+  const tables={aldi_weekly_commitments:[{...commitment},{...commitment,id:2,week_number:37}],
+    aldi_weekly_commitment_items:[{...target,type:'action'},{...target,type:'normal'},{...target,type:'action'},...keep],
+    chain_products:[{article_number:'530766'}],aldi_daily_orders:[{id:99}],aldi_weekly_stock_inputs:[{year:2026,week_number:36,article_number:'530766'}]};
+  const protectedData=JSON.stringify([tables.chain_products,tables.aldi_daily_orders,tables.aldi_weekly_stock_inputs]);
+  const {handlers,reads}=load(tables);
+  const remove=params=>invoke(handlers['delete /weeks/:year/:week_number/article/:article_number'],{params});
+  assert.equal((await remove({...params,week_number:'0'})).code,400);
+  assert.equal((await remove({...params,week_number:'35'})).code,404);
+  const result=await remove(params);
+  assert.equal(result.code,200);assert.equal(result.data.deleted_rows,3);
+  assert.deepEqual(tables.aldi_weekly_commitment_items,keep);
+  assert.equal(JSON.stringify([tables.chain_products,tables.aldi_daily_orders,tables.aldi_weekly_stock_inputs]),protectedData);
+  assert.equal((await remove(params)).code,404);assert.equal(reads.length,0);
+});
+
 test('reprocess restores existing daily values and forecast only in selected week, preserving manual edits',async()=>{
   const original={commitment_id:1,type:'action',display_name:'530766',action_period:'03.09.-06.09.',total_forecast_cartons:0,daily_values:'{}',manual_action_demand:1000,manual_normal_demand:400};
   const items=[{...original,id:11},{...original,id:12},{...original,id:13,action_period:'13.08.-16.08.'},{...original,id:14,commitment_id:2}];
-  const {handlers}=load({aldi_weekly_commitments:[{...commitment},{...commitment,id:2,week_number:37}],aldi_weekly_commitment_items:items},workbook(2));
+  const {handlers,reads}=load({aldi_weekly_commitments:[{...commitment},{...commitment,id:2,week_number:37}],aldi_weekly_commitment_items:items},workbook(2));
   const response=await invoke(handlers['post /reprocess'],{body:{year:2026,week_number:36}});
   assert.equal(response.code,200);assert.equal(response.data.total_updated,2);
   for(const item of items.slice(0,2)){
@@ -147,6 +180,10 @@ test('reprocess restores existing daily values and forecast only in selected wee
     assert.equal(item.manual_action_demand,1000);assert.equal(item.manual_normal_demand,400);
   }
   assert.equal(items[2].total_forecast_cartons,0);assert.equal(items[3].total_forecast_cartons,0);
+  assert.equal(reads.length,1); // Only the explicit reprocess opens Excel.
+  const stored=await invoke(handlers['get /:year/:week_number'],{params:{year:'2026',week_number:'36'}});
+  assert.equal(stored.code,200);assert.equal(reads.length,1);
+  assert.deepEqual(JSON.parse(stored.data.items[0].daily_values),daily);
 });
 
 test('reprocess combines source warehouse rows when the stored product is already aggregated',async()=>{

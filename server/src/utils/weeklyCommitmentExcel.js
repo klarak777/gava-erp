@@ -24,7 +24,8 @@ function manualOverrides(body = {}) {
         if (days !== null && (!Array.isArray(days) || days.some(day => !validDays.includes(day)) || new Set(days).size !== days.length)) {
             throw new Error('Érvénytelen akciós napok.');
         }
-        result.action_days_json = days?.length ? JSON.stringify(validDays.filter(day => days.includes(day))) : null;
+        // An explicit empty list overrides an Excel promotion with normal distribution.
+        result.action_days_json = days === null ? null : JSON.stringify(validDays.filter(day => days.includes(day)));
     }
     if (!Object.keys(result).length) throw new Error('Nincs megadott módosítás.');
     return result;

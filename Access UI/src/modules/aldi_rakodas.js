@@ -273,10 +273,13 @@ export function renderAldiRakodas(container, windowManager) {
         const truck = state.trucks.find(t => t.id === id);
         
         if (isLoaded && truck) {
-          const name = truck.truck_number || id;
-          if (!confirm(`Biztosan rakodottra állítod a(z) ${name} kamiont? Ez áthelyezi a kamiont a Fuvarok összesítőbe és a Belföldi fuvarok modulba.`)) {
-            e.target.checked = false;
-            return;
+          const statusPct = truck.preparation_status || 0;
+          if (statusPct < 100) {
+            const name = truck.truck_number || id;
+            if (!confirm(`Biztosan rakodottra állítod a(z) ${name} kamiont? Ez áthelyezi a kamiont a Fuvarok összesítőbe és a Belföldi fuvarok modulba.`)) {
+              e.target.checked = false;
+              return;
+            }
           }
         }
 

@@ -58,7 +58,7 @@ test('invalid workbook is rejected before database writes or overwriting an arch
   const multer = () => ({ single: () => (req,res,next) => next() });
   multer.memoryStorage = () => ({});
   const mocks = {
-    express: { Router: () => ({ post: (url,...handlers) => { routes[url] = handlers.at(-1); }, get() {}, put() {} }) },
+    express: { Router: () => ({ post: (url,...handlers) => { routes[url] = handlers.at(-1); }, get() {}, put() {}, delete() {} }) },
     multer, fs: { existsSync: () => true, writeFileSync: () => { writes++; } },
     '../db/db': { transaction: async () => { started = true; return trx; } }
   };
