@@ -94,7 +94,11 @@ const modules = {
     menedzser: { render: renderMenedzser, title: 'Menedzser' },
     logisztika: { render: renderLogisztika, title: 'Logisztika' },
     partnerek: { render: (container) => partnerekModule(container), title: 'Partnerek' },
-    employees: { render: renderEmployeesModule, title: 'Dolgozók' },
+    employees: { 
+        title: 'Dolgozók',
+        opensWindow: true,
+        render: (_container, manager) => manager.open('employees', 'Dolgozók', content => renderEmployeesModule(content, manager))
+    },
     penny_stock: { render: renderPennyStock, title: 'PENNY – Stock' },
     penny_belfoldi_fuvarok: { render: renderPennyBelfoldiFuvarok, title: 'PENNY – Belföldi fuvarok' },
     penny_komissios_utasitas: { render: renderPennyKomissiosUtasitas, title: 'PENNY – Komissiós utasítás' },

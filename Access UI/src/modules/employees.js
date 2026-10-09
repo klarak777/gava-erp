@@ -592,7 +592,7 @@ async function openEmployeeEditor(wm, employeeId, onSaved) {
 
             <dialog id="doc-upload-dialog">
                 <h3 style="margin-top:0;">Dokumentum feltöltése</h3>
-                <div class="emp-field"><label>Fájl kiválasztása (PDF, PNG)</label><input type="file" id="doc-file" accept=".pdf, .png"></div>
+                <div class="emp-field"><label>Fájl kiválasztása (PDF, PNG, JPG)</label><input type="file" id="doc-file" accept=".pdf, .png, .jpg, .jpeg"></div>
                 <div class="emp-field"><label>Dokumentum neve (Szerkeszthető)</label><input type="text" id="doc-name"></div>
                 <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px;">
                     <button type="button" class="emp-btn-small" id="btn-doc-cancel">Mégse</button>
@@ -1183,8 +1183,8 @@ async function openEmployeeEditor(wm, employeeId, onSaved) {
             }
             const file = fileInput.files[0];
             const ext = file.name.split('.').pop().toLowerCase();
-            if (ext !== 'pdf' && ext !== 'png') {
-                alert('Csak PDF vagy PNG fájl tölthető fel!');
+            if (ext !== 'pdf' && ext !== 'png' && ext !== 'jpg' && ext !== 'jpeg') {
+                alert('Csak PDF, PNG vagy JPG fájl tölthető fel!');
                 return;
             }
 
