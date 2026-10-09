@@ -176,6 +176,16 @@ async function openEmployeeEditor(wm, employeeId, onSaved) {
         windowEl.classList.add('emp-profile-window');
         windowEl.style.width = '1100px';
         windowEl.style.height = '800px';
+        
+        // Center the window immediately after open logic runs
+        requestAnimationFrame(() => {
+            const containerWidth = window.innerWidth;
+            const containerHeight = window.innerHeight;
+            const left = Math.max(20, (containerWidth - 1100) / 2);
+            const top = Math.max(70, (containerHeight - 800) / 2);
+            windowEl.style.left = left + 'px';
+            windowEl.style.top = top + 'px';
+        });
 
         let currentEmployeeId = null;
         let isEditing = false;
