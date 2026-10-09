@@ -99,7 +99,7 @@ const modules = {
         opensWindow: true,
         render: (_container, manager) => {
             const modal = manager.createModal({ title: 'DOLGOZÓ KIVÁLASZTÁSA', width: 640, height: 480 });
-            renderEmployeesModule(modal.querySelector('.window-content'), manager);
+            renderEmployeesModule(modal.element.querySelector('.window-content'), manager);
         }
     },
     penny_stock: { render: renderPennyStock, title: 'PENNY – Stock' },
