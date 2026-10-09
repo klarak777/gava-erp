@@ -42,8 +42,9 @@ const EMPLOYEE_STYLES = `
                 .emp-tab-content { flex: 1; overflow-y: auto; padding: 20px; display: none; }
                 .emp-tab-content.active { display: block; }
                 
-                .emp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
-                .emp-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 30px; }
+                .emp-grid { display: grid; grid-template-columns: 350px 200px 200px; gap: 40px; margin-bottom: 30px; justify-content: start; }
+                .emp-grid-2 { display: grid; grid-template-columns: 300px 300px; gap: 40px; margin-bottom: 30px; justify-content: start; }
+                .emp-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
                 
                 .emp-section-title { font-size: 15px; font-weight: 700; color: #334155; margin-bottom: 15px; padding-bottom: 5px; border-bottom: 1px solid #e2e8f0; }
                 
@@ -103,7 +104,7 @@ export function renderEmployeesModule(content, wm) {
             </div>
 
             <div class="emp-selection-list">
-                <table class="emp-table" aria-label="Dolgozó kiválasztása">
+                <table class="emp-table" aria-label="Dolgozó kiválasztása" style="max-width: 600px;">
                     <thead><tr><th>Név</th><th>Belépés dátuma</th><th>Státusz</th></tr></thead>
                     <tbody id="emp-search-results"><tr><td colspan="3">Betöltés...</td></tr></tbody>
                 </table>
@@ -350,23 +351,46 @@ async function openEmployeeEditor(wm, employeeId, onSaved) {
                         </div>
                     </div>
 
-                    <div class="emp-section-title">4. Oktatás & Képzés <button id="btn-add-edu" class="emp-btn-small" style="float:right;" disabled>+ Hozzáadás</button></div>
-                    <table class="emp-table" id="table-edu">
-                        <thead><tr><th>Intézmény</th><th>Végzettség</th><th>Év</th><th>Műveletek</th></tr></thead>
-                        <tbody></tbody>
-                    </table>
-
-                    <div class="emp-section-title">Nyelvtudás <button id="btn-add-lang" class="emp-btn-small" style="float:right;" disabled>+ Hozzáadás</button></div>
-                    <table class="emp-table" id="table-lang">
-                        <thead><tr><th>Nyelv</th><th>Szint</th><th>Műveletek</th></tr></thead>
-                        <tbody></tbody>
-                    </table>
-
-                    <div class="emp-section-title">5. Dokumentumok <button id="btn-upload-doc" class="emp-btn-small" style="float:right;" disabled>+ Feltöltés</button></div>
-                    <table class="emp-table" id="table-docs">
-                        <thead><tr><th>Fájlnév</th><th>Feltöltve</th><th>Műveletek</th></tr></thead>
-                        <tbody></tbody>
-                    </table>
+                    <div class="emp-grid-3">
+                        <div style="border:1px solid #e2e8f0; border-radius:6px; padding:15px; background:white; box-shadow:0 1px 3px rgba(0,0,0,0.02); display:flex; flex-direction:column;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                                <div style="font-size:13px; font-weight:800; color:#2563eb; letter-spacing:0.5px;">OKTATÁS & KÉPZÉS</div>
+                                <button id="btn-add-edu" class="emp-btn-small" style="background:white; border:1px solid #e2e8f0; color:#2563eb; font-weight:600; padding:4px 10px; border-radius:4px; font-size:11px;" disabled>+ HOZZÁADÁS</button>
+                            </div>
+                            <div style="border:1px solid #f1f5f9; border-radius:4px; min-height:120px; flex:1; display:flex; flex-direction:column;">
+                                <table class="emp-table" id="table-edu" style="margin:0; border:none; width:100%;">
+                                    <thead style="display:none;"><tr><th>Intézmény</th><th>Végzettség</th><th>Év</th><th>Műveletek</th></tr></thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div style="border:1px solid #e2e8f0; border-radius:6px; padding:15px; background:white; box-shadow:0 1px 3px rgba(0,0,0,0.02); display:flex; flex-direction:column;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                                <div style="font-size:13px; font-weight:800; color:#2563eb; letter-spacing:0.5px;">NYELVTUDÁS</div>
+                                <button id="btn-add-lang" class="emp-btn-small" style="background:white; border:1px solid #e2e8f0; color:#2563eb; font-weight:600; padding:4px 10px; border-radius:4px; font-size:11px;" disabled>+ HOZZÁADÁS</button>
+                            </div>
+                            <div style="border:1px solid #f1f5f9; border-radius:4px; min-height:120px; flex:1; display:flex; flex-direction:column;">
+                                <table class="emp-table" id="table-lang" style="margin:0; border:none; width:100%;">
+                                    <thead style="display:none;"><tr><th>Nyelv</th><th>Szint</th><th>Műveletek</th></tr></thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div style="border:1px solid #e2e8f0; border-radius:6px; padding:15px; background:white; box-shadow:0 1px 3px rgba(0,0,0,0.02); display:flex; flex-direction:column;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                                <div style="font-size:13px; font-weight:800; color:#2563eb; letter-spacing:0.5px;">DOKUMENTUMOK</div>
+                                <button id="btn-upload-doc" class="emp-btn-small" style="background:white; border:1px solid #e2e8f0; color:#2563eb; font-weight:600; padding:4px 10px; border-radius:4px; font-size:11px;" disabled>+ FELTÖLTÉS</button>
+                            </div>
+                            <div style="border:1px solid #f1f5f9; border-radius:4px; min-height:120px; flex:1; display:flex; flex-direction:column;">
+                                <table class="emp-table" id="table-docs" style="margin:0; border:none; width:100%;">
+                                    <thead style="display:none;"><tr><th>Fájlnév</th><th>Feltöltve</th><th>Műveletek</th></tr></thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- ESZKÖZEI FÜL -->
