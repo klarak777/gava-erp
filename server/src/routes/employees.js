@@ -278,7 +278,7 @@ router.post('/:id/documents', upload.single('file'), async (req, res) => {
     const file = req.file;
     if (!file) return res.status(400).json({ error: 'Nincs fájl kiválasztva.' });
 
-    const targetDir = `//192.168.1.5/raktar/Gava Hungria System/ERP/${id}`;
+    const targetDir = `//192.168.1.5/raktar/Gava Hungria System/ERP Dolgozók/${id}`;
     
     let actualDir = targetDir;
     try {
