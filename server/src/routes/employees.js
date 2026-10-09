@@ -358,12 +358,14 @@ router.delete('/:id/documents/:docId', async (req, res) => {
 
         await db.transaction(async trx => {
             await trx('employee_documents').where({ id: doc.id }).del();
-            await trx('system_history').insert({
-                module: 'EMPLOYEE_DOC_DELETED',
-                reference_id: req.params.id,
-                action: 'Törlés',
-                details: `Dokumentum törölve: ${doc.file_name}`,
-                user: 'System'
+            await trx('employee_history').insert({
+                employee_id: req.params.id,
+                event_category: 'SYSTEM',
+                event_type: 'Dokumentum törlése',
+                module_or_function: 'Dokumentumok',
+                details: `Törölt fájl: ${doc.file_name || doc.filename || 'Ismeretlen'}`,
+                ip_address: req.ip,
+                operator_name: req.user ? req.user.name : 'Rendszer'
             });
         });
 
