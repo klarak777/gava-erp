@@ -1,6 +1,6 @@
 {
   "name": "server",
-  "version": "0.9.8.0",
+  "version": "0.9.8.5",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -45,3 +45,4 @@
     "pg-copy-streams": "^7.0.0"
   }
 }
+

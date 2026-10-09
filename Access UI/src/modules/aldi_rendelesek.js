@@ -486,7 +486,8 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
           </button>
         </div>
       </div>
-      <div style="border:1px solid #e2e8f0; border-radius:6px; overflow:hidden; max-width:920px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+      <div style="display:flex; gap:20px; align-items:flex-start;">
+        <div style="flex:1; border:1px solid #e2e8f0; border-radius:6px; overflow:hidden; min-width:500px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
         <table style="width:100%; border-collapse:collapse; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size:13px;">
           <thead>
             <tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;">
@@ -495,8 +496,7 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
               <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:120px;">VERZIÓ SZÁMA</th>
               <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:150px;">RENDELÉS TÍPUSA</th>
               <th style="padding:10px 14px; text-align:center; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:110px;">RAKLAPSZÁM</th>
-              <th style="padding:10px 14px; text-align:center; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:160px;">RENDELÉS MEGTEKINTÉSE</th>
-            </tr>
+              </tr>
           </thead>
           <tbody>
             ${filteredOrders.length === 0 ? `
@@ -521,7 +521,7 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
       }
 
       return `
-              <tr style="border-bottom:1px solid #f1f5f9; ${o.version_status === 'superseded' ? 'background:#e5e7eb; opacity:.72;' : (idx % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;')}">
+              <tr class="aldi-order-row" data-id="${o.id}" data-orderno="${o.order_number}" data-date="${formattedDate}" data-status="${o.version_status || 'current'}" style="cursor:pointer; border-bottom:1px solid #f1f5f9; ${o.version_status === 'superseded' ? 'background:#e5e7eb; opacity:.72;' : (idx % 2 === 1 ? 'background:#fafafa;' : 'background:#ffffff;')}">
                 <td style="padding:10px 14px; color:#1e293b; font-weight:500;">${formattedDate}</td>
                 <td style="padding:10px 14px;">
                   <a href="/api/v1/aldi-daily-orders/${o.id}/file" class="aldi-order-link" target="_blank" data-id="${o.id}" data-orderno="${o.order_number}" data-date="${formattedDate}" style="color:#2563eb; font-weight:700; text-decoration:underline;">${displayOrderNumber}</a>
@@ -537,15 +537,16 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
                 <td style="padding:10px 14px; text-align:center; font-weight:700; color:#1e293b;">
                   ${o.pallet_count != null && o.pallet_count !== '' && o.pallet_count > 0 ? Math.ceil(o.pallet_count) : '-'}
                 </td>
-                <td style="padding:10px 14px; text-align:center;">
-                  <button class="aldi-view-order-btn" data-id="${o.id}" data-orderno="${o.order_number}" data-date="${formattedDate}" data-status="${o.version_status || 'current'}" style="background:none; border:none; cursor:pointer; font-size:16px;" title="Tételek megtekintése">📋</button>
-                  <button class="aldi-delete-order-btn" data-id="${o.id}" style="background:none; border:none; cursor:pointer; font-size:16px; margin-left:8px;" title="Rendelés törlése">🗑️</button>
-                </td>
               </tr>
               `;
     }).join('')}
           </tbody>
-        </table>
+          </table>
+        </div>
+        
+        <div id="aldi-napi-order-details-pane" style="flex:1; min-width:400px; border:1px solid #e2e8f0; border-radius:6px; background:#ffffff; box-shadow:0 1px 3px rgba(0,0,0,0.02); display:none; flex-direction:column;">
+          <!-- Content dynamically injected here -->
+        </div>
       </div>
     `;
   }
@@ -1844,7 +1845,10 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
   }
 
   async function openOrderViewModal(id, orderNo, dateStr) {
-    const windowId = 'order-view-' + id;
+    const pane = document.getElementById('aldi-napi-order-details-pane');
+    if (!pane) return;
+    pane.style.display = 'flex';
+    pane.innerHTML = '<div style="padding:20px; text-align:center; color:#64748b;">Betöltés...</div>';
     const title = `Rendelés: ${orderNo} | Dátum: ${dateStr}`;
 
     const fetchLines = async () => {
@@ -1919,32 +1923,20 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
 
     const hasRemaining = isCurrentVersion && lines.some(l => !l.is_virtual_removed && Math.max(0, parseFloat(l.ordered_cartons) - (parseFloat(l.sent_cartons) || 0)) > 0);
 
-    const contentHtml = `
-      <div style="display:flex; flex-direction:column; height:100%; background:#ffffff;">
-        <div id="order-lines-container-${id}" style="flex:1; padding:16px 20px; overflow-y:auto;">
-          ${generateTableHtml(lines)}
-        </div>
-        <div style="padding:12px 20px; border-top:1px solid #e2e8f0; background:#f8fafc; display:flex; justify-content:space-between; align-items:center;">
-          <button id="export-btn-${id}" style="padding:6px 18px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid #10b981; background:#ffffff; color:#10b981; cursor:pointer; display:${lines.length > 0 && isCurrentVersion ? 'inline-flex' : 'none'}; align-items:center; gap:6px;">⬇️ Excel Export</button>
-          ${hasRemaining ? `<button id="send-to-demands-btn-${id}" class="primary-btn" style="padding:6px 18px; border-radius:20px; font-size:13px; font-weight:600; display:inline-flex; align-items:center; gap:6px; background:#2563eb; color:white; border:none; cursor:pointer;">Rendelés rakodásra küldése &gt;&gt;&gt;</button>` : (isCurrentVersion && lines.length > 0 ? `<div style="color:#16a34a; font-weight:bold; font-size:13px; padding:6px 18px;">✓ Minden tétel átküldve</div>` : '')}
-        </div>
+    pane.innerHTML = `
+      <div style="padding:12px 16px; border-bottom:1px solid #e2e8f0; background:#f8fafc; font-weight:bold; color:#1e293b; font-size:14px;">
+        ${title}
+      </div>
+      <div id="order-lines-container-${id}" style="flex:1; padding:16px 20px; overflow-y:auto; min-height:0;">
+        ${generateTableHtml(lines)}
+      </div>
+      <div style="padding:12px 20px; border-top:1px solid #e2e8f0; background:#f8fafc; display:flex; justify-content:space-between; align-items:center;">
+        <button id="export-btn-${id}" style="padding:6px 18px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid #10b981; background:#ffffff; color:#10b981; cursor:pointer; display:${lines.length > 0 && isCurrentVersion ? 'inline-flex' : 'none'}; align-items:center; gap:6px;">⬇️ Excel Export</button>
+        ${hasRemaining ? `<button id="send-to-demands-btn-${id}" class="primary-btn" style="padding:6px 18px; border-radius:20px; font-size:13px; font-weight:600; display:inline-flex; align-items:center; gap:6px; background:#2563eb; color:white; border:none; cursor:pointer;">Rendelés rakodásra küldése &gt;&gt;&gt;</button>` : (isCurrentVersion && lines.length > 0 ? `<div style="color:#16a34a; font-weight:bold; font-size:13px; padding:6px 18px;">✓ Minden tétel átküldve</div>` : '')}
       </div>
     `;
 
-    if (windowManager && typeof windowManager.createModal === 'function') {
-      windowManager.createModal({
-        title: title,
-        width: 800,
-        height: 500,
-        content: contentHtml
-      });
-
-      const attachEvents = () => {
-        // No per-row send buttons in this view
-      };
-
-
-      setTimeout(() => {
+    setTimeout(() => {
         const exportBtn = document.getElementById(`export-btn-${id}`);
         if (exportBtn) {
           exportBtn.addEventListener('click', () => doExcelExport(lines.filter(line => !line.is_virtual_removed), orderNo, dateStr));
@@ -1980,12 +1972,7 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
           });
         }
 
-        attachEvents();
-      }, 100);
-    } else {
-      // Fallback
-      alert('WindowManager nem elérhető, kérlek frissítsd az oldalt!');
-    }
+        }, 100);
   }
   function doExcelExport(lines, orderNo, dateStr) {
     if (typeof XLSX === 'undefined') {
@@ -3211,37 +3198,24 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
     // PDF view
     wrapper.querySelectorAll('.aldi-order-link').forEach(link => {
       link.addEventListener('click', (e) => {
+        e.stopPropagation();
         e.preventDefault();
         openPdfViewerModal(link.href, `Rendelés PDF: ${link.dataset.orderno} (${link.dataset.date})`);
       });
     });
 
-    // Order delete
-    wrapper.querySelectorAll('.aldi-delete-order-btn').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
+    // Order view (row click)
+    wrapper.querySelectorAll('.aldi-order-row').forEach(row => {
+      row.addEventListener('click', (e) => {
         e.preventDefault();
-        const id = btn.dataset.id;
-        if (confirm('Biztosan törölni szeretnéd ezt a rendelést? A művelet nem vonható vissza, és a PDF fájl is törlődik!')) {
-          try {
-            const res = await fetch(`/api/v1/aldi-daily-orders/${id}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error('Hiba a törlés során');
-            alert('A rendelés sikeresen törölve lett.');
-            fetchNapiRendelesek(); // Frissítjük az oldalt a törlés után
-          } catch (err) {
-            console.error(err);
-            alert('Sikertelen törlés!');
-          }
-        }
-      });
-    });
+        const id = row.dataset.id;
+        const orderno = row.dataset.orderno;
+        const dateStr = row.dataset.date;
+        
+        wrapper.querySelectorAll('.aldi-order-row').forEach(r => r.style.outline = 'none');
+        row.style.outline = '2px solid #2563eb';
+        row.style.outlineOffset = '-2px';
 
-    // Order view
-    wrapper.querySelectorAll('.aldi-view-order-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        const id = btn.dataset.id;
-        const orderno = btn.dataset.orderno;
-        const dateStr = btn.dataset.date;
         openOrderViewModal(id, orderno, dateStr);
       });
     });
