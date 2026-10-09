@@ -929,7 +929,10 @@ async function openEmployeeEditor(wm, employeeId, onSaved) {
                 if (!confirm('Biztosan törölni szeretnéd ezt a dokumentumot véglegesen?')) return;
                 try {
                     const res = await fetch(`/api/v1/employees/${currentEmployeeId}/documents/${doc.id}`, { method: 'DELETE' });
-                    if (!res.ok) throw new Error('Hiba a törlés során');
+                    if (!res.ok) {
+                        const error = await res.json().catch(() => ({}));
+                        throw new Error(error.error || 'Hiba a törlés során');
+                    }
                 } catch (e) {
                     alert('Hiba: ' + e.message);
                     return;
@@ -1159,7 +1162,7 @@ async function openEmployeeEditor(wm, employeeId, onSaved) {
         const docDialog = content.querySelector('#doc-upload-dialog');
         
         const openDocViewerModal = (url, title) => {
-            const ext = url.split('.').pop().toLowerCase();
+            const ext = (title || '').split('.').pop().toLowerCase();
             const isImg = ext === 'png' || ext === 'jpg' || ext === 'jpeg';
             let contentHtml = isImg ? `<img src="${url}" style="width:100%; height:100%; object-fit:contain;">` : `<iframe src="${url}" style="width:100%; height:100%; border:none;"></iframe>`;
             if (wm && typeof wm.createModal === 'function') {
@@ -1227,7 +1230,8 @@ async function openEmployeeEditor(wm, employeeId, onSaved) {
                     renderDocs();
                     docDialog.close();
                 } else {
-                    alert('Hiba történt a feltöltés során.');
+                    const error = await res.json().catch(() => ({}));
+                    alert(error.error || 'Hiba történt a feltöltés során.');
                 }
             } catch (e) {
                 alert('Hálózati hiba.');

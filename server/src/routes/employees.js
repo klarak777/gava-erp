@@ -3,9 +3,9 @@ const router = express.Router();
 const db = require('../db/db');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
-const fs = require('fs');
-const path = require('path');
-const upload = multer({ dest: 'uploads/' });
+const { createEmployeeDocumentStorage } = require('../services/employeeDocumentStorage');
+const documentStorage = createEmployeeDocumentStorage();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'erp-secret-key';
@@ -271,38 +271,27 @@ router.delete('/:id/devices/:deviceId', async (req, res) => {
 
 
 // UPLOAD document
-router.post('/:id/documents', upload.single('file'), async (req, res) => {
+router.post('/:id/documents', (req, res, next) => upload.single('file')(req, res, error => {
+  if (error) return res.status(400).json({ error: error.code === 'LIMIT_FILE_SIZE' ? 'A dokumentum legfeljebb 50 MB lehet.' : 'A dokumentum feltöltése sikertelen.' });
+  next();
+}), async (req, res) => {
+  let stored;
   try {
     const id = req.params.id;
-    const { name } = req.body;
+    const { name } = req.body || {};
     const file = req.file;
     if (!file) return res.status(400).json({ error: 'Nincs fájl kiválasztva.' });
 
-    const targetDir = `//192.168.1.5/raktar/Gava Hungria System/ERP Dolgozók/${id}`;
-    
-    let actualDir = targetDir;
-    try {
-        fs.mkdirSync(targetDir, { recursive: true });
-    } catch (e) {
-        console.warn('Network path not accessible, saving locally.', e.message);
-        actualDir = path.resolve(__dirname, '../../..', 'uploads', 'employees', id.toString());
-        fs.mkdirSync(actualDir, { recursive: true });
-    }
-
-    const originalName = file.originalname;
-    const ext = path.extname(originalName);
-    const finalName = name ? name + ext : originalName;
-    const filePath = actualDir.startsWith('//') ? actualDir + '/' + finalName : path.join(actualDir, finalName);
-    
-    fs.copyFileSync(file.path, filePath);
-    fs.unlinkSync(file.path);
+    documentStorage.employeeDirectory(id);
+    const employee = await db('employees').where({ id }).select('id').first();
+    if (!employee) return res.status(404).json({ error: 'Dolgozó nem található.' });
+    stored = await documentStorage.save(id, file, name);
 
     let newDoc;
     await db.transaction(async trx => {
       [newDoc] = await trx('employee_documents').insert({
         employee_id: id,
-        file_name: finalName,
-        file_path: filePath,
+        ...stored,
         upload_date: db.fn.now()
       }).returning('*');
       
@@ -311,7 +300,7 @@ router.post('/:id/documents', upload.single('file'), async (req, res) => {
         event_category: 'DOCUMENT',
         event_type: 'Dokumentum feltöltése',
         module_or_function: 'Dokumentumok',
-        details: finalName,
+        details: stored.file_name,
         ip_address: req.ip,
         operator_name: req.user ? req.user.name : 'Rendszer'
       });
@@ -319,8 +308,12 @@ router.post('/:id/documents', upload.single('file'), async (req, res) => {
 
     res.json(newDoc);
   } catch (err) {
+    if (stored) {
+      try { await documentStorage.discard(stored); }
+      catch (cleanupError) { console.error('Feltöltés visszaállítási hiba:', cleanupError); }
+    }
     console.error(err);
-    res.status(500).json({ error: 'Hiba a fájl feltöltésekor.' });
+    res.status(err.status || 500).json({ error: err.status ? err.message : 'Hiba a fájl feltöltésekor. Ellenőrizd a hálózati mappa írási jogosultságát.' });
   }
 });
 
@@ -329,38 +322,30 @@ router.get('/:id/documents/:docId', async (req, res) => {
     try {
         const doc = await db('employee_documents').where({ id: req.params.docId, employee_id: req.params.id }).first();
         if (!doc) return res.status(404).json({ error: 'Dokumentum nem található.' });
-        if (fs.existsSync(doc.file_path)) {
-            res.sendFile(path.resolve(doc.file_path));
-        } else {
-            res.status(404).json({ error: 'Fájl nem található a lemezen.' });
-        }
+        const destination = await documentStorage.readablePath(doc);
+        res.sendFile(destination, error => {
+            if (error && !res.headersSent) res.status(error.status || 500).json({ error: 'A dokumentum fájlja nem olvasható.' });
+        });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: 'Hiba a dokumentum letöltésekor.' });
+        res.status(err.code === 'ENOENT' ? 404 : err.status || 500).json({ error: err.status ? err.message : 'A dokumentum fájlja nem található vagy nem olvasható.' });
     }
 });
 
 
 // Delete a document
 router.delete('/:id/documents/:docId', async (req, res) => {
+    let restoreFile;
     try {
-        const doc = await db('employee_documents').where({ id: req.params.docId, employee_id: req.params.id }).first();
-        if (!doc) return res.status(404).json({ error: 'Dokumentum nem található' });
-
-        // Check if any other document uses this exact file path
-        const otherDocs = await db('employee_documents').where({ file_path: doc.file_path }).whereNot({ id: doc.id });
-
-        // Delete from file system only if no other record uses it
-        if (otherDocs.length === 0 && doc.file_path && fs.existsSync(doc.file_path)) {
-            try {
-                fs.unlinkSync(doc.file_path);
-            } catch (err) {
-                console.error('File törlési hiba:', err);
-            }
-        }
-
         await db.transaction(async trx => {
-            await trx('employee_documents').where({ id: doc.id }).del();
+            const target = await trx('employee_documents').where({ id: req.params.docId, employee_id: req.params.id }).first();
+            if (!target) throw Object.assign(new Error('Dokumentum nem található.'), { status: 404 });
+            const references = await trx('employee_documents').where({ file_path: target.file_path }).orderBy('id').forUpdate();
+            const doc = references.find(row => String(row.id) === String(req.params.docId) && String(row.employee_id) === String(req.params.id));
+            if (!doc) throw Object.assign(new Error('Dokumentum nem található.'), { status: 404 });
+            // A failed physical deletion rolls back the record and history as well.
+            if (references.length === 1) restoreFile = await documentStorage.remove(doc);
+            await trx('employee_documents').where({ id: doc.id, employee_id: req.params.id }).del();
             await trx('employee_history').insert({
                 employee_id: req.params.id,
                 event_category: 'SYSTEM',
@@ -374,8 +359,12 @@ router.delete('/:id/documents/:docId', async (req, res) => {
 
         res.json({ success: true });
     } catch (error) {
+        if (restoreFile) {
+            try { await restoreFile(); }
+            catch (restoreError) { console.error('Dokumentum visszaállítási hiba:', restoreError); }
+        }
         console.error(error);
-        res.status(500).json({ error: 'Szerver hiba dokumentum törlésekor' });
+        res.status(error.status || 500).json({ error: error.status ? error.message : 'A dokumentum fájljának törlése sikertelen. Az adatbázisrekordot megtartottuk.' });
     }
 });
 

@@ -18,7 +18,7 @@ import { renderFuvarokMainPage } from './modules/fuvarok_main.js';
 import { renderMenedzser } from './modules/menedzser.js';
 import { renderLogisztika } from './modules/logisztika.js';
 import partnerekModule from './modules/partnerek.js';
-import { renderEmployeesModule } from './modules/employees.js';
+import { renderEmployeesModule } from './modules/employees.js?v=20261009-network-documents';
 
 // Modules with Titles
 import { renderDashboard } from './modules/dashboard.js';
