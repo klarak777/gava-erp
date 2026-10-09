@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALDI-Rakodás Modul - Design 2 (Glassmorphism)</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+        :root {
+            --bg-gradient: linear-gradient(135deg, #e0f2fe 0%, #f8fafc 100%);
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.5);
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --primary: #3b82f6;
+            --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 24px;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .module-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            padding: 32px;
+            box-sizing: border-box;
+            gap: 24px;
+            overflow-y: auto;
+        }
+
+        /* Header */
+        .view-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .view-header img {
+            height: 48px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .view-header h2 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #1e40af, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .view-header p {
+            margin: 4px 0 0 0;
+            font-size: 15px;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .sections-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            align-items: stretch;
+        }
+
+        /* Glass Panel Base */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--shadow-glass);
+            border-radius: var(--radius-xl);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .subform-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.6);
+            background: rgba(255,255,255,0.4);
+        }
+        .subform-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: #1e40af;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(37, 99, 235, 0.3);
+        }
+        
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.6);
+            color: #2563eb;
+            border: 1px solid rgba(37, 99, 235, 0.3);
+            border-radius: var(--radius-md);
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-secondary:hover {
+            background: #fff;
+            border-color: #2563eb;
+        }
+
+        /* Filters */
+        .filters-container {
+            padding: 20px 24px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: flex-end;
+            margin-bottom: 12px;
+        }
+        .filter-group {
+            flex: 1;
+            min-width: 150px;
+        }
+        .filter-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            display: block;
+        }
+        .filter-group input[type="text"],
+        .filter-group input[type="date"] {
+            width: 100%;
+            font-family: 'Outfit', sans-serif;
+            font-size: 14px;
+            padding: 10px 14px;
+            height: 42px;
+            border: 1px solid rgba(255,255,255,0.8);
+            border-radius: var(--radius-md);
+            box-sizing: border-box;
+            outline: none;
+            background: rgba(255,255,255,0.6);
+            transition: all 0.3s ease;
+        }
+        .filter-group input:focus {
+            background: #fff;
+            border-color: #93c5fd;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.1);
+        }
+
+        /* Tables */
+        .table-scroll {
+            overflow-x: auto;
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 13px;
+            table-layout: auto;
+        }
+        th {
+            background: rgba(248, 250, 252, 0.6);
+            backdrop-filter: blur(8px);
+            padding: 14px 16px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 700;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+            color: #334155;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+        .table-demands th {
+            background: rgba(14, 165, 233, 0.1);
+            color: #0369a1;
+        }
+        tbody tr {
+            transition: background 0.2s;
+        }
+        tbody tr:hover {
+            background-color: rgba(255,255,255,0.5);
+        }
+        
+        tfoot td {
+            background: rgba(239, 246, 255, 0.7);
+            border-top: 2px solid rgba(191, 219, 254, 0.5);
+            font-weight: 700;
+            color: var(--text-main);
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+        }
+
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        
+        .badge {
+            padding: 6px 12px;
+            border-radius: var(--radius-md);
+            font-size: 11px;
+            font-weight: 600;
+            display: inline-block;
+        }
+        .badge-blue { background: rgba(59, 130, 246, 0.1); color: #2563eb; border: 1px solid rgba(59, 130, 246, 0.2); }
+        .badge-green { background: rgba(16, 185, 129, 0.1); color: #059669; border: 1px solid rgba(16, 185, 129, 0.2); }
+        .icon-btn { cursor:pointer; font-size:16px; opacity:0.8; transition:0.2s; }
+        .icon-btn:hover { opacity:1; transform:scale(1.1); display:inline-block; }
+    </style>
+</head>
+<body>
+    <div class="module-container">
+        <!-- Header -->
+        <div class="view-header">
+            <img src="../Access UI/AldiNord-WorldwideLogo.svg" alt="ALDI Logo" style="height:42px; width:auto; border-radius:8px; box-shadow: 0 4px 12px rgba(0,45,98,0.15);">
+            <div>
+                <h2>ALDI – Rakodás</h2>
+                <p>Kamionok és áruigények kezelése</p>
+            </div>
+        </div>
+
+        <div class="sections-wrapper">
+            
+            <!-- Rakodások (Kamionok) -->
+            <div class="glass-panel">
+                <div class="subform-header">
+                    <span class="subform-title">Rakodások</span>
+                    <button class="btn-primary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>
+                        Új rakodás
+                    </button>
+                </div>
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Kamionszám</th>
+                                <th>Szállítási nap</th>
+                                <th>Fuvarozó</th>
+                                <th class="text-center">PDA</th>
+                                <th class="text-center">Állapot</th>
+                                <th class="text-center">Rakodva</th>
+                                <th class="text-center">Törlés</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>AL03</strong></td>
+                                <td>2026. 10. 07.</td>
+                                <td>KÓNYA (AELH-127 WAN-017)</td>
+                                <td class="text-center" style="opacity:0.4;">📱</td>
+                                <td class="text-center"><span class="badge" style="background:rgba(245, 158, 11, 0.15); color:#d97706;">0% (Várakozik)</span></td>
+                                <td class="text-center"><input type="checkbox" style="width:16px; height:16px; accent-color:#2563eb;"></td>
+                                <td class="text-center"><span class="icon-btn">🗑️</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>AL02</strong></td>
+                                <td>2026. 10. 08.</td>
+                                <td>KÓNYA (AELH-120 WAN-010)</td>
+                                <td class="text-center">📱</td>
+                                <td class="text-center"><span class="badge badge-blue">76% (Rakodás alatt)</span></td>
+                                <td class="text-center"><input type="checkbox" style="width:16px; height:16px; accent-color:#2563eb;"></td>
+                                <td class="text-center"><span class="icon-btn">🗑️</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>ALDI01</strong></td>
+                                <td>2026. 09. 07.</td>
+                                <td>KÓNYA (ABC1234 / XYZ321)</td>
+                                <td class="text-center">📱</td>
+                                <td class="text-center"><span class="badge badge-green">100% (Rakodva)</span></td>
+                                <td class="text-center"><input type="checkbox" checked style="width:16px; height:16px; accent-color:#2563eb;"></td>
+                                <td class="text-center"><span class="icon-btn">🗑️</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Áru igény és Szűrői -->
+            <div>
+                <div style="font-size:16px; font-weight:800; color:#1e40af; text-transform:uppercase; margin-bottom:12px; margin-left:8px;">Áru igény</div>
+                
+                <div class="glass-panel" style="border-radius: var(--radius-lg); margin-bottom: 12px;">
+                    <div class="filters-container">
+                        <div class="filter-group" style="max-width:250px;">
+                            <label>Product</label>
+                            <input type="text" placeholder="Keresés... pl. Nektarin, Sárgabarack">
+                        </div>
+                        <div class="filter-group" style="max-width:200px;">
+                            <label>Szállítási dátum</label>
+                            <input type="date" value="2026-10-09">
+                        </div>
+                        <div class="filter-group" style="max-width:200px;">
+                            <label>Rendelési szám</label>
+                            <input type="text" placeholder="Rendelés... pl. 4531560126">
+                        </div>
+                        <div style="margin-left:auto;">
+                            <button class="btn-secondary">Szűrők törlése</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel" style="border-radius: var(--radius-lg);">
+                    <div class="table-scroll">
+                        <table class="table-demands">
+                            <thead>
+                                <tr>
+                                    <th>Termék</th>
+                                    <th class="text-right">Karton</th>
+                                    <th class="text-right">#/PLT</th>
+                                    <th class="text-right">Raklap</th>
+                                    <th class="text-center">Száll. Dátum</th>
+                                    <th>Partner</th>
+                                    <th>Rendelési szám</th>
+                                    <th>Típus</th>
+                                    <th class="text-center">Küldés</th>
+                                    <th class="text-center">➕</th>
+                                    <th class="text-center">🗑️</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Nektarin 10*1kg</strong></td>
+                                    <td class="text-right">204</td>
+                                    <td class="text-right">10</td>
+                                    <td class="text-right">20.4</td>
+                                    <td class="text-center">2026.10.09.</td>
+                                    <td>Gava Hungria</td>
+                                    <td>4531560126</td>
+                                    <td>EUR</td>
+                                    <td class="text-center"><button style="padding:4px 10px; border-radius:6px; border:1px solid #cbd5e1; background:rgba(255,255,255,0.5); cursor:pointer; font-size:11px; font-family:'Outfit'; font-weight:600;">Küldés</button></td>
+                                    <td class="text-center"><span class="icon-btn">➕</span></td>
+                                    <td class="text-center"><span class="icon-btn">🗑️</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Sárgabarack 10*500g</strong></td>
+                                    <td class="text-right">70</td>
+                                    <td class="text-right">15</td>
+                                    <td class="text-right">4.67</td>
+                                    <td class="text-center">2026.10.09.</td>
+                                    <td>Gava Hungria</td>
+                                    <td>4531658036</td>
+                                    <td>Normál</td>
+                                    <td class="text-center"><button style="padding:4px 10px; border-radius:6px; border:1px solid #cbd5e1; background:rgba(255,255,255,0.5); cursor:pointer; font-size:11px; font-family:'Outfit'; font-weight:600;">Küldés</button></td>
+                                    <td class="text-center"><span class="icon-btn">➕</span></td>
+                                    <td class="text-center"><span class="icon-btn">🗑️</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Kalif Piros I 5kg</strong></td>
+                                    <td class="text-right">160</td>
+                                    <td class="text-right">20</td>
+                                    <td class="text-right">8.0</td>
+                                    <td class="text-center">2026.10.09.</td>
+                                    <td>Gava Hungria</td>
+                                    <td>4531772011</td>
+                                    <td>Normál</td>
+                                    <td class="text-center"><button style="padding:4px 10px; border-radius:6px; border:1px solid #cbd5e1; background:rgba(255,255,255,0.5); cursor:pointer; font-size:11px; font-family:'Outfit'; font-weight:600;">Küldés</button></td>
+                                    <td class="text-center"><span class="icon-btn">➕</span></td>
+                                    <td class="text-center"><span class="icon-btn">🗑️</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Bio Koktél Szilva 12*250</strong></td>
+                                    <td class="text-right">90</td>
+                                    <td class="text-right">18</td>
+                                    <td class="text-right">5.0</td>
+                                    <td class="text-center">2026.10.09.</td>
+                                    <td>Gava Hungria</td>
+                                    <td>4531889201</td>
+                                    <td>Akciós</td>
+                                    <td class="text-center"><button style="padding:4px 10px; border-radius:6px; border:1px solid #cbd5e1; background:rgba(255,255,255,0.5); cursor:pointer; font-size:11px; font-family:'Outfit'; font-weight:600;">Küldés</button></td>
+                                    <td class="text-center"><span class="icon-btn">➕</span></td>
+                                    <td class="text-center"><span class="icon-btn">🗑️</span></td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td style="padding:14px 16px;">Össz raklap</td>
+                                    <td class="text-right" style="color:#0369a1;">524</td>
+                                    <td></td>
+                                    <td class="text-right" style="color:#7c3aed;">38.07</td>
+                                    <td colspan="7" style="color:#ea580c;">Szükséges kamion: 2</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</body>
+</html>

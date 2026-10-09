@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALDI-Fuvarok Modul - Design 2 (Glassmorphism)</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+        :root {
+            --bg-gradient: linear-gradient(135deg, #e0f2fe 0%, #f8fafc 100%);
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.5);
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --primary: #3b82f6;
+            --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+            --radius-lg: 16px;
+            --radius-xl: 24px;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .module-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            padding: 32px;
+            box-sizing: border-box;
+            gap: 24px;
+        }
+
+        /* Header */
+        .view-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .view-header img {
+            height: 48px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .view-header h2 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #1e40af, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .view-header p {
+            margin: 4px 0 0 0;
+            font-size: 15px;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        /* Glass Panel Base */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--shadow-glass);
+            border-radius: var(--radius-xl);
+        }
+
+        /* Filters */
+        .filters-bar {
+            padding: 24px;
+            display: flex;
+            align-items: flex-end;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .filter-group {
+            flex: 1;
+            min-width: 150px;
+        }
+        .filter-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            display: block;
+        }
+        .filter-group input[type="text"],
+        .filter-group input[type="date"],
+        .filter-group select {
+            width: 100%;
+            font-family: 'Outfit', sans-serif;
+            font-size: 14px;
+            padding: 10px 14px;
+            height: 42px;
+            border: 1px solid rgba(255,255,255,0.8);
+            border-radius: 12px;
+            box-sizing: border-box;
+            outline: none;
+            background: rgba(255,255,255,0.6);
+            transition: all 0.3s ease;
+        }
+        .filter-group input:focus, .filter-group select:focus {
+            background: #fff;
+            border-color: #93c5fd;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.1);
+        }
+        .filter-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            height: 42px;
+            min-width: 160px;
+        }
+        .btn-clear {
+            font-family: 'Outfit', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border: none;
+            border-radius: 12px;
+            height: 42px;
+            padding: 0 24px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+        }
+        .btn-clear:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(37, 99, 235, 0.3);
+        }
+
+        /* Table */
+        .table-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 8px;
+        }
+        .table-wrapper {
+            flex: 1;
+            overflow: auto;
+            border-radius: 16px;
+        }
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            min-width: 1000px;
+            font-size: 14px;
+        }
+        th {
+            position: sticky;
+            top: 0;
+            background: rgba(248, 250, 252, 0.85);
+            backdrop-filter: blur(8px);
+            padding: 16px;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            z-index: 10;
+        }
+        th.text-right { text-align: right; }
+        td {
+            padding: 16px;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+            vertical-align: middle;
+            color: #334155;
+        }
+        td.text-right { text-align: right; }
+        tbody tr {
+            transition: background 0.2s;
+        }
+        tbody tr:hover {
+            background-color: rgba(255,255,255,0.5);
+        }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            background: rgba(16, 185, 129, 0.1);
+            color: #059669;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 16px 12px 16px;
+        }
+        .pagination-info {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+        .pagination-controls {
+            display: flex;
+            gap: 6px;
+        }
+        .page-btn {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: rgba(255,255,255,0.5);
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .page-btn.active {
+            background: var(--primary);
+            color: #fff;
+            box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+        }
+        .page-btn:hover:not(.active) {
+            background: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="module-container">
+        <!-- Header -->
+        <div class="view-header">
+            <img src="../Access UI/AldiNord-WorldwideLogo.svg" alt="ALDI Logo" style="height:42px; width:auto; border-radius:8px; box-shadow: 0 4px 12px rgba(0,45,98,0.15);">
+            <div>
+                <h2>ALDI – Belföldi fuvarok</h2>
+                <p>Belföldi szállítások és fuvarszámlák kezelése</p>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="glass-panel filters-bar">
+            <div class="filter-group">
+                <label>Kamion szám</label>
+                <input type="text" placeholder="Keresés...">
+            </div>
+            <div class="filter-group">
+                <label>Rendszám</label>
+                <input type="text" placeholder="Keresés...">
+            </div>
+            <div class="filter-group">
+                <label>Rakodási nap</label>
+                <input type="date">
+            </div>
+            <div class="filter-group">
+                <label>Szezon</label>
+                <select>
+                    <option>-- Összes --</option>
+                    <option>Season 25-26</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Fuvarozó cég</label>
+                <select>
+                    <option>-- Összes --</option>
+                    <option>KÓNYA</option>
+                    <option>BILEK</option>
+                    <option>BOGNÁR</option>
+                    <option>DERBY</option>
+                    <option>GAVA</option>
+                </select>
+            </div>
+            <div class="filter-checkbox">
+                <input type="checkbox" id="missing-inv">
+                <label for="missing-inv" style="font-size:14px; font-weight:500;">Hiányzó fuvarszámla</label>
+            </div>
+            <div>
+                <button class="btn-clear">Szűrők törlése</button>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="glass-panel table-container">
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Kamionszám</th>
+                            <th>Szállítási nap</th>
+                            <th>Fuvarozó</th>
+                            <th>Rendszám</th>
+                            <th class="text-right">GAVA Raklap</th>
+                            <th class="text-right">Crossdoking</th>
+                            <th>Komment</th>
+                            <th>Fuvarszámla</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>AL02</strong></td>
+                            <td>2026. 10. 08.</td>
+                            <td>KÓNYA</td>
+                            <td>AELH-120 WAN-010</td>
+                            <td class="text-right">33</td>
+                            <td class="text-right">33</td>
+                            <td>-</td>
+                            <td><span class="status-badge">Feltöltve</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>AL03</strong></td>
+                            <td>2026. 10. 07.</td>
+                            <td>KÓNYA</td>
+                            <td>AELH-127 WAN-017</td>
+                            <td class="text-right">22</td>
+                            <td class="text-right">22</td>
+                            <td>4. sor</td>
+                            <td><span style="color:#ef4444; font-weight:600; background:rgba(239,68,68,0.1); padding:6px 12px; border-radius:8px;">Hiányzik</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>ALDI01</strong></td>
+                            <td>2026. 09. 07.</td>
+                            <td>KÓNYA</td>
+                            <td>ABC1234 / XYZ321</td>
+                            <td class="text-right">33</td>
+                            <td class="text-right">33</td>
+                            <td>3. és 5. sor</td>
+                            <td><span class="status-badge">Feltöltve</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>AL01</strong></td>
+                            <td>2026. 09. 01.</td>
+                            <td>BILEK</td>
+                            <td>BIL-102 / TRA-881</td>
+                            <td class="text-right">33</td>
+                            <td class="text-right">30</td>
+                            <td>-</td>
+                            <td><span class="status-badge">Feltöltve</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            <div class="pagination">
+                <div class="pagination-info">Találatok: 1 - 3 (Összesen: 45)</div>
+                <div class="pagination-controls">
+                    <button class="page-btn" style="width:auto; padding:0 12px;">Előző</button>
+                    <button class="page-btn active">1</button>
+                    <button class="page-btn">2</button>
+                    <button class="page-btn">3</button>
+                    <button class="page-btn" style="width:auto; padding:0 12px;">Következő</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
