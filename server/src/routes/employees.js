@@ -347,8 +347,11 @@ router.delete('/:id/documents/:docId', async (req, res) => {
         const doc = await db('employee_documents').where({ id: req.params.docId, employee_id: req.params.id }).first();
         if (!doc) return res.status(404).json({ error: 'Dokumentum nem található' });
 
-        // Delete from file system
-        if (doc.file_path && fs.existsSync(doc.file_path)) {
+        // Check if any other document uses this exact file path
+        const otherDocs = await db('employee_documents').where({ file_path: doc.file_path }).whereNot({ id: doc.id });
+
+        // Delete from file system only if no other record uses it
+        if (otherDocs.length === 0 && doc.file_path && fs.existsSync(doc.file_path)) {
             try {
                 fs.unlinkSync(doc.file_path);
             } catch (err) {
