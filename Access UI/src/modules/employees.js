@@ -751,8 +751,10 @@ async function openEmployeeEditor(wm, employeeId, onSaved) {
 
                 mockEdu = emp.educations || [];
                 mockLang = emp.languages || [];
+                mockDocs = emp.documents || [];
                 renderEdu();
                 renderLang();
+                renderDocs();
                 renderDevices();
                 renderHistory();
                 setProfileTitle(emp.full_name);
