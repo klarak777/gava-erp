@@ -97,7 +97,10 @@ const modules = {
     employees: { 
         title: 'Dolgozók',
         opensWindow: true,
-        render: (_container, manager) => manager.open('employees', 'Dolgozók', content => renderEmployeesModule(content, manager))
+        render: (_container, manager) => {
+            const modal = manager.createModal({ title: 'DOLGOZÓ KIVÁLASZTÁSA', width: 640, height: 480 });
+            renderEmployeesModule(modal.querySelector('.window-content'), manager);
+        }
     },
     penny_stock: { render: renderPennyStock, title: 'PENNY – Stock' },
     penny_belfoldi_fuvarok: { render: renderPennyBelfoldiFuvarok, title: 'PENNY – Belföldi fuvarok' },

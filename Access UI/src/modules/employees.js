@@ -89,18 +89,7 @@ const EMPLOYEE_STYLES = `
 const employeeEditors = new WeakMap();
 
 export function renderEmployeesModule(content, wm) {
-    setTimeout(() => {
-        const windowEl = content.closest('.mdi-window');
-        if (windowEl && !windowEl.classList.contains('emp-profile-window')) {
-            windowEl.classList.remove('maximized');
-            windowEl.style.width = '640px';
-            windowEl.style.height = '480px';
-            windowEl.style.top = '100px';
-            windowEl.style.left = '50%';
-            windowEl.style.transform = 'translateX(-50%)';
-            windowEl.style.position = 'absolute';
-        }
-    }, 50);
+    
     content.classList.add('emp-module');
     content.innerHTML = `${EMPLOYEE_STYLES}
             <div class="emp-top-bar">
