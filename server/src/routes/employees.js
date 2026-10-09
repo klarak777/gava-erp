@@ -278,21 +278,21 @@ router.post('/:id/documents', upload.single('file'), async (req, res) => {
     const file = req.file;
     if (!file) return res.status(400).json({ error: 'Nincs fájl kiválasztva.' });
 
-    const targetDir = `\\\\192.168.1.5\\raktar\\Gava Hungria System\\ERP\\${id}`;
+    const targetDir = `//192.168.1.5/raktar/Gava Hungria System/ERP/${id}`;
     
     let actualDir = targetDir;
     try {
         fs.mkdirSync(targetDir, { recursive: true });
     } catch (e) {
         console.warn('Network path not accessible, saving locally.', e.message);
-        actualDir = path.join(__dirname, '..', '..', '..', 'uploads', 'employees', id.toString());
+        actualDir = path.resolve(__dirname, '../../..', 'uploads', 'employees', id.toString());
         fs.mkdirSync(actualDir, { recursive: true });
     }
 
     const originalName = file.originalname;
     const ext = path.extname(originalName);
     const finalName = name ? name + ext : originalName;
-    const filePath = path.join(actualDir, finalName);
+    const filePath = actualDir.startsWith('//') ? actualDir + '/' + finalName : path.join(actualDir, finalName);
     
     fs.copyFileSync(file.path, filePath);
     fs.unlinkSync(file.path);
