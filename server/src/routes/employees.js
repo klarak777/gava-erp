@@ -340,5 +340,39 @@ router.get('/:id/documents/:docId', async (req, res) => {
     }
 });
 
+
+// Delete a document
+router.delete('/:id/documents/:docId', async (req, res) => {
+    try {
+        const doc = await db('employee_documents').where({ id: req.params.docId, employee_id: req.params.id }).first();
+        if (!doc) return res.status(404).json({ error: 'Dokumentum nem található' });
+
+        // Delete from file system
+        if (doc.file_path && fs.existsSync(doc.file_path)) {
+            try {
+                fs.unlinkSync(doc.file_path);
+            } catch (err) {
+                console.error('File törlési hiba:', err);
+            }
+        }
+
+        await db.transaction(async trx => {
+            await trx('employee_documents').where({ id: doc.id }).del();
+            await trx('system_history').insert({
+                module: 'EMPLOYEE_DOC_DELETED',
+                reference_id: req.params.id,
+                action: 'Törlés',
+                details: `Dokumentum törölve: ${doc.file_name}`,
+                user: 'System'
+            });
+        });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Szerver hiba dokumentum törlésekor' });
+    }
+});
+
 module.exports = router;
 

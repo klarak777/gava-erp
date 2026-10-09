@@ -923,7 +923,21 @@ async function openEmployeeEditor(wm, employeeId, onSaved) {
         
         window.empDelEdu = (idx) => { mockEdu.splice(idx, 1); renderEdu(); };
         window.empDelLang = (idx) => { mockLang.splice(idx, 1); renderLang(); };
-        window.empDelDoc = (idx) => { mockDocs.splice(idx, 1); renderDocs(); };
+        window.empDelDoc = async (idx) => { 
+            const doc = mockDocs[idx];
+            if (doc.id) {
+                if (!confirm('Biztosan törölni szeretnéd ezt a dokumentumot véglegesen?')) return;
+                try {
+                    const res = await fetch(`/api/v1/employees/${currentEmployeeId}/documents/${doc.id}`, { method: 'DELETE' });
+                    if (!res.ok) throw new Error('Hiba a törlés során');
+                } catch (e) {
+                    alert('Hiba: ' + e.message);
+                    return;
+                }
+            }
+            mockDocs.splice(idx, 1); 
+            renderDocs(); 
+        };
 
         // New employee
         const startNewEmployee = () => {
