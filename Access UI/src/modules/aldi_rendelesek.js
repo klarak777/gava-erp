@@ -544,8 +544,10 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
           </table>
         </div>
         
-        <div id="aldi-napi-order-details-pane" style="flex:1; min-width:400px; border:1px solid #e2e8f0; border-radius:6px; background:#ffffff; box-shadow:0 1px 3px rgba(0,0,0,0.02); display:none; flex-direction:column;">
-          <!-- Content dynamically injected here -->
+        <div id="aldi-napi-order-details-pane" style="flex:1; min-width:400px; border:1px solid #e2e8f0; border-radius:6px; background:#ffffff; box-shadow:0 1px 3px rgba(0,0,0,0.02); display:flex; flex-direction:column;">
+          <div style="flex:1; display:flex; justify-content:center; align-items:center; color:#64748b; font-size:14px; padding:20px; text-align:center;">
+            Kérlek válassz ki egy rendelést a listából
+          </div>
         </div>
       </div>
     `;
