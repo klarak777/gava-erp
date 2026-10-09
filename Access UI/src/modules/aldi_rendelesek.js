@@ -545,9 +545,31 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
         </div>
         
         <div id="aldi-napi-order-details-pane" style="flex:1; min-width:400px; border:1px solid #e2e8f0; border-radius:6px; background:#ffffff; box-shadow:0 1px 3px rgba(0,0,0,0.02); display:flex; flex-direction:column;">
-          <div style="flex:1; display:flex; justify-content:center; align-items:center; color:#64748b; font-size:14px; padding:20px; text-align:center;">
-            Kérlek válassz ki egy rendelést a listából
+          <div style="padding:12px 16px; border-bottom:1px solid #e2e8f0; background:#f8fafc; font-weight:bold; color:#1e293b; font-size:14px; border-radius:6px 6px 0 0;">
+            Rendelés: 
           </div>
+          <div style="flex:1; padding:16px 20px; overflow-y:auto; min-height:0;">
+            <table style="width:100%; border-collapse:collapse; font-size:13px;">
+              <thead>
+                <tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;">
+                  <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">Cikkszám</th>
+                  <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">Termék megnevezése</th>
+                  <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">GTIN szám</th>
+                  <th style="padding:8px 12px; text-align:center; font-weight:700; color:#334155;">Változás</th>
+                  <th style="padding:8px 12px; text-align:right; font-weight:700; color:#334155;">Rendelt mennyiség</th>
+                  <th style="padding:8px 12px; text-align:right; font-weight:700; color:#334155;">Rakodásra küldve</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan="6" style="padding:40px 20px; text-align:center; color:#64748b; font-size:14px;">
+                    Kérlek válassz ki egy rendelést a listából
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="padding:12px 20px; border-top:1px solid #e2e8f0; background:#f8fafc; height:54px; border-radius:0 0 6px 6px;"></div>
         </div>
       </div>
     `;
