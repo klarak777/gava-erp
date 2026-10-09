@@ -89,6 +89,15 @@ const EMPLOYEE_STYLES = `
 const employeeEditors = new WeakMap();
 
 export function renderEmployeesModule(content, wm) {
+    const windowEl = content.closest('.mdi-window');
+    if (windowEl && !windowEl.classList.contains('emp-profile-window')) {
+        windowEl.classList.remove('maximized');
+        windowEl.style.width = '640px';
+        windowEl.style.height = '480px';
+        windowEl.style.top = '100px';
+        windowEl.style.left = '50%';
+        windowEl.style.transform = 'translateX(-50%)';
+    }
     content.classList.add('emp-module');
     content.innerHTML = `${EMPLOYEE_STYLES}
             <div class="emp-top-bar">
@@ -580,8 +589,8 @@ async function openEmployeeEditor(wm, employeeId, onSaved) {
 
             <dialog id="doc-upload-dialog">
                 <h3 style="margin-top:0;">Dokumentum feltöltése</h3>
-                <div class="emp-field"><label>Fájl kiválasztása</label><input type="file" id="doc-file"></div>
-                <div class="emp-field"><label>Megjegyzés / Típus</label><input type="text" id="doc-note"></div>
+                <div class="emp-field"><label>Fájl kiválasztása (PDF, PNG)</label><input type="file" id="doc-file" accept=".pdf, .png"></div>
+                <div class="emp-field"><label>Dokumentum neve (Szerkeszthető)</label><input type="text" id="doc-name"></div>
                 <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px;">
                     <button type="button" class="emp-btn-small" id="btn-doc-cancel">Mégse</button>
                     <button type="button" class="emp-btn-save" id="btn-doc-save">Feltöltés</button>
@@ -881,15 +890,31 @@ async function openEmployeeEditor(wm, employeeId, onSaved) {
 
         const renderDocs = () => {
             const tbody = content.querySelector('#table-docs tbody');
-            tbody.innerHTML = mockDocs.map((d, idx) => `
-                <tr>
-                    <td>${escapeHtml(d.filename)}</td>
-                    <td>${escapeHtml(d.upload_date)}</td>
+            tbody.innerHTML = '';
+            mockDocs.forEach((d, idx) => {
+                const tr = document.createElement('tr');
+                const dateStr = d.upload_date ? String(d.upload_date).slice(0, 10) : '';
+                const name = d.file_name || d.filename || 'Ismeretlen fájl';
+                tr.innerHTML = `
+                    <td><a href="#" class="emp-doc-link" style="color:#2563eb; text-decoration:underline;">${escapeHtml(name)}</a></td>
+                    <td>${escapeHtml(dateStr)}</td>
                     <td>
                         <button class="emp-btn-small" onclick="window.empDelDoc(${idx})" ${!isEditing ? 'disabled' : ''}>🗑️</button>
                     </td>
-                </tr>
-            `).join('');
+                `;
+                
+                const link = tr.querySelector('.emp-doc-link');
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (d.id) {
+                        openDocViewerModal(`/api/v1/employees/${currentEmployeeId}/documents/${d.id}`, name);
+                    } else {
+                        alert('A dokumentum még nincs elmentve az adatbázisban.');
+                    }
+                });
+                
+                tbody.appendChild(tr);
+            });
         };
         
         window.empDelEdu = (idx) => { mockEdu.splice(idx, 1); renderEdu(); };
@@ -1114,16 +1139,85 @@ async function openEmployeeEditor(wm, employeeId, onSaved) {
         });
 
         const docDialog = content.querySelector('#doc-upload-dialog');
+        
+        const openDocViewerModal = (url, title) => {
+            const ext = url.split('.').pop().toLowerCase();
+            const isImg = ext === 'png' || ext === 'jpg' || ext === 'jpeg';
+            let contentHtml = isImg ? `<img src="${url}" style="width:100%; height:100%; object-fit:contain;">` : `<iframe src="${url}" style="width:100%; height:100%; border:none;"></iframe>`;
+            if (wm && typeof wm.createModal === 'function') {
+                wm.createModal({
+                    title: title || 'Dokumentum',
+                    width: '800px',
+                    height: '600px',
+                    content: contentHtml
+                });
+            } else {
+                window.open(url, '_blank');
+            }
+        };
+
+        content.querySelector('#doc-file').addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+                content.querySelector('#doc-name').value = nameWithoutExt;
+            }
+        });
+
         content.querySelector('#btn-upload-doc').addEventListener('click', () => {
+            if (!currentEmployeeId) { alert('Előbb mentsd el a dolgozót!'); return; }
             content.querySelector('#doc-file').value = '';
-            content.querySelector('#doc-note').value = '';
+            content.querySelector('#doc-name').value = '';
             docDialog.showModal();
         });
         content.querySelector('#btn-doc-cancel').addEventListener('click', () => docDialog.close());
-        content.querySelector('#btn-doc-save').addEventListener('click', () => {
-            alert('A dokumentum mentése fejlesztés alatt. Hamarosan bekerül a végleges elérési út.');
-            docDialog.close();
+        content.querySelector('#btn-doc-save').addEventListener('click', async () => {
+            const fileInput = content.querySelector('#doc-file');
+            const nameInput = content.querySelector('#doc-name').value.trim();
+            if (!fileInput.files.length) {
+                alert('Kérlek válassz ki egy fájlt!');
+                return;
+            }
+            const file = fileInput.files[0];
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (ext !== 'pdf' && ext !== 'png') {
+                alert('Csak PDF vagy PNG fájl tölthető fel!');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            if (nameInput) formData.append('name', nameInput);
+
+            try {
+                const btn = content.querySelector('#btn-doc-save');
+                btn.disabled = true;
+                btn.textContent = 'Feltöltés...';
+                
+                const res = await fetch(`/api/v1/employees/${currentEmployeeId}/documents`, {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer mock-token' },
+                    body: formData
+                });
+                
+                btn.disabled = false;
+                btn.textContent = 'Feltöltés';
+                
+                if (res.ok) {
+                    const newDoc = await res.json();
+                    mockDocs.push(newDoc);
+                    renderDocs();
+                    docDialog.close();
+                } else {
+                    alert('Hiba történt a feltöltés során.');
+                }
+            } catch (e) {
+                alert('Hálózati hiba.');
+                content.querySelector('#btn-doc-save').disabled = false;
+                content.querySelector('#btn-doc-save').textContent = 'Feltöltés';
+            }
         });
+
 
         // Assign Device Dialog
         const deviceDialog = content.querySelector('#device-dialog');

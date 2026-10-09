@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/db');
 const bcrypt = require('bcryptjs');
+const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
+const upload = multer({ dest: 'uploads/' });
 
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'erp-secret-key';
@@ -265,4 +269,76 @@ router.delete('/:id/devices/:deviceId', async (req, res) => {
   }
 });
 
+
+// UPLOAD document
+router.post('/:id/documents', upload.single('file'), async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { name } = req.body;
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: 'Nincs fájl kiválasztva.' });
+
+    const targetDir = `\\\\192.168.1.5\\raktar\\Gava Hungria System\\ERP\\${id}`;
+    
+    let actualDir = targetDir;
+    try {
+        fs.mkdirSync(targetDir, { recursive: true });
+    } catch (e) {
+        console.warn('Network path not accessible, saving locally.', e.message);
+        actualDir = path.join(__dirname, '..', '..', '..', 'uploads', 'employees', id.toString());
+        fs.mkdirSync(actualDir, { recursive: true });
+    }
+
+    const originalName = file.originalname;
+    const ext = path.extname(originalName);
+    const finalName = name ? name + ext : originalName;
+    const filePath = path.join(actualDir, finalName);
+    
+    fs.copyFileSync(file.path, filePath);
+    fs.unlinkSync(file.path);
+
+    let newDoc;
+    await db.transaction(async trx => {
+      [newDoc] = await trx('employee_documents').insert({
+        employee_id: id,
+        file_name: finalName,
+        file_path: filePath,
+        upload_date: db.fn.now()
+      }).returning('*');
+      
+      await trx('employee_history').insert({
+        employee_id: id,
+        event_category: 'DOCUMENT',
+        event_type: 'Dokumentum feltöltése',
+        module_or_function: 'Dokumentumok',
+        details: finalName,
+        ip_address: req.ip,
+        operator_name: req.user ? req.user.name : 'Rendszer'
+      });
+    });
+
+    res.json(newDoc);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Hiba a fájl feltöltésekor.' });
+  }
+});
+
+// GET document
+router.get('/:id/documents/:docId', async (req, res) => {
+    try {
+        const doc = await db('employee_documents').where({ id: req.params.docId, employee_id: req.params.id }).first();
+        if (!doc) return res.status(404).json({ error: 'Dokumentum nem található.' });
+        if (fs.existsSync(doc.file_path)) {
+            res.sendFile(path.resolve(doc.file_path));
+        } else {
+            res.status(404).json({ error: 'Fájl nem található a lemezen.' });
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Hiba a dokumentum letöltésekor.' });
+    }
+});
+
 module.exports = router;
+
