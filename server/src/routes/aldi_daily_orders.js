@@ -255,7 +255,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
                 // Update sent_to_rakodas flag: if any line still has remaining, set to false
                 const remainingForThis = Math.max(0, currentQty - currentSent);
 
-                await trx('aldi_daily_order_lines').insert({
+                const [newLine] = await trx('aldi_daily_order_lines').insert({
                     daily_order_id: newOrder.id,
                     gtin,
                     ordered_cartons: currentQty,

@@ -2138,7 +2138,9 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
           body: formData
         });
 
-        const result = await res.json();
+        const rawBody = await res.text();
+        let result = {};
+        try { result = rawBody ? JSON.parse(rawBody) : {}; } catch (_) { result = { error: 'Szerver válasz (HTTP ' + res.status + ') nem értelmezhető.' }; }
         if (res.ok) {
           modalOverlay.remove();
           fetchNapiRendelesek(); // Frissítjük a táblázatot
