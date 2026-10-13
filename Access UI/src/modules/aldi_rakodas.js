@@ -33,7 +33,7 @@ export function renderAldiRakodas(container, windowManager) {
       <!-- BAL TÁBLA: Rakodások (Kamionok) -->
       <div class="access-subform" style="width:100%; margin-top:0;">
         <div class="access-subform-header" style="font-size:12px; padding:6px 12px; display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-size:13px; font-weight:800; color:#2563eb; text-transform:uppercase;">Rakodások</span>
+          <span style="font-size:13px; font-weight:800; color:#000000;">Rakodások</span>
           <button type="button" class="liquid-btn" id="btn-new-aldi-truck"><svg width="14" height="14" viewBox="0 0 24 24" style="width:14px; height:14px; min-width:14px; flex-shrink:0;"><path d="M12 5v14M5 12h14"></path></svg><span>Új rakodás</span></button>
         </div>
         <div style="overflow-x:auto;">
@@ -57,7 +57,7 @@ export function renderAldiRakodas(container, windowManager) {
       <!-- JOBB TÁBLA ÉS SZŰRŐI -->
       <div style="width:100%; min-width:0; display:flex; flex-direction:column; gap:6px;">
 
-        <div style="font-size:13px; font-weight:800; color:#2563eb; text-transform:uppercase; padding:2px 4px;">Áru igény</div>
+        <div style="font-size:13px; font-weight:800; color:#000000; padding:2px 4px;">Áru igény</div>
 
         <!-- Áru igény szűrők -->
         <div class="access-form-view" style="padding:10px 18px; margin-bottom:0; display:flex; flex-wrap:wrap; gap:10px; align-items:end;">
@@ -206,7 +206,7 @@ export function renderAldiRakodas(container, windowManager) {
       const statusPct = t.preparation_status || 0;
 
       return `
-        <tr style="background:${bg}; transition:background 0.15s;" class="aldi-truck-row" data-id="${t.id}">
+        <tr style="background:${bg};" class="aldi-truck-row ${isSelected ? 'selected' : ''}" data-id="${t.id}">
           <td style="padding:4px 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:85px;">
             <span class="aldi-open-truck-link" data-id="${t.id}" style="cursor:pointer; color:#2563eb; text-decoration:underline; font-weight:600;" title="Kattints a szerkesztéshez">
               ${escHtml(t.truck_number || '–')}
@@ -842,7 +842,7 @@ export function renderAldiRakodas(container, windowManager) {
         <!-- KAMION TARTALMA / TÉTELEK TÁBLÁZATA -->
         <div class="access-subform" style="flex:1; min-height:220px; display:flex; flex-direction:column; margin-top:0;">
           <div class="access-subform-header" style="font-size:12px; padding:6px 12px; display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-weight:700;">Kamionra rakott tételek</span>
+            <span style="font-weight:700; color:#000000;">Kamionra rakott tételek</span>
           </div>
           <div style="flex:1; overflow:auto;">
             <table class="access-subform-table" style="font-size:11px; width:100%; white-space:nowrap;">

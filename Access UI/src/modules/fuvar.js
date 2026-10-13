@@ -151,7 +151,7 @@ export function renderFuvar(container, windowManager) {
     tableContainer.innerHTML = `
         <div class="access-subform" style="display:flex; flex-direction:column; flex:1; min-height:0; margin-top:8px;">
             <div class="access-subform-header" style="flex-shrink:0; display:flex; align-items:center; justify-content:space-between;">
-                <span>Fuvarok listája</span>
+                <span style="color:#000000;">Fuvarok listája</span>
                 <span id="record-count" style="font-size:12px; font-weight:400; color:var(--text-muted);">(Betöltés folyamatban...)</span>
             </div>
             <div id="table-scroll-area" style="overflow:auto; flex:1 1 auto; min-height:0;">

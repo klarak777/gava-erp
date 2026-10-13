@@ -253,7 +253,7 @@ export function renderAldiFuvarokOsszesito(container, windowManager) {
     const activeCols = ALL_COLUMNS.filter(col => visibleColumnKeys.includes(col.key));
 
     tbody.innerHTML = pageData.map(d => `
-      <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+      <tr style="border-bottom: 1px solid #f1f5f9;">
         ${activeCols.map(c => {
            if (c.key === 'raklap') return `<td style="padding: 10px 16px; color: #334155; text-align:${c.align};">${parseFloat(d.raklap) || 0}</td>`;
            if (c.key === 'termek') return `<td style="padding: 10px 16px; color: #0f172a; font-weight: 500; text-align:${c.align};">${escapeHtml(d.termek)}</td>`;

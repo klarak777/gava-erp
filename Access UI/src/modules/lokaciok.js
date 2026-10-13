@@ -103,9 +103,8 @@ export function openLokaciokWindow(wm) {
                 .loc-table-title {
                     font-size: 14px;
                     font-weight: 700;
-                    color: #1e40af;
+                    color: #000000;
                     margin: 0 0 12px 0;
-                    text-transform: uppercase;
                 }
                 
                 .loc-table {
@@ -152,7 +151,7 @@ export function openLokaciokWindow(wm) {
                     gap: 16px;
                 }
                 
-                .panel-title { font-size: 13px; font-weight: 700; color: #1e40af; margin: 0 0 16px 0; text-transform: uppercase; }
+                .panel-title { font-size: 13px; font-weight: 700; color: #000000; margin: 0 0 16px 0; }
                 
                 /* Részletek panel */
                 .details-grid {
@@ -207,7 +206,7 @@ export function openLokaciokWindow(wm) {
                 </div>
                 
                 <div class="loc-card" style="display: flex; flex-direction: column; height: 420px; margin-bottom: 16px;">
-                    <h2 class="loc-table-title">LOKÁCIÓK LISTÁJA</h2>
+                    <h2 class="loc-table-title">Lokációk listája</h2>
                     <div style="flex: 1; overflow-y: auto;">
                         <table class="loc-table">
                             <thead>
@@ -231,17 +230,17 @@ export function openLokaciokWindow(wm) {
                 
                 <div class="panels-grid">
                     <div class="loc-card" style="margin-bottom:0;">
-                        <h2 class="panel-title">LOKÁCIÓ RÉSZLETEI</h2>
+                        <h2 class="panel-title">Lokáció részletei</h2>
                         <div id="loc-details-content">
                             <div style="color:#94a3b8; font-size:12px; text-align:center; padding:40px 0;">Válassz ki egy lokációt a listából!</div>
                         </div>
                     </div>
                     <div class="loc-card" style="margin-bottom:0;">
-                        <h2 class="panel-title">ÖSSZESÍTÉS</h2>
+                        <h2 class="panel-title">Összesítés</h2>
                         <div class="summary-list" id="loc-summary-content"></div>
                     </div>
                     <div class="loc-card" style="margin-bottom:0; display:flex; flex-direction:column;">
-                        <h2 class="panel-title">KÉSZLET A LOKÁCIÓN</h2>
+                        <h2 class="panel-title">Készlet a lokáción</h2>
                         <input type="text" id="loc-stock-search" class="loc-input" placeholder="Tétel keresése..." style="width:100%; margin-bottom:12px; display:none;">
                         <div style="flex:1; overflow-y:auto; min-height:100px;">
                             <table class="loc-table">

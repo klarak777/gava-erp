@@ -1,6 +1,6 @@
 {
   "name": "server",
-  "version": "0.9.8.6",
+  "version": "0.9.9",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -39,10 +39,10 @@
     "pgvector": "^0.3.0",
     "pizzip": "^3.2.0",
     "playwright": "^1.63.0",
+    "ssh2-sftp-client": "^12.1.1",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "pg-copy-streams": "^7.0.0"
   }
 }
-

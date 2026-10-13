@@ -239,7 +239,7 @@ function renderTermekekHtml() {
 
   return `
       <div style="padding:16px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background:#f8fafc; min-height:100vh;">
-        <h2 style="margin:0 0 16px 0; color:#1e293b; font-size:22px; font-weight:800; display:flex; align-items:center; gap:8px;">
+        <h2 style="margin:0 0 16px 0; color:#000000; font-size:22px; font-weight:800; display:flex; align-items:center; gap:8px;">
           <img src="AldiNord-WorldwideLogo.svg" alt="ALDI" style="height:24px; border-radius:3px;"> Termék adattábla
         </h2>
         
@@ -302,7 +302,7 @@ function renderTermekekHtml() {
           
           <!-- TERMÉK RÉSZLETEI -->
           <div style="border:1px solid #cbd5e1; border-radius:8px; padding:16px; background:#fff;">
-            <h4 style="margin:0 0 12px 0; color:#1e3a8a; font-size:13px; font-weight:800; letter-spacing:0.5px;">TERMÉK RÉSZLETEI</h4>
+            <h4 style="margin:0 0 12px 0; color:#000000; font-size:13px; font-weight:800; letter-spacing:0.5px;">Termék részletei</h4>
             ${selectedProd ? (
               state.editingBlock === 'base' ? `
                 <div style="display:flex; flex-direction:column; gap:8px; font-size:13px; margin-bottom:16px;">
@@ -336,7 +336,7 @@ function renderTermekekHtml() {
 
           <!-- KARTON CÍMKE -->
           <div style="border:1px solid #cbd5e1; border-radius:8px; padding:16px; background:#fff; position:relative;">
-            <h4 style="margin:0 0 12px 0; color:#1e3a8a; font-size:13px; font-weight:800; letter-spacing:0.5px;">KARTON CÍMKE</h4>
+            <h4 style="margin:0 0 12px 0; color:#000000; font-size:13px; font-weight:800; letter-spacing:0.5px;">Karton címke</h4>
             ${selectedProd ? (
               state.editingBlock === 'carton' ? `
                 <div style="display:flex; align-items:center; margin-bottom:4px; font-size:12px;">
@@ -361,7 +361,7 @@ function renderTermekekHtml() {
 
           <!-- EGYSÉG CÍMKE -->
           <div style="border:1px solid #cbd5e1; border-radius:8px; padding:16px; background:#fff; position:relative;">
-            <h4 style="margin:0 0 12px 0; color:#1e3a8a; font-size:13px; font-weight:800; letter-spacing:0.5px;">EGYSÉG CÍMKE</h4>
+            <h4 style="margin:0 0 12px 0; color:#000000; font-size:13px; font-weight:800; letter-spacing:0.5px;">Egység címke</h4>
             ${selectedProd ? (
               state.editingBlock === 'unit' ? `
                 <div style="display:flex; align-items:center; margin-bottom:4px; font-size:12px;">

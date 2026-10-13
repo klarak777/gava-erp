@@ -49,6 +49,7 @@ const aiRouter = require('./src/routes/ai');
 const chainProductsRouter = require('./src/routes/chain_products');
 const aldiWeeklyPricesRouter = require('./src/routes/aldi_weekly_prices');
 const aldiDailyOrdersRouter = require('./src/routes/aldi_daily_orders');
+const aldiEdiTestRouter = require('./src/routes/aldi_edi_test');
 const aldiWeeklyCommitmentsRouter = require('./src/routes/aldi_weekly_commitments');
 const aldiCrossDockingRouter = require('./src/routes/aldi_cross_docking');
 const aldiFuvarokRouter = require('./src/routes/aldi_fuvarok');
@@ -84,6 +85,7 @@ app.use('/api/v1/ai', aiRouter);
 app.use('/api/v1/chain-products', chainProductsRouter);
 app.use('/api/v1/aldi-weekly-prices', aldiWeeklyPricesRouter);
 app.use('/api/v1/aldi-daily-orders', aldiDailyOrdersRouter);
+app.use('/api/v1/aldi-edi-test', aldiEdiTestRouter);
 app.use('/api/v1/aldi-weekly-commitments', aldiWeeklyCommitmentsRouter);
 app.use('/api/v1/aldi-cross-docking', aldiCrossDockingRouter);
 app.use('/api/v1/aldi-fuvarok', aldiFuvarokRouter);
@@ -94,6 +96,7 @@ app.use('/api/v1/employees', employeesRouter);
 // Szerver indítása
 app.listen(PORT, () => {
   console.log(`[SERVER] A backend API elindult a http://localhost:${PORT} címen`);
+  aldiEdiTestRouter.startPolling();
   
   // Időszakos takarítás: elinduláskor és 6 óránként törli az 1 napnál régebbi ideiglenes MI fájlokat
   const aiService = require('./src/services/aiService');

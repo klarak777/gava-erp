@@ -152,6 +152,36 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             const previousMap = new Map(previousLines.map(line => [line.gtin, Number(line.ordered_cartons) || 0]));
             const versionNumber = previousOrder ? Number(previousOrder.version_number) + 1 : 1;
             const orderNumber = versionNumber === 1 ? orderNumberBase : `${orderNumberBase}-${versionNumber - 1}`;
+            // Items already on a loaded (Rakodva) truck are on their way: their quantity cannot be reduced,
+            // while an increase is accepted but the surplus must go on another truck.
+            const loadedWarnings = [];
+            if (previousOrder) {
+                const stateIds = previousLines.map(line => line.order_item_state_id).filter(Boolean);
+                const loadedRows = stateIds.length
+                    ? await trx('aldi_truck_lines as tl').join('aldi_trucks as t', 't.id', 'tl.aldi_truck_id')
+                        .whereIn('tl.order_item_state_id', stateIds).where('t.is_loaded', true)
+                        .groupBy('tl.order_item_state_id').select('tl.order_item_state_id').sum({ total: 'tl.ordered_cartons' })
+                    : [];
+                const loadedByState = new Map(loadedRows.map(row => [Number(row.order_item_state_id), Number(row.total) || 0]));
+                const incomingQty = new Map(lineItems.map(item => [item.gtin, item.quantity]));
+                const violations = [];
+                for (const line of previousLines) {
+                    const loaded = Math.max(Number(line.fulfilled_cartons) || 0, loadedByState.get(Number(line.order_item_state_id)) || 0);
+                    if (loaded <= 0) continue;
+                    const incoming = incomingQty.get(line.gtin) || 0;
+                    if (incoming < loaded) {
+                        violations.push({ gtin: line.gtin, loaded, requested: incoming });
+                    } else if (incoming > (Number(line.ordered_cartons) || 0)) {
+                        loadedWarnings.push(`🚚 ${line.gtin}: a rendelés ${incoming - (Number(line.ordered_cartons) || 0)} kartonnal nőtt, de ${loaded} karton már rakodva van. A többlet csak másik kamionra vehető fel.`);
+                    }
+                }
+                if (violations.length) {
+                    const error = new Error('LOADED_REDUCTION');
+                    error.violations = violations;
+                    throw error;
+                }
+            }
+
             const [newOrder] = await trx('aldi_daily_orders').insert({
                 order_number: orderNumber,
                 delivery_date: deliveryDateStr,
@@ -282,7 +312,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             await trx('aldi_daily_orders').where({ id: newOrder.id }).update({ sent_to_rakodas: !!anySent });
             if (previousOrder) await trx('aldi_daily_orders').where({ id: previousOrder.id }).update({ version_status: 'superseded', superseded_by_order_id: newOrder.id, superseded_at: trx.fn.now() });
             await trx('aldi_order_families').where({ id: family.id }).update({ current_order_id: newOrder.id, updated_at: trx.fn.now() });
-            return { newOrder, versionNumber, orderNumber, autoReconcileWarnings, deletedItems };
+            return { newOrder, versionNumber, orderNumber, autoReconcileWarnings, deletedItems, loadedWarnings };
         });
 
         res.json({
@@ -294,7 +324,8 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             deliveryDate: deliveryDateStr,
             lineItemsCount: lineItems.length,
             autoReconcileWarnings: result.autoReconcileWarnings || [],
-            deletedItems: result.deletedItems || []
+            deletedItems: result.deletedItems || [],
+            loadedWarnings: result.loadedWarnings || []
         });
     } catch (err) {
         if (writtenPath && fs.existsSync(writtenPath)) {
@@ -304,6 +335,11 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             const duplicate = err.duplicateOrder;
             const details = duplicate ? ` (${duplicate.order_number}, ${String(duplicate.delivery_date).slice(0, 10)})` : '';
             return res.status(409).json({ code: 'DUPLICATE_ORDER_CONTENT', error: `Azonos rendelési tartalom már fel lett töltve${details}. A PDF nem került újra rögzítésre.` });
+        }
+        if (err.message === 'LOADED_REDUCTION') {
+            const list = err.violations.map(v => `${v.gtin}: rakodva ${v.loaded} karton, a módosított rendelés ${v.requested}`).join('\n');
+            return res.status(409).json({ code: 'LOADED_REDUCTION', violations: err.violations,
+                error: `A rendelés nem csökkenthető, mert a tétel már rakodva van és szállítás alatt áll. A módosítás nem lett rögzítve:\n${list}` });
         }
         if (err.message === 'DUPLICATE_PDF') return res.status(409).json({ code: 'DUPLICATE_PDF', error: 'Ez a PDF-verzió már fel lett töltve.' });
         console.error('Hiba a PDF feldolgozása közben:', err);

@@ -8,8 +8,8 @@ export function openTarhelyekWindow(wm) {
                 <style>
                     .tarhely-container { padding: 16px; height: 100%; box-sizing: border-box; overflow-y: auto; background: var(--bg-light, #f8fafc); }
                     .building-group { margin-bottom: 24px; background: white; border-radius: 8px; border: 1px solid var(--border-color, #e2e8f0); box-shadow: 0 1px 3px rgba(0,0,0,0.05); overflow: hidden; flex-shrink: 0; }
-                    .building-header { padding: 12px 16px; background: #f8fafc; border-bottom: 1px solid var(--border-color, #e2e8f0); display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: #334155; }
-                    .building-header h3 { margin: 0; font-size: 14px; }
+                    .building-header { padding: 12px 16px; background: #f8fafc; border-bottom: 1px solid var(--border-color, #e2e8f0); display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: #000000; }
+                    .building-header h3 { margin: 0; font-size: 14px; color: #000000; }
                     .add-btn { background: #3b82f6; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
                     .add-btn:hover { background: #2563eb; }
                     .loc-table { width: 100%; border-collapse: collapse; font-size: 12px; }

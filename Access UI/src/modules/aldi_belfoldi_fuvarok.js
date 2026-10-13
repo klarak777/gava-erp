@@ -328,7 +328,7 @@ export function renderAldiBelfoldiFuvarok(container, windowManager) {
       const hasFiles = d.invoice_files && d.invoice_files.length > 0;
       
       return `
-        <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+        <tr style="border-bottom: 1px solid #f1f5f9;">
           <td style="padding:10px 16px; color:#0f172a; font-weight:600;">${escapeHtml(d.truck_number)}</td>
           <td style="padding:10px 16px; color:#475569; white-space:nowrap;">${d.delivery_date ? d.delivery_date.substring(0,10) : ''}</td>
           <td style="padding:10px 16px; color:#475569;">${escapeHtml(d.transporter)}</td>

@@ -102,6 +102,7 @@
     padding: 12px 16px;
     font-weight: 600;
     border-bottom: 1px solid var(--border);
+    color: #000000;
 }
 
 .access-subform-table {
@@ -122,7 +123,37 @@
     color: var(--text-muted);
 }
 
-/* ===== Liquid Glass gomb – Apple-szerű folyékony üveg kapszula ===== */
+/* ===== Liquid Glass gomb rendszer – Apple-szerű folyékony üveg kapszula =====
+   Minta: ALDI – Rakodás "+ Új rakodás" gomb vezérlő
+   Megőrizve: minden gomb egyedi színe, felirata, neve, pozíciója, mérete és ID-ja
+*/
+
+/* 1. Alap Liquid Glass tulajdonságok minden gombra (kivéve ablakkezelő és PDA gombok) */
+button:not(.win-btn):not(.pda-hw-btn) {
+    border-radius: 9999px !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    user-select: none;
+    letter-spacing: 0.2px;
+}
+
+/* 2. Elemelkedés és kattintási rugalmas nyúlás animáció */
+button:not(.win-btn):not(.pda-hw-btn):not(:disabled):hover {
+    transform: translateY(-2px) scale(1.02);
+}
+
+button:not(.win-btn):not(.pda-hw-btn):not(:disabled):active,
+button:not(.win-btn):not(.pda-hw-btn).active {
+    transform: scaleX(1.05) scaleY(0.95);
+}
+
+button:not(.win-btn):not(.pda-hw-btn):focus-visible {
+    outline: 2px solid #93c5fd;
+    outline-offset: 2px;
+}
+
+/* 3. Eredeti .liquid-btn osztály megőrzése és kibővítése */
 .liquid-btn {
     position: relative;
     display: inline-flex;
@@ -136,20 +167,13 @@
     background: rgba(255, 255, 255, 0.75);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    
     color: #1e40af;
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.2px;
     white-space: nowrap;
     cursor: pointer;
-    user-select: none;
     line-height: normal;
-
-    /* Folyékony, rugalmas animáció kattintáskor és hoverkor */
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-
-    /* Realisztikus 3D üveghatás (külső árnyék + belső peremfény) */
     box-shadow: 
         0 4px 12px -2px rgba(37, 99, 235, 0.15),
         0 2px 4px -2px rgba(15, 23, 42, 0.05),
@@ -169,7 +193,6 @@
     transition: transform 0.3s ease;
 }
 
-/* Hover: kékes fény áttűnés a tiszta üvegen keresztül, finom kiemelkedés */
 .liquid-btn:hover {
     background: linear-gradient(135deg, rgba(239, 246, 255, 0.75), rgba(219, 234, 254, 0.55));
     border-color: rgba(191, 219, 254, 0.9);
@@ -186,7 +209,6 @@
     stroke: #2563eb;
 }
 
-/* Kattintási nyúlás (Liquid stretch) és teljesen kék állapot jól látható fehér felirattal */
 .liquid-btn:active,
 .liquid-btn.active {
     transform: scaleX(1.05) scaleY(0.95);
@@ -204,7 +226,318 @@
     stroke: #ffffff;
 }
 
-.liquid-btn:focus-visible {
-    outline: 2px solid #93c5fd;
-    outline-offset: 2px;
+/* 4. Elsődleges / Kék gombok (Primary Liquid Glass) */
+.primary-btn,
+button.primary-btn,
+button[style*="background:#2563eb"],
+button[style*="background: #2563eb"],
+button[style*="background:#0284c7"],
+button[style*="background: #0284c7"],
+button[style*="background:#3b82f6"],
+button[style*="background: #3b82f6"],
+button[style*="background:#0ea5e9"],
+button[style*="background: #0ea5e9"] {
+    border-radius: 9999px !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 
+        0 4px 14px -2px rgba(37, 99, 235, 0.35),
+        0 2px 4px -2px rgba(15, 23, 42, 0.08),
+        inset 0 1px 2px rgba(255, 255, 255, 0.55),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.18) !important;
+}
+
+.primary-btn:hover,
+button.primary-btn:hover,
+button[style*="background:#2563eb"]:hover,
+button[style*="background: #2563eb"]:hover,
+button[style*="background:#0284c7"]:hover,
+button[style*="background: #0284c7"]:hover,
+button[style*="background:#3b82f6"]:hover,
+button[style*="background: #3b82f6"]:hover,
+button[style*="background:#0ea5e9"]:hover,
+button[style*="background: #0ea5e9"]:hover {
+    box-shadow: 
+        0 12px 24px -4px rgba(37, 99, 235, 0.45),
+        0 4px 8px -2px rgba(37, 99, 235, 0.2),
+        inset 0 1px 2px rgba(255, 255, 255, 0.7),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.18) !important;
+}
+
+.primary-btn:active,
+button.primary-btn:active,
+button[style*="background:#2563eb"]:active,
+button[style*="background: #2563eb"]:active,
+button[style*="background:#0284c7"]:active,
+button[style*="background: #0284c7"]:active,
+button[style*="background:#3b82f6"]:active,
+button[style*="background: #3b82f6"]:active,
+button[style*="background:#0ea5e9"]:active,
+button[style*="background: #0ea5e9"]:active {
+    box-shadow: 
+        0 4px 10px -2px rgba(37, 99, 235, 0.4),
+        inset 0 2px 4px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* 5. Másodlagos / Fehér / Keretes gombok (Secondary Liquid Glass – mint a + Új rakodás alapformája) */
+.secondary-btn,
+button.secondary-btn,
+.action-btn,
+button.action-btn,
+button[style*="background:#ffffff"],
+button[style*="background: #ffffff"],
+button[style*="background:#fff"],
+button[style*="background: #fff"],
+button[style*="background: white"],
+button[style*="background:white"] {
+    border-radius: 9999px !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 
+        0 4px 12px -2px rgba(37, 99, 235, 0.12),
+        0 2px 4px -2px rgba(15, 23, 42, 0.05),
+        inset 0 1px 2px rgba(255, 255, 255, 0.95),
+        inset 0 -1px 2px rgba(37, 99, 235, 0.08) !important;
+}
+
+.secondary-btn:hover,
+button.secondary-btn:hover,
+.action-btn:hover,
+button.action-btn:hover,
+button[style*="background:#ffffff"]:hover,
+button[style*="background: #ffffff"]:hover,
+button[style*="background:#fff"]:hover,
+button[style*="background: #fff"]:hover,
+button[style*="background: white"]:hover,
+button[style*="background:white"]:hover {
+    box-shadow: 
+        0 10px 22px -4px rgba(59, 130, 246, 0.22),
+        0 6px 8px -3px rgba(59, 130, 246, 0.12),
+        inset 0 1px 2px rgba(255, 255, 255, 0.95),
+        inset 0 -2px 4px rgba(37, 99, 235, 0.08) !important;
+}
+
+.secondary-btn:active,
+button.secondary-btn:active,
+.action-btn:active,
+button.action-btn:active,
+button[style*="background:#ffffff"]:active,
+button[style*="background: #ffffff"]:active,
+button[style*="background:#fff"]:active,
+button[style*="background: #fff"]:active,
+button[style*="background: white"]:active,
+button[style*="background:white"]:active {
+    box-shadow: 
+        0 4px 8px -2px rgba(37, 99, 235, 0.2),
+        inset 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* 6. Zöld / Mentés / Export gombok (Success Liquid Glass) */
+button[style*="background:#16a34a"],
+button[style*="background: #16a34a"],
+button[style*="background:#22c55e"],
+button[style*="background: #22c55e"],
+button[style*="background:#10b981"],
+button[style*="background: #10b981"],
+button[style*="background:#15803d"],
+button[style*="background: #15803d"] {
+    border-radius: 9999px !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 
+        0 4px 14px -2px rgba(22, 163, 74, 0.35),
+        0 2px 4px -2px rgba(15, 23, 42, 0.08),
+        inset 0 1px 2px rgba(255, 255, 255, 0.55),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.18) !important;
+}
+
+button[style*="background:#16a34a"]:hover,
+button[style*="background: #16a34a"]:hover,
+button[style*="background:#22c55e"]:hover,
+button[style*="background: #22c55e"]:hover,
+button[style*="background:#10b981"]:hover,
+button[style*="background: #10b981"]:hover,
+button[style*="background:#15803d"]:hover,
+button[style*="background: #15803d"]:hover {
+    box-shadow: 
+        0 12px 24px -4px rgba(22, 163, 74, 0.45),
+        0 4px 8px -2px rgba(22, 163, 74, 0.2),
+        inset 0 1px 2px rgba(255, 255, 255, 0.7),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.18) !important;
+}
+
+/* 7. Piros / Törlés / Mégse gombok (Danger Liquid Glass) */
+button[style*="background:#ef4444"],
+button[style*="background: #ef4444"],
+button[style*="background:#dc2626"],
+button[style*="background: #dc2626"],
+button[style*="background:#b91c1c"],
+button[style*="background: #b91c1c"],
+button.danger,
+.prt-toolbar-btn.danger {
+    border-radius: 9999px !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 
+        0 4px 14px -2px rgba(220, 38, 38, 0.35),
+        0 2px 4px -2px rgba(15, 23, 42, 0.08),
+        inset 0 1px 2px rgba(255, 255, 255, 0.5),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.18) !important;
+}
+
+button[style*="background:#ef4444"]:hover,
+button[style*="background: #ef4444"]:hover,
+button[style*="background:#dc2626"]:hover,
+button[style*="background: #dc2626"]:hover,
+button[style*="background:#b91c1c"]:hover,
+button[style*="background: #b91c1c"]:hover,
+button.danger:hover,
+.prt-toolbar-btn.danger:hover {
+    box-shadow: 
+        0 12px 24px -4px rgba(220, 38, 38, 0.45),
+        0 4px 8px -2px rgba(220, 38, 38, 0.2),
+        inset 0 1px 2px rgba(255, 255, 255, 0.65),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.18) !important;
+}
+
+/* 8. Narancs / Borostyán gombok (Warning Liquid Glass) */
+button[style*="background:#f59e0b"],
+button[style*="background: #f59e0b"],
+button[style*="background:#d97706"],
+button[style*="background: #d97706"] {
+    border-radius: 9999px !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 
+        0 4px 14px -2px rgba(245, 158, 11, 0.35),
+        0 2px 4px -2px rgba(15, 23, 42, 0.08),
+        inset 0 1px 2px rgba(255, 255, 255, 0.55),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.18) !important;
+}
+
+button[style*="background:#f59e0b"]:hover,
+button[style*="background: #f59e0b"]:hover,
+button[style*="background:#d97706"]:hover,
+button[style*="background: #d97706"]:hover {
+    box-shadow: 
+        0 12px 24px -4px rgba(245, 158, 11, 0.45),
+        0 4px 8px -2px rgba(245, 158, 11, 0.2),
+        inset 0 1px 2px rgba(255, 255, 255, 0.7),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.18) !important;
+}
+
+/* 9. Modul specifikus eszköztár és egyéb gombok */
+.prt-toolbar-btn,
+.loc-btn-outline,
+.btn-edit,
+.plp-print,
+.add-btn {
+    border-radius: 9999px !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 
+        0 3px 10px -2px rgba(0, 0, 0, 0.1),
+        inset 0 1px 2px rgba(255, 255, 255, 0.7) !important;
+}
+
+/* 10. Táblázatsori kompakt ikon gombok (megőrizve a kompakt pozíciót és méretet, finom üveg hover) */
+.icon-btn,
+.delete-fuvar-btn,
+.aldi-del-truck-btn,
+.btn-send-aldi-demand,
+.btn-split-aldi-demand,
+.btn-delete-aldi-demand,
+.btn-rm-row,
+.btn-del-truck-line,
+.aldi-arak-delete-btn,
+.aldi-prod-delete-btn,
+.rak-del-btn,
+.btn-edit-aru-row,
+.btn-send-aru,
+.btn-del-aru,
+.del-btn,
+.prt-row-del-btn {
+    border-radius: 50% !important;
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+.icon-btn:hover,
+.delete-fuvar-btn:hover,
+.aldi-del-truck-btn:hover,
+.btn-send-aldi-demand:hover,
+.btn-split-aldi-demand:hover,
+.btn-delete-aldi-demand:hover,
+.btn-rm-row:hover,
+.btn-del-truck-line:hover,
+.aldi-arak-delete-btn:hover,
+.aldi-prod-delete-btn:hover,
+.rak-del-btn:hover,
+.btn-edit-aru-row:hover,
+.btn-send-aru:hover,
+.btn-del-aru:hover,
+.del-btn:hover,
+.prt-row-del-btn:hover {
+    transform: translateY(-1px) scale(1.15) !important;
+    background: rgba(241, 245, 249, 0.85) !important;
+    box-shadow: 0 4px 8px -2px rgba(0, 0, 0, 0.12), inset 0 1px 1px rgba(255, 255, 255, 0.9) !important;
+}
+
+/* ===== Globális táblázat sor lebegtetési kiemelés (Design 4 Liquid minta alapján - minden táblázatra kiterjesztve) ===== */
+.access-subform-table,
+.loc-table,
+.emp-table,
+.prt-table,
+.prt-subtable,
+.advanced-grid,
+.data-table,
+.items-grid,
+.grid-table,
+.req-grid,
+.simple-table,
+.arch-table,
+.pl-table,
+.ai-table,
+.conn-grid,
+.finance-table-summary,
+.admin-compact-table,
+table {
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+}
+
+tbody tr {
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, background 0.2s ease !important;
+    cursor: pointer;
+}
+
+tbody tr:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 14px -2px rgba(0, 45, 98, 0.12), 0 2px 4px rgba(0, 0, 0, 0.04) !important;
+    background: #f0f7ff !important;
+    position: relative;
+    z-index: 10;
+}
+
+tbody tr:hover td {
+    background: #f0f7ff !important;
+}
+
+tbody tr.selected:hover,
+tbody tr.selected:hover td,
+tbody tr.active:hover,
+tbody tr.active:hover td {
+    background: #dbeafe !important;
+}
+
+/* Üres állapotú és betöltési sorok kizárása a kiemelésből */
+tbody tr:has(> td[colspan]) {
+    cursor: default !important;
+}
+tbody tr:has(> td[colspan]):hover {
+    transform: none !important;
+    box-shadow: none !important;
+    background-color: transparent !important;
+}
+tbody tr:has(> td[colspan]):hover td {
+    background-color: transparent !important;
 }

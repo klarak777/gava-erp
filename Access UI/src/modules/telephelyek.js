@@ -30,7 +30,7 @@ export function renderTelephelyek(container) {
         </div>
 
         <div class="access-subform">
-            <div class="access-subform-header">Telephelyek listája</div>
+            <div class="access-subform-header" style="color:#000000;">Telephelyek listája</div>
             <div style="overflow-x: auto;">
                 <table class="access-subform-table">
                     <thead>

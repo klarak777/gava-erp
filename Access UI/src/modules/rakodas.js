@@ -43,7 +43,7 @@ export function renderRakodas(container, windowManager) {
 
         // BAL TÁBLA: Rakodások (szélesség csökkentve flex:1.0-re)
         '<div class="access-subform" style="flex:1.0; min-width:0; margin-top:0;">' +
-        '<div class="access-subform-header" style="font-size:12px; padding:8px 12px;">Rakodások</div>' +
+        '<div class="access-subform-header" style="font-size:12px; padding:8px 12px; color:#000000;">Rakodások</div>' +
         '<div style="overflow-x:auto;">' +
         '<table class="access-subform-table" id="rak-left-table" style="font-size:11px; table-layout:fixed; width:100%;">' +
         '<thead><tr>' +
@@ -73,11 +73,11 @@ export function renderRakodas(container, windowManager) {
 
         // JOBB TÁBLA: Áru igény
         '<div class="access-subform" style="margin-top:0; background:linear-gradient(135deg, #f0f7ff, #e8f4fd); border:1px solid #bde0fa;">' +
-        '<div class="access-subform-header" style="background:linear-gradient(90deg,#0ea5e9,#2563eb); color:#fff; display:flex; align-items:center; justify-content:space-between; padding:6px 14px;">' +
+        '<div class="access-subform-header" style="background:#f1f5f9; border-bottom:1px solid #cbd5e1; color:#000000; display:flex; align-items:center; justify-content:space-between; padding:6px 14px;">' +
         '<div style="display:flex; align-items:center; gap:16px;">' +
-        '<span style="font-size:11px; font-weight:600;">Áru igény</span>' +
+        '<span style="font-size:11px; font-weight:600; color:#000000;">Áru igény</span>' +
         '</div>' +
-        '<button id="btn-add-aru" title="Új áru igény hozzáadása" style="background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.4); color:#fff; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:13px; font-weight:700; line-height:1.4;">+ Hozzáadás</button>' +
+        '<button id="btn-add-aru" title="Új áru igény hozzáadása" style="background:#2563eb; border:1px solid #1d4ed8; color:#fff; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:13px; font-weight:700; line-height:1.4;">+ Hozzáadás</button>' +
         '</div>' +
         '<div style="overflow-x:auto;">' +
         '<table class="access-subform-table" id="rak-right-table" style="background:transparent; font-size:10px;">' +

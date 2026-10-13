@@ -13,7 +13,7 @@ const PARTNEREK_STYLE = `
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 18px; gap: 12px; flex-wrap: wrap;
 }
-.prt-list-header h2 { margin: 0; font-size: 22px; font-weight: 700; color: var(--text-primary); }
+.prt-list-header h2 { margin: 0; font-size: 22px; font-weight: 700; color: #000000; }
 .prt-search-row { display: flex; gap: 10px; align-items: center; }
 .prt-search-input {
   padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border);

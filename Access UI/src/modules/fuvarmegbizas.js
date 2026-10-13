@@ -58,7 +58,7 @@ export function renderFuvarmegbizas(container, windowManager) {
 
         // Table
         '<div class="access-subform">' +
-            '<div class="access-subform-header">Fuvarmegbízások listája</div>' +
+            '<div class="access-subform-header" style="color:#000000;">Fuvarmegbízások listája</div>' +
             '<div style="overflow-x:auto;">' +
                 '<table class="access-subform-table" id="fuvm-table">' +
                     '<thead><tr>' +

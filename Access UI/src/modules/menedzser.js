@@ -68,7 +68,7 @@ export function renderMenedzser(container, windowManager) {
     tableContainer.innerHTML = `
         <div class="access-subform" style="display:flex; flex-direction:column; flex:1; min-height:0; margin-top:0;">
             <div class="access-subform-header" style="flex-shrink:0; display:flex; align-items:center; justify-content:space-between;">
-                <span>Menedzser listája</span>
+                <span style="color:#000000;">Menedzser listája</span>
                 <span id="record-count" style="font-size:12px; font-weight:400; color:var(--text-muted);"></span>
             </div>
             <div id="table-scroll-area" style="overflow:auto; flex:1 1 auto; min-height:0;">

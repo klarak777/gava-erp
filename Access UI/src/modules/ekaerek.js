@@ -57,7 +57,7 @@ export function renderEkaerek(container, windowManager) {
 
         // Table
         '<div class="access-subform">' +
-            '<div class="access-subform-header">EKAEREK listája</div>' +
+            '<div class="access-subform-header" style="color:#000000;">Ekaer listája</div>' +
             '<div style="overflow-x:auto;">' +
                 '<table class="access-subform-table" id="ek-table">' +
                     '<thead><tr>' +

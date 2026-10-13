@@ -46,8 +46,9 @@ import { renderAldiRakodas } from './modules/aldi_rakodas.js';
 import { renderAldiFuvarokOsszesito } from './modules/aldi_fuvarok_osszesito.js';
 import { renderAldiBelfoldiFuvarok } from './modules/aldi_belfoldi_fuvarok.js';
 import { renderAldiTermekAdattabla } from './modules/aldi_termekek.js';
+import { renderAldiEdiTest } from './modules/aldi_edi_test.js?v=20261013';
 import { renderPdaEmulator } from './modules/pda_emulator.js?v=3';
-import { NAV_CATEGORIES } from './data/nav-structure.js?v=20261006-aldi-flyout';
+import { NAV_CATEGORIES } from './data/nav-structure.js?v=20261013-edi-test';
 import { initAiChat } from './modules/ai-chat.js?v=10';
 
 const mainNav = document.getElementById('main-nav');
@@ -118,6 +119,10 @@ const modules = {
     aldi_fuvarok_osszesito: { render: renderAldiFuvarokOsszesito, title: 'ALDI – Fuvarok összesítő' },
     aldi_belfoldi_fuvarok: { render: renderAldiBelfoldiFuvarok, title: 'ALDI – Belföldi fuvarok' },
     aldi_termekek: { render: renderAldiTermekAdattabla, title: 'ALDI – Termék adattábla' },
+    aldi_edi_test: {
+        title: 'ALDI – EDI teszt és napló', opensWindow: true,
+        render: (_container, manager) => manager.open('aldi_edi_test', 'ALDI – EDI teszt és napló', renderAldiEdiTest)
+    },
     pda_emulator: { render: renderPdaEmulator, title: 'PDA Emulátor' }
 };
 

@@ -91,6 +91,11 @@ router.put('/trucks/:id', async (req, res) => {
       if (!truck) throw new Error('Nem található kamion.');
       
       const wasLoaded = truck.is_loaded;
+      if (is_loaded === false && wasLoaded) {
+        const lockError = new Error('LOADED_LOCKED');
+        lockError.code = 'LOADED_LOCKED';
+        throw lockError;
+      }
       await trx('aldi_trucks').where('id', id).update(updateData);
       
       if (is_loaded === true && !wasLoaded) {
@@ -133,6 +138,9 @@ router.put('/trucks/:id', async (req, res) => {
     const updatedTruck = await knex('aldi_trucks').where('id', id).first();
     res.json(updatedTruck);
   } catch (err) {
+    if (err.code === 'LOADED_LOCKED') {
+      return res.status(409).json({ code: 'LOADED_LOCKED', error: 'A kamion már rakodva van és szállítás alatt áll, a Rakodva státusz nem vonható vissza.' });
+    }
     console.error('Error updating aldi truck:', err);
     res.status(500).json({ error: 'Internal server error' });
   }

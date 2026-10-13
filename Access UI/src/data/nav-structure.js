@@ -67,6 +67,7 @@ export const NAV_CATEGORIES = [
             { id: 'aldi_fuvarok_osszesito', title: 'Fuvarok összesítő', icon: '📋', moduleId: 'aldi_fuvarok_osszesito', items: [] },
             { id: 'aldi_belfoldi_fuvarok', title: 'Belföldi fuvarok', icon: '🚚', moduleId: 'aldi_belfoldi_fuvarok', items: [] },
             { id: 'aldi_termekek', title: 'Termék adattábla', icon: '📊', moduleId: 'aldi_termekek', items: [] },
+            { id: 'aldi_edi_test', title: 'EDI teszt és napló', icon: '🧪', moduleId: 'aldi_edi_test', items: [] },
         ],
     },
     {

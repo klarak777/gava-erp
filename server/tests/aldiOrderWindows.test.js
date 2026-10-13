@@ -14,6 +14,7 @@ test('ALDI Orders flyout opens on hover or click and launches four independent w
     requests.push({ method: req.method, url: req.url });
     if (url.pathname.startsWith('/api/')) {
       let data = [];
+      if (url.pathname === '/api/v1/aldi-edi-test/status') data = { enabled: false, ready: false, intervalMinutes: 60, productionReady: false };
       if (url.pathname === '/api/v1/aldi-daily-orders') data = [
         { id: 1, order_number: 'ORDER_A', delivery_date: '2026-10-06' },
         { id: 2, order_number: 'ORDER_B', delivery_date: '2026-10-07' }
@@ -58,7 +59,7 @@ test('ALDI Orders flyout opens on hover or click and launches four independent w
     await submenu.locator(`[data-module="${id}"]`).click();
   };
   assert.deepEqual(await category.locator('.nav-category-items > .nav-group-button .nav-label, .nav-submenu-toggle .nav-label').allTextContents(), [
-    'Rendelések', 'Stock', 'Quality', 'Rakodás', 'Fuvarok összesítő', 'Belföldi fuvarok', 'Termék adattábla'
+    'Rendelések', 'Stock', 'Quality', 'Rakodás', 'Fuvarok összesítő', 'Belföldi fuvarok', 'Termék adattábla', 'EDI teszt és napló'
   ]);
   assert.deepEqual(await submenu.locator('.nav-label').allTextContents(), [
     'Napi rendelés', 'Heti lekötés', 'Heti árak', 'Komissió utasítás'
@@ -147,5 +148,11 @@ test('ALDI Orders flyout opens on hover or click and launches four independent w
   assert.ok(requests.some(r => r.url.includes('commission-summary?date=2026-10-06')));
   assert.ok(requests.some(r => r.url === `/api/v1/aldi-weekly-commitments/${year}/40`));
   assert.ok(requests.filter(r => r.url.startsWith('/api/')).every(r => r.method === 'GET'), 'Opening and filtering do not save data');
+  if (!(await category.getAttribute('class')).includes('expanded')) await category.locator('.nav-category-header').click();
+  await category.locator('[data-module="aldi_edi_test"]').click();
+  await win('aldi_edi_test').locator('[data-edi="form"]').waitFor();
+  await page.waitForFunction(() => document.querySelector('[data-edi="status"]')?.textContent.includes('60 perc'));
+  assert.equal(await page.locator('.mdi-window').count(), 5);
+  assert.equal(await win('aldi_edi_test').locator('[data-edi="poll"]').isDisabled(), true);
   assert.deepEqual(errors, []);
 });

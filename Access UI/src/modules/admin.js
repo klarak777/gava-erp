@@ -745,7 +745,7 @@ export function openPalletLabelsTable(wm) {
             <div class="pl-container">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                     <div style="display:flex; align-items:center; gap:8px;">
-                        <h2 style="margin:0; font-size:16px; font-weight:700; color:#0f172a;">🏷️ Raklapcímkék</h2>
+                        <h2 style="margin:0; font-size:16px; font-weight:700; color:#000000;">🏷️ Raklapcímkék</h2>
                         <span id="pl-count" style="background:#f1f5f9; color:#475569; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:700;">0 db</span>
                     </div>
                     <div style="display:flex; align-items:center; gap:8px;">

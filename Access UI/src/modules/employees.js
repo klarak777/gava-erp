@@ -21,7 +21,7 @@ function escapeHtml(unsafe) {
 const EMPLOYEE_STYLES = `
             <style>
                 .emp-top-bar { padding: 15px 20px; background: white; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; }
-                .emp-title { font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 8px; }
+                .emp-title { font-size: 16px; font-weight: 700; color: #000000; margin-bottom: 8px; }
                 .emp-search-container { display: flex; align-items: center; gap: 10px; flex: 1; max-width: 400px; position: relative; }
                 .emp-search-input { width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
                 .emp-selection-list { overflow-y: auto; padding: 0 20px; background: white; border-bottom: 1px solid #e2e8f0; }
@@ -46,7 +46,7 @@ const EMPLOYEE_STYLES = `
                 .emp-grid-2 { display: grid; grid-template-columns: 300px 300px; gap: 40px; margin-bottom: 30px; justify-content: start; }
                 .emp-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
                 
-                .emp-section-title { font-size: 15px; font-weight: 700; color: #334155; margin-bottom: 15px; padding-bottom: 5px; border-bottom: 1px solid #e2e8f0; }
+                .emp-section-title { font-size: 15px; font-weight: 700; color: #000000; margin-bottom: 15px; padding-bottom: 5px; border-bottom: 1px solid #e2e8f0; }
                 
                 .emp-field { margin-bottom: 12px; }
                 .emp-field label { display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; }
@@ -94,7 +94,7 @@ export function renderEmployeesModule(content, wm) {
     content.innerHTML = `${EMPLOYEE_STYLES}
             <div class="emp-top-bar">
                 <div>
-                    <div class="emp-title">DOLGOZÓ KIVÁLASZTÁSA</div>
+                    <div class="emp-title">Dolgozó kiválasztása</div>
                     <div class="emp-search-container">
                         <input type="text" id="emp-search" class="emp-search-input" placeholder="Név, azonosító keresése...">
                     </div>

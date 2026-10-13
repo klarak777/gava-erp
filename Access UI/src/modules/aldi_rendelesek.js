@@ -545,7 +545,7 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
         </div>
         
         <div id="aldi-napi-order-details-pane" style="flex:1; min-width:400px; border:1px solid #e2e8f0; border-radius:6px; background:#ffffff; box-shadow:0 1px 3px rgba(0,0,0,0.02); display:flex; flex-direction:column;">
-          <div style="padding:12px 16px; border-bottom:1px solid #e2e8f0; background:#f8fafc; font-weight:bold; color:#1e293b; font-size:14px; border-radius:6px 6px 0 0;">
+          <div style="padding:12px 16px; border-bottom:1px solid #e2e8f0; background:#f8fafc; font-weight:bold; color:#000000; font-size:14px; border-radius:6px 6px 0 0;">
             Rendelés: 
           </div>
           <div style="flex:1; padding:16px 20px; overflow-y:auto; min-height:0;">
@@ -742,7 +742,7 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
         </div>
         ` : `
         <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; overflow:auto; margin-bottom:24px;">
-          <h4 style="margin:16px; font-size:15px; color:#1e293b;">Lekötés & Rendelés</h4>
+          <h4 style="margin:16px; font-size:15px; color:#000000;">Lekötés & rendelés</h4>
           <table style="width:100%; border-collapse:collapse; font-size:13px; text-align:left;">
             <thead>
               <tr style="background:#f1f5f9; border-bottom:2px solid #cbd5e1;">
@@ -768,7 +768,7 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
         </div>
         
         <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; overflow:auto;">
-          <h4 style="margin:16px; font-size:15px; color:#1e293b;">Készlet lista</h4>
+          <h4 style="margin:16px; font-size:15px; color:#000000;">Készlet lista</h4>
           <table style="width:100%; border-collapse:collapse; font-size:13px; text-align:left;">
             <thead>
               <tr style="background:#f1f5f9; border-bottom:2px solid #cbd5e1;">
@@ -2145,7 +2145,7 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
           modalOverlay.remove();
           fetchNapiRendelesek(); // Frissítjük a táblázatot
 
-          if ((result.autoReconcileWarnings && result.autoReconcileWarnings.length > 0) || (result.deletedItems && result.deletedItems.length > 0)) {
+          if ((result.loadedWarnings && result.loadedWarnings.length > 0) || (result.autoReconcileWarnings && result.autoReconcileWarnings.length > 0) || (result.deletedItems && result.deletedItems.length > 0)) {
             const deletedSummary = result.deletedItems?.length
               ? `\nA PDF ${result.deletedItems.length} darab „2-Deleted” tételt tartalmazott. Ezek mennyisége 0 lett, és a kapcsolódó Áruigény/kamion/komissió adatok törlődtek.\n`
               : '';
@@ -2153,7 +2153,8 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
               '✅ Sikeres feltöltés!\n\n' +
               deletedSummary +
               (result.autoReconcileWarnings?.length ? '⚠️ AUTOMATIKUS EGYEZTETÉS TÖRTÉNT:\nA rendszer a csökkentett vagy törölt mennyiségeket visszavette:\n\n' : '') +
-              (result.autoReconcileWarnings || []).join('\n')
+              (result.autoReconcileWarnings || []).join('\n') +
+              (result.loadedWarnings?.length ? '\n\n' + result.loadedWarnings.join('\n') : '')
             );
           } else {
             alert('✅ Sikeres feltöltés!');
@@ -2589,7 +2590,7 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
           <!-- Meglévő periódusok -->
           <div>
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-              <span style="font-size:11px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.4px;">Rögzített időszakok & Árak</span>
+              <span style="font-size:11px; font-weight:700; color:#000000; letter-spacing:0.4px;">Rögzített időszakok & árak</span>
               <span style="font-size:11px; color:#64748b;">(Kattints a sorra a módosításhoz)</span>
             </div>
             <div id="cp-periods-list">
@@ -2599,7 +2600,7 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
 
           <!-- Új periódus / Szerkesztés űrlap -->
           <div id="cp-form-container" style="background:#f8fafc; border-radius:8px; padding:14px; border:1px solid #e2e8f0;">
-            <div id="cp-form-title" style="font-size:12px; font-weight:700; color:#0369a1; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;">
+            <div id="cp-form-title" style="font-size:12px; font-weight:700; color:#000000; letter-spacing:0.4px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;">
               <span>➕ Új időszak és árak hozzáadása</span>
               <button id="cp-cancel-edit-btn" style="display:none; background:none; border:1px solid #cbd5e1; border-radius:4px; font-size:11px; font-weight:600; padding:2px 8px; color:#64748b; cursor:pointer;">Mégsem (Új hozzáadása)</button>
             </div>
