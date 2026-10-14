@@ -72,9 +72,17 @@ export class WindowManager {
 
         // Initial Position (cascade) if not already set
         if (!windowEl.style.left) {
-            const offset = 30 * (this.windowCount % 10);
-            windowEl.style.top = `${70 + 20 + offset}px`;
-            windowEl.style.left = `${20 + offset}px`;
+            const containerWidth = this.container.offsetWidth || document.documentElement.clientWidth || window.innerWidth;
+            const containerHeight = this.container.offsetHeight || (document.documentElement.clientHeight - 70);
+            const winWidth = windowEl.offsetWidth || 900;
+            const winHeight = windowEl.offsetHeight || 600;
+
+            const baseLeft = Math.max(20, Math.round((containerWidth - winWidth) / 2));
+            const baseTop = Math.max(10, Math.round((containerHeight - winHeight) / 2));
+
+            const offset = 20 * (this.windowCount % 5);
+            windowEl.style.top = `${baseTop + offset}px`;
+            windowEl.style.left = `${baseLeft + offset}px`;
         }
     }
 
@@ -92,16 +100,15 @@ export class WindowManager {
         // Ensure window starts visible
         windowEl.style.display = 'flex';
 
-        // Center the modal
-        // We need to wait for render to know exact dimensions if not set, but here we likely set them.
+        // Center the modal (equidistant between header and bottom)
         setTimeout(() => {
             const containerWidth = this.container.offsetWidth || document.documentElement.clientWidth || window.innerWidth;
-            const containerHeight = this.container.offsetHeight || document.documentElement.clientHeight || window.innerHeight;
+            const containerHeight = this.container.offsetHeight || (document.documentElement.clientHeight - 70);
             const winWidth = windowEl.offsetWidth;
             const winHeight = windowEl.offsetHeight;
 
-            const left = Math.max(20, (containerWidth - winWidth) / 2);
-            const top = Math.max(70, (containerHeight - winHeight) / 2);
+            const left = Math.max(20, Math.round((containerWidth - winWidth) / 2));
+            const top = Math.max(10, Math.round((containerHeight - winHeight) / 2));
 
             windowEl.style.left = `${left}px`;
             windowEl.style.top = `${top}px`;

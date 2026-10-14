@@ -179,10 +179,15 @@ async function openEmployeeEditor(wm, employeeId, onSaved) {
         
         // Center the window immediately after open logic runs
         requestAnimationFrame(() => {
-            const containerWidth = document.documentElement.clientWidth || window.innerWidth;
-            const containerHeight = document.documentElement.clientHeight || window.innerHeight;
-            const left = Math.max(20, (containerWidth - 1100) / 2);
-            const top = Math.max(70, (containerHeight - 800) / 2);
+            const layerEl = document.getElementById('window-layer');
+            const containerWidth = layerEl?.offsetWidth || document.documentElement.clientWidth || window.innerWidth;
+            const containerHeight = layerEl?.offsetHeight || (document.documentElement.clientHeight - 70);
+            const winWidth = 1100;
+            const winHeight = 800;
+
+            const left = Math.max(20, Math.round((containerWidth - winWidth) / 2));
+            const top = Math.max(10, Math.round((containerHeight - winHeight) / 2));
+
             windowEl.style.left = left + 'px';
             windowEl.style.top = top + 'px';
         });

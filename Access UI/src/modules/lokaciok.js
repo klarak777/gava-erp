@@ -8,10 +8,15 @@ export function openLokaciokWindow(wm) {
             winEl.style.maxHeight = '92vh';
 
             setTimeout(() => {
-                const containerWidth = document.documentElement.clientWidth || window.innerWidth;
-                const containerHeight = document.documentElement.clientHeight || window.innerHeight;
-                const left = Math.max(20, (containerWidth - winEl.offsetWidth) / 2);
-                const top = Math.max(70, (containerHeight - winEl.offsetHeight) / 2);
+                const layerEl = document.getElementById('window-layer');
+                const containerWidth = layerEl?.offsetWidth || document.documentElement.clientWidth || window.innerWidth;
+                const containerHeight = layerEl?.offsetHeight || (document.documentElement.clientHeight - 70);
+                const winWidth = winEl.offsetWidth || 1200;
+                const winHeight = winEl.offsetHeight || 800;
+
+                const left = Math.max(20, Math.round((containerWidth - winWidth) / 2));
+                const top = Math.max(10, Math.round((containerHeight - winHeight) / 2));
+
                 winEl.style.left = `${left}px`;
                 winEl.style.top = `${top}px`;
             }, 10);

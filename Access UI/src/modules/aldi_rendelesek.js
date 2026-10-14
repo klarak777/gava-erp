@@ -14,20 +14,28 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
     heti_arak: '#aldi-tab-heti-arak', komissio: '#aldi-tab-komissio'
   }[standaloneTab];
 
-  // Ablak kezdeti méretezése és elhelyezése a képernyőkép alapján
+  // Ablak kezdeti méretezése és vertikális felezése (egyenlő távolságra a fejléctől és az aljától)
   const winEl = container.closest ? container.closest('.mdi-window') : null;
   if (winEl) {
-    winEl.style.width = '1080px';
-    winEl.style.height = '580px';
-    winEl.style.left = '180px';
-    winEl.style.top = '120px';
+    const winWidth = 1080;
+    const winHeight = 580;
+    winEl.style.width = `${winWidth}px`;
+    winEl.style.height = `${winHeight}px`;
 
-    setTimeout(() => {
-      winEl.style.width = '1080px';
-      winEl.style.height = '580px';
-      winEl.style.left = '180px';
-      winEl.style.top = '120px';
-    }, 10);
+    const alignCenter = () => {
+      const layerEl = document.getElementById('window-layer');
+      const containerWidth = layerEl?.offsetWidth || document.documentElement.clientWidth || window.innerWidth;
+      const containerHeight = layerEl?.offsetHeight || (document.documentElement.clientHeight - 70);
+
+      const left = Math.max(20, Math.round((containerWidth - winWidth) / 2));
+      const top = Math.max(10, Math.round((containerHeight - winHeight) / 2));
+
+      winEl.style.left = `${left}px`;
+      winEl.style.top = `${top}px`;
+    };
+
+    alignCenter();
+    setTimeout(alignCenter, 10);
   }
 
   container.style.overflow = 'auto';

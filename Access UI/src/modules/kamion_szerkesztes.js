@@ -17,13 +17,14 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
 
             // Középre pozicionálás (setTimeout, hogy a WindowManager alapértelmezett pozícióját felülírjuk)
             setTimeout(() => {
-                const containerWidth = document.documentElement.clientWidth || window.innerWidth;
-                const containerHeight = document.documentElement.clientHeight || window.innerHeight;
+                const layerEl = document.getElementById('window-layer');
+                const containerWidth = layerEl?.offsetWidth || document.documentElement.clientWidth || window.innerWidth;
+                const containerHeight = layerEl?.offsetHeight || (document.documentElement.clientHeight - 70);
                 const winWidth = winEl.offsetWidth || 1100;
                 const winHeight = winEl.offsetHeight || 650;
 
-                const left = Math.max(20, (containerWidth - winWidth) / 2);
-                const top = Math.max(0, ((containerHeight - winHeight) / 2) - 40);
+                const left = Math.max(20, Math.round((containerWidth - winWidth) / 2));
+                const top = Math.max(10, Math.round((containerHeight - winHeight) / 2));
 
                 winEl.style.left = `${left}px`;
                 winEl.style.top = `${top}px`;
