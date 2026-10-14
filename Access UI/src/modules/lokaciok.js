@@ -1,11 +1,11 @@
 export function openLokaciokWindow(wm) {
     wm.open('admin-locations', 'LOKÁCIÓK', (winContainer) => {
-        // Ablak méretezése és képernyő közepére pozicionálása
         const winEl = winContainer.closest('.mdi-window');
         if (winEl) {
             winEl.style.width = '1200px';
             winEl.style.height = '800px';
-            winEl.style.maxHeight = '92vh';
+            winEl.style.maxWidth = 'calc(100% - 40px)';
+            winEl.style.maxHeight = 'calc(100% - 20px)';
 
             setTimeout(() => {
                 const layerEl = document.getElementById('window-layer');
@@ -21,6 +21,7 @@ export function openLokaciokWindow(wm) {
                 winEl.style.top = `${top}px`;
             }, 10);
         }
+        winContainer.style.padding = '0';
 
         let locations = [];
         let filteredLocations = [];
@@ -212,7 +213,7 @@ export function openLokaciokWindow(wm) {
                     <button class="loc-btn-outline" id="btn-new-loc"><span>+</span> ÚJ LOKÁCIÓ</button>
                 </div>
                 
-                <div class="loc-card" style="display: flex; flex-direction: column; height: 420px; margin-bottom: 16px;">
+                <div class="loc-card" style="display: flex; flex-direction: column; flex: 1; min-height: 320px; margin-bottom: 16px;">
                     <h2 class="loc-table-title">Lokációk listája</h2>
                     <div style="flex: 1; overflow-y: auto;">
                         <table class="loc-table">

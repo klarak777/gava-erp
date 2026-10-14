@@ -77,8 +77,8 @@ const AI_CHAT_HTML = `
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
+    width: 100% !important;
+    height: 100% !important;
     border-radius: 0 !important;
     transform: none !important;
 }

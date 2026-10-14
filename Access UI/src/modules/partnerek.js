@@ -49,16 +49,17 @@ const PARTNEREK_STYLE = `
 .prt-modal-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.65);
   z-index: 3000; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
 }
 .prt-modal {
-  position: absolute; top: 5vh; left: 50%; transform: translateX(-50%);
-  background: #ffffff; border-radius: 16px; width: 100%; max-width: 1200px;
+  position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+  background: #ffffff; border-radius: 16px; width: 95%; max-width: 1250px;
   border: 1px solid var(--border); box-shadow: 0 24px 80px rgba(0,0,0,0.5);
-  display: flex; flex-direction: column; height: 90vh; overflow: hidden;
+  display: flex; flex-direction: column; height: calc(100% - 40px); max-height: calc(100% - 40px); overflow: hidden;
 }
 .prt-modal.maximized {
   top: 0 !important; left: 0 !important; transform: none !important;
-  width: 100vw !important; height: 100vh !important; max-width: none !important;
+  width: 100% !important; height: 100% !important; max-width: none !important; max-height: none !important;
   border-radius: 0 !important;
 }
 .prt-modal-titlebar {
@@ -1227,7 +1228,7 @@ function prtBindModal(overlay, listContainer, id) {
                         || prtState.currentData?.partner?.name?.trim()
                         || '';
     const shortName = partnerName
-      ? (partnerName.length > 18 ? partnerName.substring(0, 15) + '...' : partnerName)
+      ? (partnerName.length > 20 ? partnerName.substring(0, 18) + '...' : partnerName)
       : (id ? '#' + id : 'Új');
     
     overlay.style.display = 'none';
@@ -1235,37 +1236,43 @@ function prtBindModal(overlay, listContainer, id) {
     if (!overlay.dataset.taskId) {
       overlay.dataset.taskId = 'prt-modal-' + Date.now() + Math.floor(Math.random() * 1000);
     }
+
+    let mdiTaskbar = document.querySelector('.mdi-taskbar');
+    if (!mdiTaskbar && window.gavaWindowManager?.taskbar) {
+      mdiTaskbar = window.gavaWindowManager.taskbar;
+    }
     
     let taskItem = document.querySelector(`.taskbar-item[data-prt-modal="${overlay.dataset.taskId}"]`);
     if (!taskItem) {
       taskItem = document.createElement('div');
-      taskItem.className = 'taskbar-item';
+      taskItem.className = 'taskbar-item active';
       taskItem.setAttribute('data-prt-modal', overlay.dataset.taskId);
-      taskItem.style.cssText = 'background:#111;color:#bbb;padding:6px 14px;border-radius:4px;cursor:pointer;margin-right:5px;font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px;';
+      taskItem.style.cssText = 'display:flex;align-items:center;gap:6px;cursor:pointer;';
       taskItem.innerHTML = '<span>👤</span><span class="task-label">Partner: ' + shortName + '</span>';
       
-      taskItem.onclick = (e) => {
-        e.stopPropagation();
-        overlay.style.display = 'block';
+      taskItem.onclick = (ev) => {
+        ev.stopPropagation();
+        overlay.style.display = 'flex';
         taskItem.remove();
-        const mdiTaskbar = document.querySelector('.mdi-taskbar');
         if (mdiTaskbar) {
-          const visibleItems = Array.from(mdiTaskbar.children).some(item => item.style.display !== 'none');
+          const visibleItems = Array.from(mdiTaskbar.children).some(item => item !== taskItem && item.style.display !== 'none');
           mdiTaskbar.style.display = visibleItems ? 'flex' : 'none';
           mdiTaskbar.style.visibility = visibleItems ? 'visible' : 'hidden';
         }
       };
       
-      const mdiTaskbar = document.querySelector('.mdi-taskbar');
       if (mdiTaskbar) {
         mdiTaskbar.appendChild(taskItem);
-        mdiTaskbar.style.display = 'flex';
-        mdiTaskbar.style.visibility = 'visible';
       }
     } else {
       const lbl = taskItem.querySelector('.task-label');
       if (lbl) lbl.textContent = 'Partner: ' + shortName;
       taskItem.style.display = 'flex';
+    }
+
+    if (mdiTaskbar) {
+      mdiTaskbar.style.display = 'flex';
+      mdiTaskbar.style.visibility = 'visible';
     }
   });
 
@@ -1985,6 +1992,16 @@ function prtBindModal(overlay, listContainer, id) {
 }
 
 function prtCloseModal(overlay) {
+  if (overlay.dataset.taskId) {
+    const taskItem = document.querySelector(`.taskbar-item[data-prt-modal="${overlay.dataset.taskId}"]`);
+    if (taskItem) taskItem.remove();
+    const mdiTaskbar = document.querySelector('.mdi-taskbar') || window.gavaWindowManager?.taskbar;
+    if (mdiTaskbar) {
+      const visibleItems = Array.from(mdiTaskbar.children).some(item => item.style.display !== 'none');
+      mdiTaskbar.style.display = visibleItems ? 'flex' : 'none';
+      mdiTaskbar.style.visibility = visibleItems ? 'visible' : 'hidden';
+    }
+  }
   overlay.remove();
 }
 
