@@ -13,6 +13,23 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
     napi: '#aldi-tab-napi', heti: '#aldi-tab-heti',
     heti_arak: '#aldi-tab-heti-arak', komissio: '#aldi-tab-komissio'
   }[standaloneTab];
+
+  // Ablak kezdeti méretezése és elhelyezése a képernyőkép alapján
+  const winEl = container.closest ? container.closest('.mdi-window') : null;
+  if (winEl) {
+    winEl.style.width = '1080px';
+    winEl.style.height = '580px';
+    winEl.style.left = '180px';
+    winEl.style.top = '120px';
+
+    setTimeout(() => {
+      winEl.style.width = '1080px';
+      winEl.style.height = '580px';
+      winEl.style.left = '180px';
+      winEl.style.top = '120px';
+    }, 10);
+  }
+
   container.style.overflow = 'auto';
   container.style.padding = '0';
   container.style.display = 'flex';

@@ -70,11 +70,12 @@ export class WindowManager {
         // Focus
         this.focus(id);
 
-        // Initial Position (cascade)
-        // Start below topbar (70px)
-        const offset = 30 * (this.windowCount % 10);
-        windowEl.style.top = `${70 + 20 + offset}px`;
-        windowEl.style.left = `${20 + offset}px`;
+        // Initial Position (cascade) if not already set
+        if (!windowEl.style.left) {
+            const offset = 30 * (this.windowCount % 10);
+            windowEl.style.top = `${70 + 20 + offset}px`;
+            windowEl.style.left = `${20 + offset}px`;
+        }
     }
 
     createModal({ title, width, height, content }) {
