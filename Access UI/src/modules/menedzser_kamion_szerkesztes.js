@@ -8,8 +8,10 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
             winEl.style.height = '800px';
             winEl.style.maxHeight = '95vh';
             setTimeout(() => {
-                const left = Math.max(20, (window.innerWidth - winEl.offsetWidth) / 2);
-                const top = Math.max(0, ((window.innerHeight - winEl.offsetHeight) / 2) - 40);
+                const containerWidth = document.documentElement.clientWidth || window.innerWidth;
+                const containerHeight = document.documentElement.clientHeight || window.innerHeight;
+                const left = Math.max(20, (containerWidth - winEl.offsetWidth) / 2);
+                const top = Math.max(0, ((containerHeight - winEl.offsetHeight) / 2) - 40);
                 winEl.style.left = `${left}px`;
                 winEl.style.top = `${top}px`;
             }, 10);
@@ -409,8 +411,8 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                                     <th><input type="text" id="uc-tot-trans" readonly style="width:80px; text-align:right; background:#eee; font-weight:bold; border:none; padding:2px;"></th>
                                     <th><input type="text" id="uc-tot-vcost" readonly style="width:80px; text-align:right; background:#eee; font-weight:bold; border:none; padding:2px;"></th>
                                     <th><input type="text" id="uc-tot-oh" readonly style="width:80px; text-align:right; background:#eee; font-weight:bold; border:none; padding:2px;"></th>
-                                    <th colspan="3" style="text-align:center; background:#aaa; color:#000;">PER KG</th>
-                                    <th colspan="2" style="text-align:center; background:#aaa; color:#000;">PER BOX</th>
+                                    <th colspan="3" style="text-align:center; background:transparent; color:#000000; font-weight:600; border-bottom:2px solid #e2e8f0;">Per kg</th>
+                                    <th colspan="2" style="text-align:center; background:transparent; color:#000000; font-weight:600; border-bottom:2px solid #e2e8f0;">Per box</th>
                                     <th></th>
                                 </tr>
                                 <tr>
@@ -423,11 +425,11 @@ export function openMenedzserKamionWindow(windowManager, kamionId, refName, disp
                                     <th>Trans/kg</th>
                                     <th>V.Cost/kg</th>
                                     <th>OH/kg</th>
-                                    <th style="background:#cc99cc; color:#fff;">TotCost/kg</th>
-                                    <th style="background:#cc99cc; color:#fff;">ÁFA %</th>
-                                    <th style="background:#cc99cc; color:#fff;">+VAT /kg</th>
-                                    <th style="background:#993366; color:#fff;">TotCost/Box</th>
-                                    <th style="background:#993366; color:#fff;">+VAT /Box</th>
+                                    <th style="background:transparent; color:#000000; font-weight:600;">TotCost/kg</th>
+                                    <th style="background:transparent; color:#000000; font-weight:600;">ÁFA %</th>
+                                    <th style="background:transparent; color:#000000; font-weight:600;">+VAT /kg</th>
+                                    <th style="background:transparent; color:#000000; font-weight:600;">TotCost/Box</th>
+                                    <th style="background:transparent; color:#000000; font-weight:600;">+VAT /box</th>
                                     <th>V.Cost/kg(EUR)</th>
                                 </tr>
                             </thead>

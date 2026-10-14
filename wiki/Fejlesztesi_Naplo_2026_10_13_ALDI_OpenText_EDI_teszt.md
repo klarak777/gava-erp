@@ -49,3 +49,21 @@ Az alapértelmezett rendelésmódosítás Full PO Change; Delta-only külön ALD
 Az útmutató tartalmazza az alsó megerősítéshez javasolt No döntés indoklását, a Business Partner Notes kész angol szövegét, az első ORDERS ütem kérelmét, a Dropship alkalmazhatóságának kérdését, a raktári DESADV változatát, ZZ azonosító és SFTP adatok egyeztetését. Portálművelet nem történt.
 
 A Full mód pontosítása után 13 parser/SFTP ellenőrzés és 10 külön PostgreSQL/HTTP/böngészős ellenőrzés sikerült, hiba és kihagyás nélkül. A tesztminták Full sorrendje új rendelés → módosítás → tételtörlés változatlan sorral → teljes törlés. A helyi backend újraindítása a pontosítás betöltéséhez megtörtént; az OpenText SFTP kapcsolat letiltva maradt.
+
+## ORDERS tesztek és raktári DESADV magyarázata
+
+Pontosítottuk a saját mintás feldolgozó-, PostgreSQL-, böngészős és saját valódi SFTP-kapcsolati próbák határát: OpenText/ALDI partneri teszt még nem történt, és az éles Napi rendelés adaptere még hiányzik. Dokumentáltuk a négy Full minta kézi kipróbálását és a várt 20/44 → 40/52 → 0/52 → 0/0 állapotot.
+
+Az ALDI EDI Guideline 1.4, 11. fejezete alapján a Warehouse DESADV a tényleges rakodás után küldendő, érvényes ASN az áruátvételhez szükséges. Meglévő ASN helyett új ASN-nel javítható az értesítés. Raklapos szállításnál minden raklaphoz SSCC szükséges; a vállalati ZZ azonosító ezt nem váltja ki. Saját GS1 cégprefix nélküli elfogadott SSCC-kiosztás és a két Warehouse MIG közül az elvárt változat partneri egyeztetést igényel. A részletes útmutató és a partnernek javasolt kérdés a kapcsolódó dokumentumban szerepel. Új DESADV-kód és portálművelet nem készült.
+
+## Task 4A jóváhagyási folyamat
+
+A felhasználó aktuális Task 4A űrlapján Dropship No, a többi öt sor Yes. Az első ORDERS ütemet kérő megjegyzés és a még hiányzó Warehouse DESADV/RECADV/INVOIC képességek miatt a felső választások felülvizsgálata szükséges; a komment nem írja felül a típusonkénti vállalást. A még készülő ORDERS működési integrációt sem tekintjük igazolt teljes képességnek.
+
+A letöltött Step-by-Step Guide 14., 19., 21. és 23. oldala alapján dokumentáltuk: Task 4A alsó megerősítés és Save & Close után ALDI jóváhagyási várakozás, folytatásról e-mail; Task 5–6 kapcsolati adatok után OpenText kapcsolatbeállítás; kimenő üzenetek esetén Task 7 Document Check; Task 8 készenlét után ALDI-val egyeztetett végpontok közötti teszt. Nyitott űrlap nem jelent már elküldött kérelmet. Belső tesztek folytathatók; külső mentés, üzenetküldés és új fejlesztés ebben a tisztázásban nem történt.
+
+## GS1 adatok helyesbítése és Task 4A szövegfrissítés
+
+A felhasználó megerősítette a meglévő GS1 adatokat: szervezetazonosító GLN **5990696117005**, globális GS1 cégprefix **5999883976**. Ez felülírja a napló korábbi, GLN hiányáról és ZZ helyettesítő szükségességéről szóló kiindulását. A GLN ellenőrző számjegyét ellenőriztük, helyes (5); licenctulajdonosi nyilvántartási ellenőrzést nem végeztünk.
+
+A kapcsolódó útmutató Task 4A angol indoklását átírtuk a meglévő GLN és cégprefix megadásával, az UNB/NAD teszt/éles használat és SSCC-címkézés partneri visszaigazolásának kérésével. A saját cégprefix nélküli SSCC-megoldás korábbi kérdése helyett saját prefix alapú SSCC-kiosztás tervezhető; a megvalósítás és partnerprofil egyeztetése továbbra is szükséges. Az üzenettípusok fejlesztési készültsége ettől nem változott. Portálon történő módosítás, külső értesítés és kapcsolati konfiguráció átállítása nem történt.

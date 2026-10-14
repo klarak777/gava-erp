@@ -294,7 +294,8 @@ router.post('/upload', upload.single('file'), async (req, res) => {
                     quantity_delta: delta,
                     change_type: changeType,
                     is_virtual_removed: !incomingMap.has(gtin) || explicitlyDeleted,
-                    action_code: actionMap.get(gtin) || null
+                    action_code: actionMap.get(gtin) || null,
+                    edi_line_reference: lineItems.find(item => item.gtin === gtin)?.lineItem || null
                 }).returning('*');
 
                 const oldLine = previousOrder ? previousLines.find(l => l.gtin === gtin) : null;

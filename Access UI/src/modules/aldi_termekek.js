@@ -262,12 +262,12 @@ function renderTermekekHtml() {
         <div style="border:1px solid #cbd5e1; border-radius:8px; overflow:hidden; max-width:1200px; box-shadow:0 1px 4px rgba(0,0,0,0.04); background:#ffffff;">
           <table style="width:100%; border-collapse:collapse; font-size:13px;">
             <thead>
-              <tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;">
-                <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px;">TERMÉK MEGNEVEZÉSE</th>
-                <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px;">CIKKSZÁM</th>
-                <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px;">GTIN AZONOSÍTÓ</th>
-                <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px;">EAN AZONOSÍTÓ</th>
-                <th style="padding:10px 10px; text-align:center; font-size:11px; font-weight:800; color:#64748b; letter-spacing:0.5px; width:60px;">MŰVELET</th>
+              <tr style="background:transparent; border-bottom:2px solid #e2e8f0;">
+                <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:600; color:#000000; letter-spacing:0.5px;">Termék megnevezése</th>
+                <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:600; color:#000000; letter-spacing:0.5px;">Cikkszám</th>
+                <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:600; color:#000000; letter-spacing:0.5px;">GTIN azonosító</th>
+                <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:600; color:#000000; letter-spacing:0.5px;">EAN azonosító</th>
+                <th style="padding:10px 10px; text-align:center; font-size:11px; font-weight:600; color:#000000; letter-spacing:0.5px; width:60px;">Művelet</th>
               </tr>
             </thead>
             <tbody id="aldi-products-tbody">

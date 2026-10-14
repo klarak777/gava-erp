@@ -8,6 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const knex = require('../db/db');
+const { generateSscc } = require('../utils/gs1');
 const jwt = require('jsonwebtoken');
 const { consolidationStockIssues, assertConsolidationStock, consolidationCapacityError } = require('../services/consolidationStock');
 const { RESERVATION_MS, pickingError, validateLot, pickingAvailability, assertReservation, pickPayload, assertSamePayload, emulatorEnabled, webEmulatorRequest } = require('../services/pdaPicking');
@@ -780,20 +781,7 @@ async function createSsccLabel(dbClient, lineId, commissionLineId, pickedCartons
   const seqRes = await dbClient.raw("SELECT nextval('sscc_labels_id_seq') as next_id");
   const nextId = seqRes.rows[0].next_id;
 
-  const extDigit = '3';
-  const companyPrefix = process.env.GS1_COMPANY_PREFIX || '5990001';
-  const serialNum = String(nextId).padStart(17 - companyPrefix.length - extDigit.length, '0');
-  const baseSSCC = extDigit + companyPrefix + serialNum;
-
-  let sum = 0;
-  for (let i = baseSSCC.length - 1; i >= 0; i--) {
-    const digit = parseInt(baseSSCC[i], 10);
-    const posFromRight = baseSSCC.length - 1 - i;
-    const multiplier = posFromRight % 2 === 0 ? 3 : 1;
-    sum += digit * multiplier;
-  }
-  const checkDigit = (10 - (sum % 10)) % 10;
-  const finalSSCC = baseSSCC + checkDigit;
+  const finalSSCC = generateSscc(nextId);
 
   const isProvisional = commissionLineId ? false : true;
 
@@ -1500,17 +1488,7 @@ router.post('/consolidation-preview', verifyToken, async (req, res) => {
 
       const seqRes = await trx.raw("SELECT nextval('sscc_labels_id_seq') as next_id");
       const nextId = Number(seqRes.rows[0].next_id);
-      const extDigit = '3';
-      const companyPrefix = process.env.GS1_COMPANY_PREFIX || '5990001';
-      const serialNum = String(nextId).padStart(17 - companyPrefix.length - extDigit.length, '0');
-      const baseSSCC = extDigit + companyPrefix + serialNum;
-      let sum = 0;
-      for (let i = baseSSCC.length - 1; i >= 0; i--) {
-        const digit = parseInt(baseSSCC[i], 10);
-        const posFromRight = baseSSCC.length - 1 - i;
-        sum += digit * (posFromRight % 2 === 0 ? 3 : 1);
-      }
-      const finalSSCC = baseSSCC + ((10 - (sum % 10)) % 10);
+      const finalSSCC = generateSscc(nextId);
       previewLabel = {
         id: nextId,
         sscc: finalSSCC,

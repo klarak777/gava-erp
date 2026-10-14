@@ -19,7 +19,7 @@ export function renderRateTables(profiles, rates) {
   return [...new Set(profiles.map(p => p.group))].map(group => `
     <section style="margin:18px 0;"><h3 style="font-size:15px;">${escape(group)}</h3>
     <div style="overflow:auto;"><table style="border-collapse:collapse;width:100%;font-size:12px;">
-      <thead style="background:#f1f5f9;"><tr><th style="${cell}">Időszak</th>${Object.values(days).map(name => `<th style="${cell}">${name}</th>`).join('')}<th style="${cell}">Összesen</th></tr></thead>
+      <thead style="background:transparent; border-bottom:2px solid #e2e8f0;"><tr><th style="${cell}">Időszak</th>${Object.values(days).map(name => `<th style="${cell}">${name}</th>`).join('')}<th style="${cell}">Összesen</th></tr></thead>
       <tbody>${profiles.filter(p => p.group === group).map(profile => `<tr>
         <th scope="row" style="${cell}text-align:left;min-width:165px;">${escape(profile.label)}</th>
         ${Object.keys(days).map(day => `<td style="${cell}">${Object.hasOwn(profile.defaults, day)

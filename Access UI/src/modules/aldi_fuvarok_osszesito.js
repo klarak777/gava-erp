@@ -70,7 +70,7 @@ export function renderAldiFuvarokOsszesito(container, windowManager) {
       <div style="overflow-x: auto; flex-grow: 1; position: relative;">
         <table style="width: 100%; border-collapse: collapse; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; min-width: 1200px;">
           <thead style="position: sticky; top: 0; z-index: 10;">
-            <tr id="aldi-fuvarok-thead-tr" style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+            <tr id="aldi-fuvarok-thead-tr" style="background: transparent; border-bottom: 2px solid #e2e8f0;">
               <!-- Populated by JS -->
             </tr>
           </thead>
@@ -104,19 +104,19 @@ export function renderAldiFuvarokOsszesito(container, windowManager) {
   };
 
   const ALL_COLUMNS = [
-    { key: 'raklap', label: 'RAKLAP', align: 'left' },
-    { key: 'termek', label: 'TERMÉK', align: 'left' },
-    { key: 'partner', label: 'PARTNER', align: 'left' },
-    { key: 'komment', label: 'KOMMENT', align: 'left' },
-    { key: 'brutto_kg', label: 'BRUTTÓ KG', align: 'right' },
-    { key: 'netto_kg', label: 'NETTÓ KG', align: 'right' },
-    { key: 'atlag_suly', label: 'ÁTLAG SÚLY', align: 'right' },
-    { key: 'szallitasi_nap', label: 'SZÁLLÍTÁSI NAP', align: 'left' },
-    { key: 'kamionszam', label: 'KAMIONSZÁM', align: 'left' },
-    { key: 'fuvarozo_ceg', label: 'FUVAROZÓ CÉG', align: 'left' },
-    { key: 'rendszam', label: 'RENDSZÁM', align: 'left' },
-    { key: 'fuvar_koltseg', label: 'FUVAR KÖLTSÉG', align: 'right' },
-    { key: 'raklap_ar', label: 'RAKLAP ÁR', align: 'right' }
+    { key: 'raklap', label: 'Raklap', align: 'left' },
+    { key: 'termek', label: 'Termék', align: 'left' },
+    { key: 'partner', label: 'Partner', align: 'left' },
+    { key: 'komment', label: 'Komment', align: 'left' },
+    { key: 'brutto_kg', label: 'Bruttó kg', align: 'right' },
+    { key: 'netto_kg', label: 'Nettó kg', align: 'right' },
+    { key: 'atlag_suly', label: 'Átlag súly', align: 'right' },
+    { key: 'szallitasi_nap', label: 'Szállítási nap', align: 'left' },
+    { key: 'kamionszam', label: 'Kamionszám', align: 'left' },
+    { key: 'fuvarozo_ceg', label: 'Fuvarozó cég', align: 'left' },
+    { key: 'rendszam', label: 'Rendszám', align: 'left' },
+    { key: 'fuvar_koltseg', label: 'Fuvar költség', align: 'right' },
+    { key: 'raklap_ar', label: 'Raklap ár', align: 'right' }
   ];
 
   let visibleColumnKeys = null;
@@ -229,7 +229,7 @@ export function renderAldiFuvarokOsszesito(container, windowManager) {
       const activeCols = ALL_COLUMNS.filter(col => visibleColumnKeys.includes(col.key));
       const theadTr = wrapper.querySelector('#aldi-fuvarok-thead-tr');
       theadTr.innerHTML = activeCols.map(c => 
-          `<th style="padding: 12px 16px; text-align: ${c.align}; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; white-space: nowrap;">${c.label}</th>`
+          `<th style="padding: 12px 16px; text-align: ${c.align}; font-size: 11px; font-weight: 600; color: #000000; text-transform: none; white-space: nowrap;">${c.label}</th>`
       ).join('');
   }
 
@@ -255,7 +255,7 @@ export function renderAldiFuvarokOsszesito(container, windowManager) {
     tbody.innerHTML = pageData.map(d => `
       <tr style="border-bottom: 1px solid #f1f5f9;">
         ${activeCols.map(c => {
-           if (c.key === 'raklap') return `<td style="padding: 10px 16px; color: #334155; text-align:${c.align};">${parseFloat(d.raklap) || 0}</td>`;
+           if (c.key === 'raklap') return `<td style="padding: 10px 16px; color: #334155; text-align:${c.align};">${parseInt(d.raklap, 10) || 0}</td>`;
            if (c.key === 'termek') return `<td style="padding: 10px 16px; color: #0f172a; font-weight: 500; text-align:${c.align};">${escapeHtml(d.termek)}</td>`;
            if (c.key === 'partner') return `<td style="padding: 10px 16px; color: #475569; text-align:${c.align};">${escapeHtml(d.partner)}</td>`;
            if (c.key === 'komment') return `<td style="padding: 6px 16px; text-align:${c.align};"><input type="text" class="fuvarok-edit-input" data-id="${d.id}" data-field="komment" value="${escapeHtml(d.komment)}" style="width:100%; min-width: 200px; border:1px solid transparent; border-radius:4px; padding:4px 6px; font-size:12px; background:transparent;" onfocus="this.style.border='1px solid #93c5fd'; this.style.background='#fff';" onblur="this.style.border='1px solid transparent'; this.style.background='transparent';"></td>`;

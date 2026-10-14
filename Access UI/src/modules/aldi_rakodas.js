@@ -46,7 +46,7 @@ export function renderAldiRakodas(container, windowManager) {
                 <th style="width:50px; padding:6px 4px; text-align:center; font-size:10px;" title="Küldés PDA-ra">PDA</th>
                 <th style="width:80px; padding:6px 4px; text-align:center; font-size:10px;" title="Összekészítés állapota">Állapot</th>
                 <th style="width:50px; padding:6px 4px; text-align:center; font-size:10px;" title="Rakodva">Rakodva</th>
-                <th style="width:40px; padding:6px 4px; text-align:center; font-size:10px;" title="Törlés">TÖRLÉS</th>
+                <th style="width:40px; padding:6px 4px; text-align:center; font-size:10px;" title="Törlés">Törlés</th>
               </tr>
             </thead>
             <tbody id="aldi-trucks-tbody"></tbody>
@@ -84,17 +84,17 @@ export function renderAldiRakodas(container, windowManager) {
             <table class="access-subform-table" id="aldi-demands-table" style="background:transparent; font-size:10px; width:100%;">
               <thead>
                 <tr>
-                  <th style="min-width:110px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 4px;">TERMÉK</th>
-                  <th style="width:46px; max-width:48px; background:rgba(14,165,233,0.1); text-align:right; font-size:9px; padding:4px 2px;" title="Rendelt kartonszám">KARTON</th>
-                  <th style="width:44px; max-width:46px; background:rgba(14,165,233,0.1); text-align:right; font-size:9px; padding:4px 2px;" title="Karton / Raklap">#/PLT</th>
-                  <th style="width:44px; max-width:46px; background:rgba(14,165,233,0.1); text-align:right; font-size:9px; padding:4px 2px;" title="Kalkulált raklap">RAKLAP</th>
-                  <th style="width:58px; max-width:62px; background:rgba(14,165,233,0.1); font-size:9px; padding:4px 2px; text-align:center;" title="Szállítási dátum">SZÁLL. DÁTUM</th>
-                  <th style="min-width:90px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 4px;">PARTNER</th>
-                  <th style="min-width:65px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 4px;">RENDELÉSI SZÁM</th>
-                  <th style="min-width:55px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 4px;">TÍPUS</th>
-                  <th style="min-width:50px; text-align:center; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 4px;">KÜLDÉS</th>
-                  <th style="width:28px; text-align:center; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 2px;" title="Szétbontás">➕</th>
-                  <th style="width:28px; text-align:center; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 2px;" title="Törlés">🗑️</th>
+                  <th style="min-width:110px; font-size:10px; padding:4px 4px;">Termék</th>
+                  <th style="width:46px; max-width:48px; text-align:right; font-size:9px; padding:4px 2px;" title="Rendelt kartonszám">Karton</th>
+                  <th style="width:44px; max-width:46px; text-align:right; font-size:9px; padding:4px 2px;" title="Karton / Raklap">#/Plt</th>
+                  <th style="width:44px; max-width:46px; text-align:right; font-size:9px; padding:4px 2px;" title="Kalkulált raklap">Raklap</th>
+                  <th style="width:58px; max-width:62px; font-size:9px; padding:4px 2px; text-align:center;" title="Szállítási dátum">Száll. dátum</th>
+                  <th style="min-width:90px; font-size:10px; padding:4px 4px;">Partner</th>
+                  <th style="min-width:65px; font-size:10px; padding:4px 4px;">Rendelési szám</th>
+                  <th style="min-width:55px; font-size:10px; padding:4px 4px;">Típus</th>
+                  <th style="min-width:50px; text-align:center; font-size:10px; padding:4px 4px;">Küldés</th>
+                  <th style="width:28px; text-align:center; font-size:10px; padding:4px 2px;" title="Szétbontás">➕</th>
+                  <th style="width:28px; text-align:center; font-size:10px; padding:4px 2px;" title="Törlés">🗑️</th>
                 </tr>
               </thead>
               <tbody id="aldi-demands-tbody"></tbody>
@@ -293,6 +293,10 @@ export function renderAldiRakodas(container, windowManager) {
               body: JSON.stringify(truck)
             });
             if (!res.ok) throw new Error('HTTP hiba: ' + res.status);
+            const saved = await res.json();
+            if (saved.asn?.status === 'blocked') {
+              alert('A kamion Rakodva állapota mentve. Az ASN még nem küldhető:\n' + saved.asn.issues.map(i => i.message).join('\n') + '\n\nA részleteket az ALDI → EDI teszt és napló ASN részében találod.');
+            }
           } catch (err) {
             console.error('Rakodva státusz hiba:', err);
             alert('Hiba történt a mentés során: ' + err.message);
@@ -848,16 +852,16 @@ export function renderAldiRakodas(container, windowManager) {
             <table class="access-subform-table" style="font-size:11px; width:100%; white-space:nowrap;">
               <thead>
                 <tr>
-                  <th style="padding:6px 8px; text-align:center; min-width:200px;">TERMÉK</th>
-                  <th style="padding:6px 4px; text-align:center; width:70px; white-space:normal; font-size:10px; line-height:1.2;">RENDELT KARTONSZÁM</th>
-                  <th style="padding:6px 4px; text-align:center; width:80px; white-space:normal; font-size:10px; line-height:1.2;">SZÁLLÍTHATÓ # / RAKLAP</th>
-                  <th style="padding:6px 6px; text-align:center; width:55px;">RAKLAP</th>
-                  <th style="padding:6px 8px; text-align:center;">PARTNER</th>
-                  <th style="padding:6px 8px; text-align:center;">RENDELÉSI SZÁM</th>
-                  <th style="padding:6px 8px; text-align:center;">RENDELÉS TÍPUSA</th>
-                  <th style="padding:6px 8px; text-align:center; width:65px;">BRUTTÓ KG</th>
-                  <th style="padding:6px 8px; text-align:center; width:65px;">NETTÓ KG</th>
-                  <th style="padding:6px 8px; text-align:center; width:55px;">MŰVELET</th>
+                  <th style="padding:6px 8px; text-align:center; min-width:200px;">Termék</th>
+                  <th style="padding:6px 4px; text-align:center; width:70px; white-space:normal; font-size:10px; line-height:1.2;">Rendelt kartonszám</th>
+                  <th style="padding:6px 4px; text-align:center; width:80px; white-space:normal; font-size:10px; line-height:1.2;">Szállítható # / raklap</th>
+                  <th style="padding:6px 6px; text-align:center; width:55px;">Raklap</th>
+                  <th style="padding:6px 8px; text-align:center;">Partner</th>
+                  <th style="padding:6px 8px; text-align:center;">Rendelési szám</th>
+                  <th style="padding:6px 8px; text-align:center;">Rendelés típusa</th>
+                  <th style="padding:6px 8px; text-align:center; width:65px;">Bruttó kg</th>
+                  <th style="padding:6px 8px; text-align:center; width:65px;">Nettó kg</th>
+                  <th style="padding:6px 8px; text-align:center; width:55px;">Művelet</th>
                 </tr>
               </thead>
               <tbody id="m-truck-lines-tbody">

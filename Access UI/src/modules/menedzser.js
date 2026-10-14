@@ -8,6 +8,8 @@ export function renderMenedzser(container, windowManager) {
     container.style.display = 'flex';
     container.style.flexDirection = 'column';
     container.style.height = '100%';
+    container.style.flex = '1 1 auto';
+    container.style.minHeight = '0';
 
     const filterPanel = document.createElement('div');
     filterPanel.style.cssText = 'flex-shrink:0; padding:16px 32px 0px 32px; background:var(--bg-light);';
@@ -21,7 +23,6 @@ export function renderMenedzser(container, windowManager) {
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
                 <strong style="font-size:13px;">Keresés és Szűrés</strong>
                 <div style="display:flex; gap:10px;">
-                    <button class="primary-btn btn-dense" id="btn-refresh" style="font-size:12px; padding:5px 12px; background:var(--info); color:#fff; border:none; border-radius:4px; cursor:pointer;" title="Adatok újratöltése a szerverről">Frissítés</button>
                     <button class="primary-btn btn-dense" id="btn-new-kamion" style="font-size:12px; padding:5px 12px;">+ Új kamion</button>
                     <button class="secondary-btn btn-dense" id="btn-clear-filters" style="font-size:12px; padding:5px 12px;">Szűrők törlése</button>
                 </div>
@@ -54,7 +55,7 @@ export function renderMenedzser(container, windowManager) {
     `;
 
     const scaleWrapper = document.createElement('div');
-    scaleWrapper.style.cssText = 'width: 100%; height: 100%; display: flex; flex-direction: column;';
+    scaleWrapper.style.cssText = 'width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0;';
     scaleWrapper.appendChild(filterPanel);
 
     const tableContainer = document.createElement('div');
@@ -73,7 +74,7 @@ export function renderMenedzser(container, windowManager) {
             </div>
             <div id="table-scroll-area" style="overflow:auto; flex:1 1 auto; min-height:0;">
                 <table class="access-subform-table" id="menedzser-table" style="min-width:800px;">
-                    <thead style="position:sticky; top:0; background:var(--bg-light); z-index:2;">
+                    <thead style="position:sticky; top:0; background:transparent; z-index:2;">
                         <tr>
                             <th style="min-width:85px; text-align:center;">Bevételezve</th>
                             <th style="min-width:110px;">Loading date</th>
@@ -100,7 +101,6 @@ export function renderMenedzser(container, windowManager) {
     const inpRef = filterPanel.querySelector('#filter-ref');
     const btnClear = filterPanel.querySelector('#btn-clear-filters');
     const btnNewKamion = filterPanel.querySelector('#btn-new-kamion');
-    const btnRefresh = filterPanel.querySelector('#btn-refresh');
 
     function fmtDate(val) { return val ? val.substring(0, 10) : ''; }
 
@@ -209,10 +209,6 @@ export function renderMenedzser(container, windowManager) {
 
     btnNewKamion.addEventListener('click', () => {
         openMenedzserKamionWindow(windowManager, null, null);
-    });
-
-    btnRefresh.addEventListener('click', () => {
-        loadRealData(true);
     });
 
     const handleKamionSaved = () => {

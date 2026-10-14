@@ -13,22 +13,22 @@ export function renderPennyStock(container, windowManager) {
 
   // All columns definition
   const COLUMNS = [
-    { id: 'truck_no', label: 'Truck No', bg: '#fef08a', color: '#000', defaultVisible: true, minWidth: '90px' },
-    { id: 'arrival_date', label: 'Arrival Date', bg: '#fef08a', color: '#000', defaultVisible: true, minWidth: '85px' },
-    { id: 'product', label: 'Product', bg: '#fef08a', color: '#000', defaultVisible: true, minWidth: '180px' },
-    { id: 'quality', label: 'Quality', bg: '#fef08a', color: '#000', defaultVisible: true, minWidth: '60px', align: 'center' },
-    { id: 'box_type', label: 'Box Type', bg: '#fef08a', color: '#000', defaultVisible: true, minWidth: '70px', align: 'center' },
-    { id: 'partida', label: 'Partida', bg: '#fef08a', color: '#000', defaultVisible: true, minWidth: '100px', align: 'center' },
-    { id: 'lot', label: 'Lot', bg: '#fef08a', color: '#000', defaultVisible: true, minWidth: '70px', align: 'center' },
-    { id: 'opening_stock', label: 'Opening STOCK', bg: '#cbd5e1', color: '#000', defaultVisible: true, minWidth: '85px', align: 'right' },
-    { id: 'alsonemedi', label: 'Alsónémedi', bg: '#bbf7d0', color: '#000', defaultVisible: true, minWidth: '85px', align: 'right' },
-    { id: 'karcag', label: 'Karcag', bg: '#bbf7d0', color: '#000', defaultVisible: true, minWidth: '75px', align: 'right' },
-    { id: 'veszprem', label: 'Veszprém', bg: '#bbf7d0', color: '#000', defaultVisible: true, minWidth: '85px', align: 'right' },
-    { id: 'total_deliver', label: 'TOTAL DELIVER', bg: '#bfdbfe', color: '#000', defaultVisible: true, minWidth: '95px', align: 'right' },
-    { id: 'depreciate', label: 'DEPRECIATE', bg: '#fef08a', color: '#000', defaultVisible: true, minWidth: '90px', align: 'right' },
-    { id: 'clase_ii', label: 'CLASE II. box', bg: '#fed7aa', color: '#000', defaultVisible: true, minWidth: '95px', align: 'right' },
-    { id: 'final_stock', label: 'FINAL STOCK', bg: '#fed7aa', color: '#000', defaultVisible: true, minWidth: '95px', align: 'right' },
-    { id: 'transport_date', label: 'Transport date', bg: '#fef08a', color: '#000', defaultVisible: true, minWidth: '95px', align: 'center' },
+    { id: 'truck_no', label: 'Truck No', bg: 'transparent', color: '#000000', defaultVisible: true, minWidth: '90px' },
+    { id: 'arrival_date', label: 'Arrival date', bg: 'transparent', color: '#000000', defaultVisible: true, minWidth: '85px' },
+    { id: 'product', label: 'Product', bg: 'transparent', color: '#000000', defaultVisible: true, minWidth: '180px' },
+    { id: 'quality', label: 'Quality', bg: 'transparent', color: '#000000', defaultVisible: true, minWidth: '60px', align: 'center' },
+    { id: 'box_type', label: 'Box type', bg: 'transparent', color: '#000000', defaultVisible: true, minWidth: '70px', align: 'center' },
+    { id: 'partida', label: 'Partida', bg: 'transparent', color: '#000000', defaultVisible: true, minWidth: '100px', align: 'center' },
+    { id: 'lot', label: 'Lot', bg: 'transparent', color: '#000000', defaultVisible: true, minWidth: '70px', align: 'center' },
+    { id: 'opening_stock', label: 'Opening stock', bg: 'transparent', color: '#000000', defaultVisible: true, minWidth: '85px', align: 'right' },
+    { id: 'alsonemedi', label: 'Alsónémedi', bg: 'transparent', color: '#000000', defaultVisible: true, minWidth: '85px', align: 'right' },
+    { id: 'karcag', label: 'Karcag', bg: 'transparent', color: '#000000', defaultVisible: true, minWidth: '75px', align: 'right' },
+    { id: 'veszprem', label: 'Veszprém', bg: 'transparent', color: '#000000', defaultVisible: true, minWidth: '85px', align: 'right' },
+    { id: 'total_deliver', label: 'Total deliver', bg: 'transparent', color: '#000000', defaultVisible: true, minWidth: '95px', align: 'right' },
+    { id: 'depreciate', label: 'Depreciate', bg: 'transparent', color: '#000000', defaultVisible: true, minWidth: '90px', align: 'right' },
+    { id: 'clase_ii', label: 'Clase II. box', bg: 'transparent', color: '#000000', defaultVisible: true, minWidth: '95px', align: 'right' },
+    { id: 'final_stock', label: 'Final stock', bg: 'transparent', color: '#000000', defaultVisible: true, minWidth: '95px', align: 'right' },
+    { id: 'transport_date', label: 'Transport date', bg: 'transparent', color: '#000000', defaultVisible: true, minWidth: '95px', align: 'center' },
   ];
 
   // Load saved column visibility
@@ -218,7 +218,7 @@ export function renderPennyStock(container, windowManager) {
               <thead>
                 <tr>
                   ${COLUMNS.filter(c => visibleCols[c.id]).map(c => `
-                    <th style="background:${c.bg}; color:${c.color}; padding:6px 8px; border:1px solid #64748b; font-weight:700; font-size:11px; white-space:nowrap; text-align:${c.align || 'left'}; min-width:${c.minWidth};">
+                    <th style="background:transparent; color:#000000; padding:6px 8px; border-bottom:2px solid #e2e8f0; border-top:none; border-left:none; border-right:none; font-weight:600; font-size:11px; white-space:nowrap; text-align:${c.align || 'left'}; min-width:${c.minWidth};">
                       ${c.label}
                     </th>
                   `).join('')}
@@ -343,7 +343,7 @@ export function renderPennyStock(container, windowManager) {
               <thead>
                 <tr>
                   ${COLUMNS.filter(c => visibleCols[c.id]).map(c => `
-                    <th style="background:${c.bg}; color:${c.color}; padding:6px 8px; border:1px solid #94a3b8; font-weight:700; font-size:11px; white-space:nowrap; text-align:${c.align || 'left'}; min-width:${c.minWidth};">
+                    <th style="background:transparent; color:#000000; padding:6px 8px; border-bottom:2px solid #e2e8f0; border-top:none; border-left:none; border-right:none; font-weight:600; font-size:11px; white-space:nowrap; text-align:${c.align || 'left'}; min-width:${c.minWidth};">
                       ${c.label}
                     </th>
                   `).join('')}

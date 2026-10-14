@@ -1,3 +1,9 @@
+/* Globalis felbontas es UI skalazas: 75% meret */
+html {
+    zoom: 0.75;
+    height: 100%;
+}
+
 /* Access UI Specific Styles */
 
 .login-overlay {
@@ -117,10 +123,13 @@
 }
 
 .access-subform-table th {
-    background: #f1f5f9;
+    background: transparent !important;
     font-size: 12px;
-    text-transform: uppercase;
-    color: var(--text-muted);
+    text-transform: none !important;
+    color: #000000 !important;
+    font-weight: 600 !important;
+    border-bottom: 2px solid #e2e8f0 !important;
+    border-right: none !important;
 }
 
 /* ===== Liquid Glass gomb rendszer – Apple-szerű folyékony üveg kapszula =====
@@ -540,4 +549,103 @@ tbody tr:has(> td[colspan]):hover {
 }
 tbody tr:has(> td[colspan]):hover td {
     background-color: transparent !important;
+}
+
+/* ===== Globális egységes táblázat fejléc dizájn ("Lokációk listája" iránymutatás alapján) =====
+   - Nincs szürke vagy más színű háttérsáv (tiszta fehér / transzparens)
+   - Nincs csupa nagybetűs szöveg (csak a kezdőbetű nagy: text-transform: none)
+   - Minden oszlopnév fekete (#000000)
+   - Finom 2px alsó szegély (border-bottom: 2px solid #e2e8f0)
+*/
+thead,
+thead tr {
+    background: transparent !important;
+}
+
+thead th,
+.access-subform-table th,
+.loc-table th,
+.emp-table th,
+.prt-table th,
+.prt-subtable th,
+.advanced-grid th,
+.data-table th,
+.items-grid th,
+.grid-table th,
+.req-grid th,
+.simple-table th,
+.arch-table th,
+.pl-table th,
+.ai-table th,
+.conn-grid th,
+.finance-table-summary th,
+.admin-compact-table th,
+table th {
+    background: transparent !important;
+    color: #000000 !important;
+    text-transform: none !important;
+    font-weight: 600 !important;
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: 2px solid #e2e8f0 !important;
+    letter-spacing: normal !important;
+}
+
+/* Lebegő / rögzített (sticky) fejlécek esetén tiszta fehér (#ffffff) alap, hogy az alatta gördülő sorok ne látsszanak át */
+thead[style*="sticky"],
+thead[style*="sticky"] tr,
+thead[style*="sticky"] th,
+th[style*="sticky"],
+tr[style*="sticky"] th {
+    background: #ffffff !important;
+}
+/* ===== Egységes lapozó vezérlő (Lokációk mintájára) ===== */
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #64748b;
+    margin-top: 12px;
+}
+.page-numbers {
+    display: flex;
+    gap: 4px;
+}
+.page-num {
+    padding: 4px 8px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    border-radius: 4px;
+    user-select: none;
+    transition: all 0.15s ease;
+}
+.page-num:hover {
+    background: #f1f5f9;
+}
+.page-num.active {
+    border-color: #3b82f6;
+    color: #3b82f6;
+    font-weight: 600;
+    background: white;
+}
+.icon-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px 8px;
+    color: #64748b;
+    border-radius: 4px;
+    user-select: none;
+}
+.icon-btn:hover {
+    color: #3b82f6;
+    background: #f1f5f9;
+}
+.icon-btn:disabled {
+    color: #cbd5e1;
+    cursor: not-allowed;
+    background: none;
 }

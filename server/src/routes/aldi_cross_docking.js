@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const knex = require('../db/db');
+const asnService = require('../services/aldiAsn').createAsn(knex);
+const { truckPallets } = require('../utils/aldiPallets');
 
 // Get all trucks, optionally filtered by delivery date
 router.get('/trucks', async (req, res) => {
@@ -19,12 +21,21 @@ router.get('/trucks', async (req, res) => {
       query = query.where('aldi_trucks.delivery_date', date);
     }
     const trucks = await query;
+
+    // Gava raklapszám: közvetlenül a "Komissió megtekintése" RAKLAP oszlopa (aldi_commission_lines.pallets).
+    // A total_pallets a tervezett érték marad (rakodástervezéshez).
+    const truckIds = trucks.map(t => t.id);
+    const commissionRows = truckIds.length === 0 ? [] : await knex('aldi_commission_lines')
+      .whereIn('aldi_truck_id', truckIds)
+      .select('aldi_truck_id', 'pallets');
     
     // Állapot (%) kalkuláció
     trucks.forEach(t => {
       const ordered = parseFloat(t.total_ordered_cartons) || 0;
       const picked = parseFloat(t.total_picked_cartons) || 0;
       t.preparation_status = ordered > 0 ? Math.round((picked / ordered) * 100) : 0;
+
+      t.gava_pallets = truckPallets(commissionRows.filter(c => c.aldi_truck_id === t.id));
     });
     
     res.json(trucks);
@@ -86,6 +97,7 @@ router.put('/trucks/:id', async (req, res) => {
       updateData.target_locations = JSON.stringify(target_locations);
     }
     
+    let asnResult = null;
     await knex.transaction(async trx => {
       const truck = await trx('aldi_trucks').where('id', id).first().forUpdate();
       if (!truck) throw new Error('Nem található kamion.');
@@ -99,6 +111,7 @@ router.put('/trucks/:id', async (req, res) => {
       await trx('aldi_trucks').where('id', id).update(updateData);
       
       if (is_loaded === true && !wasLoaded) {
+          await trx('aldi_trucks').where({ id }).update({ asn_loaded_at: trx.fn.now() });
           const commissionLines = await trx('aldi_commission_lines').where('aldi_truck_id', id);
           for (let cl of commissionLines) {
               let truckLine = cl.aldi_truck_line_id ? await trx('aldi_truck_lines').where('id', cl.aldi_truck_line_id).first() : await trx('aldi_truck_lines').where({ aldi_truck_id: id, product_name: cl.product_name }).first();
@@ -121,6 +134,7 @@ router.put('/trucks/:id', async (req, res) => {
                 })
                 .del();
           }
+          asnResult = await asnService.capture(trx, id);
       } else if (is_loaded === false && wasLoaded) {
           const commissionLines = await trx('aldi_commission_lines').where('aldi_truck_id', id);
           for (let cl of commissionLines) {
@@ -136,7 +150,7 @@ router.put('/trucks/:id', async (req, res) => {
     });
     
     const updatedTruck = await knex('aldi_trucks').where('id', id).first();
-    res.json(updatedTruck);
+    res.json({ ...updatedTruck, asn: asnResult });
   } catch (err) {
     if (err.code === 'LOADED_LOCKED') {
       return res.status(409).json({ code: 'LOADED_LOCKED', error: 'A kamion már rakodva van és szállítás alatt áll, a Rakodva státusz nem vonható vissza.' });
@@ -170,6 +184,7 @@ router.delete('/trucks/:id', async (req, res) => {
         // 1. Lock the truck record FIRST to prevent concurrent adds
         const truck = await trx('aldi_trucks').where({ id }).first().forUpdate();
         if (!truck) throw new Error('TRUCK_NOT_FOUND');
+        if (await trx('aldi_asn_shipments').where({ truck_id: id }).first()) throw new Error('ASN_ARCHIVE_LOCK');
 
         // 2. Find all lines of this truck
         const truckLines = await trx('aldi_truck_lines').where('aldi_truck_id', id);
@@ -196,6 +211,7 @@ router.delete('/trucks/:id', async (req, res) => {
     res.status(204).end();
   } catch (err) {
     if (err.message === 'TRUCK_NOT_FOUND') return res.status(404).json({ error: 'Kamion nem található.' });
+    if (err.message === 'ASN_ARCHIVE_LOCK') return res.status(409).json({ error: 'A kamionhoz archivált ASN tartozik, ezért nem törölhető.' });
     console.error('Error deleting aldi truck:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -852,7 +868,7 @@ router.get('/trucks/:id/commission-lines', async (req, res) => {
   try {
     const rawLines = await knex('aldi_commission_lines')
       .where('aldi_truck_id', req.params.id)
-      .orderBy('id', 'asc');
+      .orderBy('id', 'desc');
 
     // Raklapcímke (SSCC) és komissiózó dolgozó csatolása (legutóbbi címke soronként)
     const commissionIds = rawLines.map(l => l.id);

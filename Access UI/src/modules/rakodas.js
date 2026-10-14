@@ -51,7 +51,7 @@ export function renderRakodas(container, windowManager) {
         '<th style="width:70px; padding:6px 4px; font-size:10px;">Rakodás nap</th>' +
         '<th style="width:95px; padding:6px 4px; font-size:10px;">Transport Company</th>' +
         '<th style="width:55px; padding:6px 4px; text-align:center; font-size:10px;" title="Rakodva">Rakodva</th>' +
-        '<th style="width:45px; padding:6px 4px; text-align:center; font-size:10px;" title="Törlés">TÖRLÉS</th>' +
+        '<th style="width:45px; padding:6px 4px; text-align:center; font-size:10px;" title="Törlés">Törlés</th>' +
         '</tr></thead>' +
         '<tbody id="rak-tbody"></tbody>' +
         '</table>' +
@@ -82,15 +82,15 @@ export function renderRakodas(container, windowManager) {
         '<div style="overflow-x:auto;">' +
         '<table class="access-subform-table" id="rak-right-table" style="background:transparent; font-size:10px;">' +
         '<thead><tr>' +
-        '<th style="width:30px; background:rgba(14,165,233,0.1); text-align:center;"></th>' +
-        '<th style="min-width:40px; background:rgba(14,165,233,0.1); text-align:center; font-size:10px; padding:4px 3px;">Euro plt</th>' +
-        '<th style="min-width:40px; background:rgba(14,165,233,0.1); text-align:center; font-size:10px; padding:4px 3px;">Norm plt</th>' +
-        '<th style="min-width:130px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 3px;">Product</th>' +
-        '<th style="min-width:70px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 3px;">Reference</th>' +
-        '<th style="min-width:70px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 3px;">Customer</th>' +
-        '<th style="min-width:70px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 3px;">Destination</th>' +
-        '<th style="min-width:90px; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 3px;">Comment</th>' +
-        '<th style="min-width:70px; text-align:center; background:rgba(14,165,233,0.1); font-size:10px; padding:4px 3px;">Kamionra</th>' +
+        '<th style="width:30px;  text-align:center;"></th>' +
+        '<th style="min-width:40px;  text-align:center; font-size:10px; padding:4px 3px;">Euro plt</th>' +
+        '<th style="min-width:40px;  text-align:center; font-size:10px; padding:4px 3px;">Norm plt</th>' +
+        '<th style="min-width:130px;  font-size:10px; padding:4px 3px;">Product</th>' +
+        '<th style="min-width:70px;  font-size:10px; padding:4px 3px;">Reference</th>' +
+        '<th style="min-width:70px;  font-size:10px; padding:4px 3px;">Customer</th>' +
+        '<th style="min-width:70px;  font-size:10px; padding:4px 3px;">Destination</th>' +
+        '<th style="min-width:90px;  font-size:10px; padding:4px 3px;">Comment</th>' +
+        '<th style="min-width:70px; text-align:center;  font-size:10px; padding:4px 3px;">Kamionra</th>' +
         '</tr></thead>' +
         '<tbody id="aru-tbody"></tbody>' +
         '<tfoot style="position:sticky; bottom:0; background:#e8f4fd; z-index:2; border-top:2px solid #bde0fa; font-weight:bold; font-size:11px;">' +

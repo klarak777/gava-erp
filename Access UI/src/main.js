@@ -42,11 +42,11 @@ import { renderAldiRendelesek } from './modules/aldi_rendelesek.js?v=20261008-pr
 import { ALDI_ORDER_VIEWS } from './data/aldi-order-views.js';
 import { renderAldiStock } from './modules/aldi_stock.js';
 import { renderAldiQuality } from './modules/aldi_quality.js';
-import { renderAldiRakodas } from './modules/aldi_rakodas.js';
+import { renderAldiRakodas } from './modules/aldi_rakodas.js?v=20261014-asn';
 import { renderAldiFuvarokOsszesito } from './modules/aldi_fuvarok_osszesito.js';
 import { renderAldiBelfoldiFuvarok } from './modules/aldi_belfoldi_fuvarok.js';
 import { renderAldiTermekAdattabla } from './modules/aldi_termekek.js';
-import { renderAldiEdiTest } from './modules/aldi_edi_test.js?v=20261013';
+import { renderAldiEdiTest } from './modules/aldi_edi_test.js?v=20261014-asn';
 import { renderPdaEmulator } from './modules/pda_emulator.js?v=3';
 import { NAV_CATEGORIES } from './data/nav-structure.js?v=20261013-edi-test';
 import { initAiChat } from './modules/ai-chat.js?v=10';

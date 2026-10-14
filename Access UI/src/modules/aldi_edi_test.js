@@ -1,3 +1,4 @@
+import { renderAldiAsn } from './aldi_asn.js?v=20261014';
 const API = '/api/v1/aldi-edi-test';
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const time = value => value ? new Date(value).toLocaleString('hu-HU', { timeZone: 'Europe/Budapest' }) : '—';
@@ -133,4 +134,7 @@ export function renderAldiEdiTest(container) {
     feedback('A minták összetartozó Full próbák. Feltöltési sorrend: új rendelés → módosítás → tételtörlés → teljes törlés. Használj Full módot; a mintaazonosítók nem éles kapcsolati beállítások.');
   });
   load().catch(error => feedback(error.message, true));
+  const asnContainer = document.createElement('div');
+  container.append(asnContainer);
+  renderAldiAsn(asnContainer);
 }

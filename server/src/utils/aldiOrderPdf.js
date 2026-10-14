@@ -55,6 +55,8 @@ function parseLineItems(text) {
     } else if (!item.actionCode) {
       current.quantity += item.quantity;
       current.actionCode = null;
+      // Aggregated rows cannot safely claim the reference of just one original item.
+      if (current.lineItem !== item.lineItem) current.lineItem = null;
     }
   }
 

@@ -10,7 +10,8 @@ const http = require('node:http');
 const DB_URL = process.env.ALDI_TEST_DATABASE_URL;
 const TABLES = [
   'aldi_daily_orders', 'aldi_daily_order_lines', 'aldi_order_families', 'aldi_order_item_states',
-  'aldi_trucks', 'aldi_truck_lines', 'aldi_commission_lines', 'aldi_stock_locations'
+  'aldi_trucks', 'aldi_truck_lines', 'aldi_commission_lines', 'aldi_stock_locations', 'sscc_labels',
+  'aldi_asn_settings', 'aldi_asn_shipments', 'aldi_asn_messages', 'aldi_asn_jobs', 'aldi_asn_events'
 ];
 
 function pdfText(orderNumber, date, items) {
@@ -40,6 +41,7 @@ test('PostgreSQL: modified order creates a new version, keeps Rakodva fulfilment
     db = factory({ client: 'pg', connection: DB_URL,
       pool: { min: 0, max: 6, afterCreate(conn, done) { conn.query('SET search_path TO ' + schema, err => done(err, conn)); } } });
     for (const table of TABLES) await db.raw(`CREATE TABLE ${schema}.${table} (LIKE public.${table} INCLUDING ALL)`);
+    await db('aldi_asn_settings').insert({ id: 1, profile: JSON.stringify({ sender: '5990696117005', supplier: '5990696117005', receiver: '', buyer: '', syntax: 'UNOC', variant: 'lpn_item', mode: 'test', requiredDateType: 'none', destinations: [] }) });
 
     // The upload route must not touch the real network share from a test.
     fs.existsSync = p => isNetwork(p) ? true : realFs.existsSync(p);

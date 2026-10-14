@@ -94,8 +94,8 @@ export class WindowManager {
         // Center the modal
         // We need to wait for render to know exact dimensions if not set, but here we likely set them.
         setTimeout(() => {
-            const containerWidth = this.container.offsetWidth || window.innerWidth;
-            const containerHeight = this.container.offsetHeight || window.innerHeight;
+            const containerWidth = this.container.offsetWidth || document.documentElement.clientWidth || window.innerWidth;
+            const containerHeight = this.container.offsetHeight || document.documentElement.clientHeight || window.innerHeight;
             const winWidth = windowEl.offsetWidth;
             const winHeight = windowEl.offsetHeight;
 

@@ -33,6 +33,11 @@ test('content duplicate hash is independent of PDF bytes, filename and item orde
   assert.notEqual(buildOrderContentHash('2026-09-18', [{...a[0],quantity:71}, a[1]]), hash);
   assert.notEqual(buildOrderContentHash('2026-09-19', a), hash);
 });
+test('merged PDF quantities do not silently keep one reference for two different original items', () => {
+  const rows = parseLineItems('00010 4061462848544 20 20261015\n00020 4061462848544 30 20261015');
+  assert.equal(rows[0].quantity, 50);
+  assert.equal(rows[0].lineItem, null);
+});
 
 test('deleted item cleanup removes commission and truck rows then resets demand state', async () => {
   const calls = [];

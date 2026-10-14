@@ -17,8 +17,8 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
 
             // Középre pozicionálás (setTimeout, hogy a WindowManager alapértelmezett pozícióját felülírjuk)
             setTimeout(() => {
-                const containerWidth = window.innerWidth;
-                const containerHeight = window.innerHeight;
+                const containerWidth = document.documentElement.clientWidth || window.innerWidth;
+                const containerHeight = document.documentElement.clientHeight || window.innerHeight;
                 const winWidth = winEl.offsetWidth || 1100;
                 const winHeight = winEl.offsetHeight || 650;
 
@@ -157,7 +157,7 @@ export function openKamionSzerkesztesWindow(windowManager, kamionId = null, opti
                 <div class="access-subform" style="flex:1; display:flex; flex-direction:column; min-height:0;">
                     <div id="km-table-wrap" style="flex:1; overflow:auto; width:100%;">
                         <table class="access-subform-table" id="km-lines-table" style="font-size:11px; min-width:1400px; width:max-content; border-collapse:collapse;">
-                            <thead style="position:sticky; top:0; background:var(--bg-light); z-index:2;">
+                            <thead style="position:sticky; top:0; background:transparent; z-index:2;">
                                 <tr>
                                     <th style="width:36px; text-align:center;" title="Áthelyezés / Törlés"></th>
                                     <th style="min-width:58px; max-width:65px; text-align:center; line-height:1.2; padding:3px 2px;">Total<br><span style='font-weight:normal;'>Palets</span></th>

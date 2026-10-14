@@ -179,8 +179,8 @@ async function openEmployeeEditor(wm, employeeId, onSaved) {
         
         // Center the window immediately after open logic runs
         requestAnimationFrame(() => {
-            const containerWidth = window.innerWidth;
-            const containerHeight = window.innerHeight;
+            const containerWidth = document.documentElement.clientWidth || window.innerWidth;
+            const containerHeight = document.documentElement.clientHeight || window.innerHeight;
             const left = Math.max(20, (containerWidth - 1100) / 2);
             const top = Math.max(70, (containerHeight - 800) / 2);
             windowEl.style.left = left + 'px';

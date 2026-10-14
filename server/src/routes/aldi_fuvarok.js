@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const knex = require('../db/db');
+const { truckLinePallets } = require('../utils/aldiPallets');
 
 // GET all loaded trucks and their lines for Fuvarok összesítő
 router.get('/', async (req, res) => {
@@ -78,6 +79,17 @@ router.get('/', async (req, res) => {
 
     const rows = await query;
 
+    // Raklapszám: közvetlenül a "Komissió megtekintése" tábla RAKLAP oszlopának (aldi_commission_lines.pallets) összege.
+    const truckIds = [...new Set(rows.map(r => r.aldi_truck_id))];
+    const commissionRows = truckIds.length === 0 ? [] : await knex('aldi_commission_lines')
+      .whereIn('aldi_truck_id', truckIds)
+      .select('aldi_truck_id', 'aldi_truck_line_id', 'product_name', 'pallets');
+    const commissionByTruck = new Map();
+    commissionRows.forEach(c => {
+      if (!commissionByTruck.has(c.aldi_truck_id)) commissionByTruck.set(c.aldi_truck_id, []);
+      commissionByTruck.get(c.aldi_truck_id).push(c);
+    });
+
     const formatted = rows.map(r => {
       const netto = parseFloat(r.netto_kg) || 0;
       const cartons = parseInt(r.total_cartons) || 0;
@@ -89,7 +101,10 @@ router.get('/', async (req, res) => {
 
       return {
         id: r.id,
-        raklap: r.raklap,
+        raklap: truckLinePallets(
+          { id: r.id, product_name: r.termek, pallets: r.raklap },
+          commissionByTruck.get(r.aldi_truck_id)
+        ),
         termek: r.termek,
         partner: r.partner || 'ALDI',
         komment: r.komment || '',

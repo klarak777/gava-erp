@@ -41,7 +41,9 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
 
   // ─── State ────────────────────────────────────────────────────────────────────
   let state = {
-    activeTab: 'napi', // 'napi' | 'heti' | 'heti_arak' | 'termekek'
+    activeTab: 'napi',
+    napiOrdersPage: 1,
+    napiOrdersPerPage: 8, // 'napi' | 'heti' | 'heti_arak' | 'termekek'
     filterDate: '',
     filterOrderNo: '',
     productSearch: '',
@@ -121,20 +123,20 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
           <div style="border:1px solid #e2e8f0; border-radius:6px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
             <table style="width:100%; border-collapse:collapse; font-size:12px; text-align:left;">
               <thead>
-                <tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;">
-                  <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155; width:160px;">TERMÉK</th>
-                  <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">KARTONSZÁM</th>
-                  <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">BRUTTÓ KG</th>
-                  <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">NETTÓ KG</th>
-                  <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">Átlag súly (nettó) /#</th>
-                  <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">RAKLAP</th>
-                  <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">RAKLAP AZONOSÍTÓ</th>
-                  <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">SZÁRMAZÁSI ORSZÁG</th>
-                  <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">KARTON TÍPUS</th>
-                  <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">TÁRA SÚLY (KG/un)</th>
-                  <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">RAKLAP TÍPUS</th>
-                  <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">LOT SZÁM</th>
-                  <th style="padding:10px 8px; font-size:11px; font-weight:800; color:#334155;">KOMISSIÓZTA</th>
+                <tr style="background:transparent; border-bottom:2px solid #e2e8f0;">
+                  <th style="padding:10px 8px; font-size:11px; font-weight:600; color:#000000; width:160px;">Termék</th>
+                  <th style="padding:10px 8px; font-size:11px; font-weight:600; color:#000000;">Kartonszám</th>
+                  <th style="padding:10px 8px; font-size:11px; font-weight:600; color:#000000;">Bruttó kg</th>
+                  <th style="padding:10px 8px; font-size:11px; font-weight:600; color:#000000;">Nettó kg</th>
+                  <th style="padding:10px 8px; font-size:11px; font-weight:600; color:#000000;">Átlag súly (nettó) /#</th>
+                  <th style="padding:10px 8px; font-size:11px; font-weight:600; color:#000000;">Raklap</th>
+                  <th style="padding:10px 8px; font-size:11px; font-weight:600; color:#000000;">Raklap azonosító</th>
+                  <th style="padding:10px 8px; font-size:11px; font-weight:600; color:#000000;">Származási ország</th>
+                  <th style="padding:10px 8px; font-size:11px; font-weight:600; color:#000000;">Karton típus</th>
+                  <th style="padding:10px 8px; font-size:11px; font-weight:600; color:#000000;">Tára súly (kg/un)</th>
+                  <th style="padding:10px 8px; font-size:11px; font-weight:600; color:#000000;">Raklap típus</th>
+                  <th style="padding:10px 8px; font-size:11px; font-weight:600; color:#000000;">Lot szám</th>
+                  <th style="padding:10px 8px; font-size:11px; font-weight:600; color:#000000;">Komissiózta</th>
                 </tr>
               </thead>
               <tbody>
@@ -470,6 +472,26 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
       return matchDate && matchOrder;
     });
 
+    const totalOrders = filteredOrders.length;
+    const itemsPerPage = state.napiOrdersPerPage || 8;
+    const totalPages = Math.ceil(totalOrders / itemsPerPage) || 1;
+    if (state.napiOrdersPage > totalPages) state.napiOrdersPage = totalPages;
+    if (state.napiOrdersPage < 1) state.napiOrdersPage = 1;
+    const currentPage = state.napiOrdersPage;
+
+    const startIdx = (currentPage - 1) * itemsPerPage;
+    const endIdx = Math.min(startIdx + itemsPerPage, totalOrders);
+    const paginatedOrders = filteredOrders.slice(startIdx, endIdx);
+
+    let pageNumbersHtml = '';
+    for (let i = 1; i <= totalPages; i++) {
+      if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+        pageNumbersHtml += `<div class="page-num ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</div>`;
+      } else if (i === currentPage - 2 || i === currentPage + 2) {
+        pageNumbersHtml += `<div style="padding:4px; user-select:none;">...</div>`;
+      }
+    }
+
     return `
       <div style="display:flex; align-items:flex-end; gap:16px; margin:16px 0 20px 0; flex-wrap:wrap;">
         <div style="display:flex; flex-direction:column; gap:4px;">
@@ -490,18 +512,18 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
         <div style="flex:1; border:1px solid #e2e8f0; border-radius:6px; overflow:hidden; min-width:500px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
         <table style="width:100%; border-collapse:collapse; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size:13px;">
           <thead>
-            <tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;">
-              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:130px;">SZÁLLÍTÁSI DÁTUM</th>
-              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:160px;">RENDELÉSI SZÁM</th>
-              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:120px;">VERZIÓ SZÁMA</th>
-              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:150px;">RENDELÉS TÍPUSA</th>
-              <th style="padding:10px 14px; text-align:center; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px; width:110px;">RAKLAPSZÁM</th>
+            <tr style="background:transparent; border-bottom:2px solid #e2e8f0;">
+              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:600; color:#000000; letter-spacing:0.5px; width:130px;">Szállítási dátum</th>
+              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:600; color:#000000; letter-spacing:0.5px; width:160px;">Rendelési szám</th>
+              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:600; color:#000000; letter-spacing:0.5px; width:120px;">Verzió száma</th>
+              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:600; color:#000000; letter-spacing:0.5px; width:150px;">Rendelés típusa</th>
+              <th style="padding:10px 14px; text-align:center; font-size:11px; font-weight:600; color:#000000; letter-spacing:0.5px; width:110px;">Raklapszám</th>
               </tr>
           </thead>
           <tbody>
-            ${filteredOrders.length === 0 ? `
+            ${paginatedOrders.length === 0 ? `
               <tr><td colspan="5" style="padding:24px; text-align:center; color:#94a3b8; font-size:13px;">Nincs megjeleníthető rendelés a megadott szűrési feltételekkel.</td></tr>
-            ` : filteredOrders.map((o, idx) => {
+            ` : paginatedOrders.map((o, idx) => {
       const dt = new Date(o.delivery_date);
       const formattedDate = !isNaN(dt) ? dt.toISOString().split('T')[0] : o.delivery_date;
       // A megjelenített rendelési szám: eltávolítjuk a régi "-N" suffixet
@@ -542,6 +564,16 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
     }).join('')}
           </tbody>
           </table>
+          <div class="pagination" id="aldi-orders-pagination" style="padding:12px 16px; border-top:1px solid #e2e8f0; background:#ffffff; margin-top:0;">
+            <div>${totalOrders === 0 ? '0 / 0 rendelés' : `${startIdx + 1}-${endIdx} / ${totalOrders} rendelés`}</div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <button class="icon-btn prev-btn" id="aldi-orders-prev" ${currentPage === 1 ? 'disabled' : ''} title="Előző oldal">&lt;</button>
+              <div class="page-numbers">
+                ${pageNumbersHtml}
+              </div>
+              <button class="icon-btn next-btn" id="aldi-orders-next" ${currentPage === totalPages ? 'disabled' : ''} title="Következő oldal">&gt;</button>
+            </div>
+          </div>
         </div>
         
         <div id="aldi-napi-order-details-pane" style="flex:1; min-width:400px; border:1px solid #e2e8f0; border-radius:6px; background:#ffffff; box-shadow:0 1px 3px rgba(0,0,0,0.02); display:flex; flex-direction:column;">
@@ -551,8 +583,8 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
           <div style="flex:1; padding:16px 20px; overflow-y:auto; min-height:0;">
             <table style="width:100%; border-collapse:collapse; font-size:13px;">
               <thead>
-                <tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;">
-                  <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">Cikkszám</th>
+                <tr style="background:transparent; border-bottom:2px solid #e2e8f0;">
+                  <th style="padding:8px 12px; text-align:left; font-weight:600; color:#000000;">Cikkszám</th>
                   <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">Termék megnevezése</th>
                   <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">GTIN szám</th>
                   <th style="padding:8px 12px; text-align:center; font-weight:700; color:#334155;">Változás</th>
@@ -745,8 +777,8 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
           <h4 style="margin:16px; font-size:15px; color:#000000;">Lekötés & rendelés</h4>
           <table style="width:100%; border-collapse:collapse; font-size:13px; text-align:left;">
             <thead>
-              <tr style="background:#f1f5f9; border-bottom:2px solid #cbd5e1;">
-                <th rowspan="2" style="padding:8px; border:1px solid #e2e8f0;">Termék</th>
+              <tr style="background:transparent; border-bottom:2px solid #e2e8f0;">
+                <th rowspan="2" style="padding:8px; border:1px solid #e2e8f0; color:#000000; font-weight:600;">Termék</th>
                 <th rowspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center;">Akció időszak</th>
                 <th rowspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center;">KW${state.hetiLekotesSelectedWeek}</th>
                 <th colspan="3" style="padding:8px; border:1px solid #e2e8f0; text-align:center;">Szerda</th>
@@ -757,8 +789,8 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
                 <th colspan="3" style="padding:8px; border:1px solid #e2e8f0; text-align:center;">Hétfő</th>
                 <th colspan="3" style="padding:8px; border:1px solid #e2e8f0; text-align:center;">Kedd</th>
               </tr>
-              <tr style="background:#f8fafc; border-bottom:1px solid #e2e8f0;">
-                ${days.map(d => `<th style="padding:6px; border:1px solid #e2e8f0; text-align:center; font-size:11px; color:#64748b;" title="Becsült">Becs.</th><th style="padding:6px; border:1px solid #e2e8f0; text-align:center; font-size:11px;" title="Rendelt">Ren.</th><th style="padding:6px; border:1px solid #e2e8f0; text-align:center; font-size:11px; color:#059669;" title="Szállított">Száll.</th>`).join('')}
+              <tr style="background:transparent; border-bottom:1px solid #e2e8f0;">
+                ${days.map(d => `<th style="padding:6px; border:1px solid #e2e8f0; text-align:center; font-size:11px; color:#000000; font-weight:600;" title="Becsült">Becs.</th><th style="padding:6px; border:1px solid #e2e8f0; text-align:center; font-size:11px;" title="Rendelt">Ren.</th><th style="padding:6px; border:1px solid #e2e8f0; text-align:center; font-size:11px; color:#059669;" title="Szállított">Száll.</th>`).join('')}
               </tr>
             </thead>
             <tbody>
@@ -771,9 +803,9 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
           <h4 style="margin:16px; font-size:15px; color:#000000;">Készlet lista</h4>
           <table style="width:100%; border-collapse:collapse; font-size:13px; text-align:left;">
             <thead>
-              <tr style="background:#f1f5f9; border-bottom:2px solid #cbd5e1;">
-                <th rowspan="2" style="padding:8px; border:1px solid #e2e8f0;">Termék</th>
-                <th rowspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:#fef08a; color:#0f172a; font-weight:700;">Nyitó raktárkészlet</th>
+              <tr style="background:transparent; border-bottom:2px solid #e2e8f0;">
+                <th rowspan="2" style="padding:8px; border:1px solid #e2e8f0; color:#000000; font-weight:600;">Termék</th>
+                <th rowspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:transparent; color:#000000; font-weight:600;">Nyitó raktárkészlet</th>
                 <th colspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center;">Szerda</th>
                 <th colspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center;">Csütörtök</th>
                 <th colspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center;">Péntek</th>
@@ -781,10 +813,10 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
                 <th colspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center;">Vasárnap</th>
                 <th colspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center;">Hétfő</th>
                 <th colspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center;">Kedd</th>
-                <th rowspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:#fde047; color:#0f172a; font-weight:700;">Záró raktárkészlet</th>
+                <th rowspan="2" style="padding:8px; border:1px solid #e2e8f0; text-align:center; background:transparent; color:#000000; font-weight:600;">Záró raktárkészlet</th>
               </tr>
-              <tr style="background:#f8fafc; border-bottom:1px solid #e2e8f0;">
-                ${days.map(d => `<th style="padding:6px; border:1px solid #e2e8f0; text-align:center; font-size:11px; color:#16a34a;">Érkező</th><th style="padding:6px; border:1px solid #e2e8f0; text-align:center; font-size:11px; color:#ef4444;">Hiány</th>`).join('')}
+              <tr style="background:transparent; border-bottom:1px solid #e2e8f0;">
+                ${days.map(d => `<th style="padding:6px; border:1px solid #e2e8f0; text-align:center; font-size:11px; color:#000000; font-weight:600;">Érkező</th><th style="padding:6px; border:1px solid #e2e8f0; text-align:center; font-size:11px; color:#000000; font-weight:600;">Hiány</th>`).join('')}
               </tr>
             </thead>
             <tbody>
@@ -1330,17 +1362,17 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
         <div style="border:1px solid #cbd5e1; border-radius:8px; overflow:auto; max-width:1200px; box-shadow:0 1px 4px rgba(0,0,0,0.04); background:#ffffff;">
           <table style="width:100%; border-collapse:collapse; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size:12px; min-width:900px;">
             <thead>
-              <tr style="background:#0f172a; border-bottom:1px solid #cbd5e1;">
+              <tr style="background:transparent; border-bottom:2px solid #e2e8f0;">
                 <th style="padding:10px 4px; width:30px;"></th>
-                <th style="padding:10px 12px; text-align:left; font-size:10px; font-weight:700; color:#94a3b8; letter-spacing:0.6px; text-transform:uppercase; width:200px;">TERMÉK</th>
-                <th style="padding:10px 8px; text-align:center; font-size:10px; font-weight:700; color:#94a3b8; letter-spacing:0.6px; text-transform:uppercase; width:85px;">KISZERELÉS</th>
-                <th style="padding:10px 8px; text-align:left; font-size:10px; font-weight:700; color:#94a3b8; letter-spacing:0.6px; text-transform:uppercase; width:130px;">SZÁRMAZÁS</th>
-                <th style="padding:10px 8px; text-align:left; font-size:10px; font-weight:700; color:#94a3b8; letter-spacing:0.6px; text-transform:uppercase; width:220px;">CSOMAGOLÁS</th>
-                <th style="padding:10px 8px; text-align:right; font-size:10px; font-weight:700; color:#94a3b8; letter-spacing:0.6px; text-transform:uppercase; width:120px;">REKESZKÖLTSÉG</th>
-                <th style="padding:10px 8px; text-align:right; font-size:10px; font-weight:700; color:#94a3b8; letter-spacing:0.6px; text-transform:uppercase; width:110px;">EGYSÉGKÖLTSÉG</th>
-                <th style="padding:10px 8px; text-align:center; font-size:10px; font-weight:700; color:#94a3b8; letter-spacing:0.6px; text-transform:uppercase; width:170px;">SZÁLLÍTÁSI IDŐSZAK</th>
-                <th style="padding:10px 8px; text-align:left; font-size:10px; font-weight:700; color:#94a3b8; letter-spacing:0.6px; text-transform:uppercase; width:140px;">GTIN</th>
-                <th style="padding:10px 6px; text-align:center; font-size:10px; font-weight:700; color:#94a3b8; letter-spacing:0.6px; text-transform:uppercase; width:80px;">Műveletek</th>
+                <th style="padding:10px 12px; text-align:left; font-size:10px; font-weight:600; color:#000000; letter-spacing:normal; text-transform:none; width:200px;">Termék</th>
+                <th style="padding:10px 8px; text-align:center; font-size:10px; font-weight:600; color:#000000; letter-spacing:normal; text-transform:none; width:85px;">Kiszerelés</th>
+                <th style="padding:10px 8px; text-align:left; font-size:10px; font-weight:600; color:#000000; letter-spacing:normal; text-transform:none; width:130px;">Származás</th>
+                <th style="padding:10px 8px; text-align:left; font-size:10px; font-weight:600; color:#000000; letter-spacing:normal; text-transform:none; width:220px;">Csomagolás</th>
+                <th style="padding:10px 8px; text-align:right; font-size:10px; font-weight:600; color:#000000; letter-spacing:normal; text-transform:none; width:120px;">Rekeszköltség</th>
+                <th style="padding:10px 8px; text-align:right; font-size:10px; font-weight:600; color:#000000; letter-spacing:normal; text-transform:none; width:110px;">Egységköltség</th>
+                <th style="padding:10px 8px; text-align:center; font-size:10px; font-weight:600; color:#000000; letter-spacing:normal; text-transform:none; width:170px;">Szállítási időszak</th>
+                <th style="padding:10px 8px; text-align:left; font-size:10px; font-weight:600; color:#000000; letter-spacing:normal; text-transform:none; width:140px;">GTIN</th>
+                <th style="padding:10px 6px; text-align:center; font-size:10px; font-weight:600; color:#000000; letter-spacing:normal; text-transform:none; width:80px;">Műveletek</th>
               </tr>
             </thead>
             <tbody>
@@ -1466,17 +1498,17 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
       <div style="border:1px solid #e2e8f0; border-radius:6px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
         <table style="width:100%; border-collapse:collapse; font-size:13px; text-align:left;">
           <thead>
-            <tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;">
-              <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; width:100px;">SZÁLLÍTÁSI DÁTUM</th>
-              <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; width:120px;">KAMION SZÁM</th>
-              <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; text-align:right;">RAKLAP</th>
-              <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; text-align:right;">RENDELT KARTONSZÁM</th>
-              <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; text-align:right;">BRUTTÓ KG</th>
-              <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; text-align:right;">NETTÓ KG</th>
-              <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; text-align:center; min-width:140px;">ÖSSZEKÉSZÍTÉS ÁLLAPOTA</th>
-              <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; text-align:right;">KOMISSIÓZOTT KARTONSZÁM</th>
-              <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; text-align:right;">MÉG HÁTRA VAN</th>
-              <th style="padding:10px; font-size:11px; font-weight:800; color:#334155; text-align:center;">KOMISSIÓ MEGTEKINTÉSE</th>
+            <tr style="background:transparent; border-bottom:2px solid #e2e8f0;">
+              <th style="padding:10px; font-size:11px; font-weight:600; color:#000000; width:100px;">Szállítási dátum</th>
+              <th style="padding:10px; font-size:11px; font-weight:600; color:#000000; width:120px;">Kamion szám</th>
+              <th style="padding:10px; font-size:11px; font-weight:600; color:#000000; text-align:right;">Raklap</th>
+              <th style="padding:10px; font-size:11px; font-weight:600; color:#000000; text-align:right;">Rendelt kartonszám</th>
+              <th style="padding:10px; font-size:11px; font-weight:600; color:#000000; text-align:right;">Bruttó kg</th>
+              <th style="padding:10px; font-size:11px; font-weight:600; color:#000000; text-align:right;">Nettó kg</th>
+              <th style="padding:10px; font-size:11px; font-weight:600; color:#000000; text-align:center; min-width:140px;">Összekészítés állapota</th>
+              <th style="padding:10px; font-size:11px; font-weight:600; color:#000000; text-align:right;">Komissiózott kartonszám</th>
+              <th style="padding:10px; font-size:11px; font-weight:600; color:#000000; text-align:right;">Még hátra van</th>
+              <th style="padding:10px; font-size:11px; font-weight:600; color:#000000; text-align:center;">Komissió megtekintése</th>
             </tr>
           </thead>
           <tbody>
@@ -1587,13 +1619,12 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
       <div style="border:1px solid #cbd5e1; border-radius:8px; overflow:hidden; max-width:1200px; box-shadow:0 1px 4px rgba(0,0,0,0.04); background:#ffffff;">
         <table style="width:100%; border-collapse:collapse; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size:13px;">
           <thead>
-            <tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;">
-              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px;">TERMÉK MEGNEVEZÉSE</th>
-              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px;">CIKKSZÁM</th>
-              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px;">GTIN AZONOSÍTÓ</th>
-              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:800; color:#334155; letter-spacing:0.5px;">EAN AZONOSÍTÓ</th>
-              
-              <th style="padding:10px 10px; text-align:center; font-size:11px; font-weight:800; color:#64748b; letter-spacing:0.5px; width:60px;">MŰVELET</th>
+            <tr style="background:transparent; border-bottom:2px solid #e2e8f0;">
+              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:600; color:#000000; letter-spacing:0.5px;">Termék megnevezése</th>
+              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:600; color:#000000; letter-spacing:0.5px;">Cikkszám</th>
+              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:600; color:#000000; letter-spacing:0.5px;">GTIN azonosító</th>
+              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:600; color:#000000; letter-spacing:0.5px;">EAN azonosító</th>
+              <th style="padding:10px 10px; text-align:center; font-size:11px; font-weight:600; color:#000000; letter-spacing:0.5px; width:60px;">Művelet</th>
             </tr>
           </thead>
           <tbody id="aldi-products-tbody">
@@ -1895,8 +1926,8 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
       return `
             <table style="width:100%; border-collapse:collapse; font-size:13px;">
               <thead>
-                <tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;">
-                  <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">Cikkszám</th>
+                <tr style="background:transparent; border-bottom:2px solid #e2e8f0;">
+                  <th style="padding:8px 12px; text-align:left; font-weight:600; color:#000000;">Cikkszám</th>
                   <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">Termék megnevezése</th>
                   <th style="padding:8px 12px; text-align:left; font-weight:700; color:#334155;">GTIN szám</th>
                   <th style="padding:8px 12px; text-align:center; font-weight:700; color:#334155;">Változás</th>
@@ -3212,12 +3243,52 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
 
 
 
+    // Napi rendelések lapozó események (Lokációk mintájára)
+    const paginationEl = wrapper.querySelector('#aldi-orders-pagination');
+    if (paginationEl) {
+      paginationEl.querySelectorAll('.page-num').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const page = parseInt(btn.dataset.page, 10);
+          if (page && page !== state.napiOrdersPage) {
+            state.napiOrdersPage = page;
+            renderModule();
+          }
+        });
+      });
+
+      const prevBtn = paginationEl.querySelector('#aldi-orders-prev');
+      if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+          if (state.napiOrdersPage > 1) {
+            state.napiOrdersPage--;
+            renderModule();
+          }
+        });
+      }
+
+      const nextBtn = paginationEl.querySelector('#aldi-orders-next');
+      if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+          const totalOrders = state.orders.filter(o => {
+            const matchDate = !state.filterDate || (o.delivery_date && o.delivery_date.startsWith(state.filterDate));
+            const matchOrder = !state.filterOrderNo || (o.order_number && o.order_number.toLowerCase().includes(state.filterOrderNo.toLowerCase()));
+            return matchDate && matchOrder;
+          }).length;
+          const totalPages = Math.ceil(totalOrders / (state.napiOrdersPerPage || 8)) || 1;
+          if (state.napiOrdersPage < totalPages) {
+            state.napiOrdersPage++;
+            renderModule();
+          }
+        });
+      }
+    }
+
     // Napi rendelés filterek
     const dateInput = wrapper.querySelector('#aldi-filter-date');
-    if (dateInput) dateInput.addEventListener('input', (e) => { state.filterDate = e.target.value; renderModule(); });
+    if (dateInput) dateInput.addEventListener('input', (e) => { state.filterDate = e.target.value; state.napiOrdersPage = 1; renderModule(); });
 
     const orderInput = wrapper.querySelector('#aldi-filter-order');
-    if (orderInput) orderInput.addEventListener('input', (e) => { state.filterOrderNo = e.target.value; renderModule(); });
+    if (orderInput) orderInput.addEventListener('input', (e) => { state.filterOrderNo = e.target.value; state.napiOrdersPage = 1; renderModule(); });
 
     // Napi upload
     wrapper.querySelector('#aldi-btn-upload')?.addEventListener('click', openUploadModal);

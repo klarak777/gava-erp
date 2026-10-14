@@ -8,8 +8,10 @@ export function openLokaciokWindow(wm) {
             winEl.style.maxHeight = '92vh';
 
             setTimeout(() => {
-                const left = Math.max(20, (window.innerWidth - winEl.offsetWidth) / 2);
-                const top = Math.max(70, (window.innerHeight - winEl.offsetHeight) / 2);
+                const containerWidth = document.documentElement.clientWidth || window.innerWidth;
+                const containerHeight = document.documentElement.clientHeight || window.innerHeight;
+                const left = Math.max(20, (containerWidth - winEl.offsetWidth) / 2);
+                const top = Math.max(70, (containerHeight - winEl.offsetHeight) / 2);
                 winEl.style.left = `${left}px`;
                 winEl.style.top = `${top}px`;
             }, 10);
@@ -116,7 +118,7 @@ export function openLokaciokWindow(wm) {
                     text-align: left;
                     padding: 8px 12px;
                     font-weight: 600;
-                    color: #475569;
+                    color: #000000;
                     border-bottom: 2px solid #e2e8f0;
                 }
                 .loc-table td {

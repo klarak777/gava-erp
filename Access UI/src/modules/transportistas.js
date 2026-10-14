@@ -157,7 +157,7 @@ export function renderTransportistas(container, windowManager) {
             </div>
             <div id="table-scroll-area" style="overflow:auto; flex:1 1 auto; min-height:0;">
                 <table class="access-subform-table" id="transport-table" style="min-width:1850px;">
-                    <thead style="position:sticky; top:0; background:var(--bg-light); z-index:2;">
+                    <thead style="position:sticky; top:0; background:transparent; z-index:2;">
                         <tr>
                             <th style="min-width:110px;">Loading date</th>
                             <th style="min-width:120px;">Loading place</th>

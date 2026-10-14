@@ -123,16 +123,16 @@ export function renderAldiBelfoldiFuvarok(container, windowManager) {
     <div style="margin: 0 20px 20px 20px; flex:1; display:flex; flex-direction:column; overflow:hidden; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
       <div style="flex:1; overflow:auto;">
         <table style="width:100%; border-collapse:collapse; font-size:12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width:1000px;">
-          <thead style="position:sticky; top:0; z-index:10; background:#f8fafc; border-bottom: 2px solid #e2e8f0;">
+          <thead style="position:sticky; top:0; z-index:10; border-bottom: 2px solid #e2e8f0;">
             <tr>
-              <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">KAMIONSZÁM</th>
-              <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">SZÁLLÍTÁSI NAP</th>
-              <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">FUVAROZÓ</th>
-              <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">RENDSZÁM</th>
-              <th style="padding:12px 16px; text-align:right; font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">GAVA RAKLAPSZÁM</th>
-              <th style="padding:12px 16px; text-align:right; font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">CROSSDOKING RAKLAPSZÁM</th>
-              <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">KOMMENT</th>
-              <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">FUVARSZÁMLA</th>
+              <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:700; color:#000000;">Kamionszám</th>
+              <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:700; color:#000000;">Szállítási nap</th>
+              <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:700; color:#000000;">Fuvarozó</th>
+              <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:700; color:#000000;">Rendszám</th>
+              <th style="padding:12px 16px; text-align:right; font-size:11px; font-weight:700; color:#000000;">Gava raklapszám</th>
+              <th style="padding:12px 16px; text-align:right; font-size:11px; font-weight:700; color:#000000;">Crossdocking raklapszám</th>
+              <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:700; color:#000000;">Komment</th>
+              <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:700; color:#000000;">Fuvarszámla</th>
             </tr>
           </thead>
           <tbody id="belfoldi-fuvarok-tbody">
@@ -333,7 +333,7 @@ export function renderAldiBelfoldiFuvarok(container, windowManager) {
           <td style="padding:10px 16px; color:#475569; white-space:nowrap;">${d.delivery_date ? d.delivery_date.substring(0,10) : ''}</td>
           <td style="padding:10px 16px; color:#475569;">${escapeHtml(d.transporter)}</td>
           <td style="padding:10px 16px; color:#475569; white-space:nowrap;">${escapeHtml(plates.join(' / '))}</td>
-          <td style="padding:10px 16px; color:#334155; text-align:right;">${parseFloat(d.total_pallets) || 0}</td>
+          <td style="padding:10px 16px; color:#334155; text-align:right;">${parseInt(d.gava_pallets, 10) || 0}</td>
           <td style="padding:6px 16px; text-align:right;">
             <input type="number" class="belfoldi-edit-input" data-id="${d.id}" data-field="crossdock_pallets" value="${d.crossdock_pallets || ''}" style="width:70px; border:1px solid transparent; border-radius:4px; padding:4px 6px; font-size:12px; text-align:right; background:transparent;" onfocus="this.style.border='1px solid #93c5fd'; this.style.background='#fff';" onblur="this.style.border='1px solid transparent'; this.style.background='transparent';">
           </td>

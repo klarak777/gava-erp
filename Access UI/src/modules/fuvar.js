@@ -93,13 +93,13 @@ export function renderFuvar(container, windowManager) {
 
     const ALL_COLUMNS = [
         { key: 'tot', label: 'Total Palets', align: 'center', format: r => fmtNum(r.tot) },
-        { key: 'euro', label: 'N° Euro Palets', align: 'center', bg: '#bfdbfe', format: r => fmtNum(r.euro) },
+        { key: 'euro', label: 'N° Euro Palets', align: 'center', format: r => fmtNum(r.euro) },
         { key: 'norm', label: 'N° Normal Palets', align: 'center', format: r => fmtNum(r.norm) },
-        { key: 'prod', label: 'Products', bg: '#bfdbfe', format: r => fmt(r.prod) },
-        { key: 'ref', label: 'Reference', bg: '#bfdbfe', format: r => fmt(r.ref) },
+        { key: 'prod', label: 'Products', format: r => fmt(r.prod) },
+        { key: 'ref', label: 'Reference', format: r => fmt(r.ref) },
         { key: 'cust', label: 'Customer', format: r => fmt(r.cust) },
-        { key: 'dest', label: 'Destination', bg: '#bfdbfe', format: r => fmt(r.dest) },
-        { key: 'comment', label: 'Comment', bg: '#bfdbfe', format: r => fmt(r.comment) },
+        { key: 'dest', label: 'Destination', format: r => fmt(r.dest) },
+        { key: 'comment', label: 'Comment', format: r => fmt(r.comment) },
         { key: 'gross_weight_kg', label: 'Gross weight (kg)', align: 'right', format: r => fmtNum(r.gross_weight_kg) },
         { key: 'price_eur', label: 'Price (EUR)', align: 'right', format: r => fmtNum(r.price_eur) },
         { key: 'price_bcn_eur', label: 'Price BCN (EUR)', align: 'right', format: r => fmtNum(r.price_bcn_eur) },
@@ -156,7 +156,7 @@ export function renderFuvar(container, windowManager) {
             </div>
             <div id="table-scroll-area" style="overflow:auto; flex:1 1 auto; min-height:0;">
                 <table class="access-subform-table" id="fuvar-table" style="white-space:nowrap; min-width:2800px;">
-                    <thead style="position:sticky; top:0; background:var(--bg-light); z-index:2;">
+                    <thead style="position:sticky; top:0; background:transparent; z-index:2;">
                         <tr id="fuvar-thead-tr"></tr>
                     </thead>
                     <tbody id="fuvar-tbody"></tbody>
