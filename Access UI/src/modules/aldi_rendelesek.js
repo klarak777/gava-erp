@@ -17,10 +17,12 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
   // Ablak kezdeti méretezése és vertikális felezése (egyenlő távolságra a fejléctől és az aljától)
   const winEl = container.closest ? container.closest('.mdi-window') : null;
   if (winEl) {
-    const winWidth = 1080;
-    const winHeight = 580;
+    const winWidth = 1280;
+    const winHeight = 700;
     winEl.style.width = `${winWidth}px`;
     winEl.style.height = `${winHeight}px`;
+    winEl.style.maxWidth = 'calc(100% - 40px)';
+    winEl.style.maxHeight = 'calc(100% - 20px)';
 
     const alignCenter = () => {
       const layerEl = document.getElementById('window-layer');
