@@ -40,7 +40,7 @@ const AI_CHAT_HTML = `
 
         <div class="ai-input-area">
             <textarea id="ai-text-input" class="access-input ai-text-input" placeholder="Tegye fel kérdését..." rows="2"></textarea>
-            <button id="ai-send-btn" class="primary-btn" style="min-width: 80px; height: 44px; display: inline-flex; align-items: center; justify-content: center;">Küldés</button>
+            <button type="button" id="ai-send-btn" class="primary-btn" style="min-width: 80px; height: 44px; display: inline-flex; align-items: center; justify-content: center;">Küldés</button>
         </div>
     </div>
 </div>
@@ -479,18 +479,16 @@ export function initAiChat() {
         }
     }
 
-    // Gyorsgombok / csempék szűrése: a technikai utasításokat (dokumentumfeltöltés, szövegbemásolás, szabad kérdés)
-    // NEM szabad felhasználói prompt-csempeként feltenni, mert azok nem tartalmi kérdések a modellnek.
-    function isTechnicalMetaAction(text) {
+    // Gyorsgombok / csempék szűrése: a technikai feliratokat (pl. "Dokumentum feltöltése", "Szöveget bemásolom")
+    // NEM jelenítjük meg kattintható prompt-csempeként, mert a feltöltés gomb és a beviteli mező fixen ott van.
+    function isTechnicalMetaOption(text) {
         const s = (text || '').toLowerCase().trim();
-        if (!s) return null;
-        // Feltöltés / csatolás jellegű opciók
-        if (/^(dokumentum|fájl|file)?\s*(feltölt|csatol)/i.test(s) || /feltölt(és|ése)?$/i.test(s)) return 'upload';
-        // Szöveg másolása / bemásolása jellegű opciók
-        if (/szöveg.*bemásol|bemásol.*szöveg|másold be|^bemásol(om)?$/i.test(s)) return 'paste';
-        // Szabad kérdés / egyéb kérdés opciók
-        if (/^(egyéb\s*(\/|vagy)\s*)?szabad kérdés$/i.test(s) || s === 'egyéb kérdés' || s === 'más kérdés' || s === 'egyéb' || s === 'egyéb / szabad kérdés') return 'focus';
-        return null;
+        if (!s) return true;
+        return /^(dokumentum|fájl|file)?\s*feltölt(és|ése)?$/i.test(s)
+            || /^(dokumentum|fájl|file)?\s*csatol(ás|ása)?$/i.test(s)
+            || /^szöveg(et)?\s*bemásol(om|ása|ás)?$/i.test(s)
+            || /^(egyéb\s*(\/|vagy)\s*)?szabad kérdés$/i.test(s)
+            || s === 'egyéb' || s === 'más kérdés';
     }
 
     function renderQuickReplies(optionsStr) {
@@ -504,9 +502,8 @@ export function initAiChat() {
         const options = optionsStr.split('|').map(s => s.trim()).filter(Boolean);
         let renderedCount = 0;
         options.forEach(opt => {
-            const meta = isTechnicalMetaAction(opt);
-            // Ha technikai művelet (dokumentumfeltöltés, szövegbemásolás, egyéb kérdés), NE jelenítsük meg feladható kérdés-csempeként!
-            if (meta) {
+            // Ha technikai felirat (dokumentumfeltöltés, szövegbemásolás, egyéb kérdés), NE jelenítsük meg csempeként!
+            if (isTechnicalMetaOption(opt)) {
                 return;
             }
             const btn = document.createElement('button');
@@ -977,30 +974,18 @@ export function initAiChat() {
     }
 
     async function sendChat(messageText, optionId = null, optionLabel = null) {
-        const rawText = messageText || optionLabel || '';
-        const meta = isTechnicalMetaAction(rawText);
-        if (meta === 'upload') {
-            if (fileInput) fileInput.click();
-            return;
-        }
-        if (meta === 'paste' || meta === 'focus') {
-            if (textInput) {
-                textInput.focus();
-                textInput.scrollIntoView({ behavior: 'smooth' });
-            }
-            return;
-        }
-
         if (isSending) return; // dupla küldés megakadályozása
         isSending = true;
-        sendBtn.disabled = true;
+        if (sendBtn) sendBtn.disabled = true;
 
         renderQuickReplies(null); // új kérés indításakor azonnal eltüntetjük a régi gyorsgombokat
 
         const textToSend = messageText || optionLabel || 'Kérdés';
         addMessage(textToSend, 'user');
-        textInput.value = '';
-        adjustTextInputHeight();
+        if (textInput) {
+            textInput.value = '';
+            adjustTextInputHeight();
+        }
         conversationHistory.push({ role: 'user', content: messageText || optionLabel || '' });
 
         const answerDiv = document.createElement('div');
@@ -1013,6 +998,13 @@ export function initAiChat() {
         let streamStarted = false;
 
         try {
+            let uiCtx = [];
+            try {
+                uiCtx = getUiContext();
+            } catch (ctxErr) {
+                console.warn('UI context retrieval warning:', ctxErr);
+            }
+
             const res = await fetch('/api/v1/ai/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1022,7 +1014,7 @@ export function initAiChat() {
                     message: messageText,
                     optionId: optionId,
                     history: conversationHistory.slice(-10),
-                    uiContext: getUiContext()
+                    uiContext: uiCtx
                 })
             });
 
@@ -1153,22 +1145,27 @@ export function initAiChat() {
 
     textInput.addEventListener('input', adjustTextInputHeight);
 
-    sendBtn.addEventListener('click', () => {
-        const text = textInput.value.trim();
-        if (text) {
-            sendChat(text, null);
-        }
-    });
-
-    textInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            const text = textInput.value.trim();
+    if (sendBtn) {
+        sendBtn.addEventListener('click', (e) => {
+            if (e) e.preventDefault();
+            const text = textInput ? textInput.value.trim() : '';
             if (text) {
                 sendChat(text, null);
             }
-        }
-    });
+        });
+    }
+
+    if (textInput) {
+        textInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                const text = textInput ? textInput.value.trim() : '';
+                if (text) {
+                    sendChat(text, null);
+                }
+            }
+        });
+    }
 
     // Kezdeti méretezés beállítása
     adjustTextInputHeight();
