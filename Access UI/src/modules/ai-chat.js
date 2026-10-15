@@ -425,6 +425,7 @@ export function initAiChat() {
     const activeDocList = document.getElementById('ai-active-doc-list');
     const detachDocBtn = document.getElementById('ai-detach-doc-btn');
     const optionsSection = document.getElementById('ai-options-section');
+    const quickAnalysisSection = document.getElementById('ai-quick-analysis');
     const textInput = document.getElementById('ai-text-input');
     const sendBtn = document.getElementById('ai-send-btn');
     const chatHistory = document.getElementById('ai-chat-history');
@@ -492,10 +493,11 @@ export function initAiChat() {
     }
 
     function renderQuickReplies(optionsStr) {
-        if (!quickAnalysisSection) return;
-        quickAnalysisSection.innerHTML = '';
+        const sec = quickAnalysisSection || document.getElementById('ai-quick-analysis');
+        if (!sec) return;
+        sec.innerHTML = '';
         if (!optionsStr) {
-            quickAnalysisSection.style.display = 'none';
+            sec.style.display = 'none';
             return;
         }
         
@@ -511,11 +513,11 @@ export function initAiChat() {
             btn.textContent = opt;
             btn.title = opt;
             btn.addEventListener('click', () => sendChat(opt, null));
-            quickAnalysisSection.appendChild(btn);
+            sec.appendChild(btn);
             renderedCount++;
         });
 
-        quickAnalysisSection.style.display = renderedCount > 0 ? 'flex' : 'none';
+        sec.style.display = renderedCount > 0 ? 'flex' : 'none';
     }
 
 
