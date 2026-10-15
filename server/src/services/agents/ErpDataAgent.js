@@ -156,7 +156,7 @@ Gyorsgombok (quick replies):
             }
         ];
 
-        const model = process.env.AI_CHAT_MODEL || 'gpt-5.5';
+        const model = process.env.AI_CHAT_MODEL || 'gpt-6.1-sol';
 
         // 1. First call to OpenAI to see if it wants to use a tool
         const response = await this.openai.chat.completions.create({

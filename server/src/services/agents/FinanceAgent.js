@@ -16,22 +16,27 @@ class FinanceAgent {
         return `[${queryEmbedding.join(',')}]`;
     }
 
-    async searchContext(documentId, queryStr) {
-        if (!documentId) return 'Nincs feltöltött pénzügyi dokumentum.';
+    async searchContext(documentId, queryStr, documentIds = []) {
+        const docIds = Array.isArray(documentIds) && documentIds.length
+            ? documentIds.map(Number).filter(Boolean)
+            : (documentId ? [Number(documentId)] : []);
+
+        if (!docIds.length) return 'Nincs feltöltött pénzügyi dokumentum.';
         
         const embeddingStr = await this.generateEmbedding(queryStr);
         
-        // Search only the temporary uploaded finance document
-        const relevantChunks = await db('ai_vectors')
-            .where('document_id', documentId)
-            .orderByRaw('embedding <=> ?::vector', [embeddingStr])
-            .limit(15) // take more chunks for finance to see the full rows
-            .select('content');
+        // Search uploaded documents (with filename for multi-doc comparison)
+        const relevantChunks = await db('ai_vectors as v')
+            .join('ai_documents as d', 'v.document_id', 'd.id')
+            .whereIn('v.document_id', docIds)
+            .orderByRaw('v.embedding <=> ?::vector', [embeddingStr])
+            .limit(20)
+            .select('v.content', 'd.filename');
 
-        return relevantChunks.map(c => c.content).join('\n\n---\n\n');
+        return relevantChunks.map(c => `[Forrás: ${c.filename}]\n${c.content}`).join('\n\n---\n\n');
     }
 
-    async process(message, documentId = null, history = [], onEvent = null) {
+    async process(message, documentId = null, history = [], onEvent = null, documentIds = []) {
         const currentYear = new Date().getFullYear();
         const systemPrompt = `Pénzügyi és Számviteli Divízió: Te a GAVA Hungária Kft. pénzügyi mesterséges intelligencia asszisztense vagy.
 Feladatod a felhasználó segítése pénzügyi, számviteli és könyvelési kérdésekben. Válaszaid legyenek precízek, számadatokra és tényekre támaszkodók.
@@ -74,7 +79,7 @@ Gyorsgombok (quick replies):
 - Az opciók legyenek tömörek (max 5 szó), kattintható válaszként megfogalmazva.`;
 
         // Gather context
-        const contextText = await this.searchContext(documentId, message);
+        const contextText = await this.searchContext(documentId, message, documentIds);
 
         const userPrompt = `
 Kérdés/Utasítás:
@@ -95,7 +100,7 @@ ${contextText}
         }
         historyAndUser.push({ role: 'user', content: userPrompt });
 
-        const model = process.env.AI_CHAT_MODEL || 'gpt-5.5';
+        const model = process.env.AI_CHAT_MODEL || 'gpt-6.1-sol';
 
         return await runWithTools({
             openai: this.openai,

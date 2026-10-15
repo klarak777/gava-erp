@@ -28,11 +28,11 @@ class AgentManager {
      * @param {Array|null} uiContext - UI state context
      * @param {function|null} onEvent - streaming callback (szövegrészletek)
      */
-    async handleChat(documentId, message, documentCategory = null, history = [], uiContext = null, onEvent = null) {
+    async handleChat(documentId, message, documentCategory = null, history = [], uiContext = null, onEvent = null, documentIds = []) {
         const trimmed = (message || '').trim();
 
         // Step 0: Köszönés / smalltalk short-circuit – azonnali válasz, LLM nélkül
-        if (!documentId && trimmed.length <= 40 && GREETING_RE.test(trimmed)) {
+        if (!documentId && (!documentIds || !documentIds.length) && trimmed.length <= 40 && GREETING_RE.test(trimmed)) {
             if (onEvent) onEvent({ delta: GREETING_ANSWER });
             return GREETING_ANSWER;
         }
@@ -49,23 +49,23 @@ class AgentManager {
 
         // Step 2: Route to appropriate agent
         if (routingDecision.route === 'legal') {
-            return await this.legalAgent.process(message, documentId, history, onEvent);
+            return await this.legalAgent.process(message, documentId, history, onEvent, documentIds);
         }
 
         if (routingDecision.route === 'finance') {
-            return await this.financeAgent.process(message, documentId, history, onEvent);
+            return await this.financeAgent.process(message, documentId, history, onEvent, documentIds);
         }
 
         if (routingDecision.route === 'erp') {
-            return await this.erpDataAgent.process(message, documentId, history, uiContext, onEvent);
+            return await this.erpDataAgent.process(message, documentId, history, uiContext, onEvent, documentIds);
         }
 
         if (routingDecision.route === 'both') {
             // Párhuzamos futtatás; streamingnél pufferekbe gyűjtünk,
             // hogy a két divízió szövege ne keveredjen össze
             const [legalRes, finRes] = await Promise.all([
-                this.legalAgent.process(message, documentId, history, null),
-                this.financeAgent.process(message, documentId, history, null)
+                this.legalAgent.process(message, documentId, history, null, documentIds),
+                this.financeAgent.process(message, documentId, history, null, documentIds)
             ]);
             const response = `**Jogi Divízió véleménye:**\n${legalRes}\n\n---\n\n**Pénzügyi Divízió véleménye:**\n${finRes}`;
             if (onEvent) onEvent({ delta: response });
@@ -102,7 +102,7 @@ class AgentManager {
 
         if (onEvent) {
             const stream = await this.openai.chat.completions.create({
-                model: process.env.AI_CHAT_MODEL || 'gpt-5.5',
+                model: process.env.AI_CHAT_MODEL || 'gpt-6.1-sol',
                 messages,
                 stream: true
             });
@@ -118,7 +118,7 @@ class AgentManager {
         }
 
         const response = await this.openai.chat.completions.create({
-            model: process.env.AI_CHAT_MODEL || 'gpt-5.5',
+            model: process.env.AI_CHAT_MODEL || 'gpt-6.1-sol',
             messages
         });
         return response.choices[0].message.content;

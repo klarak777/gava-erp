@@ -174,7 +174,7 @@ async function getOptionsForDocument(documentId) {
 /**
  * Generate chat response using AgentManager
  */
-async function generateChatResponse(documentId, message, optionId, history = [], uiContext = null, onEvent = null) {
+async function generateChatResponse(documentId, message, optionId, history = [], uiContext = null, onEvent = null, documentIds = []) {
   let userQuery = message || '';
 
   if (optionId && optionId !== 'other') {
@@ -195,15 +195,20 @@ async function generateChatResponse(documentId, message, optionId, history = [],
     throw new Error('Hiányzó üzenet vagy érvénytelen opció azonosító.');
   }
 
+  const allDocIds = Array.isArray(documentIds) && documentIds.length
+    ? documentIds.map(Number).filter(Boolean)
+    : (documentId ? [Number(documentId)] : []);
+  const primaryDocId = allDocIds[allDocIds.length - 1] || null;
+
   // Get document category if available
   let documentCategory = null;
-  if (documentId) {
-    const doc = await db('ai_documents').where({ id: documentId }).first();
+  if (primaryDocId) {
+    const doc = await db('ai_documents').where({ id: primaryDocId }).first();
     if (doc) documentCategory = doc.category;
   }
 
   const manager = new AgentManager(openai);
-  return await manager.handleChat(documentId, userQuery, documentCategory, history, uiContext, onEvent);
+  return await manager.handleChat(primaryDocId, userQuery, documentCategory, history, uiContext, onEvent, allDocIds);
 }
 
 /**

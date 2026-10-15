@@ -14,30 +14,67 @@ class LegalAgent {
         return `[${queryEmbedding.join(',')}]`;
     }
 
-    async searchContext(documentId, queryStr) {
-        const embeddingStr = await this.generateEmbedding(queryStr);
-        
-        // Search permanent legal DB + temporary document if provided
-        let query = db('ai_vectors as v')
-            .join('ai_documents as d', 'v.document_id', 'd.id')
-            .select('v.content', 'd.is_permanent', 'd.filename')
-            .orderByRaw('v.embedding <=> ?::vector', [embeddingStr])
-            .limit(10);
-            
-        if (documentId) {
-            query = query.where(function() {
-                this.where('d.is_permanent', true)
-                    .orWhere('d.id', documentId);
-            });
-        } else {
-            query = query.where('d.is_permanent', true);
-        }
-
-        const relevantChunks = await query;
-        return relevantChunks.map(c => `[Forrás: ${c.filename}]\n${c.content}`).join('\n\n---\n\n');
+    isLegalRegulationNeeded(queryStr, hasUploadedDocs) {
+        if (!hasUploadedDocs) return true;
+        if (!queryStr) return false;
+        const q = queryStr.toLowerCase();
+        const legalKeywords = [
+            'jogszabály', 'törvény', 'rendelet', 'jog', 'megfelelőség', 'compliance',
+            'érvényesség', 'jogilag', 'tiltott', 'kötelező', 'szabályzat', 'kötbér',
+            'bánatpénz', 'felmondás', 'hatály', 'pfe', 'ptk', 'vet', 'bekezdés', 'paragrafus'
+        ];
+        return legalKeywords.some(kw => q.includes(kw));
     }
 
-    async process(message, documentId = null, history = [], onEvent = null) {
+    async searchContext(documentId, queryStr, documentIds = []) {
+        const docIds = Array.isArray(documentIds) && documentIds.length
+            ? documentIds.map(Number).filter(Boolean)
+            : (documentId ? [Number(documentId)] : []);
+
+        const embeddingStr = await this.generateEmbedding(queryStr);
+        const sections = [];
+
+        // 1. Ha van feltöltött dokumentum: ELSŐDLEGESEN a feltöltött dokumentumokból gyűjtjük ki a chunkokat!
+        if (docIds.length > 0) {
+            const uploadedChunks = await db('ai_vectors as v')
+                .join('ai_documents as d', 'v.document_id', 'd.id')
+                .whereIn('v.document_id', docIds)
+                .select('v.content', 'd.filename', 'd.id as doc_id')
+                .orderByRaw('v.embedding <=> ?::vector', [embeddingStr])
+                .limit(20);
+
+            if (uploadedChunks.length > 0) {
+                const docText = uploadedChunks
+                    .map(c => `[Feltöltött dokumentum: ${c.filename}]\n${c.content}`)
+                    .join('\n\n---\n\n');
+                sections.push(`### Feltöltött dokumentum(ok) releváns tartalma (ELSŐDLEGES TÉNYBELI FORRÁS):\n${docText}`);
+            }
+        }
+
+        // 2. Jogi vektor adatbázis (állandó jogszabálytár):
+        // Csak akkor és csak azokra a jogi szempontokra alkalmazzuk a 6000 jogszabályt,
+        // ha a kérdés kifejezetten jogszabályi megfelelőségre, törvényre kérdez rá, vagy nincs feltöltött fájl.
+        const needsPermanentLegal = this.isLegalRegulationNeeded(queryStr, docIds.length > 0);
+        if (needsPermanentLegal) {
+            const legalChunks = await db('ai_vectors as v')
+                .join('ai_documents as d', 'v.document_id', 'd.id')
+                .where('d.is_permanent', true)
+                .select('v.content', 'd.filename')
+                .orderByRaw('v.embedding <=> ?::vector', [embeddingStr])
+                .limit(docIds.length > 0 ? 5 : 10);
+
+            if (legalChunks.length > 0) {
+                const legalText = legalChunks
+                    .map(c => `[Jogszabálytár: ${c.filename}]\n${c.content}`)
+                    .join('\n\n---\n\n');
+                sections.push(`### Kapcsolódó jogszabályi háttér a jogszabálytárból (másodlagos referencia jogi szempontokhoz):\n${legalText}`);
+            }
+        }
+
+        return sections.join('\n\n========================================\n\n');
+    }
+
+    async process(message, documentId = null, history = [], onEvent = null, documentIds = []) {
         const systemPrompt = `Te a Gava Hungria Kft. Jogi Divíziójának mesterséges intelligencia szakértője vagy.
 
 Feladatod a vállalat jogi kérdéseinek elemzése és megválaszolása.
@@ -109,6 +146,10 @@ Ha valamely kérdésre a rendelkezésre álló dokumentumok nem adnak egyértelm
 
 ## Fontos szabályok
 
+- Ha a felhasználó dokumentumo(ka)t töltött fel, a feltöltött dokumentumok képezik az ELSŐDLEGES, hiteles és közvetlen forrást a tényekre, árakra, ajánlatokra, díjakra és szerződéses feltételekre nézve!
+- A jogszabálytárat (törvények, rendeletek) KIZÁRÓLAG akkor és arra használd, ha a kérdés jogi szempontból vizsgálja a dokumentumot (pl. jogszabályi megfelelőség, VET, Ptk., ÁSZF érvényesség, kötbér, felmondási jog).
+- Soha ne keverd össze a jogszabálytár általános szövegeit (pl. vámtarifák, fuvarozási jogszabályok) a feltöltött konkrét szerződés vagy ajánlat adataival!
+- Ha a feltöltött dokumentumban árak, táblázatok vagy képletek szerepelnek, azokat tekintsd irányadónak, és pontosan mutasd be őket az elemzésben!
 - Ne találj ki jogszabályokat.
 - Ne hivatkozz olyan paragrafusra, amely nem szerepel a RAG találatok között.
 - Ne egészítsd ki saját feltételezéseiddel a jogszabályokat.
@@ -122,13 +163,13 @@ Gyorsgombok (quick replies):
 - Az opciók legyenek tömörek (max 5 szó), kattintható válaszként megfogalmazva.`;
 
         // Gather context
-        const contextText = await this.searchContext(documentId, message);
+        const contextText = await this.searchContext(documentId, message, documentIds);
 
         const userPrompt = `
 Kérdés/Utasítás:
 ${message}
 
-Kontextus a jogszabálytárból és a feltöltött dokumentumból:
+Kontextus a feltöltött dokumentumból és a jogszabálytárból:
 ${contextText}
 `;
 
@@ -142,7 +183,7 @@ ${contextText}
         }
         messages.push({ role: 'user', content: userPrompt });
 
-        const model = process.env.AI_CHAT_MODEL || 'gpt-5.5';
+        const model = process.env.AI_CHAT_MODEL || 'gpt-6.1-sol';
 
         if (onEvent) {
             const stream = await this.openai.chat.completions.create({

@@ -20,11 +20,13 @@ const AI_CHAT_HTML = `
         </div>
 
         <div id="ai-document-section" class="ai-document-section">
-            <input type="file" id="ai-file-input" style="display: none;" accept=".pdf,.docx,.csv,.xlsx,.xls">
-            <button id="ai-upload-btn" class="secondary-btn" style="width: 100%; border: 1px dashed var(--border);">📄 Dokumentum feltöltése</button>
-            <div id="ai-active-doc" style="display: none; margin-top: 10px; font-size: 12px; color: var(--primary);">
-                <span id="ai-active-doc-name"></span>
-                <button id="ai-detach-doc-btn" title="Dokumentum leválasztása" style="background: transparent; border: none; cursor: pointer; font-size: 12px; margin-left: 6px;">✕ leválasztás</button>
+            <input type="file" id="ai-file-input" style="display: none;" accept=".pdf,.docx,.csv,.xlsx,.xls,.png,.jpg,.jpeg">
+            <button id="ai-upload-btn" class="secondary-btn" style="width: 100%; border: 1px dashed var(--border);">📄 Dokumentum feltöltése (+ további fájl)</button>
+            <div id="ai-active-doc" style="display: none; margin-top: 8px;">
+                <div id="ai-active-doc-list" style="display: flex; flex-direction: column; gap: 4px; max-height: 90px; overflow-y: auto;"></div>
+                <div style="display: flex; justify-content: flex-end; margin-top: 4px;">
+                    <button id="ai-detach-doc-btn" title="Összes leválasztása" style="background: transparent; border: none; cursor: pointer; font-size: 11px; color: #f43f5e;">✕ Összes leválasztása</button>
+                </div>
             </div>
         </div>
         
@@ -253,9 +255,9 @@ const AI_CHAT_HTML = `
     height: 52px;
     padding: 10px 12px;
     border-radius: 8px;
-    border: 1px solid var(--border);
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--text-main, #ffffff);
+    border: 1px solid #cbd5e1;
+    background: #ffffff !important;
+    color: #0f172a !important;
     font-family: inherit;
     font-size: 13.5px;
     line-height: 1.45;
@@ -269,11 +271,16 @@ const AI_CHAT_HTML = `
     overflow-x: hidden;
 }
 
+.ai-text-input::placeholder {
+    color: #64748b;
+}
+
 .ai-text-input:focus {
     outline: none;
     border-color: var(--primary, #6366f1);
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
-    background: rgba(255, 255, 255, 0.08);
+    background: #ffffff !important;
+    color: #0f172a !important;
 }
 
 .ai-text-input::-webkit-scrollbar {
@@ -281,17 +288,17 @@ const AI_CHAT_HTML = `
 }
 
 .ai-text-input::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.1);
+    background: #f1f5f9;
     border-radius: 3px;
 }
 
 .ai-text-input::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.25);
+    background: #94a3b8;
     border-radius: 3px;
 }
 
 .ai-text-input::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.4);
+    background: #64748b;
 }
 </style>
 `;
@@ -415,17 +422,62 @@ export function initAiChat() {
     const fileInput = document.getElementById('ai-file-input');
     const uploadBtn = document.getElementById('ai-upload-btn');
     const activeDocDiv = document.getElementById('ai-active-doc');
-    const activeDocName = document.getElementById('ai-active-doc-name');
+    const activeDocList = document.getElementById('ai-active-doc-list');
     const detachDocBtn = document.getElementById('ai-detach-doc-btn');
     const optionsSection = document.getElementById('ai-options-section');
     const textInput = document.getElementById('ai-text-input');
     const sendBtn = document.getElementById('ai-send-btn');
     const chatHistory = document.getElementById('ai-chat-history');
 
-    let currentDocumentId = null;
-    // Besztélgetés-history a kontextuális follow-up kérdésekhez
+    let attachedDocuments = [];
+    // Beszélgetés-history a kontextuális follow-up kérdésekhez
     const conversationHistory = [];
     let isSending = false;
+
+    function renderAttachedDocs() {
+        if (!activeDocDiv || !activeDocList) return;
+        activeDocList.innerHTML = '';
+        if (attachedDocuments.length === 0) {
+            activeDocDiv.style.display = 'none';
+            optionsSection.style.display = 'none';
+            return;
+        }
+        activeDocDiv.style.display = 'block';
+        attachedDocuments.forEach(doc => {
+            const item = document.createElement('div');
+            item.style.cssText = 'display: flex; align-items: center; justify-content: space-between; background: rgba(255, 255, 255, 0.08); padding: 4px 8px; border-radius: 6px; font-size: 11px;';
+
+            const nameSpan = document.createElement('span');
+            nameSpan.style.cssText = 'color: var(--text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 85%;';
+            nameSpan.textContent = `📄 ${doc.name} (${doc.category})`;
+            nameSpan.title = doc.name;
+
+            const removeBtn = document.createElement('button');
+            removeBtn.style.cssText = 'background: transparent; border: none; cursor: pointer; color: #ef4444; font-size: 12px; padding: 0 4px;';
+            removeBtn.textContent = '✕';
+            removeBtn.title = 'Dokumentum leválasztása';
+            removeBtn.addEventListener('click', async () => {
+                await detachSingleDocument(doc.id);
+            });
+
+            item.appendChild(nameSpan);
+            item.appendChild(removeBtn);
+            activeDocList.appendChild(item);
+        });
+    }
+
+    async function detachSingleDocument(docId) {
+        try {
+            await fetch(`/api/v1/ai/documents/${docId}`, { method: 'DELETE' });
+        } catch (_) {}
+        attachedDocuments = attachedDocuments.filter(d => d.id !== docId);
+        renderAttachedDocs();
+        if (attachedDocuments.length > 0) {
+            loadOptions(attachedDocuments[attachedDocuments.length - 1].id);
+        } else {
+            optionsSection.style.display = 'none';
+        }
+    }
 
     // Gyórselemzés gombok betöltése
     const quickAnalysisSection = document.getElementById('ai-quick-analysis');
@@ -698,10 +750,13 @@ export function initAiChat() {
             }
 
             if (data.success) {
-                currentDocumentId = data.documentId;
+                attachedDocuments.push({
+                    id: data.documentId,
+                    name: file.name,
+                    category: data.category
+                });
+                renderAttachedDocs();
                 const sheetSummary = data.worksheets ? ` – Fülek: ${data.worksheets.join(', ')}` : '';
-                activeDocName.textContent = `Aktív dokumentum: ${file.name} (${data.category})${sheetSummary}`;
-                activeDocDiv.style.display = 'block';
                 addMessage(`✅ ${file.name} sikeresen feldolgozva! Válasszon egy opciót vagy tegye fel a kérdését.`, 'system');
                 if (data.worksheets) {
                     const summary = document.createElement('div');
@@ -710,7 +765,7 @@ export function initAiChat() {
                     chatHistory.appendChild(summary);
                     chatHistory.scrollTop = chatHistory.scrollHeight;
                 }
-                loadOptions(currentDocumentId);
+                loadOptions(data.documentId);
             } else {
                 addMessage(`❌ Hiba a feltöltés során: ${data.error || data.message || 'A szerver nem adott feldolgozási eredményt.'}`, 'system');
             }
@@ -723,23 +778,21 @@ export function initAiChat() {
         }
     });
 
-    // Aktív dokumentum leválasztása – töröljük a fizikai adatbázisból is a temporary vektort!
+    // Aktív dokumentumok leválasztása – töröljük a fizikai adatbázisból is a temporary vektorokat!
     detachDocBtn.addEventListener('click', async () => {
-        if (currentDocumentId) {
-            const docIdToDelete = currentDocumentId;
-            currentDocumentId = null;
-            activeDocDiv.style.display = 'none';
-            activeDocName.textContent = '';
+        if (attachedDocuments.length > 0) {
+            const toDelete = [...attachedDocuments];
+            attachedDocuments = [];
+            renderAttachedDocs();
             optionsSection.style.display = 'none';
             optionsSection.innerHTML = '';
             
-            try {
-                await fetch(`/api/v1/ai/documents/${docIdToDelete}`, { method: 'DELETE' });
-                addMessage('📄 Dokumentum leválasztva és törölve az adatbázisból.', 'system');
-            } catch (err) {
-                console.error('Hiba a dokumentum törlésekor:', err);
-                addMessage('📄 Dokumentum leválasztva.', 'system');
+            for (const doc of toDelete) {
+                try {
+                    await fetch(`/api/v1/ai/documents/${doc.id}`, { method: 'DELETE' });
+                } catch (_) {}
             }
+            addMessage('📄 Minden dokumentum leválasztva.', 'system');
         }
     });
 
@@ -924,7 +977,8 @@ export function initAiChat() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    documentId: currentDocumentId,
+                    documentId: attachedDocuments[attachedDocuments.length - 1]?.id || null,
+                    documentIds: attachedDocuments.map(d => d.id),
                     message: messageText,
                     optionId: optionId,
                     history: conversationHistory.slice(-10),

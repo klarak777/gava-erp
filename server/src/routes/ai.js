@@ -71,7 +71,7 @@ router.get('/options/:documentId', async (req, res) => {
 // Chat with the AI – Server-Sent Events streaming válasszal
 // Események: {"delta": "..."} részletek, végén [DONE], hiba esetén {"error": "..."}
 router.post('/chat', async (req, res) => {
-  const { documentId, message, optionId, history, uiContext } = req.body || {};
+  const { documentId, documentIds, message, optionId, history, uiContext } = req.body || {};
 
   if (!message && !optionId) {
     return res.status(400).json({ error: 'Hiányzó üzenet vagy opció azonosító.' });
@@ -90,7 +90,7 @@ router.post('/chat', async (req, res) => {
 
   try {
     const safeHistory = Array.isArray(history) ? history.slice(-10) : [];
-    await aiService.generateChatResponse(documentId, message, optionId, safeHistory, uiContext, sendEvent);
+    await aiService.generateChatResponse(documentId, message, optionId, safeHistory, uiContext, sendEvent, documentIds);
     res.write('data: [DONE]\n\n');
     res.end();
   } catch (error) {
