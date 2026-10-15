@@ -37,8 +37,8 @@ const AI_CHAT_HTML = `
         </div>
 
         <div class="ai-input-area">
-            <input type="text" id="ai-text-input" class="access-input" placeholder="Tegye fel kérdését..." style="flex-grow: 1;">
-            <button id="ai-send-btn" class="primary-btn" style="min-width: 80px;">Küldés</button>
+            <textarea id="ai-text-input" class="access-input ai-text-input" placeholder="Tegye fel kérdését..." rows="2"></textarea>
+            <button id="ai-send-btn" class="primary-btn" style="min-width: 80px; height: 44px; display: inline-flex; align-items: center; justify-content: center;">Küldés</button>
         </div>
     </div>
 </div>
@@ -238,11 +238,60 @@ const AI_CHAT_HTML = `
 }
 
 .ai-input-area {
-    padding: 16px 20px;
+    padding: 12px 16px;
     border-top: 1px solid var(--border);
     display: flex;
     gap: 10px;
+    align-items: flex-end;
     background: rgba(0,0,0,0.1);
+}
+
+.ai-text-input {
+    flex-grow: 1;
+    min-height: 52px;
+    max-height: 130px;
+    height: 52px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-main, #ffffff);
+    font-family: inherit;
+    font-size: 13.5px;
+    line-height: 1.45;
+    resize: none;
+    box-sizing: border-box;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.ai-text-input:focus {
+    outline: none;
+    border-color: var(--primary, #6366f1);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.ai-text-input::-webkit-scrollbar {
+    width: 6px;
+}
+
+.ai-text-input::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+}
+
+.ai-text-input::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 3px;
+}
+
+.ai-text-input::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
 }
 </style>
 `;
@@ -858,6 +907,7 @@ export function initAiChat() {
         const textToSend = messageText || optionLabel || 'Kérdés';
         addMessage(textToSend, 'user');
         textInput.value = '';
+        adjustTextInputHeight();
         conversationHistory.push({ role: 'user', content: messageText || optionLabel || '' });
 
         const answerDiv = document.createElement('div');
@@ -1000,6 +1050,15 @@ export function initAiChat() {
         }
     }
 
+    function adjustTextInputHeight() {
+        if (!textInput) return;
+        textInput.style.height = 'auto';
+        const newHeight = Math.min(Math.max(textInput.scrollHeight, 52), 130);
+        textInput.style.height = newHeight + 'px';
+    }
+
+    textInput.addEventListener('input', adjustTextInputHeight);
+
     sendBtn.addEventListener('click', () => {
         const text = textInput.value.trim();
         if (text) {
@@ -1007,12 +1066,16 @@ export function initAiChat() {
         }
     });
 
-    textInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
+    textInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
             const text = textInput.value.trim();
             if (text) {
                 sendChat(text, null);
             }
         }
     });
+
+    // Kezdeti méretezés beállítása
+    adjustTextInputHeight();
 }
