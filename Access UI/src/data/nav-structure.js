@@ -19,11 +19,9 @@ export const NAV_CATEGORIES = [
             { id: 'fuvarmegbizas', title: 'Fuvarmegbizás', icon: '📝', moduleId: 'fuvarmegbizas', items: [] },
             { id: 'ekaerek', title: 'EKAEREK', icon: '🛂', moduleId: 'ekaerek', items: [] },
             { id: 'transportistas', title: 'Transportistas', icon: '🚚', moduleId: 'transportistas', items: [] },
-            { id: 'order_number', title: 'Order number', icon: '🔢', moduleId: 'order_number', items: [] },
             { id: 'fuvarok_osszesito', title: 'Fuvarok összesitö', icon: '📋', moduleId: 'fuvarok', items: [] },
             { id: 'felrakok', title: 'Felrakók', icon: '🏭', moduleId: 'felrakok', items: [] },
             { id: 'termekek_adat_tabla', title: 'Termékek adat tábla', icon: '📊', moduleId: 'termekek_adat_tabla', items: [] },
-            { id: 'cimke', title: 'Címke', icon: '🏷️', moduleId: 'cimke', items: [] },
         ],
     },
     {

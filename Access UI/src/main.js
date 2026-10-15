@@ -48,7 +48,7 @@ import { renderAldiBelfoldiFuvarok } from './modules/aldi_belfoldi_fuvarok.js';
 import { renderAldiTermekAdattabla } from './modules/aldi_termekek.js';
 import { renderAldiEdiTest } from './modules/aldi_edi_test.js?v=20261014-asn';
 import { renderPdaEmulator } from './modules/pda_emulator.js?v=3';
-import { NAV_CATEGORIES } from './data/nav-structure.js?v=20261013-edi-test';
+import { NAV_CATEGORIES } from './data/nav-structure.js?v=20261015-remove-submenus';
 import { initAiChat } from './modules/ai-chat.js?v=10';
 
 const mainNav = document.getElementById('main-nav');
