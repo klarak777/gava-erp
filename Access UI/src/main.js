@@ -49,7 +49,7 @@ import { renderAldiTermekAdattabla } from './modules/aldi_termekek.js';
 import { renderAldiEdiTest } from './modules/aldi_edi_test.js?v=20261014-asn';
 import { renderPdaEmulator } from './modules/pda_emulator.js?v=3';
 import { NAV_CATEGORIES } from './data/nav-structure.js?v=20261015-remove-submenus';
-import { initAiChat } from './modules/ai-chat.js?v=12';
+import { initAiChat } from './modules/ai-chat.js?v=13';
 
 const mainNav = document.getElementById('main-nav');
 const contentView = document.getElementById('content-view');

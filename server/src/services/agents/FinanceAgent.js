@@ -25,13 +25,18 @@ class FinanceAgent {
         
         const embeddingStr = await this.generateEmbedding(queryStr);
         
-        // Search uploaded documents (with filename for multi-doc comparison)
-        const relevantChunks = await db('ai_vectors as v')
-            .join('ai_documents as d', 'v.document_id', 'd.id')
-            .whereIn('v.document_id', docIds)
-            .orderByRaw('v.embedding <=> ?::vector', [embeddingStr])
-            .limit(20)
-            .select('v.content', 'd.filename');
+        // Search uploaded documents with balanced per-document chunk limits
+        const perDocLimit = docIds.length === 1 ? 25 : Math.max(8, Math.floor(24 / docIds.length));
+        const chunkPromises = docIds.map(dId => 
+            db('ai_vectors as v')
+                .join('ai_documents as d', 'v.document_id', 'd.id')
+                .where('v.document_id', dId)
+                .select('v.content', 'd.filename')
+                .orderByRaw('v.embedding <=> ?::vector', [embeddingStr])
+                .limit(perDocLimit)
+        );
+        const results = await Promise.all(chunkPromises);
+        const relevantChunks = results.flat();
 
         return relevantChunks.map(c => `[Forrás: ${c.filename}]\n${c.content}`).join('\n\n---\n\n');
     }

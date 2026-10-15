@@ -629,7 +629,8 @@ export function initAiChat() {
         exportBtn.disabled = true;
         const progress = addMessage('⏳ PDF generálása folyamatban...', 'system');
         try {
-            await exportAiReport(answers[answers.length - 1], activeDocName.textContent, (page, total) => {
+            const docTitle = attachedDocuments.map(d => d.name).join(', ') || 'GAVA MI Elemzés';
+            await exportAiReport(answers[answers.length - 1], docTitle, (page, total) => {
                 progress.textContent = `⏳ PDF generálása folyamatban: ${page} / ${total} oldal`;
             });
             progress.textContent = '✅ Az elemzés PDF-exportja elkészült.';

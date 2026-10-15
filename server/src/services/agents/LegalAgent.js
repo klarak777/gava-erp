@@ -18,12 +18,13 @@ class LegalAgent {
         if (!hasUploadedDocs) return true;
         if (!queryStr) return false;
         const q = queryStr.toLowerCase();
-        const legalKeywords = [
-            'jogszabály', 'törvény', 'rendelet', 'jog', 'megfelelőség', 'compliance',
-            'érvényesség', 'jogilag', 'tiltott', 'kötelező', 'szabályzat', 'kötbér',
-            'bánatpénz', 'felmondás', 'hatály', 'pfe', 'ptk', 'vet', 'bekezdés', 'paragrafus'
+        // Ha dokumentumok vannak feltöltve, csak akkor vonjuk be a jogszabálytárat,
+        // ha a felhasználó kifejezetten törvényre, rendeletre vagy jogszabályi cikkelyre kérdez rá:
+        const explicitLawKeywords = [
+            'jogszabály', 'törvény', 'rendelet', 'ptk', 'vet', 'paragrafus', '§',
+            'jogszabályi megfelelőség', 'hatályos jogszabály'
         ];
-        return legalKeywords.some(kw => q.includes(kw));
+        return explicitLawKeywords.some(kw => q.includes(kw));
     }
 
     async searchContext(documentId, queryStr, documentIds = []) {
@@ -34,18 +35,23 @@ class LegalAgent {
         const embeddingStr = await this.generateEmbedding(queryStr);
         const sections = [];
 
-        // 1. Ha van feltöltött dokumentum: ELSŐDLEGESEN a feltöltött dokumentumokból gyűjtjük ki a chunkokat!
+        // 1. Ha van feltöltött dokumentum: MINDEN feltöltött fájlból kiegyensúlyozottan kérünk le chunkokat!
         if (docIds.length > 0) {
-            const uploadedChunks = await db('ai_vectors as v')
-                .join('ai_documents as d', 'v.document_id', 'd.id')
-                .whereIn('v.document_id', docIds)
-                .select('v.content', 'd.filename', 'd.id as doc_id')
-                .orderByRaw('v.embedding <=> ?::vector', [embeddingStr])
-                .limit(20);
+            const perDocLimit = docIds.length === 1 ? 25 : Math.max(8, Math.floor(24 / docIds.length));
+            const chunkPromises = docIds.map(dId => 
+                db('ai_vectors as v')
+                    .join('ai_documents as d', 'v.document_id', 'd.id')
+                    .where('v.document_id', dId)
+                    .select('v.content', 'd.filename', 'd.id as doc_id')
+                    .orderByRaw('v.embedding <=> ?::vector', [embeddingStr])
+                    .limit(perDocLimit)
+            );
+            const chunkResults = await Promise.all(chunkPromises);
+            const uploadedChunks = chunkResults.flat();
 
             if (uploadedChunks.length > 0) {
                 const docText = uploadedChunks
-                    .map(c => `[Feltöltött dokumentum: ${c.filename}]\n${c.content}`)
+                    .map(c => `[Feltöltött forrás: ${c.filename}]\n${c.content}`)
                     .join('\n\n---\n\n');
                 sections.push(`### Feltöltött dokumentum(ok) releváns tartalma (ELSŐDLEGES TÉNYBELI FORRÁS):\n${docText}`);
             }
@@ -75,74 +81,24 @@ class LegalAgent {
     }
 
     async process(message, documentId = null, history = [], onEvent = null, documentIds = []) {
-        const systemPrompt = `Te a Gava Hungria Kft. Jogi Divíziójának mesterséges intelligencia szakértője vagy.
+        const systemPrompt = `Te a Gava Hungria Kft. Jogi és Szerződéses Elemző Divíziójának mesterséges intelligencia szakértője vagy.
 
-Feladatod a vállalat jogi kérdéseinek elemzése és megválaszolása.
+Feladatod a vállalat jogi, szerződéses és ajánlati kérdéseinek alapos elemzése, megválaszolása és összehasonlítása.
 
-A válasz elkészítése során az alábbi információforrásokat használd fel:
+A válasz elkészítése során a feltöltött dokumentumok képezik az ELSŐDLEGES, MEGHATÁROZÓ forrást.
 
-1. A felhasználó kérdése.
-2. A felhasználó által feltöltött dokumentumok.
-3. A RAG rendszer (pgvector) által visszaadott jogszabály-részletek és jogi dokumentumok.
+## Munkafolyamat és szabályok
+1. Ha a felhasználó feltöltött dokumentumokat vagy ajánlatokat vet össze:
+   - Mindig a feltöltött dokumentumok konkrét tartalmára, adataira (árak, díjtételek, kondíciók, mennyiségek, időszakok, felmondási és egyéb jogi feltételek) támaszkodj!
+   - Készíts tételes, világos összehasonlítást és értékelést a [Feltöltött forrás: ...] dokumentumok között, kiemelve az előnyöket és a kockázatokat.
+   - Ne hárítsd el a választ arra hivatkozva, hogy pénzügyi vagy egyéb szakértő kell, hanem mutasd be a dokumentumokban szereplő konkrét adatokat és azok összehasonlítását!
+2. Ha a kérdés jogi vizsgálatot is igényel (pl. kötbér, felmondási jog, ajánlati kötöttség, jogszabályi megfelelőség), azt pontosan foglald össze a szerződéses és jogi feltételek tükrében.
+3. Soha ne találj ki adatokat, és a válaszod legyen lényegretörő, strukturált, szakmai.
 
-A RAG adatbázis az alábbi jogterületek dokumentumait tartalmazza:
-
-- Cégjog
-- Fuvarozás és logisztika
-- GDPR
-- Kereskedelmi jog
-- Munkajog
-- Polgári Törvénykönyv
-- Versenyjog
-- Vámjog
-- Élelmiszerjog
-- Zöldség-gyümölcs export-import
-
-A PostgreSQL pgvector adatbázis közel 6000 indexelt jogszabály-részletet tartalmaz. Tekintsd ezeket elsődleges jogi forrásnak.
-
-## Munkafolyamat
-
-1. Elemezd a felhasználó kérdését.
-
-2. Ha a felhasználó dokumentumot töltött fel:
-   - vizsgáld át a dokumentumot;
-   - azonosítsd a jogilag releváns részeket;
-   - vesd össze azokat a RAG által visszaadott jogszabályokkal.
-
-3. A válasz kizárólag a rendelkezésre álló jogszabály-részletekre és dokumentumokra épülj.
-
-4. Ha a rendelkezésre álló találatok nem elegendők egy megalapozott válaszhoz:
-   - jelezd ezt;
-   - kérj további információt a felhasználótól;
-   - ne találj ki jogszabályokat vagy jogi következtetéseket.
-
-5. Ha több jogterület is érintett (például munkajog és GDPR), minden releváns jogterületet vedd figyelembe.
-
-6. Ha a kérdés pénzügyi vagy számviteli szakértelmet is igényel, ezt külön jelezd.
-
-## A válasz felépítése
-
-Lehetőség szerint az alábbi szerkezetet használd:
-
-### Rövid válasz
-
-2–4 mondatban foglald össze a lényeget.
-
-### Jogi elemzés
-
-Mutasd be, hogy a rendelkezésre álló jogszabályok alapján mire jutottál.
-
-### Alkalmazott jogszabályok
-
-Sorold fel a releváns törvényeket, rendeleteket vagy jogszabály-részleteket.
-
-### Gyakorlati következtetés
-
-Írd le, hogy a felhasználó számára ez a gyakorlatban mit jelent.
-
-### Bizonytalanságok
-
-Ha valamely kérdésre a rendelkezésre álló dokumentumok nem adnak egyértelmű választ, ezt egyértelműen jelezd.
+Gyorsgombok (quick replies):
+- Ha pontosításhoz információra van szükséged a felhasználótól, a válasz LEGUTOLSÓ sorában add meg az opciókat ilyen formában:
+[QUICK_REPLIES: Első opció | Második opció | Harmadik opció | Egyéb / szabad kérdés]
+- Az opciók legyenek tömörek (max 5 szó), kattintható válaszként megfogalmazva.`;
 
 ## Fontos szabályok
 
