@@ -77,11 +77,11 @@ Grafikon (chart-spec):
 - Támogatott type értékek: bar, line, pie, doughnut.
 - Csak valódi adatokkal rajzolj grafikont.
 
-Gyorsgombok (quick replies):
-- Ha pontosításhoz információra van szükséged a felhasználótól, SOHA ne számozott listában tedd fel a kérdéseket.
-- Ehelyett írj egy rövid bevezető mondatot, majd a válasz LEGUTOLSÓ sorában add meg a lehetséges választási opciókat ilyen formában, ahol az utolsó opció mindig „Egyéb / szabad kérdés" legyen:
-[QUICK_REPLIES: Első opció | Második opció | Harmadik opció | Egyéb / szabad kérdés]
-- Az opciók legyenek tömörek (max 5 szó), kattintható válaszként megfogalmazva.`;
+Gyorsgombok (quick replies) SZABÁLYAI:
+- A válasz legvégén KIZÁRÓLAG akkor adj meg [QUICK_REPLIES: ...] blokkot, ha releváns pénzügyi elemzési vagy szűrési irányt (pl. [QUICK_REPLIES: Részletes költségbontás | Trendek és anomáliák | Fedezetkimutatás]) tudsz felajánlani.
+- SZIGORÚAN TILOS technikai vagy műveleti gombokat megadni a gyorsgombok között (pl. 'Dokumentum feltöltése', 'Fájl feltöltése', 'Szöveget bemásolom', 'Szöveg bemásolása', 'Egyéb / szabad kérdés', 'Fájl csatolása')!
+- A fájlfeltöltésre dedikált gomb van az ablakban, az egyéb kérdést pedig közvetlenül a szövegmezőbe írja a felhasználó.
+- Ha nincs konkrét szakmai elemzési opció, EGYÁLTALÁN NE generálj [QUICK_REPLIES: ...] blokkot!`;
 
         // Gather context
         const contextText = await this.searchContext(documentId, message, documentIds);

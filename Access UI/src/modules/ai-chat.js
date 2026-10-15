@@ -34,7 +34,7 @@ const AI_CHAT_HTML = `
             <!-- Options injected here -->
         </div>
 
-        <div id="ai-quick-analysis" class="ai-quick-analysis">
+        <div id="ai-quick-analysis" class="ai-quick-analysis" style="display: none;">
             <!-- Gyorselemzés gombok (dokumentum nélkül is elérhetők) -->
         </div>
 
@@ -479,23 +479,46 @@ export function initAiChat() {
         }
     }
 
-    // Gyórselemzés gombok betöltése
-    const quickAnalysisSection = document.getElementById('ai-quick-analysis');
+    // Gyorsgombok / csempék szűrése: a technikai utasításokat (dokumentumfeltöltés, szövegbemásolás, szabad kérdés)
+    // NEM szabad felhasználói prompt-csempeként feltenni, mert azok nem tartalmi kérdések a modellnek.
+    function isTechnicalMetaAction(text) {
+        const s = (text || '').toLowerCase().trim();
+        if (!s) return null;
+        // Feltöltés / csatolás jellegű opciók
+        if (/^(dokumentum|fájl|file)?\s*(feltölt|csatol)/i.test(s) || /feltölt(és|ése)?$/i.test(s)) return 'upload';
+        // Szöveg másolása / bemásolása jellegű opciók
+        if (/szöveg.*bemásol|bemásol.*szöveg|másold be|^bemásol(om)?$/i.test(s)) return 'paste';
+        // Szabad kérdés / egyéb kérdés opciók
+        if (/^(egyéb\s*(\/|vagy)\s*)?szabad kérdés$/i.test(s) || s === 'egyéb kérdés' || s === 'más kérdés' || s === 'egyéb' || s === 'egyéb / szabad kérdés') return 'focus';
+        return null;
+    }
 
     function renderQuickReplies(optionsStr) {
         if (!quickAnalysisSection) return;
         quickAnalysisSection.innerHTML = '';
-        if (!optionsStr) return;
+        if (!optionsStr) {
+            quickAnalysisSection.style.display = 'none';
+            return;
+        }
         
         const options = optionsStr.split('|').map(s => s.trim()).filter(Boolean);
+        let renderedCount = 0;
         options.forEach(opt => {
+            const meta = isTechnicalMetaAction(opt);
+            // Ha technikai művelet (dokumentumfeltöltés, szövegbemásolás, egyéb kérdés), NE jelenítsük meg feladható kérdés-csempeként!
+            if (meta) {
+                return;
+            }
             const btn = document.createElement('button');
             btn.className = 'ai-option-btn';
             btn.textContent = opt;
             btn.title = opt;
             btn.addEventListener('click', () => sendChat(opt, null));
             quickAnalysisSection.appendChild(btn);
+            renderedCount++;
         });
+
+        quickAnalysisSection.style.display = renderedCount > 0 ? 'flex' : 'none';
     }
 
 
@@ -954,9 +977,25 @@ export function initAiChat() {
     }
 
     async function sendChat(messageText, optionId = null, optionLabel = null) {
+        const rawText = messageText || optionLabel || '';
+        const meta = isTechnicalMetaAction(rawText);
+        if (meta === 'upload') {
+            if (fileInput) fileInput.click();
+            return;
+        }
+        if (meta === 'paste' || meta === 'focus') {
+            if (textInput) {
+                textInput.focus();
+                textInput.scrollIntoView({ behavior: 'smooth' });
+            }
+            return;
+        }
+
         if (isSending) return; // dupla küldés megakadályozása
         isSending = true;
         sendBtn.disabled = true;
+
+        renderQuickReplies(null); // új kérés indításakor azonnal eltüntetjük a régi gyorsgombokat
 
         const textToSend = messageText || optionLabel || 'Kérdés';
         addMessage(textToSend, 'user');

@@ -24,9 +24,11 @@ Grafikon (chart-spec):
 \`\`\`
 - Támogatott type értékek: bar, line, pie, doughnut.
 
-Gyorsgombok (quick replies):
-- Ha kérdésed van a felhasználóhoz egy elemzéssel kapcsolatban (pl. további szűrés, vagy következő lépés), adj meg 2-4 válaszlehetőséget a válaszod LEGUTOLSÓ sorában ebben a formátumban:
+Gyorsgombok (quick replies) SZABÁLYAI:
+- Ha kérdésed van a felhasználóhoz egy elemzéssel vagy adatszűréssel kapcsolatban, adj meg 2-3 konkrét tartalmi/szűrési válaszlehetőséget a válaszod LEGUTOLSÓ sorában:
 [QUICK_REPLIES: Első lehetőség | Második lehetőség | Harmadik lehetőség]
+- SZIGORÚAN TILOS technikai vagy műveleti gombokat megadni (pl. 'Dokumentum feltöltése', 'Fájl feltöltése', 'Szöveget bemásolom', 'Szöveg bemásolása', 'Egyéb / szabad kérdés', 'Fájl csatolása')!
+- Ha nincs konkrét szakmai/szűrési opció, EGYÁLTALÁN NE generálj [QUICK_REPLIES: ...] blokkot!
 `;
 
         if (uiContext && uiContext.length > 0) {
