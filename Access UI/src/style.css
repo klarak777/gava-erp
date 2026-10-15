@@ -1314,3 +1314,46 @@ input[type=number] {
 .ai-table tr:hover {
     background-color: rgba(0, 0, 0, 0.02);
 }
+
+/* ALDI Heti lekötés kör alakú jelölőnégyzetek */
+input[type="checkbox"].aldi-edit-day-cb,
+input[type="checkbox"].aldi-round-cb,
+.aldi-round-cb {
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    width: 20px !important;
+    height: 20px !important;
+    border-radius: 50% !important;
+    border: 2px solid #94a3b8 !important;
+    background-color: #ffffff !important;
+    outline: none !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    vertical-align: middle !important;
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    position: relative !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+}
+
+input[type="checkbox"].aldi-edit-day-cb:hover,
+input[type="checkbox"].aldi-round-cb:hover,
+.aldi-round-cb:hover {
+    border-color: #0284c7 !important;
+    transform: scale(1.08) !important;
+}
+
+input[type="checkbox"].aldi-edit-day-cb:checked,
+input[type="checkbox"].aldi-round-cb:checked,
+.aldi-round-cb:checked {
+    background-color: #0284c7 !important;
+    border-color: #0284c7 !important;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3.5 8.5l3 3 6-6'/%3E%3C/svg%3E") !important;
+    background-size: 13px 13px !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.4) !important;
+}

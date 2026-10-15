@@ -1157,21 +1157,21 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
 
     let daysHtml = '';
     const dayKeys = [
-      { key: 'mon', label: 'H' },
-      { key: 'tue', label: 'K' },
-      { key: 'wed', label: 'Sz' },
-      { key: 'thu', label: 'Cs' },
-      { key: 'fri', label: 'P' },
-      { key: 'sat', label: 'Szo' },
-      { key: 'sun', label: 'V' }
+      { key: 'mon', label: 'Hétfő' },
+      { key: 'tue', label: 'Kedd' },
+      { key: 'wed', label: 'Szerda' },
+      { key: 'thu', label: 'Csütörtök' },
+      { key: 'fri', label: 'Péntek' },
+      { key: 'sat', label: 'Szombat' },
+      { key: 'sun', label: 'Vasárnap' }
     ];
 
     dayKeys.forEach(d => {
       const isChecked = currentActionDays && currentActionDays.includes(d.key) ? 'checked' : '';
       daysHtml += `
-        <label style="display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:4px; cursor:pointer;">
+        <label style="display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:4px; padding:3px 6px; border-radius:6px; cursor:pointer;">
           <span style="font-size:12px; font-weight:600; color:#475569;">${d.label}</span>
-          <input type="checkbox" class="aldi-edit-day-cb" value="${d.key}" ${isChecked} style="width:18px; height:18px; cursor:pointer;">
+          <input type="checkbox" class="aldi-edit-day-cb aldi-round-cb" value="${d.key}" ${isChecked}>
         </label>
       `;
     });
@@ -1194,7 +1194,7 @@ export function renderAldiRendelesek(container, windowManager, standaloneTab = n
         </div>
         <div style="padding:18px 22px; display:flex; flex-direction:column; gap:16px;">
           ${(overrides.manualNormal != null || overrides.manualAction != null) ? `<div style="font-size:12px; color:#475569;">Kézi felülírás van érvényben. ${overrides.defaultNormal != null && overrides.defaultAction != null ? `Excel szerinti alap: ${hasActionPeriod ? `akciós ${overrides.defaultAction}, akción kívüli ${overrides.defaultNormal}` : `normál ${overrides.defaultNormal}`} karton.` : 'Az Excel-alaphoz a napi tervadatok feldolgozása szükséges.'} Üres mennyiségmezővel törölhető a kézi felülírás.</div>` : ''}
-          <label style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; color:#334155; cursor:pointer;"><input id="aldi-edit-action-mode" type="checkbox" role="switch" ${actionMode ? 'checked' : ''}>Akciós szerkesztés</label>
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; color:#334155; cursor:pointer;"><input id="aldi-edit-action-mode" class="aldi-round-cb" type="checkbox" ${actionMode ? 'checked' : ''}>Akciós szerkesztés</label>
           <div id="aldi-edit-quantities" style="display:flex; flex-direction:row; gap:16px;">${quantityFields}</div>
           <div id="aldi-edit-days" ${actionMode ? '' : 'hidden'}><div style="display:flex; flex-direction:column; gap:6px;">
             <label style="font-size:12px; font-weight:700; color:#334155;">Akciós napok módosítása</label>

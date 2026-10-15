@@ -40,7 +40,7 @@ export async function openCommitmentRatesEditor({ year, week, onSaved }) {
       <p style="font-size:13px;margin-bottom:0;">A beállítás ettől a héttől érvényes, a múltbéli adatokon nem módosít. Minden időszak összege külön 100% legyen. Mentés után a becslés és a készlet újraszámolódik; a tényleges rendelés nem változik.</p></div>
     <div data-body style="padding:0 20px;overflow:auto;">Betöltés…</div>
     <div style="padding:16px 20px;border-top:1px solid #e2e8f0;"><div data-error role="alert" style="color:#b91c1c;margin-bottom:10px;"></div>
-      <div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" data-cancel>Mégse</button><button type="button" data-save disabled style="background:#0284c7;color:white;border:0;border-radius:6px;padding:9px 16px;">Mentés és újraszámítás</button></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="secondary-btn" data-cancel style="padding:7px 22px;border-radius:20px;font-size:13px;font-weight:600;border:1px solid #cbd5e1;background:#ffffff;color:#334155;cursor:pointer;">Mégse</button><button type="button" class="primary-btn" data-save disabled style="background:#0284c7;color:white;border:0;border-radius:20px;padding:7px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">Mentés</button></div>
     </div></div>`;
   document.body.appendChild(overlay);
   const previousFocus = document.activeElement;
@@ -108,7 +108,7 @@ export async function openCommitmentRatesEditor({ year, week, onSaved }) {
       } catch (error) {
         saving = false;
         overlay.querySelectorAll('input,button').forEach(el => { el.disabled = false; });
-        save.textContent = 'Mentés és újraszámítás';
+        save.textContent = 'Mentés';
         validate();
         errorBox.textContent = error.message;
       }
